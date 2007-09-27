@@ -1,0 +1,6 @@
+#!/bin/bash
+
+source environment.mac
+cd $TESTAPP_HOME
+
+python2.4 manage.py shell

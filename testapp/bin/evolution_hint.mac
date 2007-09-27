@@ -1,0 +1,20 @@
+#!/bin/bash
+
+source environment.mac
+cd $TESTAPP_HOME
+/opt/local/lib/postgresql82/bin/dropdb -U postgres $TESTAPPDB
+/opt/local/lib/postgresql82/bin/createdb -U postgres $TESTAPPDB
+
+cd test_app
+rm ./models.pyc
+cp ./models_old.py ./models.py
+cd ..
+
+python2.4 manage.py syncdb --noinput
+
+cd test_app
+rm ./models.pyc
+cp ./models_new.py ./models.py
+cd ..
+
+python2.4 manage.py hint testapp.test_app migration_one
