@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db.models.fields import *
 from django.db.models.fields.related import *
+from django.contrib.evolution import EvolutionException
 import copy
 
 def get_evolution_module():
@@ -82,18 +83,15 @@ class DeleteField(BaseMutation):
         field_params = field_dict[self.field_name]
         if not 'ManyToManyField' == field_params['internal_type']:
             column_name = field_params['column']
-            db_columns = field_dict['db_columns']
-            db_columns.remove(column_name)
-            field_dict['db_columns'] = db_columns
 
         # Simulate the deletion of the field.
         try:
             field_params = field_dict.pop(self.field_name)
             if field_params['primary_key']:
-                    print 'Primary key deletion is not supported.'
-                    # replace the data
-                    field_dict[self.field_name] = field_params
-                    return
+                print 'Primary key deletion is not supported.'
+                # replace the data
+                field_dict[self.field_name] = field_params
+                return
         except KeyError, ke:
             print 'SIMULATE ERROR: Cannot find the field named "%s".'%self.field_name
             
@@ -110,7 +108,7 @@ class DeleteField(BaseMutation):
                 self.column_name = field_params['column']
                 self.mutate_func = self.mutate_column
         except KeyError, ke:
-            print 'PRE-MUTATE ERROR: Cannot find the field named "%s".'%self.field_name
+            raise EvolutionException('Pre-Mutate Error: Cannot find the field called "%s".'%self.field_name)
             
     def mutate(self, snapshot):
         evo_module = get_evolution_module()
@@ -122,9 +120,6 @@ class DeleteField(BaseMutation):
                                                   table_name, 
                                                   self.column_name)
         table_data = snapshot[self.model_class._meta.object_name]                                                  
-        db_columns = table_data['db_columns']
-        db_columns.remove(self.column_name)
-        table_data['db_columns'] = db_columns
         return sql_statements
         
     def mutate_table(self, evo_module, snapshot):
@@ -162,10 +157,6 @@ class RenameField(BaseMutation):
         if not isinstance(field,(ManyToManyField)):
             old_column_name = field_params['column']
             new_column_name = field.column
-            db_columns = field_dict['db_columns']
-            column_index = db_columns.index(old_column_name)
-            db_columns[column_index] = new_column_name
-            field_dict['db_columns'] = db_columns
             
         # Simulate the renaming of the field.
         try:
@@ -215,8 +206,4 @@ class RenameField(BaseMutation):
                                                   self.model_class._meta.db_table,
                                                   self.old_column_name,
                                                   self.new_column_name,)
-        db_columns = table_data['db_columns']
-        column_index = db_columns.index(self.old_column_name)
-        db_columns[column_index] = self.new_column_name
-        table_data['db_columns'] = db_columns
         return sql_statements
