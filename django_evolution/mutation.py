@@ -63,10 +63,10 @@ class DeleteField(BaseMutation):
         self.field_name = str(field_name)
         
     def simulate(self, signature):
-        field_dict = signature[self.model_class._meta.object_name]
+        model_dict = signature[self.model_class._meta.object_name]
 
         # If the field was used in the unique_together attribute, update it.
-        unique_together = field_dict['unique_together']
+        unique_together = model_dict['meta']['unique_together']
         unique_together_list = [] 
         for ut_index in range(0, len(unique_together), 1):
             ut = unique_together[ut_index]
@@ -77,35 +77,34 @@ class DeleteField(BaseMutation):
                     unique_together_fields.append(field_name)
                     
             unique_together_list.append(tuple(unique_together_fields))
-        field_dict['unique_together'] = tuple(unique_together_list)
+        model_dict['meta']['unique_together'] = tuple(unique_together_list)
         
         # Update the list of column names
-        field_params = field_dict[self.field_name]
-        if not 'ManyToManyField' == field_params['internal_type']:
-            column_name = field_params['column']
+        field_dict = model_dict['fields'][self.field_name]
+        if not 'ManyToManyField' == field_dict['internal_type']:
+            column_name = field_dict['column']
 
         # Simulate the deletion of the field.
         try:
-            field_params = field_dict.pop(self.field_name)
-            if field_params['primary_key']:
+            if model_dict['fields'][self.field_name]['primary_key']:
                 print 'Primary key deletion is not supported.'
-                # replace the data
-                field_dict[self.field_name] = field_params
                 return
+            else:
+                field_dict = model_dict['fields'].pop(self.field_name)
         except KeyError, ke:
-            print 'SIMULATE ERROR: Cannot find the field named "%s".'%self.field_name
+            print 'SIMULATE ERROR: Cannot find the field named "%s".' % self.field_name
             
     def pre_mutate(self, signature):
-        field_dict = signature[self.model_class._meta.object_name]
+        model_dict = signature[self.model_class._meta.object_name]
         try:
-            field_params = field_dict[self.field_name]
-            internal_type = field_params['internal_type']
+            field_dict = model_dict['fields'][self.field_name]
+            internal_type = field_dict['internal_type']
             if internal_type == 'ManyToManyField':
                 # Deletion of the many to many field involve dropping a table
-                self.manytomanytable = field_params['m2m_db_table']
+                self.manytomanytable = field_dict['m2m_db_table']
                 self.mutate_func = self.mutate_table
             else:
-                self.column_name = field_params['column']
+                self.column_name = field_dict['column']
                 self.mutate_func = self.mutate_column
         except KeyError, ke:
             raise EvolutionException('Pre-Mutate Error: Cannot find the field called "%s".'%self.field_name)
@@ -134,10 +133,10 @@ class RenameField(BaseMutation):
         self.new_field_name = str(new_field_name)
         
     def simulate(self, signature):
-        field_dict = signature[self.model_class._meta.object_name]
+        model_dict = signature[self.model_class._meta.object_name]
 
         # If the field was used in the unique_together attribute, update it.
-        unique_together = field_dict['unique_together']
+        unique_together = model_dict['meta']['unique_together']
         unique_together_list = [] 
         for ut_index in range(0, len(unique_together), 1):
             ut = unique_together[ut_index]
@@ -149,44 +148,44 @@ class RenameField(BaseMutation):
                 else:
                     unique_together_fields.append(field_name)
             unique_together_list.append(tuple(unique_together_fields))
-        field_dict['unique_together'] = tuple(unique_together_list)
+        model_dict['meta']['unique_together'] = tuple(unique_together_list)
         
         # Update the column names
         field = self.model_class._meta.get_field(self.new_field_name)
-        field_params = field_dict[self.old_field_name]
+        field_dict = model_dict['fields'][self.old_field_name]
         if not isinstance(field,(ManyToManyField)):
-            old_column_name = field_params['column']
+            old_column_name = field_dict['column']
             new_column_name = field.column
             
         # Simulate the renaming of the field.
         try:
             field = self.model_class._meta.get_field(self.new_field_name)
-            field_params = field_dict.pop(self.old_field_name)
+            field_dict = model_dict['fields'].pop(self.old_field_name)
             if isinstance(field,(ManyToManyField)):
                 # Many to Many fields involve the renaming of a database table.
-                field_params['m2m_db_table']= field.m2m_db_table()
+                field_dict['m2m_db_table'] = field.m2m_db_table()
             else:
                 # All other fields involve renaming of a column only.
-                field_params['column'] = field.column
-            field_dict[field.name] = field_params
+                field_dict['column'] = field.column
+            field_dict[field.name] = field_dict
                 
         except KeyError, ke:
             print 'ERROR: Cannot find the field named "%s".'%self.old_field_name
             
     def pre_mutate(self, signature):
-        field_dict = signature[self.model_class._meta.object_name]
+        model_dict = signature[self.model_class._meta.object_name]
         try:
             field = self.model_class._meta.get_field(self.new_field_name)
-            field_params = field_dict[self.old_field_name]
+            field_dict = model_dict['fields'][self.old_field_name]
             if isinstance(field,(ManyToManyField)):
                 # Many to Many fields involve the renaming of a database table.
                 self.mutate_func = self.mutate_table
-                self.old_table_name = field_params['m2m_db_table']
+                self.old_table_name = field_dict['m2m_db_table']
                 self.new_table_name = field.m2m_db_table()
             else:
                 # All other fields involve renaming of a column only.
                 self.mutate_func = self.mutate_column
-                self.old_column_name = field_params['column']
+                self.old_column_name = field_dict['column']
                 self.new_column_name = field.column
         except KeyError, ke:
             print 'ERROR: Cannot find the field named "%s".'%self.old_field_name
