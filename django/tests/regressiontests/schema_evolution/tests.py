@@ -36,18 +36,18 @@ class SchemaEvolutionTest(unittest.TestCase):
 
         migration_one.MUTATIONS = [DeleteField(getattr(schema_evolution_models,object_name),field_name)]
         e = Evolution.objects.get(app_name='regressiontests.schema_evolution', version=0)
-        original_snapshot = e.snapshot
-        original_dict = pickle.loads(str(original_snapshot))
+        original_signature = e.signature
+        original_dict = pickle.loads(str(original_signature))
         modified_dict = copy.deepcopy(original_dict)
 
-        # Modify the snapshot
+        # Modify the signature
         modified_dict[object_name][field_name] = field_attributes
-        e.snapshot = pickle.dumps(modified_dict)
+        e.signature = pickle.dumps(modified_dict)
         e.save()
         sql_statements = sql_hint('regressiontests.schema_evolution','migration_one')
 
         # Restore the original state
-        e.snapshot = original_snapshot
+        e.signature = original_signature
         e.save()
         
         # Assertions
