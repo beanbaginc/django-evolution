@@ -1,11 +1,11 @@
 from django.conf import settings
 from django.db.models.fields import *
 from django.db.models.fields.related import *
-from django.contrib.evolution import EvolutionException
+from django_evolution import EvolutionException
 import copy
 
 def get_evolution_module():
-    module_name = ['django.contrib.evolution.db',settings.DATABASE_ENGINE]
+    module_name = ['django_evolution.db',settings.DATABASE_ENGINE]
     return __import__('.'.join(module_name),{},{},[''])
 
 class BaseMutation:

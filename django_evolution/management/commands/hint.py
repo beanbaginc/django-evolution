@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand, CommandError
-from django.contrib.evolution.management import hint
+from django_evolution.management import hint
 
 from optparse import make_option
 import sys

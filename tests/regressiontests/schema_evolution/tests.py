@@ -9,8 +9,8 @@ except ImportError:
 from regressiontests.schema_evolution import models as schema_evolution_models
 from regressiontests.schema_evolution.evolutions import migration_one
 
-from django.contrib.evolution.models import *
-from django.contrib.evolution.mutation import *
+from django_evolution.models import *
+from django_evolution.mutation import *
 from django.db import connection, get_introspection_module
 from django.db.models import loading
 from django.core.management.commands import syncdb
@@ -21,7 +21,7 @@ from django.test.utils import create_test_db, destroy_test_db
 class SchemaEvolutionTest(unittest.TestCase):
     
     def install_evolution(self):
-        evolution_model_label = 'django.contrib.evolution'
+        evolution_model_label = 'django_evolution'
         if not evolution_model_label in settings.INSTALLED_APPS:
             loading.load_app(evolution_model_label)
             try:
@@ -32,7 +32,7 @@ class SchemaEvolutionTest(unittest.TestCase):
             
     def delete_test(self, object_name, field_name, field_attributes, expected_sql):
         self.install_evolution()
-        from django.contrib.evolution.management import sql_hint
+        from django_evolution.management import sql_hint
 
         migration_one.MUTATIONS = [DeleteField(getattr(schema_evolution_models,object_name),field_name)]
         e = Evolution.objects.get(app_name='regressiontests.schema_evolution', version=0)
