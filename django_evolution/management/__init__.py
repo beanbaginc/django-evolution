@@ -5,11 +5,11 @@ Performs schema evolution.
 from django.dispatch import dispatcher
 from django.db.models.base import Model, ModelBase
 from django.db.models import get_apps, get_models, signals
-from django.contrib.evolution.models import *
+from django_evolution.models import *
 from django.db import transaction, connection
 from django.db.models import loading
 from django.db.models.fields.related import *
-from django.contrib.evolution import EvolutionException
+from django_evolution import EvolutionException
 
 from os import path
 import pprint
