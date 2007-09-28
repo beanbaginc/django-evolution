@@ -19,10 +19,24 @@ try:
 except ImportError:
     import pickle as pickle
 
+INTERESTING_DB_ATTRIBUTES = [
+    'core',
+    'maxlength',
+    'max_digits',  #?          
+    'decimal_places', #?
+    'null',
+    'blank',
+    'db_column',
+    'db_index',
+    'db_tablespace',
+    'primary_key',
+    'unique',
+]
+
 def hint(app_name, migration_name):
     evolution_module = __import__(app_name + '.evolutions',{},{},[''])
     directory_name = path.dirname(evolution_module.__file__)
-    sqlfile = path.join(directory_name,migration_name)+path.extsep+'sql'
+    sqlfile = path.join(directory_name,migration_name) + path.extsep + 'sql'
     sql_statements = sql_hint(app_name, migration_name)
 
     handle = open(sqlfile,'w')
@@ -79,7 +93,7 @@ def evolution(app, created_models):
         last_evolution = last_evolution[0]
         if not last_evolution.signature == signature:
             # Migration Required. Evolve the model.
-            print 'Migration Required - %s'%application_label
+            print 'Migration Required - %s' % application_label
             last_evolution_dict = pickle.loads(str(last_evolution.signature))
             class_name = app_name + '.evolutions.evolution'
             evolution_module = __import__(app_name + '.evolutions',{},{},[''])
@@ -103,6 +117,8 @@ def evolution(app, created_models):
         if application_label and model_dict:
             evolution = Evolution(app_name=app_name,version=0,signature=signature)
             evolution.save()
+
+dispatcher.connect(evolution, signal=signals.post_syncdb)
         
 def get_sql(evolution_module, from_version, target_version, current_model_dict, target_model_dict):
     # For each item in the evolution sequence. Check each item to see if it is
@@ -200,18 +216,6 @@ def create_model_dict(app):
     """
     Creates a dictionary representation of the application models.
     """
-    db_attributes = ['core',
-                     'maxlength',
-                     'max_digits',  #?          
-                     'decimal_places', #?
-                     'null',
-                     'blank',
-                     'db_column',
-                     'db_index',
-                     'db_tablespace',
-                     'primary_key',
-                     'unique',
-                     ]
     model_dict = {}
     application_label = None
     for attribute_str in dir(app):
@@ -236,10 +240,9 @@ def create_model_dict(app):
                     attribute_dict['m2m_db_table'] = field.m2m_db_table()
                 else:
                     attribute_dict['column'] = field.column
-                for attrib in db_attributes:
+                for attrib in INTERESTING_DB_ATTRIBUTES:
                     if hasattr(field,attrib):
                         attribute_dict[attrib] = getattr(field,attrib)
     return (application_label,model_dict)
 
-dispatcher.connect(evolution, signal=signals.post_syncdb)
 
