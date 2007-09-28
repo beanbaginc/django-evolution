@@ -1,5 +1,0 @@
-#!/bin/bash
-source environment.mac
-cd $DJANGO_HOME
-python2.4 tests/runtests.py schema_evolution -v1 --settings=settings
-#python2.4 tests/runtests.py -v1 --settings=settings

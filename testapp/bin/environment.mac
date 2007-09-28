@@ -1,9 +1,0 @@
-#!/bin/bash
-
-export TESTAPPDB=testapp
-export WORKSPACE=/Users/benk/Code/schema-evolution
-export TESTAPP_HOME=$WORKSPACE/testapp
-
-export DJANGO_HOME=$WORKSPACE/django
-export PYTHONPATH=$DJANGO_HOME:$TESTAPP_HOME
-
