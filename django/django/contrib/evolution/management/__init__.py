@@ -47,12 +47,12 @@ def sql_hint(app_name, migration_name):
     target_version = from_version + 1
     try:
         last_evolution = Evolution.objects.get(app_name=app_name, version=from_version)
-        last_evolution_dict = pickle.loads(str(last_evolution.snapshot))
+        last_evolution_dict = pickle.loads(str(last_evolution.signature))
     except Evolution.DoesNotExist:
         raise EvolutionException('Please run syncdb with evolutions enabled before modifying your models and running evolutions hint.')
     try:
         target_evolution = Evolution.objects.get(app_name=app_name, version=target_version)
-        target_evolution_dict = pickle.loads(str(target_evolution.snapshot))
+        target_evolution_dict = pickle.loads(str(target_evolution.signature))
     except Evolution.DoesNotExist:
         # This can be caused if the migration being hinted is the last one on the list
         app_label = app_name.split('.')
@@ -71,16 +71,16 @@ def evolution(app, created_models):
     """
     app_name = '.'.join(app.__name__.split('.')[:-1])
     application_label,model_dict = create_model_dict(app)
-    snapshot = pickle.dumps(model_dict)
+    signature = pickle.dumps(model_dict)
     
     last_evolution = Evolution.objects.filter(app_name=app_name)
     last_evolution = last_evolution.order_by('version')
     if last_evolution.count() > 0:
         last_evolution = last_evolution[0]
-        if not last_evolution.snapshot == snapshot:
+        if not last_evolution.signature == signature:
             # Migration Required. Evolve the model.
             print 'Migration Required - %s'%application_label
-            last_evolution_dict = pickle.loads(str(last_evolution.snapshot))
+            last_evolution_dict = pickle.loads(str(last_evolution.signature))
             class_name = app_name + '.evolutions.evolution'
             evolution_module = __import__(app_name + '.evolutions',{},{},[''])
             sql = get_sql(evolution_module, 
@@ -101,7 +101,7 @@ def evolution(app, created_models):
         # In general there will be an application label and model_dict to save. The
         # exception to the rule is for empty models (such as in the django tests).
         if application_label and model_dict:
-            evolution = Evolution(app_name=app_name,version=0,snapshot=snapshot)
+            evolution = Evolution(app_name=app_name,version=0,signature=signature)
             evolution.save()
         
 def get_sql(evolution_module, from_version, target_version, current_model_dict, target_model_dict):

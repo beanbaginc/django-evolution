@@ -12,7 +12,7 @@ class BaseMutation:
     def __init__(self):
         pass
         
-    def pre_mutate(self, snapshot):
+    def pre_mutate(self, signature):
         """
         Invoked before the mutate function is invoked. This function is a stub
         to be overridden by subclasses if necessary.
@@ -26,7 +26,7 @@ class BaseMutation:
         """
         pass
     
-    def mutate(self, snapshot):
+    def mutate(self, signature):
         """
         Performs the mutation on the database. Database changes will occur 
         after this function is invoked.
@@ -47,7 +47,7 @@ class BaseMutation:
         """
         pass
     
-    def simulate(self, snapshot):
+    def simulate(self, signature):
         """
         Performs a simulation of the mutation to be performed. The purpose of
         the simulate function is to ensure that after all mutations have occured
@@ -62,8 +62,8 @@ class DeleteField(BaseMutation):
         self.model_class = model_class
         self.field_name = str(field_name)
         
-    def simulate(self, snapshot):
-        field_dict = snapshot[self.model_class._meta.object_name]
+    def simulate(self, signature):
+        field_dict = signature[self.model_class._meta.object_name]
 
         # If the field was used in the unique_together attribute, update it.
         unique_together = field_dict['unique_together']
@@ -95,8 +95,8 @@ class DeleteField(BaseMutation):
         except KeyError, ke:
             print 'SIMULATE ERROR: Cannot find the field named "%s".'%self.field_name
             
-    def pre_mutate(self, snapshot):
-        field_dict = snapshot[self.model_class._meta.object_name]
+    def pre_mutate(self, signature):
+        field_dict = signature[self.model_class._meta.object_name]
         try:
             field_params = field_dict[self.field_name]
             internal_type = field_params['internal_type']
@@ -110,21 +110,21 @@ class DeleteField(BaseMutation):
         except KeyError, ke:
             raise EvolutionException('Pre-Mutate Error: Cannot find the field called "%s".'%self.field_name)
             
-    def mutate(self, snapshot):
+    def mutate(self, signature):
         evo_module = get_evolution_module()
-        return self.mutate_func(evo_module, snapshot)
+        return self.mutate_func(evo_module, signature)
         
-    def mutate_column(self, evo_module, snapshot):
+    def mutate_column(self, evo_module, signature):
         table_name = self.model_class._meta.db_table
-        sql_statements = evo_module.delete_column(snapshot, 
+        sql_statements = evo_module.delete_column(signature, 
                                                   table_name, 
                                                   self.column_name)
-        table_data = snapshot[self.model_class._meta.object_name]                                                  
+        table_data = signature[self.model_class._meta.object_name]                                                  
         return sql_statements
         
-    def mutate_table(self, evo_module, snapshot):
-        sql_statements = evo_module.delete_table(snapshot, self.manytomanytable)
-        table_data = snapshot.pop(self.model_class._meta.object_name)
+    def mutate_table(self, evo_module, signature):
+        sql_statements = evo_module.delete_table(signature, self.manytomanytable)
+        table_data = signature.pop(self.model_class._meta.object_name)
         return sql_statements
         
 class RenameField(BaseMutation):
@@ -133,8 +133,8 @@ class RenameField(BaseMutation):
         self.old_field_name = str(old_field_name)
         self.new_field_name = str(new_field_name)
         
-    def simulate(self, snapshot):
-        field_dict = snapshot[self.model_class._meta.object_name]
+    def simulate(self, signature):
+        field_dict = signature[self.model_class._meta.object_name]
 
         # If the field was used in the unique_together attribute, update it.
         unique_together = field_dict['unique_together']
@@ -173,8 +173,8 @@ class RenameField(BaseMutation):
         except KeyError, ke:
             print 'ERROR: Cannot find the field named "%s".'%self.old_field_name
             
-    def pre_mutate(self, snapshot):
-        field_dict = snapshot[self.model_class._meta.object_name]
+    def pre_mutate(self, signature):
+        field_dict = signature[self.model_class._meta.object_name]
         try:
             field = self.model_class._meta.get_field(self.new_field_name)
             field_params = field_dict[self.old_field_name]
@@ -191,18 +191,18 @@ class RenameField(BaseMutation):
         except KeyError, ke:
             print 'ERROR: Cannot find the field named "%s".'%self.old_field_name
             
-    def mutate(self, snapshot):
+    def mutate(self, signature):
         evo_module = get_evolution_module()
-        return self.mutate_func(evo_module, snapshot)
+        return self.mutate_func(evo_module, signature)
         
-    def mutate_table(self, evo_module, snapshot):
-        return evo_module.rename_table(snapshot, 
+    def mutate_table(self, evo_module, signature):
+        return evo_module.rename_table(signature, 
                                        self.old_table_name, 
                                        self.new_table_name,)
 
-    def mutate_column(self, evo_module, snapshot):
-        table_data = snapshot[self.model_class._meta.object_name]
-        sql_statements = evo_module.rename_column(snapshot,
+    def mutate_column(self, evo_module, signature):
+        table_data = signature[self.model_class._meta.object_name]
+        sql_statements = evo_module.rename_column(signature,
                                                   self.model_class._meta.db_table,
                                                   self.old_column_name,
                                                   self.new_column_name,)

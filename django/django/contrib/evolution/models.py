@@ -3,7 +3,7 @@ from django.db import models
 # Create your models here.
 class Evolution(models.Model):
   version = models.PositiveIntegerField(core=True)
-  snapshot = models.TextField(core=True)
+  signature = models.TextField(core=True)
   app_name = models.CharField(maxlength=200)
   
   def __str__(self):
