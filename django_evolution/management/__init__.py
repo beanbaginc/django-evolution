@@ -8,7 +8,7 @@ from django.core.management.color import color_style
 from django.db.models import signals
 
 from django_evolution.models import Evolution
-from django_evolution.management.signature import compare_app_dicts, create_app_dict
+from django_evolution.management.signature import create_app_sig, Diff
 style = color_style()
     
 def evolution(app, created_models, verbosity=1):
@@ -17,8 +17,8 @@ def evolution(app, created_models, verbosity=1):
     if a model evolution is necessary.
     """
     app_name = '.'.join(app.__name__.split('.')[:-1])
-    app_dict = create_app_dict(app)
-    signature = pickle.dumps(app_dict)
+    app_sig = create_app_sig(app)
+    signature = pickle.dumps(app_sig)
 
     evolutions = Evolution.objects.filter(app_name=app_name)
     if len(evolutions) > 0:
@@ -27,8 +27,8 @@ def evolution(app, created_models, verbosity=1):
             # Signatures do not match - an evolution is required. 
             print style.NOTICE('Models in %s have changed - an evolution is required' % app_name)
             if verbosity > 1:
-                old_app_dict = pickle.loads(str(last_evolution.signature))
-                compare_app_dicts(old_app_dict, app_dict)
+                old_app_sig = pickle.loads(str(last_evolution.signature))
+                print Diff(app, old_app_sig, app_sig)
         else:
             if verbosity > 1:
                 print "No evolution required for application %s" % app_name
@@ -36,9 +36,9 @@ def evolution(app, created_models, verbosity=1):
         # This is the first time that this application has been seen
         # We need to create a baseline Evolution entry.
 
-        # In general there will be an application label and app_dict to save. The
+        # In general there will be an application label and app_sig to save. The
         # exception to the rule is for empty models (such as in the django tests).
-        if app_dict:
+        if app_sig:
             if verbosity > 1:
                 print "Install baseline evolution entry for application %s" % app_name
             evolution = Evolution(app_name=app_name,version=0,signature=signature)

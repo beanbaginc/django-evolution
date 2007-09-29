@@ -18,8 +18,7 @@ from django.conf import settings
 from django.test.utils import create_test_db, destroy_test_db
 
 
-class SchemaEvolutionTest(unittest.TestCase):
-    
+class SchemaEvolutionTest(unittest.TestCase):    
     def install_evolution(self):
         evolution_model_label = 'django_evolution'
         if not evolution_model_label in settings.INSTALLED_APPS:
@@ -32,7 +31,7 @@ class SchemaEvolutionTest(unittest.TestCase):
             
     def delete_test(self, object_name, field_name, field_attributes, expected_sql):
         self.install_evolution()
-        from django_evolution.management import sql_hint
+        from django_evolution.management import sql_compile
 
         migration_one.MUTATIONS = [DeleteField(getattr(schema_evolution_models,object_name),field_name)]
         e = Evolution.objects.get(app_name='regressiontests.schema_evolution', version=0)
@@ -44,14 +43,14 @@ class SchemaEvolutionTest(unittest.TestCase):
         modified_dict[object_name][field_name] = field_attributes
         e.signature = pickle.dumps(modified_dict)
         e.save()
-        sql_statements = sql_hint('regressiontests.schema_evolution','migration_one')
+        sql_statements = sql_compile('regressiontests.schema_evolution','migration_one')
 
         # Restore the original state
         e.signature = original_signature
         e.save()
         
         # Assertions
-        self.assertEqual(len(expected_sql),len(sql_statements), 'Expected number of sql statements does not match the number of hinted statements.')
+        self.assertEqual(len(expected_sql),len(sql_statements), 'Expected number of sql statements does not match the number of compiled statements.')
         for i in range(0,len(sql_statements)):
             self.assertEqual(expected_sql[i],sql_statements[i])
             

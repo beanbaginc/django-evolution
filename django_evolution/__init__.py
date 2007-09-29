@@ -4,3 +4,6 @@ class EvolutionException(Exception):
 
     def __str__(self):
         return repr(self.value)
+        
+class CannotSimulate(Exception):
+    pass
