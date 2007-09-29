@@ -22,7 +22,19 @@ def evolution(app, created_models, verbosity=1):
 
     evolutions = Evolution.objects.filter(app_name=app_name)
     if len(evolutions) > 0:
-        last_evolution = evolutions[0]
+        last_evolution = evolutions[0]        
+
+        # TODO: Model introspection step goes here. 
+        # # If the current database state doesn't match the last 
+        # # saved signature (as reported by last_evolution),
+        # # then we need to update the Evolution table.
+        # actual_sig = introspect_app_sig(app)
+        # acutal = pickle.dumps(actual_sig)
+        # if actual != last_evolution.signature:
+        #     nudge = Evolution(app_name=app_name, signature=actual)
+        #     nudge.save()
+        #     last_evolution = nudge
+            
         if last_evolution.signature != signature:
             # Signatures do not match - an evolution is required. 
             print style.NOTICE('Models in %s have changed - an evolution is required' % app_name)

@@ -12,7 +12,7 @@ class BaseMutation:
     def __init__(self):
         pass
         
-    def pre_mutate(self, signature):
+    def pre_mutate(self, app_sig):
         """
         Invoked before the mutate function is invoked. This function is a stub
         to be overridden by subclasses if necessary.
@@ -26,7 +26,7 @@ class BaseMutation:
         """
         pass
     
-    def mutate(self, signature):
+    def mutate(self, app_sig):
         """
         Performs the mutation on the database. Database changes will occur 
         after this function is invoked.
@@ -47,7 +47,7 @@ class BaseMutation:
         """
         pass
     
-    def simulate(self, signature):
+    def simulate(self, app_sig):
         """
         Performs a simulation of the mutation to be performed. The purpose of
         the simulate function is to ensure that after all mutations have occured
@@ -59,12 +59,15 @@ class BaseMutation:
 class SQLMutation(BaseMutation):
     def __init__(self, sql):
         self.sql = sql
+
+    def __str__(self):
+        return "SQLMutation()"
         
-    def mutate(self, signature):
+    def mutate(self, app_sig):
         "The mutation of an SQL mutation returns the raw SQL"
         return self.sql
     
-    def simulate(self, signature):
+    def simulate(self, app_sig):
         "SQL mutations cannot be simulated"
         raise CannotSimulate()
         
@@ -72,9 +75,12 @@ class DeleteField(BaseMutation):
     def __init__(self, model_class, field_name):
         self.model_class = model_class
         self.field_name = str(field_name)
+    
+    def __str__(self):
+        return "DeleteField(%s, '%s')" % (self.model_class._meta.object_name, self.field_name)
         
-    def simulate(self, signature):
-        model_sig = signature[self.model_class._meta.object_name]
+    def simulate(self, app_sig):
+        model_sig = app_sig[self.model_class._meta.object_name]
 
         # If the field was used in the unique_together attribute, update it.
         unique_together = model_sig['meta']['unique_together']
@@ -105,8 +111,8 @@ class DeleteField(BaseMutation):
         except KeyError, ke:
             print 'SIMULATE ERROR: Cannot find the field named "%s".' % self.field_name
             
-    def pre_mutate(self, signature):
-        model_sig = signature[self.model_class._meta.object_name]
+    def pre_mutate(self, app_sig):
+        model_sig = app_sig[self.model_class._meta.object_name]
         try:
             field_sig = model_sig['fields'][self.field_name]
             internal_type = field_sig['internal_type']
@@ -120,21 +126,21 @@ class DeleteField(BaseMutation):
         except KeyError, ke:
             raise EvolutionException('Pre-Mutate Error: Cannot find the field called "%s".'%self.field_name)
             
-    def mutate(self, signature):
+    def mutate(self, app_sig):
         evo_module = get_evolution_module()
-        return self.mutate_func(evo_module, signature)
+        return self.mutate_func(evo_module, app_sig)
         
-    def mutate_column(self, evo_module, signature):
+    def mutate_column(self, evo_module, app_sig):
         table_name = self.model_class._meta.db_table
-        sql_statements = evo_module.delete_column(signature, 
+        sql_statements = evo_module.delete_column(app_sig, 
                                                   table_name, 
                                                   self.column_name)
-        table_data = signature[self.model_class._meta.object_name]                                                  
+        table_data = app_sig[self.model_class._meta.object_name]                                                  
         return sql_statements
         
-    def mutate_table(self, evo_module, signature):
-        sql_statements = evo_module.delete_table(signature, self.manytomanytable)
-        table_data = signature.pop(self.model_class._meta.object_name)
+    def mutate_table(self, evo_module, app_sig):
+        sql_statements = evo_module.delete_table(app_sig, self.manytomanytable)
+        table_data = app_sig.pop(self.model_class._meta.object_name)
         return sql_statements
         
 class RenameField(BaseMutation):
@@ -143,8 +149,11 @@ class RenameField(BaseMutation):
         self.old_field_name = str(old_field_name)
         self.new_field_name = str(new_field_name)
         
-    def simulate(self, signature):
-        model_sig = signature[self.model_class._meta.object_name]
+    def __str__(self):
+        return "RenameField(%s, '%s', '%s')" % (self.model_class._meta.object_name, self.old_field_name, self.new_field_name)
+        
+    def simulate(self, app_sig):
+        model_sig = app_sig[self.model_class._meta.object_name]
 
         # If the field was used in the unique_together attribute, update it.
         unique_together = model_sig['meta']['unique_together']
@@ -183,8 +192,8 @@ class RenameField(BaseMutation):
         except KeyError, ke:
             print 'ERROR: Cannot find the field named "%s".'%self.old_field_name
             
-    def pre_mutate(self, signature):
-        model_sig = signature[self.model_class._meta.object_name]
+    def pre_mutate(self, app_sig):
+        model_sig = app_sig[self.model_class._meta.object_name]
         try:
             field = self.model_class._meta.get_field(self.new_field_name)
             field_sig = model_sig['fields'][self.old_field_name]
@@ -201,18 +210,18 @@ class RenameField(BaseMutation):
         except KeyError, ke:
             print 'ERROR: Cannot find the field named "%s".'%self.old_field_name
             
-    def mutate(self, signature):
+    def mutate(self, app_sig):
         evo_module = get_evolution_module()
-        return self.mutate_func(evo_module, signature)
+        return self.mutate_func(evo_module, app_sig)
         
-    def mutate_table(self, evo_module, signature):
-        return evo_module.rename_table(signature, 
+    def mutate_table(self, evo_module, app_sig):
+        return evo_module.rename_table(app_sig, 
                                        self.old_table_name, 
                                        self.new_table_name,)
 
-    def mutate_column(self, evo_module, signature):
-        table_data = signature[self.model_class._meta.object_name]
-        sql_statements = evo_module.rename_column(signature,
+    def mutate_column(self, evo_module, app_sig):
+        table_data = app_sig[self.model_class._meta.object_name]
+        sql_statements = evo_module.rename_column(app_sig,
                                                   self.model_class._meta.db_table,
                                                   self.old_column_name,
                                                   self.new_column_name,)

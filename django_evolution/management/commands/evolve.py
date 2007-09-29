@@ -7,6 +7,7 @@ except ImportError:
     
 from django.core.management.base import BaseCommand, CommandError
 from django.db.models import get_apps, get_models, signals
+from django.db import connection,transaction
 
 from django_evolution.models import Evolution
 from django_evolution.management.signature import create_app_sig, Diff
@@ -50,21 +51,30 @@ class Command(BaseCommand):
                     else:
                         mutations = get_mutations(app, last_evolution.version, 
                                                   last_evolution_sig, app_sig)
-                     
-                    sql = compile_mutations(mutations, signature)
+                    
+                    sql = compile_mutations(mutations, last_evolution_sig)
                     if options['execute']:
-                        print 'EXECUTE'
                         try:
                             # Begin Transaction
                             transaction.enter_transaction_management()
                             transaction.managed(True)
                             cursor = connection.cursor()
-                            for statement in sql_statements:
+                            for statement in sql:
                                 cursor.execute(statement)  
                             transaction.commit()
                         except Exception, ex:
                             transaction.rollback()
-                            raise EvolutionException(str(ex))
+                            print self.style.ERROR('Error during evolution: %s' % str(ex))
+                            sys.exit(1)
+                        # Now update the evolution table
+                        if options['hint']:
+                            version = None
+                        else:
+                            version = last_evolution.version + 1
+                        new_evolution = Evolution(app_name=app_name,
+                                                  version=version,
+                                                  signature=signature)
+                        new_evolution.save()
                         print 'Evolution Successful'
                     else:
                         if options['compile']:
@@ -76,6 +86,8 @@ class Command(BaseCommand):
                             for m in mutations:
                                 print '    ',m
                             print ']'
+                        else:
+                            print 'Trial Evolution Successful'
                 else:
                     print 'Evolution not required for app %s' % app_name
             else:
