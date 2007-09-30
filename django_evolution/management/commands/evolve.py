@@ -72,14 +72,11 @@ class Command(BaseCommand):
                             version = None
                         else:
                             version = last_evolution.version + 1
-                        print "UPDATE EVO TABLE"
                         new_evolution = Evolution(app_name=app_name,
                                                   version=version,
                                                   signature=signature)
                         new_evolution.save()
-                        print new_evolution
-                        print new_evolution.id
-                        print Evolution.objects.count(), Evolution.objects.all()
+
                     else:
                         if options['compile']:
                             print ';; Compiled evolution SQL for %s' % app_name 
@@ -105,4 +102,3 @@ class Command(BaseCommand):
         elif not options['compile'] and not options['hint']:
             if verbosity > 0:
                 print "Trial evolution successful. Run './manage.py evolve --execute' to apply evolution."
-        print Evolution.objects.count(), Evolution.objects.all()
