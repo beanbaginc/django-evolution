@@ -1,5 +1,6 @@
 from optparse import make_option
 import sys
+import copy
 try:
     import cPickle as pickle
 except ImportError:
@@ -10,7 +11,8 @@ from django.db.models import get_apps, get_models, signals
 from django.db import connection,transaction
 
 from django_evolution.models import Evolution
-from django_evolution.management.signature import create_app_sig, Diff
+from django_evolution.management.signature import create_app_sig
+from django_evolution.management.diff import Diff
 from django_evolution.evolve import get_mutations, compile_mutations
 
 class Command(BaseCommand):
@@ -51,6 +53,7 @@ class Command(BaseCommand):
                     if options['hint']:
                         diff = Diff(app, last_evolution_sig, app_sig)
                         mutations = diff.evolution()
+                        self.simulate_mutations(app, mutations, last_evolution_sig, app_sig)
                     else:
                         mutations = get_mutations(app, last_evolution.version, 
                                                   last_evolution_sig, app_sig)
@@ -114,3 +117,17 @@ class Command(BaseCommand):
         else:
             if verbosity > 0:
                 print 'No evolution required.'
+
+    def simulate_mutations(self, app, mutations, current_evolution_sig, target_app_sig):
+        simulated_app_sig = copy.deepcopy(current_evolution_sig)
+        for mutation in mutations:
+            mutation.pre_simulate()
+            mutation.simulate(simulated_app_sig)
+            mutation.post_simulate()
+        diff = Diff(app, simulated_app_sig, target_app_sig)
+        if not diff.is_empty():
+            app_name = '.'.join(app.__name__.split('.')[:-1])
+            print self.style.ERROR('Simulated evolution of application %s did not succeed:' % app_name)
+            print diff
+            sys.exit(1)    
+    

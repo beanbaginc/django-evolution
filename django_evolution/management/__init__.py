@@ -8,7 +8,8 @@ from django.core.management.color import color_style
 from django.db.models import signals
 
 from django_evolution.models import Evolution
-from django_evolution.management.signature import create_app_sig, Diff
+from django_evolution.management.signature import create_app_sig
+from django_evolution.management.diff import Diff
 style = color_style()
     
 def evolution(app, created_models, verbosity=1):

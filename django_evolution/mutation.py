@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db.models.fields import *
 from django.db.models.fields.related import *
+from django_evolution.management.signature import create_field_sig
 from django_evolution import EvolutionException, CannotSimulate
 import copy
 
@@ -141,6 +142,78 @@ class DeleteField(BaseMutation):
     def mutate_table(self, evo_module, app_sig):
         sql_statements = evo_module.delete_table(app_sig, self.manytomanytable)
         table_data = app_sig.pop(self.model_class._meta.object_name)
+        return sql_statements
+        
+class AddField(BaseMutation):
+    def __init__(self, model_class, field_name):
+        self.model_class = model_class
+        self.field_name = str(field_name)
+
+    def __str__(self):
+        return "AddField(%s, '%s')" % (self.model_class._meta.object_name, self.field_name)
+
+    def simulate(self, app_sig):
+        model_sig = app_sig[self.model_class._meta.object_name]
+        
+        # If the field was used in the unique_together attribute, update it.
+        class_unique_together = self.model_class._meta.unique_together
+        model_unique_together = model_sig['meta']['unique_together']
+        if not class_unique_together == model_unique_together:
+            unique_together = []
+            for index in range(0,len(class_unique_together),1):
+                class_unique_group = class_unique_together[index]
+                model_unique_group = model_unique_together[index]
+                if class_unique_group == model_unique_group:
+                    unique_together.append(class_unique_group)
+                else:
+                    # The following is the characteristic feature of an add
+                    if self.field_name in class_unique_group and self.field_name not in model_unique_group:
+                        group = list(model_unique_group)
+                        index = list(class_unique_group).index(self.field_name)
+                        group.insert(index,self.field_name)
+                        unique_together.append(tuple(group))
+                    # otherwise the two groups are not the same but for some other reason
+            model_sig['meta']['unique_together'] = tuple(unique_together)
+
+        # Update the list of column names
+        field = self.model_class._meta.get_field(self.field_name)
+        model_sig['fields'][field.name] = create_field_sig(field)
+
+    def pre_mutate(self, app_sig):
+        field = self.model_class._meta.get_field(self.field_name)
+        internal_type = field.get_internal_type()
+        if 'ManyToManyField' == internal_type:
+            # Adding a many to many field involves adding a table
+            self.manytomanytable = field.m2m_db_table()
+            self.mutate_func = self.mutate_table
+        else:
+            self.column_name = field.column
+            self.mutate_func = self.mutate_column
+
+    def mutate(self, app_sig):
+        evo_module = get_evolution_module()
+        return self.mutate_func(evo_module, app_sig)
+
+    def mutate_column(self, evo_module, app_sig):
+        table_name = self.model_class._meta.db_table
+        field = self.model_class._meta.get_field(self.field_name)
+        sql_statements = evo_module.add_column(app_sig, 
+                                               table_name, 
+                                               self.column_name,
+                                               field.db_type())
+        # table_data = app_sig[self.model_class._meta.object_name]                                                  
+        return sql_statements
+
+    def mutate_table(self, evo_module, app_sig):
+        field = self.model_class._meta.get_field(self.field_name)
+        source_class = self.model_class
+        target_class = field.rel.to
+        
+        source_params = [self.model_class._meta.db_table, field.m2m_column_name(), source_class._meta.pk.column]
+        target_params = [target_class._meta.db_table, field.m2m_reverse_name(), target_class._meta.pk.column]
+        params = [app_sig, self.manytomanytable] + source_params + target_params
+        sql_statements = evo_module.add_table(*params)
+        # table_data = app_sig.pop(self.model_class._meta.object_name)
         return sql_statements
         
 class RenameField(BaseMutation):

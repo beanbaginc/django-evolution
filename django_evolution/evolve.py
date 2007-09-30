@@ -7,7 +7,7 @@ from django.db import transaction, connection
 from django.db.models import loading
 
 from django_evolution import EvolutionException
-from django_evolution.management.signature import Diff
+from django_evolution.management.diff import Diff
 from django_evolution.mutation import SQLMutation
 
 def get_mutations(app, from_version, current_app_sig, target_app_sig):
