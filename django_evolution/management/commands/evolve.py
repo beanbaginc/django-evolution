@@ -32,6 +32,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         verbosity = int(options['verbosity'])
+        evolution_required = False
         for app in get_apps():
             app_name = '.'.join(app.__name__.split('.')[:-1])
             app_sig = create_app_sig(app)
@@ -42,6 +43,7 @@ class Command(BaseCommand):
                 last_evolution = evolutions[0]
                 if last_evolution.signature != signature:
                     # Migration Required. Evolve the model.
+                    evolution_required = True
                     if verbosity > 1:
                         print 'Application %s requires evolution' % app_name
                     last_evolution_sig = pickle.loads(str(last_evolution.signature))
@@ -102,9 +104,13 @@ class Command(BaseCommand):
             else:
                 print self.style.ERROR("Can't evolve yet. Need to set a baseline for %s." % app_name)
                 sys.exit(1)
-        if options['execute']:
+        if evolution_required:
+            if options['execute']:
+                if verbosity > 0:
+                    print 'Evolution successful.'
+            elif not options['compile'] and not options['hint']:
+                if verbosity > 0:
+                    print "Trial evolution successful. Run './manage.py evolve --execute' to apply evolution."
+        else:
             if verbosity > 0:
-                print 'Evolution successful.'
-        elif not options['compile'] and not options['hint']:
-            if verbosity > 0:
-                print "Trial evolution successful. Run './manage.py evolve --execute' to apply evolution."
+                print 'No evolution required.'
