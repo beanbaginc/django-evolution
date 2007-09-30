@@ -19,14 +19,14 @@ def add_table(signature, table_name,
               target_table, target_column_name, target_pk_name):
               
     columns = []
-    columns.append('"id" serial NOT NULL PRIMARY KEY')
+    columns.append('  "id" serial NOT NULL PRIMARY KEY')
     column_params = (source_column_name, source_table, source_pk_name)
-    columns.append('"%s" integer NOT NULL REFERENCES "%s" ("%s") DEFERRABLE INITIALLY DEFERRED'%column_params)
+    columns.append('  "%s" integer NOT NULL REFERENCES "%s" ("%s") DEFERRABLE INITIALLY DEFERRED'%column_params)
     column_params = (target_column_name, target_table, target_pk_name)
-    columns.append('"%s" integer NOT NULL REFERENCES "%s" ("%s") DEFERRABLE INITIALLY DEFERRED'%column_params)
+    columns.append('  "%s" integer NOT NULL REFERENCES "%s" ("%s") DEFERRABLE INITIALLY DEFERRED'%column_params)
     # Ok well strictly not a column
-    columns.append('UNIQUE ("%s", "%s")'%(source_column_name, target_column_name))
-    return ['CREATE TABLE %s (%s);'%(table_name,','.join(columns))]
+    columns.append('  UNIQUE ("%s", "%s")'%(source_column_name, target_column_name))
+    return ['CREATE TABLE %s (\n%s\n);'%(table_name,',\n'.join(columns))]
     
 def add_column(signature, table_name, column_name, db_type):
     params = (table_name, column_name, db_type)
