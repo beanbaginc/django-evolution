@@ -11,7 +11,7 @@ class Evolution(models.Model):
         pass
         
     class Meta:
-        ordering = ('when',)
+        ordering = ('-when',)
         db_table = 'django_evolution'
 
     def __unicode__(self):

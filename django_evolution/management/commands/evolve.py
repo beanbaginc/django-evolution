@@ -63,20 +63,26 @@ class Command(BaseCommand):
                             for statement in sql:
                                 cursor.execute(statement)  
                             transaction.commit()
+                            transaction.leave_transaction_management()
                         except Exception, ex:
                             transaction.rollback()
                             print self.style.ERROR('Error during evolution of %s: %s' % (app_name, str(ex)))
                             sys.exit(1)
+                            
                         # Now update the evolution table
                         if options['hint']:
+                            # Hinted evolutions are stored as temporary versions
                             version = None
                         else:
-                            version = last_evolution.version + 1
+                            # If not hinted, we need to find and increment the version number
+                            full_evolutions = Evolution.objects.filter(app_name=app_name, 
+                                                                       version__isnull=False)
+                            last_full_evolution = full_evolutions[0]
+                            version = last_full_evolution.version + 1 
                         new_evolution = Evolution(app_name=app_name,
                                                   version=version,
                                                   signature=signature)
                         new_evolution.save()
-
                     else:
                         if options['compile']:
                             print ';; Compiled evolution SQL for %s' % app_name 
