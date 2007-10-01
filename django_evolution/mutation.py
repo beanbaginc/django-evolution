@@ -1,8 +1,11 @@
 from django.conf import settings
+from django.contrib.contenttypes import generic
 from django.db.models.fields import *
 from django.db.models.fields.related import *
+from django.db import models
 from django_evolution.management.signature import create_field_sig
 from django_evolution import EvolutionException, CannotSimulate
+
 import copy
 
 def get_evolution_module():
@@ -205,15 +208,29 @@ class AddField(BaseMutation):
         return sql_statements
 
     def mutate_table(self, evo_module, app_sig):
-        field = self.model_class._meta.get_field(self.field_name)
-        source_class = self.model_class
-        target_class = field.rel.to
+        opts = self.model_class._meta
+        field = opts.get_field(self.field_name)
+        if isinstance(field.rel, generic.GenericRel):
+            raise NotImplementedError()
+
+        model_tablespace = opts.db_tablespace
+        field_tablespace = field.db_tablespace
+        m2m_db_table = field.m2m_db_table()
+        auto_field_db_type = models.AutoField(primary_key=True).db_type()
+        m2m_column_name = field.m2m_column_name()
+        m2m_reverse_name = field.m2m_reverse_name()
+        fk_db_type = models.ForeignKey(self.model_class).db_type() 
+        model_table = opts.db_table
+        model_pk_column = opts.pk.column
+        rel_fk_db_type = models.ForeignKey(field.rel.to).db_type()
+        rel_db_table = field.rel.to._meta.db_table
+        rel_pk_column = field.rel.to._meta.pk.column
         
-        source_params = [self.model_class._meta.db_table, field.m2m_column_name(), source_class._meta.pk.column]
-        target_params = [target_class._meta.db_table, field.m2m_reverse_name(), target_class._meta.pk.column]
-        params = [app_sig, self.manytomanytable] + source_params + target_params
-        sql_statements = evo_module.add_table(*params)
-        # table_data = app_sig.pop(self.model_class._meta.object_name)
+        sql_statements = evo_module.add_table(app_sig, model_tablespace, field_tablespace,
+                                              m2m_db_table, auto_field_db_type,
+                                              m2m_column_name, m2m_reverse_name,
+                                              fk_db_type, model_table, model_pk_column,
+                                              rel_fk_db_type, rel_db_table, rel_pk_column)
         return sql_statements
         
 class RenameField(BaseMutation):

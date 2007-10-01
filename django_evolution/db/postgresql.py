@@ -14,19 +14,73 @@ def delete_column(signature, table_name, column_name):
 def delete_table(signature, table_name):
     return ['DROP TABLE %s;'%table_name]
     
-def add_table(signature, table_name, 
-              source_table, source_column_name, source_pk_name,
-              target_table, target_column_name, target_pk_name):
+# def add_table(signature, table_name, 
+#               source_table, source_column_name, source_pk_name,
+#               target_table, target_column_name, target_pk_name):
               
-    columns = []
-    columns.append('  "id" serial NOT NULL PRIMARY KEY')
-    column_params = (source_column_name, source_table, source_pk_name)
-    columns.append('  "%s" integer NOT NULL REFERENCES "%s" ("%s") DEFERRABLE INITIALLY DEFERRED'%column_params)
-    column_params = (target_column_name, target_table, target_pk_name)
-    columns.append('  "%s" integer NOT NULL REFERENCES "%s" ("%s") DEFERRABLE INITIALLY DEFERRED'%column_params)
-    # Ok well strictly not a column
-    columns.append('  UNIQUE ("%s", "%s")'%(source_column_name, target_column_name))
-    return ['CREATE TABLE %s (\n%s\n);'%(table_name,',\n'.join(columns))]
+    # columns = []
+    # columns.append('  "id" serial NOT NULL PRIMARY KEY')
+    # column_params = (source_column_name, source_table, source_pk_name)
+    # columns.append('  "%s" integer NOT NULL REFERENCES "%s" ("%s") DEFERRABLE INITIALLY DEFERRED'%column_params)
+    # column_params = (target_column_name, target_table, target_pk_name)
+    # columns.append('  "%s" integer NOT NULL REFERENCES "%s" ("%s") DEFERRABLE INITIALLY DEFERRED'%column_params)
+    # # Ok well strictly not a column
+    # columns.append('  UNIQUE ("%s", "%s")'%(source_column_name, target_column_name))
+    # return ['CREATE TABLE %s (\n%s\n);'%(table_name,',\n'.join(columns))]
+
+def add_table(app_sig, model_tablespace, field_tablespace,
+              m2m_db_table, auto_field_db_type,
+              m2m_column_name, m2m_reverse_name,
+              fk_db_type, model_table, model_pk_column,
+              rel_fk_db_type, rel_db_table, rel_pk_column):
+
+    from django.db import connection
+    final_output = []
+    qn = connection.ops.quote_name
+    tablespace = field_tablespace or model_tablespace
+    if tablespace and connection.features.supports_tablespaces and connection.features.autoindexes_primary_keys:
+        tablespace_sql = ' ' + connection.ops.tablespace_sql(tablespace, inline=True)
+    else:
+        tablespace_sql = ''
+    table_output = ['CREATE TABLE' + ' ' + \
+        qn(m2m_db_table) + ' (']
+    table_output.append('    %s %s %s%s,' % \
+        (qn('id'),
+        auto_field_db_type,
+        'NOT NULL PRIMARY KEY',
+        tablespace_sql))
+    table_output.append('    %s %s %s %s (%s)%s,' % \
+        (qn(m2m_column_name),
+        fk_db_type,
+        'NOT NULL REFERENCES',
+        qn(model_table),
+        qn(model_pk_column),
+        connection.ops.deferrable_sql()))
+    table_output.append('    %s %s %s %s (%s)%s,' % \
+        (qn(m2m_reverse_name),
+        rel_fk_db_type,
+        'NOT NULL REFERENCES',
+        qn(rel_db_table),
+        qn(rel_pk_column),
+        connection.ops.deferrable_sql()))
+    table_output.append('    %s (%s, %s)%s' % \
+        ('UNIQUE',
+        qn(m2m_column_name),
+        qn(m2m_reverse_name),
+        tablespace_sql))
+    table_output.append(')')
+    if model_tablespace and connection.features.supports_tablespaces:
+        # field_tablespace is only for indices, so ignore its value here.
+        table_output.append(connection.ops.tablespace_sql(model_tablespace))
+    table_output.append(';')
+    final_output.append('\n'.join(table_output))
+
+    # Add any extra SQL needed to support auto-incrementing PKs
+    autoinc_sql = connection.ops.autoinc_sql(m2m_db_table, 'id')
+    if autoinc_sql:
+        for stmt in autoinc_sql:
+            final_output.append(stmt)
+    return final_output
     
 def add_column(signature, table_name, column_name, db_type):
     params = (table_name, column_name, db_type)
