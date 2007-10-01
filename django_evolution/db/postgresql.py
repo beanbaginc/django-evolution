@@ -13,20 +13,6 @@ def delete_column(signature, table_name, column_name):
 
 def delete_table(signature, table_name):
     return ['DROP TABLE %s;'%table_name]
-    
-# def add_table(signature, table_name, 
-#               source_table, source_column_name, source_pk_name,
-#               target_table, target_column_name, target_pk_name):
-              
-    # columns = []
-    # columns.append('  "id" serial NOT NULL PRIMARY KEY')
-    # column_params = (source_column_name, source_table, source_pk_name)
-    # columns.append('  "%s" integer NOT NULL REFERENCES "%s" ("%s") DEFERRABLE INITIALLY DEFERRED'%column_params)
-    # column_params = (target_column_name, target_table, target_pk_name)
-    # columns.append('  "%s" integer NOT NULL REFERENCES "%s" ("%s") DEFERRABLE INITIALLY DEFERRED'%column_params)
-    # # Ok well strictly not a column
-    # columns.append('  UNIQUE ("%s", "%s")'%(source_column_name, target_column_name))
-    # return ['CREATE TABLE %s (\n%s\n);'%(table_name,',\n'.join(columns))]
 
 def add_table(app_sig, model_tablespace, field_tablespace,
               m2m_db_table, auto_field_db_type,
