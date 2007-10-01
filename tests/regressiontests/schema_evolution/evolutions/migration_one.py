@@ -1,4 +1,4 @@
-from django_evolution.mutation import *
+from django_evolution.mutations import *
 from regressiontests.schema_evolution.models import *
 
 # For the first migration, perform the following mutations in order.

@@ -8,7 +8,7 @@ from django.db.models import loading
 
 from django_evolution import EvolutionException, CannotSimulate, SimulationFailure
 from django_evolution.management.diff import Diff
-from django_evolution.mutation import SQLMutation
+from django_evolution.mutations import SQLMutation
 
 def get_mutations(app, from_version, current_app_sig, target_app_sig):
     """
@@ -21,23 +21,27 @@ def get_mutations(app, from_version, current_app_sig, target_app_sig):
     """
     # For each item in the evolution sequence. Check each item to see if it is
     # a python file or an sql file.
-    if from_version < 0:
-        raise EvolutionException('Cannot evolve from a version less than zero.')
-
     app_name = '.'.join(app.__name__.split('.')[:-1])
-    evolution_module = __import__(app_name + '.evolutions',{},{},[''])
+    try:
+        evolution_module = __import__(app_name + '.evolutions',{},{},[''])
+        sequence = evolution_module.SEQUENCE[from_version:]
+    except ImportError:
+        raise EvolutionException('Cannot find evolution module for application %s' % app_name)
+    except AttributeError:
+        raise EvolutionException('Cannot find evolution sequence for application %s' % app_name)
+    except IndexError:
+        raise EvolutionException('Evolution sequence for application %s does not have enough entries' % app_name)
 
-    mutations = []
-    
+    mutations = []    
     directory_name = os.path.dirname(evolution_module.__file__)
-    for migration_name in evolution_module.SEQUENCE[from_version:]:
+    for migration_name in sequence:
         sql_file_name = os.path.join(directory_name, migration_name+'.sql')
         if os.path.exists(sql_file_name):
             sql = []
             sql_file = open(sql_file_name)
             for line in sql_file:
                 sql.append(line)
-            mutations.append(SQLMutation(sql))
+            mutations.append(SQLMutation(migration_name, sql))
         else:
             try:
                 module_name = [evolution_module.__name__,migration_name]

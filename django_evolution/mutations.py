@@ -61,11 +61,12 @@ class BaseMutation:
         raise NotImplementedError()
         
 class SQLMutation(BaseMutation):
-    def __init__(self, sql):
+    def __init__(self, tag, sql):
+        self.tag = tag
         self.sql = sql
 
     def __str__(self):
-        return "SQLMutation()"
+        return "SQLMutation(%s)" % self.tag
 
     def mutate(self, app_sig):
         "The mutation of an SQL mutation returns the raw SQL"

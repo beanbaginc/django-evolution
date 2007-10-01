@@ -10,7 +10,7 @@ from regressiontests.schema_evolution import models as schema_evolution_models
 from regressiontests.schema_evolution.evolutions import migration_one
 
 from django_evolution.models import *
-from django_evolution.mutation import *
+from django_evolution.mutations import *
 from django.db import connection, get_introspection_module
 from django.db.models import loading
 from django.core.management.commands import syncdb

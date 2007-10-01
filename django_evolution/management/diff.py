@@ -1,4 +1,4 @@
-from django_evolution.mutation import DeleteField, AddField
+from django_evolution.mutations import DeleteField, AddField
 from django.db.models.fields.related import *
 
 class Diff(object):

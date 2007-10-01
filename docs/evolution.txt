@@ -1,0 +1,371 @@
+================
+Django Evolution
+================
+
+When you run ``./manage.py syncdb``, Django will look for any new models that
+have been defined, and add a database table to represent those new models. 
+However, if you make a change to an existing model, ``./manage.py syncdb`` will 
+not make any changes to the database. 
+
+This is where **Django Evolution** fits in. Django Evolution is an extension 
+to Django that allows you to track changes in your models over time, and to 
+update the database to reflect those changes.
+
+An example
+==========
+
+To demonstrate how Django Evolution works, let's work through the lifecycle of 
+a Django application - a new super-cool blogging application called 
+``blogette``. After some initial design work, we come up with the following 
+models::
+
+    class Author(models.Model):
+        name = models.CharField(max_length=50)
+        email = models.EmailField()
+        date_of_birth = models.DateField()
+
+        def __unicode__(self):
+            return self.name
+
+    class Entry(models.Model):
+        headline = models.CharField(max_length=255)
+        body_text = models.TextField()
+        pub_date = models.DateTimeField()
+        author = models.ForeignKey(Author)
+   
+        def __unicode__(self):
+            return self.headline
+  
+We create a test project, create our ``blogette`` application directory, put 
+the model definitions in the models.py file, add ``blogette`` to 
+``settings.INSTALLED_APPS``, and run ``./manage.py syncdb``. This installs 
+the application, creating the Entry and Author tables.
+
+The first changes
+=================
+
+Why do we want to track the date of birth of the Author? In retrospect, 
+this field was a mistake, so let's delete that field from the model. 
+However, if we just delete the field and run ``syncdb`` again, Django 
+won't do anything to respond to the change. We need to use a slightly 
+different process.
+
+Before we start making changes to ``models.py``, we need to set up the 
+project to allow evolutions. To do this, we add ``django_evolution`` to the
+``settings.INSTALLED_APPS`` and run ``./manage.py syncdb``. This sets up 
+the tables for tracking model changes::
+
+    $ ./manage.py syncdb
+    Creating table django_evolution
+    Installing baseline evolution entry for application testproject.blogette
+    Loading 'initial_data' fixtures...
+    No fixtures found.
+
+Now we can go into ``models.py`` remove the ``date_of_birth`` field. Now 
+when we run ./manage.py syncdb, we will get a warning that changes have 
+been detected::
+
+    $ ./manage.py syncdb
+    Models in testproject.blogette have changed - an evolution is required
+    Loading 'initial_data' fixtures...
+    No fixtures found.
+
+The evolution process itself is controlled using a new management command --
+**evolve**. This command is made available when you install the 
+``django_evolution`` application in your project.
+
+If you want to know what has changed, you can use ask Django Evolution
+to provide a hint::
+        
+    $ ./manage.py evolve --hint
+    ----- Evolution for testproject.blogette
+    from django_evoluton.mutations import *
+    from testproject.blogette import *
+
+    MUTATIONS = [
+         DeleteField(Author, 'date_of_birth')
+    ]
+    ----------------------
+    Trial evolution successful. Run './manage.py evolve --execute' to apply evolution.
+
+The output of the hint is a Django Evolution. An Evolution is python code
+that defines a list of mutations that need to be made to update a model - 
+in this case, the fact that we need to delete the ``date_of_birth`` field 
+from the model ``Author``.
+
+If you want to see what the SQL would look like for this evolution, you can 
+use the ``--compile`` option::
+    
+    $ ./manage.py evolve --hint --compile
+    ;; Compiled evolution SQL for testproject.blogette
+    ALTER TABLE blogette_person DROP COLUMN date_of_birth CASCADE;
+
+If we wanted to, we could pipe this SQL output directly into our database.
+however, we don't need to - we can get Django Evolution to do this for us, 
+by passing the execute option to ``evolve``::
+
+    $ ./manage.py evolve --hint --execute
+    Evolution successful.
+
+Now if we re-run syncdb, we find that there are no evolution warnings::
+
+    $ ./manage.py syncdb
+    Loading 'initial_data' fixtures...
+    No fixtures found.
+
+If we were to inspect the database itself, we will find that the 
+``date_of_birth`` field has been deleted.
+
+Storing changes
+===============
+
+At this point, we are happy with the model definitions. Once we have
+developed the views and templates for Blogette, we can deploy Version 1 
+of Blogette on our production server. We copy our source code to the 
+production server, run syncdb, and the production server will have tables 
+that represent the latest version of our models.
+
+Now we can start work on Blogette Version 2. For this release, we decide
+to add a 'location' field to Authors, and a 'summary' field to entries.
+This means we now will need to make changes to models.py. However, we
+now have a production server with the Version 1 models deployed. This
+means that we need to keep track of any changes we make during the 
+development process so that we can duplicate those changes on our 
+production server.
+
+Mutation defintions
+-------------------
+
+Let's start with adding the ``location`` field to ``Authors``. First, we edit 
+``models.py`` to add a new CharField definition. Since we have made a change,
+we know an evolution will be required; if we run ``evolve --hint`` we will get
+the exact change required::
+
+    $ ./manage.py evolve --hint
+    ----- Evolution for testproject.blogette
+    from django_evoluton.mutations import *
+    from testproject.blogette import *
+
+    MUTATIONS = [
+         AddField(Author, 'location')
+    ]
+    ----------------------
+    Trial evolution successful. Run './manage.py evolve --execute' to apply evolution.
+
+At this point, we *could* just run ``evolve --hint --execute`` to update the
+development server. However, we want to remember this change, so we need to store
+it in a way that Django Evolution can use it.
+
+To do this, we need to create an evolution store. In the blogette directory, 
+we create an ``evolutions`` module. In this module, we create two files - 
+``__init__.py``, and ``add_location.py``. The ``blogette`` application 
+directory should now look something like this::
+
+    /blogette
+        /evolutions
+            __init__.py
+            add_location.py
+        models.py
+        views.py
+
+``add_location.py`` is a file used to describe the evolution we want to 
+perform. The contents of this file is exactly the same as the 
+``evolve --hint`` command produced -- just copy the content between the 
+lines marked ``----`` into ``add_location.py``. 
+
+We then need to define an evolution sequence. This sequence defines the order
+in which evolutions need to be applied. Since we only have one evolution, 
+the definition looks like this::
+
+    SEQUENCE = ['add_location']
+
+Put this statement in ``__init__.py``, and you've have defined your first
+stored evolution.
+
+Now we can apply the evolution. We don't need a hint this time - we have 
+a stored evolution, so we can just run ``evolve``::
+
+    $ ./manage.py evolve
+    ----- Evolution for testproject.blogette
+    from django_evoluton.mutations import *
+    from testproject.blogette import *
+
+    MUTATIONS = [
+         AddField(Author, 'location')
+    ]
+    ----------------------
+    Trial evolution successful. Run './manage.py evolve --execute' to apply evolution.
+
+This shows us the sequence of mutations described by our stored evolution 
+sequence. It also tells us that the trial evolution was successful - every
+time you run ``evolve``, Django Evolution will simulate the changes to make
+sure that they the mutations defined will reconcile the differences between 
+the models.py file and the state of the database.
+
+Since the simulation was successful, we can apply the evolution using the 
+``--execute`` flag::
+
+    $ ./manage.py evolve --execute
+    Evolution successful.
+
+SQL mutations
+-------------
+
+Now we need to add the ``summary`` field to ``Entry``. We could follow the
+same procedure - however, we going to do something a little different.
+Rather than define a Python Evolution file, we're going to define our 
+mutation in raw SQL.
+
+The process of adding a stored SQL evolution is very similar to adding a 
+stored Python evolution. In this case, we're going to call our mutation 
+``add_summary``, so we create a file called ``add_summary.sql`` to the
+evolutions directory. Into this file, we put the SQL that will make the 
+change we require. In our case, this means::
+
+    ALTER TABLE blogette_entry ADD COLUMN summary varchar(200);
+    
+Then, we add the new evolution to the evolution sequence in 
+``evolutions/__init__.py``. The sequence should now look like this::
+
+    SEQUENCE = ['add_location', 'add_summary']
+    
+We have now defined our SQL mutation, and how it should be executed, so we
+can trial the evolution::
+
+    $ ./manage.py evolve
+    ----- Evolution for testproject.blogette
+    from django_evoluton.mutations import *
+    from testproject.blogette import *
+
+    MUTATIONS = [
+        SQLMutation('mutation_two')
+    ]
+    ----------------------
+    Evolution could not be simulated, possibly due to raw SQL mutations.
+    
+Unfortunately, Django Evolution can't simulate SQL mutations, so we can't be
+sure that the mutation is correct. However, we can inspect the SQL that will
+be used using the --compile option::
+
+    $ ./manage.py evolve --compile
+    ;; Compiled evolution SQL for testproject.blogette
+    ALTER TABLE blogette_entry ADD COLUMN summary varchar(200);
+
+If we are satisfied that this SQL is correct, we can execute it::
+
+    $ ./manage.py evolve --execute
+    Evolution successful.
+
+Meanwhile, on the production site...
+------------------------------------
+
+Now that we have finished Blogette Version 2, we can update our existing
+production server. We copy the Version 2 source code, including the evolutions,
+to the production server. We then run ./manage.py syncdb, which reports that
+evolutions are required::
+
+    $ ./manage.py syncdb
+    Models in testproject.blogette have changed - an evolution is required
+    Loading 'initial_data' fixtures...
+    No fixtures found.
+
+If we run evolve, we can see the full sequence of mutations that will be 
+applied::
+
+    $ ./manage.py evolve
+    ----- Evolution for testproject.blogette
+    from django_evoluton.mutations import *
+    from testproject.blogette import *
+
+    MUTATIONS = [
+        AddField(Author, 'location'),
+        SQLMutation('add_summary')
+    ]
+    ----------------------
+    Evolution could not be simulated, possibly due to raw SQL mutations.
+
+Again, since there is a raw SQL migration involved, we will need to validate
+the migration ourself using the --compile option::
+
+    $ ./manage.py evolve --compile
+    ;; Compiled evolution SQL for testproject.blogette
+    ALTER TABLE blogette_author ADD COLUMN location varchar(200);
+    ALTER TABLE blogette_entry ADD COLUMN summary varchar(200);
+
+If we are happy with this sequence, we can apply it::
+
+    $ ./manage.py evolve --execute
+    Evolution successful.
+
+Reference
+=========
+
+The Contract
+------------
+
+Django Evolution imposes one important restriction on your development process:
+If you intend to make a change to your database, you **must** do it through
+Django Evolution. If you modify the database outside of Django and the Django 
+Evolution framework, you're on your own. 
+
+The operation of Django Evolution is entirely based upon the observing and
+storing changes to the models.py file. As a result, any changes to the database 
+will not be observed by Django Evolution, and won't be used in evaluating hints
+or establishing if evolution simulations have been successful. 
+
+.. admonition:: Room for improvement
+
+    This is one area of Django Evolution that could be significantly improved.
+    Adding database introspection to allow for external database modifications
+    is on the plan for the future, but for the moment, stick to the contract.
+
+Built-in Mutations
+------------------
+
+Django Evolution comes with a number of mutations built-in. These mutations 
+cover the simple cases for model evolutions.
+
+AddField(Model, field_name)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Add the field 'field_name' to the model.
+
+Example::
+
+    AddField(Author, 'name')
+
+DeleteField(Model, field_name)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Remove the field 'field_name' from the model.
+
+Example::
+
+    DeleteField(Author, 'name')
+
+RenameField(Model, old_field_name, new_field_name)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Rename the field 'old_name' to 'new_name'.
+
+Example::
+   
+    RenameField(Author, 'name', 'full_name')
+    
+SQLMutation(sql)
+~~~~~~~~~~~~~~~~
+
+Run a list of SQL statements as a mutation. This can be used as an alternative 
+to defining an mutation as an SQL file.
+
+Example::
+
+    SQLMutation(['ALTER TABLE blogette_author ADD COLUMN location varchar(200);'])
+    
+Defining your own mutations
+---------------------------
+
+If you have a special set of mutation requirements, you can define your own 
+mutation. All you need to do is subclass 
+``django_evolution.mutations.BaseMutation``.
+

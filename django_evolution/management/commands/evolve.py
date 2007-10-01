@@ -10,7 +10,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db.models import get_apps, get_models, signals
 from django.db import connection,transaction
 
-from django_evolution import CannotSimulate, SimulationFailure
+from django_evolution import EvolutionException, CannotSimulate, SimulationFailure
 from django_evolution.models import Evolution
 from django_evolution.management.signature import create_app_sig
 from django_evolution.management.diff import Diff
@@ -36,6 +36,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         verbosity = int(options['verbosity'])
         evolution_required = False
+        simulated = True
         for app in get_apps():
             app_name = '.'.join(app.__name__.split('.')[:-1])
             app_sig = create_app_sig(app)
@@ -55,8 +56,12 @@ class Command(BaseCommand):
                         diff = Diff(app, last_evolution_sig, app_sig)
                         mutations = diff.evolution()
                     else:
-                        mutations = get_mutations(app, last_evolution.version, 
-                                                  last_evolution_sig, app_sig)
+                        try:
+                            mutations = get_mutations(app, last_evolution.version, 
+                                                      last_evolution_sig, app_sig)
+                        except EvolutionException, e:
+                            print self.style.ERROR(e)
+                            sys.exit(1)
                                                   
                     # Simulate the operation of the mutations
                     try:
@@ -66,7 +71,7 @@ class Command(BaseCommand):
                         print failure.diff
                         sys.exit(1)
                     except CannotSimulate:
-                        print self.style.NOTICE('Evolution could not be simulated, possibly due to raw SQL mutations')
+                        simulated = False
                     
                     # Compile the mutations into SQL
                     sql = compile_mutations(mutations, last_evolution_sig)
@@ -106,13 +111,15 @@ class Command(BaseCommand):
                             for s in sql:
                                 print s                            
                         else:
-                            print '--- Evolution for %s -------------------' % app_name
+                            print '----- Evolution for %s' % app_name
+                            print 'from django_evoluton.mutation import *'
                             print 'from %s import *' % app_name
                             print 
                             print 'MUTATIONS = ['
-                            for m in mutations:
-                                print '    ',m
+                            print '   ',
+                            print ',\n    '.join([str(m) for m in mutations])
                             print ']'
+                            print '----------------------'
                 else:
                     if verbosity > 1:
                         print 'Application %s is up to date' % app_name
@@ -125,7 +132,10 @@ class Command(BaseCommand):
                     print 'Evolution successful.'
             elif not options['compile']:
                 if verbosity > 0:
-                    print "Trial evolution successful. Run './manage.py evolve --execute' to apply evolution."
+                    if simulated:
+                        print "Trial evolution successful. Run './manage.py evolve --execute' to apply evolution."
+                    else:
+                        print self.style.NOTICE('Evolution could not be simulated, possibly due to raw SQL mutations')
         else:
             if verbosity > 0:
                 print 'No evolution required.'
