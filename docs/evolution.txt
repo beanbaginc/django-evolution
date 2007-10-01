@@ -199,8 +199,8 @@ a stored evolution, so we can just run ``evolve``::
 This shows us the sequence of mutations described by our stored evolution 
 sequence. It also tells us that the trial evolution was successful - every
 time you run ``evolve``, Django Evolution will simulate the changes to make
-sure that they the mutations defined will reconcile the differences between 
-the models.py file and the state of the database.
+sure that the mutations that are defined will reconcile the differences 
+between the models.py file and the state of the database.
 
 Since the simulation was successful, we can apply the evolution using the 
 ``--execute`` flag::
@@ -238,7 +238,7 @@ can trial the evolution::
     from testproject.blogette import *
 
     MUTATIONS = [
-        SQLMutation('mutation_two')
+        SQLMutation('add_summary')
     ]
     ----------------------
     Evolution could not be simulated, possibly due to raw SQL mutations.
