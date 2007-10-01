@@ -25,7 +25,6 @@ def get_mutations(app, from_version, current_app_sig, target_app_sig):
         raise EvolutionException('Cannot evolve from a version less than zero.')
 
     app_name = '.'.join(app.__name__.split('.')[:-1])
-    class_name = app_name + '.evolutions.evolution'
     evolution_module = __import__(app_name + '.evolutions',{},{},[''])
 
     mutations = []

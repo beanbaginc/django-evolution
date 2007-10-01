@@ -54,7 +54,12 @@ def evolution(app, created_models, verbosity=1):
         if app_sig:
             if verbosity > 0:
                 print "Installing baseline evolution for application %s" % app_name
-            evolution = Evolution(app_name=app_name,version=0,signature=signature)
+            try:
+                evolution_module = __import__(app_name + '.evolutions',{},{},[''])
+                version = len(evolution_module.SEQUENCE)
+            except:
+                version = 0
+            evolution = Evolution(app_name=app_name,version=version,signature=signature)
             evolution.save()
     
 dispatcher.connect(evolution, signal=signals.post_syncdb)
