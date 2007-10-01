@@ -52,8 +52,8 @@ def evolution(app, created_models, verbosity=1):
         # In general there will be an application label and app_sig to save. The
         # exception to the rule is for empty models (such as in the django tests).
         if app_sig:
-            if verbosity > 1:
-                print "Install baseline evolution entry for application %s" % app_name
+            if verbosity > 0:
+                print "Installing baseline evolution for application %s" % app_name
             evolution = Evolution(app_name=app_name,version=0,signature=signature)
             evolution.save()
     

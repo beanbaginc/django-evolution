@@ -3,7 +3,12 @@ class EvolutionException(Exception):
         self.value=value
 
     def __str__(self):
-        return repr(self.value)
+        return str(self.value)
         
 class CannotSimulate(Exception):
     pass
+    
+class SimulationFailure(Exception):
+    def __init__(self, diff):
+        self.diff = diff
+    

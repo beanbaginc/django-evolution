@@ -17,8 +17,9 @@ INTERESTING_DB_ATTRIBUTES = [
 
         
 def create_field_sig(field):
-    field_sig = {}
-    field_sig['internal_type'] = field.get_internal_type()
+    field_sig = {
+        'internal_type': field.get_internal_type()
+    }
     if isinstance(field, ManyToManyField):
         field_sig['m2m_db_table'] = field.m2m_db_table()
     else:

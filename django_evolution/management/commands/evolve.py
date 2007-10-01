@@ -10,10 +10,11 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db.models import get_apps, get_models, signals
 from django.db import connection,transaction
 
+from django_evolution import CannotSimulate, SimulationFailure
 from django_evolution.models import Evolution
 from django_evolution.management.signature import create_app_sig
 from django_evolution.management.diff import Diff
-from django_evolution.evolve import get_mutations, compile_mutations
+from django_evolution.evolve import get_mutations, simulate_mutations, compile_mutations
 
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
@@ -53,12 +54,23 @@ class Command(BaseCommand):
                     if options['hint']:
                         diff = Diff(app, last_evolution_sig, app_sig)
                         mutations = diff.evolution()
-                        self.simulate_mutations(app, mutations, last_evolution_sig, app_sig)
                     else:
                         mutations = get_mutations(app, last_evolution.version, 
                                                   last_evolution_sig, app_sig)
+                                                  
+                    # Simulate the operation of the mutations
+                    try:
+                        simulate_mutations(app, mutations, last_evolution_sig, app_sig)
+                    except SimulationFailure, failure:
+                        print self.style.ERROR('Simulated evolution of application %s did not succeed:' % failure.diff.app_label)
+                        print failure.diff
+                        sys.exit(1)
+                    except CannotSimulate:
+                        print self.style.NOTICE('Evolution could not be simulated, possibly due to raw SQL mutations')
                     
+                    # Compile the mutations into SQL
                     sql = compile_mutations(mutations, last_evolution_sig)
+                    
                     if options['execute']:
                         try:
                             # Begin Transaction
@@ -93,8 +105,8 @@ class Command(BaseCommand):
                             print ';; Compiled evolution SQL for %s' % app_name 
                             for s in sql:
                                 print s                            
-                        elif options['hint']:
-                            print '--- Evolution hint for %s -------------------' % app_name
+                        else:
+                            print '--- Evolution for %s -------------------' % app_name
                             print 'from %s import *' % app_name
                             print 
                             print 'MUTATIONS = ['
@@ -111,23 +123,11 @@ class Command(BaseCommand):
             if options['execute']:
                 if verbosity > 0:
                     print 'Evolution successful.'
-            elif not options['compile'] and not options['hint']:
+            elif not options['compile']:
                 if verbosity > 0:
                     print "Trial evolution successful. Run './manage.py evolve --execute' to apply evolution."
         else:
             if verbosity > 0:
                 print 'No evolution required.'
 
-    def simulate_mutations(self, app, mutations, current_evolution_sig, target_app_sig):
-        simulated_app_sig = copy.deepcopy(current_evolution_sig)
-        for mutation in mutations:
-            mutation.pre_simulate()
-            mutation.simulate(simulated_app_sig)
-            mutation.post_simulate()
-        diff = Diff(app, simulated_app_sig, target_app_sig)
-        if not diff.is_empty():
-            app_name = '.'.join(app.__name__.split('.')[:-1])
-            print self.style.ERROR('Simulated evolution of application %s did not succeed:' % app_name)
-            print diff
-            sys.exit(1)    
     

@@ -66,7 +66,7 @@ class SQLMutation(BaseMutation):
 
     def __str__(self):
         return "SQLMutation()"
-        
+
     def mutate(self, app_sig):
         "The mutation of an SQL mutation returns the raw SQL"
         return self.sql
