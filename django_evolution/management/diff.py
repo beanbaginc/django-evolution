@@ -65,13 +65,13 @@ class Diff(object):
         for model, change in self.changed_models.items():
             lines.append('In model %s.%s:' % (self.app_label, model))
             for name in change.get('added',[]):
-                lines.append('    Field %s has been added' % name)
+                lines.append("    Field '%s' has been added" % name)
             for name in change.get('deleted',[]):
-                lines.append('    Field %s has been deleted' % name)
+                lines.append("    Field '%s' has been deleted" % name)
             for name,field_change in change.get('changed',{}).items():
-                lines.append('    In field %s:' % name)
+                lines.append("    In field '%s':" % name)
                 for prop in field_change:
-                    lines.append('        Property %s has changed' % prop)
+                    lines.append("        Property '%s' has changed" % prop)
         return '\n'.join(lines)
 
     def evolution(self):
