@@ -11,6 +11,11 @@ This is where **Django Evolution** fits in. Django Evolution is an extension
 to Django that allows you to track changes in your models over time, and to 
 update the database to reflect those changes.
 
+.. admonition:: Work in Progress 
+
+    Django Evolution is a work in progress. The interface and usage described
+    in this document is subject to change as we finess the details. 
+    
 An example
 ==========
 
@@ -129,8 +134,8 @@ Now if we re-run syncdb, we find that there are no evolution warnings::
 If we were to inspect the database itself, we will find that the 
 ``date_of_birth`` field has been deleted.
 
-Storing changes
-===============
+Stored evolutions
+=================
 
 At this point, we are happy with the model definitions. Once we have
 developed the views and templates for Blogette, we can deploy Version 1 
@@ -145,6 +150,9 @@ now have a production server with the Version 1 models deployed. This
 means that we need to keep track of any changes we make during the 
 development process so that we can duplicate those changes on our 
 production server.
+
+To do this, we make use of stored evolutions - a mechanism for defining
+and reusing collections of evolutions for later use.
 
 Mutation defintions
 -------------------
@@ -222,7 +230,7 @@ Since the simulation was successful, we can apply the evolution using the
     ...
     Evolution successful.
 
-... note:
+.. note::
 
     The warning and prompt for confirmation will be displayed every time
     you evolve your database. It is omitted for clarity in this and later
@@ -342,7 +350,6 @@ or establishing if evolution simulations have been successful.
     Adding database introspection to allow for external database modifications
     is on the plan for the future, but for the moment, stick to the contract.
 
-
 Usage of the ``evolve`` command
 -------------------------------
 
@@ -389,7 +396,7 @@ If ``--hint`` is specified, the hinted list of mutations will be applied. If
 ``--hint`` is not specified, this command will apply any unapplied stored 
 evolutions.
 
-.. note:: 
+.. note::
     
     You cannot specify an application name if you are trying to execute an
     evolution. Evolutions must be applied across the entire database.
