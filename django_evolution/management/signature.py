@@ -2,12 +2,10 @@ from django.db.models import get_models
 from django.db.models.fields.related import *
 
 INTERESTING_DB_ATTRIBUTES = [
-    'core',
     'max_length',
     'max_digits',  #?          
     'decimal_places', #?
     'null',
-    'blank',
     'db_column',
     'db_index',
     'db_tablespace',
