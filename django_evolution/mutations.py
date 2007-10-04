@@ -266,6 +266,11 @@ class AddField(BaseMutation):
         model_pk_column = model_sig['meta']['pk_column']
 
         rel_model_sig = app_sig[self.related_model_class_name]
+        
+        # Refer to the way that sql_all creates the necessary sql to create the table.
+        # It requires the data types of the column that it is related to. How we get this
+        # in our context is unclear.
+        
 #        rel_model_pk_col = rel_model_sig['meta']['pk_column']
 #        rel_field_sig = rel_model_sig['fields'][rel_model_pk_col]
         # TODO: Fix me
