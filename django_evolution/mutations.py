@@ -3,10 +3,12 @@ from django.contrib.contenttypes import generic
 from django.db.models.fields import *
 from django.db.models.fields.related import *
 from django.db import models
-from django_evolution.management.signature import create_field_sig
+from django_evolution.management.signature import create_field_sig_params, ATTRIBUTE_DEFAULTS
 from django_evolution import EvolutionException, CannotSimulate
 
 import copy
+
+FK_INTEGER_TYPES = ['AutoField', 'PositiveIntegerField', 'PositiveSmallIntegerField']
 
 def get_evolution_module():
     module_name = ['django_evolution.db',settings.DATABASE_ENGINE]
@@ -108,7 +110,7 @@ class DeleteField(BaseMutation):
 
         # Simulate the deletion of the field.
         try:
-            if model_sig['fields'][self.field_name]['primary_key']:
+            if model_sig['fields'][self.field_name].has_key('primary_key') and model_sig['fields'][self.field_name]['primary_key']:
                 print 'Primary key deletion is not supported.'
                 return
             else:
@@ -149,49 +151,86 @@ class DeleteField(BaseMutation):
         return sql_statements
         
 class AddField(BaseMutation):
-    def __init__(self, model_class, field_name):
-        self.model_class = model_class
-        self.field_name = str(field_name)
 
+    default_related_model_class_name=None
+
+    def __init__(self, model_class_name, field_name, field_type,
+                 related_model_class_name=default_related_model_class_name, **kwargs):
+
+        # Mandatory
+        self.model_class_name = str(model_class_name)
+        self.field_name = str(field_name)
+        self.field_type = field_type
+
+        # Mandatory if relating to another table
+        self.related_model_class_name = str(related_model_class_name)
+
+        # Optional
+        self.field_attrs = {}
+        for attrib_name, value in kwargs.items():
+            default = ATTRIBUTE_DEFAULTS[attrib_name]
+            if not value == default:
+                # only retain non-default values
+                self.field_attrs[attrib_name] = value
+                
     def __str__(self):
-        return "AddField(%s, '%s')" % (self.model_class._meta.object_name, self.field_name)
+        params = (self.model_class_name,self.field_name, self.field_type.__name__, self.related_model_class_name)
+        str_output = ["AddField('%s', '%s', 'models.%s', %s" % params]
+
+        for key,value in self.field_attrs.items():
+            str_output.append("%s=%s"%(key,value))
+        return ', '.join(str_output) + ')'
+
+        
+    def post_init(self, app_sig):
+        model_sig = app_sig[self.model_class_name]
+        self.internal_type = self.field_type.__name__
+
+        if 'ManyToManyField' == self.internal_type:
+            if self.field_attrs.has_key('db_table'):
+                self.m2m_db_table = self.field_attrs['db_table']
+            else:
+                self.m2m_db_table = '%s_%s' % (model_sig['meta']['db_table'], self.field_name)
+
+            # If this is an m2m relation to self, avoid the inevitable name clash
+            lower_related_model_class_name = self.related_model_class_name.lower()
+            lower_model_class_name = self.model_class_name.lower()
+            if self.model_class_name == self.related_model_class_name:
+                self.m2m_column_name = 'from_' + lower_model_class_name + '_id'
+                self.m2m_reverse_name = 'to_' + lower_related_model_class_name + '_id'
+            else:
+                self.m2m_column_name = lower_model_class_name + '_id'
+                self.m2m_reverse_name = lower_related_model_class_name + '_id'
+        else:
+            self.column = self.field_name
 
     def simulate(self, app_sig):
-        model_sig = app_sig[self.model_class._meta.object_name]
+        if not hasattr(self,'internal_type'):
+            self.post_init(app_sig)
         
-        # If the field was used in the unique_together attribute, update it.
-        class_unique_together = self.model_class._meta.unique_together
-        model_unique_together = model_sig['meta']['unique_together']
-        if not class_unique_together == model_unique_together:
-            unique_together = []
-            for index in range(0,len(class_unique_together),1):
-                class_unique_group = class_unique_together[index]
-                model_unique_group = model_unique_together[index]
-                if class_unique_group == model_unique_group:
-                    unique_together.append(class_unique_group)
-                else:
-                    # The following is the characteristic feature of an add
-                    if self.field_name in class_unique_group and self.field_name not in model_unique_group:
-                        group = list(model_unique_group)
-                        index = list(class_unique_group).index(self.field_name)
-                        group.insert(index,self.field_name)
-                        unique_together.append(tuple(group))
-                    # otherwise the two groups are not the same but for some other reason
-            model_sig['meta']['unique_together'] = tuple(unique_together)
+        field_attrs_copy = self.field_attrs.copy()
+        if 'ManyToManyField' == self.internal_type:
+            field_attrs_copy['related_model_class_name'] = self.related_model_class_name
+            field_attrs_copy['m2m_db_table'] = self.m2m_db_table
+            field_attrs_copy['m2m_column_name'] = self.m2m_column_name
+            field_attrs_copy['m2m_reverse_name'] = self.m2m_reverse_name
+        else:
+            field_attrs_copy['column'] = self.column
 
-        # Update the list of column names
-        field = self.model_class._meta.get_field(self.field_name)
-        model_sig['fields'][field.name] = create_field_sig(field)
+        field_attrs_copy['internal_type'] = self.internal_type
+        field_attrs_copy['name'] = self.field_name
+
+        model_sig = app_sig[self.model_class_name]
+        model_sig['fields'][self.field_name] = create_field_sig_params(**field_attrs_copy)
 
     def pre_mutate(self, app_sig):
-        field = self.model_class._meta.get_field(self.field_name)
-        internal_type = field.get_internal_type()
+        internal_type = self.field_type.__name__
         if 'ManyToManyField' == internal_type:
             # Adding a many to many field involves adding a table
-            self.manytomanytable = field.m2m_db_table()
+            self.manytomanytable = self.m2m_db_table
             self.mutate_func = self.mutate_table
         else:
-            self.column_name = field.column
+            self.column_name = self.field_name
             self.mutate_func = self.mutate_column
 
     def mutate(self, app_sig):
@@ -199,41 +238,53 @@ class AddField(BaseMutation):
         return self.mutate_func(evo_module, app_sig)
 
     def mutate_column(self, evo_module, app_sig):
-        table_name = self.model_class._meta.db_table
-        field = self.model_class._meta.get_field(self.field_name)
+        model_sig = app_sig[self.model_class_name]
+        table_name = model_sig['meta']['db_table']
+        internal_type = self.field_type.__name__
         sql_statements = evo_module.add_column(app_sig, 
                                                table_name, 
-                                               self.column_name,
-                                               field.db_type())
-        # table_data = app_sig[self.model_class._meta.object_name]                                                  
+                                               self.field_name,
+                                               getattr(models,internal_type)(**self.field_attrs).db_type())
         return sql_statements
 
     def mutate_table(self, evo_module, app_sig):
-        opts = self.model_class._meta
-        field = opts.get_field(self.field_name)
-        if isinstance(field.rel, generic.GenericRel):
-            raise NotImplementedError()
-
-        model_tablespace = opts.db_tablespace
-        field_tablespace = field.db_tablespace
-        m2m_db_table = field.m2m_db_table()
+        model_sig = app_sig[self.model_class_name]
+    
+        model_tablespace = model_sig['meta']['db_tablespace']
+        if self.field_attrs.has_key('db_tablespace'):
+            field_tablespace = self.field_attrs['db_tablespace']
+        else:
+            field_tablespace = ATTRIBUTE_DEFAULTS['db_tablespace']
         auto_field_db_type = models.AutoField(primary_key=True).db_type()
-        m2m_column_name = field.m2m_column_name()
-        m2m_reverse_name = field.m2m_reverse_name()
-        fk_db_type = models.ForeignKey(self.model_class).db_type() 
-        model_table = opts.db_table
-        model_pk_column = opts.pk.column
-        rel_fk_db_type = models.ForeignKey(field.rel.to).db_type()
-        rel_db_table = field.rel.to._meta.db_table
-        rel_pk_column = field.rel.to._meta.pk.column
+        if self.internal_type in FK_INTEGER_TYPES:
+            fk_db_type = models.IntegerField().db_type()
+        else:
+            # TODO: Fix me
+            fk_db_type = models.IntegerField().db_type()
+            #fk_db_type = getattr(models,self.internal_type)(**self.field_attrs).db_type()
+        model_table = model_sig['meta']['db_table']
+        model_pk_column = model_sig['meta']['pk_column']
+
+        rel_model_sig = app_sig[self.related_model_class_name]
+#        rel_model_pk_col = rel_model_sig['meta']['pk_column']
+#        rel_field_sig = rel_model_sig['fields'][rel_model_pk_col]
+        # TODO: Fix me
+#        if rel_field_sig['internal_type'] in FK_INTEGER_TYPES:
+        rel_fk_db_type = models.IntegerField().db_type()
+#        else:
+
+#            rel_fk_db_type = getattr(models,rel_field_sig['internal_type'])(**rel_field_sig).db_type()
         
+        rel_db_table = rel_model_sig['meta']['db_table']
+        rel_pk_column = rel_model_sig['meta']['pk_column']
+
         sql_statements = evo_module.add_table(app_sig, model_tablespace, field_tablespace,
-                                              m2m_db_table, auto_field_db_type,
-                                              m2m_column_name, m2m_reverse_name,
+                                              self.m2m_db_table, auto_field_db_type,
+                                              self.m2m_column_name, self.m2m_reverse_name,
                                               fk_db_type, model_table, model_pk_column,
                                               rel_fk_db_type, rel_db_table, rel_pk_column)
         return sql_statements
-        
+
 class RenameField(BaseMutation):
     def __init__(self, model_class, old_field_name, new_field_name):
         self.model_class = model_class

@@ -1,5 +1,6 @@
 from django_evolution.mutations import DeleteField, AddField
 from django.db.models.fields.related import *
+from django.db import models
 
 class Diff(object):
     """
@@ -82,7 +83,16 @@ class Diff(object):
             pass
         for model, change in self.changed_models.items():
             for name in change.get('added',[]):
-                mutations.append(AddField(get_model(self.app_label, model), name))
+                field_sig = self.current_sig[model]['fields'][name]
+
+                params = ['related_model_class_name', 'related_field_name',
+                    'core','max_length', 'max_digits', 'decimal_places', 'null',
+                    'blank', 'db_column', 'db_index','primary_key', 'unique', 'db_tablespace', 
+                    'related_model_class_name']
+                add_params = [(key,field_sig[key],)for key in field_sig.keys() if key in params]
+                add_params.append(('field_type',getattr(models,field_sig['internal_type']),))
+                mutations.append(AddField(model, name, **dict(add_params)))
+                
             for name in change.get('deleted',[]):
                 mutations.append(DeleteField(get_model(self.app_label, model), name))
             for name,field_change in change.get('changed',{}).items():
