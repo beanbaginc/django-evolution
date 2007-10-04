@@ -6,8 +6,10 @@ try:
 except ImportError:
     import pickle as pickle
     
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import BaseCommand, CommandError
-from django.db.models import get_apps, get_models, signals
+from django.db.models import get_apps, get_app, signals
 from django.db import connection,transaction
 
 from django_evolution import EvolutionException, CannotSimulate, SimulationFailure
@@ -21,23 +23,45 @@ class Command(BaseCommand):
         make_option('--verbosity', action='store', dest='verbosity', default='1',
             type='choice', choices=['0', '1', '2'],
             help='Verbosity level; 0=minimal output, 1=normal output, 2=all output'),
+        make_option('--noinput', action='store_false', dest='interactive', default=True,
+            help='Tells Django to NOT prompt the user for input of any kind.'),        
         make_option('--hint', action='store_true', dest='hint', default=False,
-            help='Generate an evolution script that would update the app'),
-        make_option('-c','--compile', action='store_true', dest='compile', default=False,
-            help='Compile a Django evolution script into SQL'),
+            help='Generate an evolution script that would update the app.'),
+        make_option('--sql', action='store_true', dest='compile_sql', default=False,
+            help='Compile a Django evolution script into SQL.'),
         make_option('-x','--execute', action='store_true', dest='execute', default=False,
-            help='Apply the evolution to the database'),
+            help='Apply the evolution to the database.'),
     )
     help = 'Evolve the models in a Django project.'
-    args = ''
+    args = '<appname appname ...>'
 
     requires_model_validation = False
 
-    def handle(self, *args, **options):
-        verbosity = int(options['verbosity'])
+    def handle(self, *app_labels, **options):
+        verbosity = int(options['verbosity'])        
+        interactive = options['interactive']
+        execute = options['execute']
+        compile_sql = options['compile_sql']
+        hint = options['hint']
+        
+        # Use the list of all apps, unless app labels are specified.
+        if app_labels:
+            if execute:
+                raise CommandError('Cannot specify an application name when executing evolutions.')
+            try:
+                app_list = [get_app(app_label) for app_label in app_labels]
+            except (ImproperlyConfigured, ImportError), e:
+                raise CommandError("%s. Are you sure your INSTALLED_APPS setting is correct?" % e)
+        else:
+            app_list = get_apps()
+
+        # Iterate over all applications running the mutations
         evolution_required = False
         simulated = True
-        for app in get_apps():
+        evolution_required = False
+        all_sql = []
+        new_evolutions = []
+        for app in app_list:
             app_name = '.'.join(app.__name__.split('.')[:-1])
             app_sig = create_app_sig(app)
             signature = pickle.dumps(app_sig)
@@ -52,7 +76,7 @@ class Command(BaseCommand):
                         print 'Application %s requires evolution' % app_name
                     last_evolution_sig = pickle.loads(str(last_evolution.signature))
                     
-                    if options['hint']:
+                    if hint:
                         diff = Diff(app, last_evolution_sig, app_sig)
                         mutations = diff.evolution()
                     else:
@@ -75,24 +99,10 @@ class Command(BaseCommand):
                     
                     # Compile the mutations into SQL
                     sql = compile_mutations(mutations, last_evolution_sig)
-                    
-                    if options['execute']:
-                        try:
-                            # Begin Transaction
-                            transaction.enter_transaction_management()
-                            transaction.managed(True)
-                            cursor = connection.cursor()
-                            for statement in sql:
-                                cursor.execute(statement)  
-                            transaction.commit()
-                            transaction.leave_transaction_management()
-                        except Exception, ex:
-                            transaction.rollback()
-                            print self.style.ERROR('Error during evolution of %s: %s' % (app_name, str(ex)))
-                            sys.exit(1)
-                            
-                        # Now update the evolution table
-                        if options['hint']:
+                    all_sql.extend(sql)
+                    if execute:
+                        # Create (BUT DONT SAVE) the new evolution table entry
+                        if hint:
                             # Hinted evolutions are stored as temporary versions
                             version = None
                         else:
@@ -104,9 +114,10 @@ class Command(BaseCommand):
                         new_evolution = Evolution(app_name=app_name,
                                                   version=version,
                                                   signature=signature)
-                        new_evolution.save()
+                        new_evolutions.append(new_evolution)                     
                     else:
-                        if options['compile']:
+                        
+                        if compile_sql:
                             print ';; Compiled evolution SQL for %s' % app_name 
                             for s in sql:
                                 print s                            
@@ -126,11 +137,51 @@ class Command(BaseCommand):
             else:
                 print self.style.ERROR("Can't evolve yet. Need to set a baseline for %s." % app_name)
                 sys.exit(1)
+
         if evolution_required:
-            if options['execute']:
-                if verbosity > 0:
-                    print 'Evolution successful.'
-            elif not options['compile']:
+            if execute:
+                # Now that we've worked out the mutations required, 
+                # and we know they simulate OK, run the evolutions
+                if interactive:
+                    confirm = raw_input("""
+You have requested a database evolution. This will alter tables 
+and data currently in the %r database, and may result in 
+IRREVERSABLE DATA LOSS. Evolutions should be *thoroughly* reviewed 
+prior to execution. 
+
+Are you sure you want to execute the evolutions?
+
+Type 'yes' to continue, or 'no' to cancel: """ % settings.DATABASE_NAME)
+                else:
+                    confirm = 'yes'
+                
+                if confirm:
+                    try:
+                        # Begin Transaction
+                        transaction.enter_transaction_management()
+                        transaction.managed(True)
+                        cursor = connection.cursor()
+                        
+                        # Perform the SQL
+                        for statement in all_sql:
+                            cursor.execute(statement)  
+                        
+                        # Now update the evolution table
+                        for new_evolution in new_evolutions:
+                            new_evolution.save()
+                        
+                        transaction.commit()
+                        transaction.leave_transaction_management()
+                    except Exception, ex:
+                        transaction.rollback()
+                        print self.style.ERROR('Error during evolution of %s: %s' % (app_name, str(ex)))
+                        sys.exit(1)
+                        
+                    if verbosity > 0:
+                        print 'Evolution successful.'
+                else:
+                    print 'Evolution cancelled.'
+            elif not compile_sql:
                 if verbosity > 0:
                     if simulated:
                         print "Trial evolution successful. Run './manage.py evolve --execute' to apply evolution."
@@ -139,5 +190,3 @@ class Command(BaseCommand):
         else:
             if verbosity > 0:
                 print 'No evolution required.'
-
-    

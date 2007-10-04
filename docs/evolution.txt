@@ -44,7 +44,7 @@ the application, creating the Entry and Author tables.
 The first changes
 =================
 
-Why do we want to track the date of birth of the Author? In retrospect, 
+But why do we want to track the date of birth of the Author? In retrospect, 
 this field was a mistake, so let's delete that field from the model. 
 However, if we just delete the field and run ``syncdb`` again, Django 
 won't do anything to respond to the change. We need to use a slightly 
@@ -94,17 +94,30 @@ in this case, the fact that we need to delete the ``date_of_birth`` field
 from the model ``Author``.
 
 If you want to see what the SQL would look like for this evolution, you can 
-use the ``--compile`` option::
+use the ``--sql`` option::
     
-    $ ./manage.py evolve --hint --compile
+    $ ./manage.py evolve --hint --sql
     ;; Compiled evolution SQL for testproject.blogette
     ALTER TABLE blogette_person DROP COLUMN date_of_birth CASCADE;
 
 If we wanted to, we could pipe this SQL output directly into our database.
 however, we don't need to - we can get Django Evolution to do this for us, 
-by passing the execute option to ``evolve``::
+by passing the execute option to ``evolve``. When you do this, you will 
+be given a stern warning that you may destroy data::
 
     $ ./manage.py evolve --hint --execute
+
+    You have requested a database evolution. This will alter tables 
+    and data currently in the 'blogette' database, and may result in 
+    IRREVERSABLE DATA LOSS. Evolutions should be *thoroughly* reviewed 
+    prior to execution. 
+
+    Are you sure you want to execute the evolutions?
+
+    Type 'yes' to continue, or 'no' to cancel:
+
+Assuming you answer ``yes``, Django Evolution should respond::
+
     Evolution successful.
 
 Now if we re-run syncdb, we find that there are no evolution warnings::
@@ -206,8 +219,16 @@ Since the simulation was successful, we can apply the evolution using the
 ``--execute`` flag::
 
     $ ./manage.py evolve --execute
+    ...
     Evolution successful.
 
+... note:
+
+    The warning and prompt for confirmation will be displayed every time
+    you evolve your database. It is omitted for clarity in this and later
+    examples. If you don't want to be prompted every time, use the 
+    ``--noinput`` option.
+    
 SQL mutations
 -------------
 
@@ -245,15 +266,16 @@ can trial the evolution::
     
 Unfortunately, Django Evolution can't simulate SQL mutations, so we can't be
 sure that the mutation is correct. However, we can inspect the SQL that will
-be used using the --compile option::
+be used using the --sql option::
 
-    $ ./manage.py evolve --compile
+    $ ./manage.py evolve --sql
     ;; Compiled evolution SQL for testproject.blogette
     ALTER TABLE blogette_entry ADD COLUMN summary varchar(200);
 
 If we are satisfied that this SQL is correct, we can execute it::
 
     $ ./manage.py evolve --execute
+    ...
     Evolution successful.
 
 Meanwhile, on the production site...
@@ -285,9 +307,9 @@ applied::
     Evolution could not be simulated, possibly due to raw SQL mutations.
 
 Again, since there is a raw SQL migration involved, we will need to validate
-the migration ourself using the --compile option::
+the migration ourself using the --sql option::
 
-    $ ./manage.py evolve --compile
+    $ ./manage.py evolve --sql
     ;; Compiled evolution SQL for testproject.blogette
     ALTER TABLE blogette_author ADD COLUMN location varchar(200);
     ALTER TABLE blogette_entry ADD COLUMN summary varchar(200);
@@ -295,6 +317,7 @@ the migration ourself using the --compile option::
 If we are happy with this sequence, we can apply it::
 
     $ ./manage.py evolve --execute
+    ...
     Evolution successful.
 
 Reference
@@ -319,6 +342,75 @@ or establishing if evolution simulations have been successful.
     Adding database introspection to allow for external database modifications
     is on the plan for the future, but for the moment, stick to the contract.
 
+
+Usage of the ``evolve`` command
+-------------------------------
+
+``./manage.py evolve`` does not require any arguments or options.
+
+You may optionally provide the name of one or more applications as an argument
+to evolve. This will restrict the output of the command to those applications 
+that are named.
+
+However, you cannot specify application names if you use the ``--execute`` 
+option. Evolutions cannot be executed on a per-application basis. They must 
+be applied across the entire project, or not at all.
+
+The following options may also be used to alter the behavior of the ``evolve`` 
+command.
+
+--hint
+~~~~~~
+
+Provide a hinted list of mutations for migrating. If no application labels are
+provided, hints for the entire project will be generated. If one or more 
+application names are provided, the hints provided will be restricted to those
+applications
+
+May be combined with ``--sql`` to generate hinted mutations in SQL format.
+
+May be combined with ``--execute`` to apply the changes to the database.
+
+--sql
+~~~~~
+
+Convert an evolution from Python syntax to SQL syntax. 
+
+If ``--hint`` is specified, the hinted list of mutations will be converted. If 
+``--hint`` is not specified, the generated SQL will be for any stored 
+evolutions that have not been applied.
+
+--execute (-x)
+~~~~~~~~~~~~~~
+
+Apply evolutions to the database. 
+
+If ``--hint`` is specified, the hinted list of mutations will be applied. If 
+``--hint`` is not specified, this command will apply any unapplied stored 
+evolutions.
+
+.. note:: 
+    
+    You cannot specify an application name if you are trying to execute an
+    evolution. Evolutions must be applied across the entire database.
+
+--noinput
+~~~~~~~~~
+
+Use the ``--noinput`` option to suppress all user prompting, such as
+"Are you sure?" confirmation messages. This is useful if ``django-admin.py``
+is being executed as an unattended, automated script.
+
+--verbosity
+~~~~~~~~~~~
+
+Use ``--verbosity`` to specify the amount of notification and debug information
+that the evolve command should print to the console.
+
+	* ``0`` means no input.
+	* ``1`` means normal input (default).
+	* ``2`` means verbose input.
+    
 Built-in Mutations
 ------------------
 
@@ -361,7 +453,7 @@ to defining an mutation as an SQL file.
 Example::
 
     SQLMutation(['ALTER TABLE blogette_author ADD COLUMN location varchar(200);'])
-    
+
 Defining your own mutations
 ---------------------------
 
@@ -369,3 +461,22 @@ If you have a special set of mutation requirements, you can define your own
 mutation. All you need to do is subclass 
 ``django_evolution.mutations.BaseMutation``.
 
+More to come
+============
+
+Django-evolution isn't complete - yet. There is still lots to do, and we'd
+appreciate any help or suggestions you may have. The following are some examples
+of features that we would like to add:
+
+   1. Support for more mutation types, including:
+       a. DeleteModel - to remove a model that previously existed,
+       b. ChangeField - to change properties on a model field such as 
+          ``max_length``,
+       c. ChangeModel - to handle model constraints like ``unique_together``,
+       d. ChangeData - to handle data changes without a corresponding field 
+          definition change.
+       
+   2. Support for other database backends (SQLite, MySQL, Oracle...)
+
+   3. Support for database introspection - the ability to look at the acutal
+      database structure to determine if evolutions are required.
