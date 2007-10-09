@@ -1,0 +1,116 @@
+==========================
+Frequently Asked Questions
+==========================
+
+General Questions
+=================
+
+What is Django Evolution?
+-------------------------
+
+When you run ``./manage.py syncdb``, Django will look for any new models that
+have been defined, and add a database table to represent those new models. 
+However, if you make a change to an existing model, ``./manage.py syncdb`` will 
+not make any changes to the database. 
+
+This is where **Django Evolution** fits in. Django Evolution is an extension to 
+Django that allows you to track changes in your models over time, and to update 
+the database to reflect those changes.
+
+When will Django Evolution be merged into Django trunk?
+-------------------------------------------------------
+
+Possibly never, and certainly not before it's ready. Django Evolution is 
+still in the early stages of development; considering plans for merging to the
+Django trunk would be premature.
+
+Management
+==========
+
+Who is behind Django Evolution?
+-------------------------------
+
+Django Evolution was developed as a part time project by two software 
+engineers based in Perth, Western Australia: `Ben Khoo`_ and `Russell Keith-Magee`_.
+Russell is also a core developer of Django itself.
+    
+.. _`Ben Khoo`: mailto:khoobks@westnet.com.au
+.. _`Russell Keith-Magee`: mailto:russell@keith-magee.com
+
+Where should I ask questions about Django Evolution?
+----------------------------------------------------
+
+For the moment, any questions about Django Evolution should be directed to the 
+Django-users mailing list. If there is sufficient interest, we may open a 
+separate Django Evolution mailing list in the future.
+
+I think I've found a bug! What should I do?
+-------------------------------------------
+
+Django Evolution has a `bug tracker`_. Please lodge your issue there.
+
+.. _`bug tracker`: http://code.google.com/p/django-evolution/issues/list
+
+Design
+======
+
+Why do you generate signatures based on the model, rather than introspecting the database?
+------------------------------------------------------------------------------------------
+
+There are two arguments for using model-based signatures rather than database 
+introspection: One is practical; the other is philosophical.
+
+The practical argument is that introspection is _much_ harder to do
+properly. To prove the point: ``inspectdb`` has been in Django since
+the beginning, and it still doesn't work right 100% of the time. 
+Introspection of fields with custom column names or custom field types
+will always be very difficult to resolve. By using model-based signatures,
+we always have access to all the properties that Django considers significant,
+in a format directly relevant to Django - as a result, it was possible to 
+get model-based signatures working with pretty much 100% accuracy in 
+relatively short order.
+
+The philosophical argument is that by making the model the canonical
+reference point (rather than the database) it puts the emphasis on
+Django as the centre of the process, and discourages external
+modification. This has the side effect of encouraging users to store
+(which is to say *document*) all the changes they make to the database, 
+rather than just poking the schema as they see fit.
+
+This also has the advantage of being consistent with general Django
+philosophy - for example, in default usage, you write a Django model,
+and Django creates the tables. You *can* manually create the tables if
+you want, and you *can* manually tweak the tables if you need to - but
+if you do, Django doesn't guarantee that that anything will work as
+expected. Django provides initial sql hooks that implicitly encoure
+you to store/document any external modifications. Django doesn't go
+out of its way to make life difficult in this regard, but the core
+design of Django isn't going to change fundamentally in order to
+accommodate externalities.
+
+Contributing code
+=================
+
+How can I get started contributing code to Django-Evolution?
+------------------------------------------------------------
+
+Thanks for asking! If you're interested in contributing to Django-Evolution, 
+please send a private email to Ben or Russell. However, be advised that if you
+you want your request to be taken seriously, you need to have a track record
+of producing high quality patches. 
+
+I submitted a bug fix in the ticket system several weeks ago. Why are you ignoring my patch?
+--------------------------------------------------------------------------------------------
+
+Don't worry: We're not ignoring you!
+
+It's important to understand there is a difference between "a ticket is being
+ignored" and "a ticket has not been attended to yet." Django Evolution is 
+a volunteer project, and the core developers may sometimes get distracted by
+other things; if this happens, a ticket may sit unattended for a while. Don't
+worry - we'll get to your issue eventually. 
+
+Besides, if your feature request stands no chance of inclusion in Django Evolution, 
+we won't ignore it -- we'll just close the ticket. So if your ticket is still
+open, it doesn't mean we're ignoring you; it just means we haven't had time to
+look at it yet.
