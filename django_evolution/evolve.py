@@ -34,7 +34,7 @@ def get_mutations(app, from_version, current_app_sig, target_app_sig):
 
     mutations = []    
     directory_name = os.path.dirname(evolution_module.__file__)
-    for migration_name in sequence:
+    for migration_name in sequence:        
         sql_file_name = os.path.join(directory_name, migration_name+'.sql')
         if os.path.exists(sql_file_name):
             sql = []
@@ -56,11 +56,9 @@ def simulate_mutations(app, mutations, current_evolution_sig, target_app_sig):
     simulated_app_sig = copy.deepcopy(current_evolution_sig)
 
     for mutation in mutations:
-        mutation.pre_simulate()
         mutation.simulate(simulated_app_sig)
-        mutation.post_simulate()
 
-    diff = Diff(app, simulated_app_sig, target_app_sig)
+    diff = Diff(simulated_app_sig, target_app_sig)
     if not diff.is_empty():
         raise SimulationFailure(diff)
 
@@ -68,7 +66,5 @@ def compile_mutations(mutations, current_app_sig):
     "Convert a list of mutations into the equivalent SQL"
     sql_statements = []
     for mutation in mutations:
-        mutation.pre_mutate(current_app_sig)
         sql_statements.extend(mutation.mutate(current_app_sig))
-        mutation.post_mutate()
     return sql_statements

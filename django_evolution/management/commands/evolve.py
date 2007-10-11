@@ -77,7 +77,7 @@ class Command(BaseCommand):
                     last_evolution_sig = pickle.loads(str(last_evolution.signature))
                     
                     if hint:
-                        diff = Diff(app, last_evolution_sig, app_sig)
+                        diff = Diff(last_evolution_sig, app_sig)
                         mutations = diff.evolution()
                     else:
                         try:
@@ -124,7 +124,6 @@ class Command(BaseCommand):
                         else:
                             print '----- Evolution for %s' % app_name
                             print 'from django_evoluton.mutation import *'
-                            print 'from %s import *' % app_name
                             print 
                             print 'MUTATIONS = ['
                             print '   ',
@@ -184,7 +183,8 @@ Type 'yes' to continue, or 'no' to cancel: """ % settings.DATABASE_NAME)
             elif not compile_sql:
                 if verbosity > 0:
                     if simulated:
-                        print "Trial evolution successful. Run './manage.py evolve --execute' to apply evolution."
+                        print "Trial evolution successful."
+                        print "Run './manage.py evolve --execute' to apply evolution."
                     else:
                         print self.style.NOTICE('Evolution could not be simulated, possibly due to raw SQL mutations')
         else:

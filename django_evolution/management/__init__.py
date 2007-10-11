@@ -41,7 +41,7 @@ def evolution(app, created_models, verbosity=1):
             print style.NOTICE('Models in %s have changed - an evolution is required' % app_name)
             if verbosity > 1:
                 old_app_sig = pickle.loads(str(last_evolution.signature))
-                print Diff(app, old_app_sig, app_sig)
+                print Diff(old_app_sig, app_sig)
         else:
             if verbosity > 1:
                 print "No evolution required for application %s" % app_name
