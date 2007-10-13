@@ -91,7 +91,7 @@ class DeleteField(BaseMutation):
         if internal_type == 'ManyToManyField':
             # Deletion of the many to many field involve dropping a table
             if field_sig.has_key('db_table'):
-                m2m_table = self.field_attrs['db_table']
+                m2m_table = field_sig['db_table']
             else:
                 m2m_table = '%s_%s' % (model_sig['meta']['db_table'], self.field_name)
             
