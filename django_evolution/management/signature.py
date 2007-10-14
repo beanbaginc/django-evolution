@@ -17,25 +17,10 @@ ATTRIBUTE_DEFAULTS = {
     # ManyToManyField
     'db_table': None
 }
-    
-def create_field_sig_params(internal_type, name, **kwargs):
-    field_sig = {
-        'internal_type': internal_type,
-    }
-        
-    # It is better to bail out now if the signature to be created
-    # is bad than to discover the bad signature later during a migration.
-    # if 'ManyToManyField' == internal_type:
-    #     assert kwargs.has_key('m2m_db_table') and kwargs.has_key('m2m_column_name') and kwargs.has_key('m2m_reverse_name') and kwargs.has_key('related_model_class_name')
-    # else:
-    #     assert kwargs.has_key('db_column')
-
-    field_sig.update(kwargs)
-    return field_sig
 
 def create_field_sig(field):
     field_sig = {
-        'internal_type': field.get_internal_type(),
+        'field_type': field.__class__,
     }
     # if isinstance(field, ManyToManyField):
     #     field_sig['m2m_db_table'] = field.m2m_db_table()
@@ -59,7 +44,7 @@ def create_field_sig(field):
                 
     rel = field_sig.pop('rel', None)
     if rel:
-        field_sig['related_model'] = rel.to._meta.object_name
+        field_sig['related_model'] = '.'.join([rel.to._meta.app_label, rel.to._meta.object_name])
     return field_sig
     
 def create_model_sig(model):

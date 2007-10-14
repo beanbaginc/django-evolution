@@ -3,6 +3,7 @@ from django.db.models.fields.related import *
 
 from django_evolution import EvolutionException
 from django_evolution.mutations import DeleteField, AddField
+from django_evolution.management.signature import ATTRIBUTE_DEFAULTS
 
 class Diff(object):
     """
@@ -95,14 +96,11 @@ class Diff(object):
             pass
         for model_name, change in self.changed_models.items():
             for field_name in change.get('added',[]):
-                field_sig = self.current_sig[model_name]['fields'][field_name]
-                
-                params = ['related_model_class_name', 'related_field_name',
-                    'core','max_length', 'max_digits', 'decimal_places', 'null',
-                    'blank', 'db_column', 'db_index','primary_key', 'unique', 'db_tablespace', 
-                    'related_model_class_name']
-                add_params = [(key,field_sig[key]) for key in field_sig.keys() if key in params]
-                add_params.append(('field_type', getattr(models, field_sig['internal_type'])))
+                field_sig = self.current_sig[model_name]['fields'][field_name]              
+                add_params = [(key,field_sig[key]) for key in field_sig.keys() if key in ATTRIBUTE_DEFAULTS.keys()]
+                add_params.append(('field_type', field_sig['field_type']))
+                if 'related_model' in field_sig:
+                    add_params.append(('related_model', '%s' % field_sig['related_model']))
                 mutations.append(AddField(model_name, field_name, **dict(add_params)))
             for field_name in change.get('deleted',[]):
                 mutations.append(DeleteField(model_name, field_name))

@@ -30,33 +30,35 @@ tests = r"""
 
 # You can create a model signature for a model
 >>> pprint(signature.create_model_sig(SigModel))
-{'fields': {'char_field': {'max_length': 20, 'internal_type': 'CharField'},
+{'fields': {'char_field': {'field_type': <class 'django.db.models.fields.CharField'>,
+                           'max_length': 20},
             'dec_field': {'decimal_places': 4,
-                          'internal_type': 'DecimalField',
+                          'field_type': <class 'django.db.models.fields.DecimalField'>,
                           'max_digits': 10},
-            'id': {'internal_type': 'AutoField', 'primary_key': True},
+            'id': {'field_type': <class 'django.db.models.fields.AutoField'>,
+                   'primary_key': True},
             'id_card': {'db_index': True,
-                        'internal_type': 'IntegerField',
+                        'field_type': <class 'django.db.models.fields.IntegerField'>,
                         'unique': True},
-            'int_field': {'internal_type': 'IntegerField'},
+            'int_field': {'field_type': <class 'django.db.models.fields.IntegerField'>},
             'null_field': {'db_column': 'size_column',
-                           'internal_type': 'IntegerField',
+                           'field_type': <class 'django.db.models.fields.IntegerField'>,
                            'null': True},
-            'ref1': {'internal_type': 'ForeignKey',
-                     'related_model': 'Anchor1'},
-            'ref2': {'internal_type': 'ForeignKey',
-                     'related_model': 'Anchor1'},
+            'ref1': {'field_type': <class 'django.db.models.fields.related.ForeignKey'>,
+                     'related_model': 'django_evolution.Anchor1'},
+            'ref2': {'field_type': <class 'django.db.models.fields.related.ForeignKey'>,
+                     'related_model': 'django_evolution.Anchor1'},
             'ref3': {'db_column': 'value',
-                     'internal_type': 'ForeignKey',
-                     'related_model': 'Anchor2'},
-            'ref4': {'internal_type': 'ForeignKey',
-                     'related_model': 'SigModel'},
-            'ref5': {'internal_type': 'ManyToManyField',
-                     'related_model': 'Anchor3'},
-            'ref6': {'internal_type': 'ManyToManyField',
-                     'related_model': 'Anchor3'},
-            'ref7': {'internal_type': 'ManyToManyField',
-                     'related_model': 'SigModel'}},
+                     'field_type': <class 'django.db.models.fields.related.ForeignKey'>,
+                     'related_model': 'django_evolution.Anchor2'},
+            'ref4': {'field_type': <class 'django.db.models.fields.related.ForeignKey'>,
+                     'related_model': 'django_evolution.SigModel'},
+            'ref5': {'field_type': <class 'django.db.models.fields.related.ManyToManyField'>,
+                     'related_model': 'django_evolution.Anchor3'},
+            'ref6': {'field_type': <class 'django.db.models.fields.related.ManyToManyField'>,
+                     'related_model': 'django_evolution.Anchor3'},
+            'ref7': {'field_type': <class 'django.db.models.fields.related.ManyToManyField'>,
+                     'related_model': 'django_evolution.SigModel'}},
  'meta': {'db_table': 'django_evolution_sigmodel',
           'db_tablespace': None,
           'pk_column': 'id',
@@ -108,7 +110,7 @@ False
 >>> len(d.evolution())
 1
 >>> print [str(e) for e in d.evolution()]
-["AddField('TestModel', 'date_of_birth', 'models.DateField')"]
+["AddField('TestModel', 'date_of_birth', models.DateField)"]
 
 # Deleting a field gives a non-empty diff
 >>> class DeleteFieldModel(models.Model):
@@ -145,6 +147,6 @@ False
 >>> len(d.evolution())
 2
 >>> print [str(e) for e in d.evolution()]
-["AddField('TestModel', 'full_name', 'models.CharField', max_length=20)", "DeleteField('TestModel', 'name')"]
+["AddField('TestModel', 'full_name', models.CharField, max_length=20)", "DeleteField('TestModel', 'name')"]
     
 """

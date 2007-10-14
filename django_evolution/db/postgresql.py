@@ -70,4 +70,4 @@ def add_table(app_sig, model_tablespace, field_tablespace,
     
 def add_column(signature, table_name, column_name, db_type):
     params = (table_name, column_name, db_type)
-    return ['ALTER TABLE %s ADD COLUMN %s %s;'%params]
+    return ['ALTER TABLE %s ADD COLUMN %s %s;' % params]
