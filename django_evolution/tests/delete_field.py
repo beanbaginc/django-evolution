@@ -66,31 +66,32 @@ tests = r"""
 # TODO: 1) Deleting of Primary Keys results in an AddField and Delete Field combination. This is wrong?
 #       2) AddField implementation is incomplete so I can't complete the test.
 # -- BK
-# >>> class PrimaryKeyModel(models.Model):
-# ...     char_field = models.CharField(max_length=20)
-# ...     int_field = models.IntegerField()
-# ...     int_field2 = models.IntegerField(db_column='non-default_db_column')
-# ...     int_field3 = models.IntegerField(unique=True)
-# ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
-# ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
-# ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
+>>> class PrimaryKeyModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     int_field2 = models.IntegerField(db_column='non-default_db_column')
+...     int_field3 = models.IntegerField(unique=True)
+...     fk_field1 = models.ForeignKey(DeleteAnchor1)
+...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
+...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 
-# 
-# >>> primary_key_sig = {
-# ...     'TestModel': signature.create_model_sig(PrimaryKeyModel), 
-# ...     '__label__': 'testapp',
-# ...     '__version__': 1,
-# ... }
-# 
-# >>> d = diff.Diff(base_sig, primary_key_sig)
-# >>> print [str(e) for e in d.evolution()]
-# ["AddField('TestModel', 'id', 'models.AutoField', primary_key=True)", "DeleteField('TestModel', 'my_id')"]
-# 
-# >>> sql_statements = []
-# >>> original_sig = copy.deepcopy(base_sig)
-# >>> for mutation in d.evolution():
-# ...     sql_statements.extend(mutation.mutate(original_sig))
-# >>> print sql_statements
+
+>>> primary_key_sig = {
+...     'TestModel': signature.create_model_sig(PrimaryKeyModel), 
+...     '__label__': 'testapp',
+...     '__version__': 1,
+... }
+
+>>> d = diff.Diff(base_sig, primary_key_sig)
+>>> print [str(e) for e in d.evolution()]
+["AddField('TestModel', 'id', models.AutoField, primary_key=True)", "DeleteField('TestModel', 'my_id')"]
+
+>>> sql_statements = []
+>>> original_sig = copy.deepcopy(base_sig)
+>>> for mutation in d.evolution():
+...     sql_statements.extend(mutation.mutate(original_sig))
+>>> print sql_statements
+['ALTER TABLE django_evolution_deletebasemodel ADD COLUMN id serial;', 'ALTER TABLE django_evolution_deletebasemodel DROP COLUMN my_id CASCADE;']
 
 # Deleting a default named column
 >>> class DefaultNamedColumnModel(models.Model):
