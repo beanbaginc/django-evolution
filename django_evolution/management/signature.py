@@ -53,7 +53,7 @@ def create_model_sig(model):
             'unique_together': model._meta.unique_together,
             'db_tablespace': model._meta.db_tablespace,
             'db_table': model._meta.db_table,
-            'pk_column': model._meta.pk.column,# ??
+            'pk_column': model._meta.pk.column,
         },
         'fields': {},
     }

@@ -207,10 +207,7 @@ class AddField(BaseMutation):
 #            rel_fk_db_type = getattr(models,rel_field_sig['field_type'])(**rel_field_sig).db_type()
         
         rel_db_table = rel_model_sig['meta']['db_table']
-        
-        # FIXME - need to get the remote model PK. For the moment, assume 'id'
-        #rel_pk_column = rel_model_sig['meta']['pk_column']
-        rel_pk_column = 'id'
+        rel_pk_column = rel_model_sig['meta']['pk_column']
 
         sql_statements = evo_module.add_table(app_sig, model_tablespace, field_tablespace,
                                               m2m_table, auto_field_db_type,
