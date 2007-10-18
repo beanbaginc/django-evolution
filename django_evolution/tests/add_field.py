@@ -16,8 +16,8 @@ tests = r"""
 >>> from django.db import models
 >>> from django_evolution.mutations import AddField
 >>> from django.db import models
->>> from django_evolution.management import signature
->>> from django_evolution.management import diff
+>>> from django_evolution.tests.utils import test_app_sig
+>>> from django_evolution.management.diff import Diff
 >>> from django_evolution import models as test_app
 >>> from pprint import pprint
 >>> import copy
@@ -29,11 +29,7 @@ tests = r"""
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 
->>> base_sig = {
-...     'TestModel': signature.create_model_sig(AddBaseModel), 
-...     '__label__': 'testapp',
-...     '__version__': 1,
-... }
+>>> base_sig = test_app_sig(AddBaseModel)
  
 >>> class CustomTableModel(models.Model):
 ...     value = models.IntegerField()
@@ -41,12 +37,7 @@ tests = r"""
 ...     class Meta:
 ...         db_table = 'custom_table_name'
 
->>> custom_table_sig = {
-...     'CustomTableModel': signature.create_model_sig(CustomTableModel), 
-...     '__label__': 'testapp',
-...     '__version__': 1,
-... }
-
+>>> custom_table_sig = test_app_sig(CustomTableModel)
 
 # Field resulting in a new database column.
 >>> class AddDatabaseColumnModel(models.Model):
@@ -54,22 +45,19 @@ tests = r"""
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField()
 
->>> database_column_sig = {
-...     'TestModel': signature.create_model_sig(AddDatabaseColumnModel), 
-...     '__label__': 'testapp',
-...     '__version__': 1,
-... }
-
->>> d = diff.Diff(base_sig, database_column_sig)
->>> print [str(e) for e in d.evolution()]
+>>> new_sig = test_app_sig(AddDatabaseColumnModel)
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['testapp']]
 ["AddField('TestModel', 'added_field', models.IntegerField)"]
 
->>> sql_statements = []
->>> original_sig = copy.deepcopy(base_sig)
->>> for mutation in d.evolution():
-...     sql_statements.extend(mutation.mutate(original_sig))
->>> print sql_statements
+>>> test_sig = copy.deepcopy(base_sig)
+>>> for mutation in d.evolution()['testapp']:
+...     print mutation.mutate('testapp', test_sig)
+...     mutation.simulate('testapp', test_sig)
 ['ALTER TABLE django_evolution_addbasemodel ADD COLUMN added_field integer;']
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
 
 # # Field resulting in a new database column with a non-default name.
 # >>> class NonDefaultDatabaseColumnModel(models.Model):
@@ -77,26 +65,22 @@ tests = r"""
 # ...     int_field = models.IntegerField()
 # ...     add_field = models.IntegerField(db_column='non-default_column')
 # 
-# >>> non_default_database_column_sig = {
-# ...     'TestModel': signature.create_model_sig(NonDefaultDatabaseColumnModel), 
-# ...     '__label__': 'testapp',
-# ...     '__version__': 1,
-# ... }
-# 
-# >>> d = diff.Diff(base_sig, non_default_database_column_sig)
-# >>> print [str(e) for e in d.evolution()]
+# >>> new_sig = test_app_sig(NonDefaultDatabaseColumnModel)
+# >>> d = Diff(base_sig, new_sig)
+# >>> print [str(e) for e in d.evolution()['testapp']]
 # ["AddField('TestModel', 'add_field', models.IntegerField, db_column='non-default_column')"]
 # 
-# >>> sql_statements = []
-# >>> original_sig = copy.deepcopy(base_sig)
-# >>> for mutation in d.evolution():
-# ...     sql_statements.extend(mutation.mutate(original_sig))
-# >>> print sql_statements
+# >>> test_sig = copy.deepcopy(base_sig)
+# >>> for mutation in d.evolution()['testapp']:
+# ...     print mutation.mutate('testapp', test_sig)
+# ...     mutation.simulate('testapp', test_sig)
 # This should be
 # ['ALTER TABLE django_evolution_addbasemodel ADD COLUMN non-default_column integer;']
 # instead of
 # ['ALTER TABLE django_evolution_addbasemodel ADD COLUMN add_field integer;']
-
+# 
+# >>> Diff(test_sig, new_sig).is_empty()
+# True
 
 # Field resulting in a new database column in a table with a non-default name.
 >>> class AddDatabaseColumnCustomTableModel(models.Model):
@@ -107,45 +91,40 @@ tests = r"""
 ...         db_table = 'custom_table_name'
 
 
->>> database_column_custom_table_sig = {
-...     'CustomTableModel': signature.create_model_sig(AddDatabaseColumnCustomTableModel), 
-...     '__label__': 'testapp',
-...     '__version__': 1,
-... }
+>>> new_sig = test_app_sig(AddDatabaseColumnCustomTableModel)
+>>> d = Diff(custom_table_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['testapp']]
+["AddField('TestModel', 'added_field', models.IntegerField)"]
 
->>> d = diff.Diff(custom_table_sig, database_column_custom_table_sig)
->>> print [str(e) for e in d.evolution()]
-["AddField('CustomTableModel', 'added_field', models.IntegerField)"]
-
->>> sql_statements = []
->>> original_sig = copy.deepcopy(custom_table_sig)
->>> for mutation in d.evolution():
-...     sql_statements.extend(mutation.mutate(original_sig))
->>> print sql_statements
+>>> test_sig = copy.deepcopy(custom_table_sig)
+>>> for mutation in d.evolution()['testapp']:
+...     print mutation.mutate('testapp', test_sig)
+...     mutation.simulate('testapp', test_sig)
 ['ALTER TABLE custom_table_name ADD COLUMN added_field integer;']
 
-# Primary key field.
->>> class AddPrimaryKeyModel(models.Model):
-...     my_primary_key = models.AutoField(primary_key=True)
-...     char_field = models.CharField(max_length=20)
-...     int_field = models.IntegerField()
+>>> Diff(test_sig, new_sig).is_empty()
+True
 
->>> primary_key_sig = {
-...     'TestModel': signature.create_model_sig(AddPrimaryKeyModel), 
-...     '__label__': 'testapp',
-...     '__version__': 1,
-... }
-
->>> d = diff.Diff(base_sig, primary_key_sig)
->>> print [str(e) for e in d.evolution()]
-["AddField('TestModel', 'my_primary_key', models.AutoField, primary_key=True)", "DeleteField('TestModel', 'id')"]
-
->>> sql_statements = []
->>> original_sig = copy.deepcopy(base_sig)
->>> for mutation in d.evolution():
-...     sql_statements.extend(mutation.mutate(original_sig))
->>> print sql_statements
-['ALTER TABLE django_evolution_addbasemodel ADD COLUMN my_primary_key serial;', 'ALTER TABLE django_evolution_addbasemodel DROP COLUMN id CASCADE;']
+# # Primary key field.
+# RKM: prohibited by simulation
+# >>> class AddPrimaryKeyModel(models.Model):
+# ...     my_primary_key = models.AutoField(primary_key=True)
+# ...     char_field = models.CharField(max_length=20)
+# ...     int_field = models.IntegerField()
+# 
+# >>> new_sig = test_app_sig(AddPrimaryKeyModel)
+# >>> d = Diff(base_sig, new_sig)
+# >>> print [str(e) for e in d.evolution()['testapp']]
+# ["AddField('TestModel', 'my_primary_key', models.AutoField, primary_key=True)", "DeleteField('TestModel', 'id')"]
+# 
+# >>> test_sig = copy.deepcopy(base_sig)
+# >>> for mutation in d.evolution()['testapp']:
+# ...     print mutation.mutate('testapp', test_sig)
+# ...     mutation.simulate('testapp', test_sig)
+# ['ALTER TABLE django_evolution_addbasemodel ADD COLUMN my_primary_key serial;', 'ALTER TABLE django_evolution_addbasemodel DROP COLUMN id CASCADE;']
+# 
+# >>> Diff(test_sig, new_sig).is_empty()
+# True
 
 # # Indexed field
 # >>> class AddIndexedDatabaseColumnModel(models.Model):
@@ -153,23 +132,20 @@ tests = r"""
 # ...     int_field = models.IntegerField()
 # ...     add_field = models.IntegerField(db_index=True)
 # 
-# >>> indexed_database_column_sig = {
-# ...     'TestModel': signature.create_model_sig(AddIndexedDatabaseColumnModel), 
-# ...     '__label__': 'testapp',
-# ...     '__version__': 1,
-# ... }
-# 
-# >>> d = diff.Diff(base_sig, indexed_database_column_sig)
-# >>> print [str(e) for e in d.evolution()]
+# >>> new_sig = test_app_sig(AddIndexedDatabaseColumnModel)
+# >>> d = Diff(base_sig, new_sig)
+# >>> print [str(e) for e in d.evolution()['testapp']]
 # ["AddField('TestModel', 'add_field', models.IntegerField, db_index=True)"]
 # 
-# >>> sql_statements = []
-# >>> original_sig = copy.deepcopy(base_sig)
-# >>> for mutation in d.evolution():
-# ...     sql_statements.extend(mutation.mutate(original_sig))
-# >>> print sql_statements
+# >>> test_sig = copy.deepcopy(base_sig)
+# >>> for mutation in d.evolution()['testapp']:
+# ...     print mutation.mutate('testapp', test_sig)
+# ...     mutation.simulate('testapp', test_sig)
 # There should be a create index statement here.
 # ['ALTER TABLE django_evolution_addbasemodel ADD COLUMN add_field integer;']
+# 
+# >>> Diff(test_sig, new_sig).is_empty()
+# True
 
 # # Unique field.
 # >>> class AddUniqueDatabaseColumnModel(models.Model):
@@ -177,24 +153,21 @@ tests = r"""
 # ...     int_field = models.IntegerField()
 # ...     added_field = models.IntegerField(unique=True)
 # 
-# 
-# >>> unique_database_column_sig = {
-# ...     'TestModel': signature.create_model_sig(AddUniqueDatabaseColumnModel), 
-# ...     '__label__': 'testapp',
-# ...     '__version__': 1,
-# ... }
-# 
-# >>> d = diff.Diff(base_sig, unique_database_column_sig)
-# >>> print [str(e) for e in d.evolution()]
+# >>> new_sig = test_app_sig(AddUniqueDatabaseColumnModel)
+# >>> d = Diff(base_sig, new_sig)
+# >>> print [str(e) for e in d.evolution()['testapp']]
 # ["AddField('TestModel', 'added_field', models.IntegerField, unique=True)"]
 # 
-# >>> sql_statements = []
-# >>> original_sig = copy.deepcopy(base_sig)
-# >>> for mutation in d.evolution():
-# ...     sql_statements.extend(mutation.mutate(original_sig))
-# >>> print sql_statements
+# >>> test_sig = copy.deepcopy(base_sig)
+# >>> for mutation in d.evolution()['testapp']:
+# ...     print mutation.mutate('testapp', test_sig)
+# ...     mutation.simulate('testapp', test_sig)
 # There should be some words in the following statement about the uniqueness constraint of the field.
 # ['ALTER TABLE django_evolution_addbasemodel ADD COLUMN added_field integer;']
+# 
+# >>> Diff(test_sig, new_sig).is_empty()
+# True
+
 
 # 
 # Foreign Key field.

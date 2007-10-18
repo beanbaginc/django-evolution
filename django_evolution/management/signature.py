@@ -1,4 +1,4 @@
-from django.db.models import get_models
+from django.db.models import get_apps, get_models
 from django.db.models.fields.related import *
 
 ATTRIBUTE_DEFAULTS = {
@@ -68,11 +68,18 @@ def create_app_sig(app):
     Only those attributes that are interesting from a schema-evolution
     perspective are included.
     """
-    app_sig = {
-        '__version__': 1,
-        '__label__': app.__name__.split('.')[-2]
-    }
+    app_sig = {}
     for model in get_models(app):
         app_sig[model._meta.object_name] = create_model_sig(model)
     return app_sig    
 
+def create_project_sig():
+    """
+    Create a dictionary representation of the apps in a given project.
+    """
+    proj_sig = {
+        '__version__': 1,
+    }
+    for app in get_apps():
+        proj_sig[app.__name__.split('.')[-2]] = create_app_sig(app)
+    return proj_sig

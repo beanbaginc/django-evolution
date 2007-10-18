@@ -2,8 +2,8 @@
 tests = r"""
 >>> from django.db import models
 >>> from django_evolution.management import signature
->>> from django_evolution.management import diff
->>> from django_evolution import models as test_app
+>>> from django_evolution.management.diff import Diff
+>>> from django_evolution.tests.utils import test_app_sig
 >>> from pprint import pprint
 
 # First, a model that has one of everything so we can validate all cases for a signature
@@ -69,28 +69,20 @@ tests = r"""
 ...     name = models.CharField(max_length=20)
 ...     age = models.IntegerField()
 
->>> base_sig = {
-...     'TestModel': signature.create_model_sig(BaseModel), 
-...     '__label__': 'testapp',
-...     '__version__': 1,
-... }
+
+>>> base_sig = test_app_sig(BaseModel)
 
 # An identical model gives an empty Diff
 >>> class TestModel(models.Model):
 ...     name = models.CharField(max_length=20)
 ...     age = models.IntegerField()
 
->>> test_sig = {
-...     'TestModel': signature.create_model_sig(TestModel), 
-...     '__label__': 'testapp',
-...     '__version__': 1,
-... }
-
->>> d = diff.Diff(base_sig, test_sig)
+>>> test_sig = test_app_sig(TestModel)
+>>> d = Diff(base_sig, test_sig)
 >>> d.is_empty()
 True
 >>> d.evolution()
-[]
+{}
 
 # Adding a field gives a non-empty diff
 >>> class AddFieldModel(models.Model):
@@ -98,36 +90,22 @@ True
 ...     age = models.IntegerField()
 ...     date_of_birth = models.DateField()
 
->>> test_sig = {
-...     'TestModel': signature.create_model_sig(AddFieldModel), 
-...     '__label__': 'testapp',
-...     '__version__': 1,
-... }
-
->>> d = diff.Diff(base_sig, test_sig)
+>>> test_sig = test_app_sig(AddFieldModel)
+>>> d = Diff(base_sig, test_sig)
 >>> d.is_empty()
 False
->>> len(d.evolution())
-1
->>> print [str(e) for e in d.evolution()]
+>>> print [str(e) for e in d.evolution()['testapp']]
 ["AddField('TestModel', 'date_of_birth', models.DateField)"]
 
 # Deleting a field gives a non-empty diff
 >>> class DeleteFieldModel(models.Model):
 ...     name = models.CharField(max_length=20)
 
->>> test_sig = {
-...     'TestModel': signature.create_model_sig(DeleteFieldModel), 
-...     '__label__': 'testapp',
-...     '__version__': 1,
-... }
-
->>> d = diff.Diff(base_sig, test_sig)
+>>> test_sig = test_app_sig(DeleteFieldModel)
+>>> d = Diff(base_sig, test_sig)
 >>> d.is_empty()
 False
->>> len(d.evolution())
-1
->>> print [str(e) for e in d.evolution()]
+>>> print [str(e) for e in d.evolution()['testapp']]
 ["DeleteField('TestModel', 'age')"]
 
 # Renaming a field is caught as 2 diffs
@@ -136,17 +114,11 @@ False
 ...     full_name = models.CharField(max_length=20)
 ...     age = models.IntegerField()
 
->>> test_sig = {
-...     'TestModel': signature.create_model_sig(RenameFieldModel), 
-...     '__label__': 'testapp',
-...     '__version__': 1,
-... }
->>> d = diff.Diff(base_sig, test_sig)
+>>> test_sig = test_app_sig(RenameFieldModel)
+>>> d = Diff(base_sig, test_sig)
 >>> d.is_empty()
 False
->>> len(d.evolution())
-2
->>> print [str(e) for e in d.evolution()]
+>>> print [str(e) for e in d.evolution()['testapp']]
 ["AddField('TestModel', 'full_name', models.CharField, max_length=20)", "DeleteField('TestModel', 'name')"]
     
 """

@@ -10,7 +10,7 @@ from django_evolution import EvolutionException, CannotSimulate, SimulationFailu
 from django_evolution.management.diff import Diff
 from django_evolution.mutations import SQLMutation
 
-def get_mutations(app, from_version, current_app_sig, target_app_sig):
+def get_mutations(app, from_version):
     """
     Obtain the list of mutations required to transform an application from 
     the specified version. A simulated evolution is performed to ensure
@@ -47,24 +47,24 @@ def get_mutations(app, from_version, current_app_sig, target_app_sig):
                 module_name = [evolution_module.__name__,migration_name]
                 migration_module = __import__('.'.join(module_name),{},{},[module_name]);
                 mutations.extend(migration_module.MUTATIONS)
-            except:
+            except ImportError, e:
                 raise EvolutionException('Error: Failed to find an SQL or Python migration named %s' % migration_name)
                                 
     return mutations            
 
-def simulate_mutations(app, mutations, current_evolution_sig, target_app_sig):
-    simulated_app_sig = copy.deepcopy(current_evolution_sig)
+def simulate_mutations(app_label, mutations, current_proj_sig, target_proj_sig):
+    simulated_proj_sig = copy.deepcopy(current_proj_sig)
 
     for mutation in mutations:
-        mutation.simulate(simulated_app_sig)
+        mutation.simulate(app_label, simulated_proj_sig)
 
-    diff = Diff(simulated_app_sig, target_app_sig)
+    diff = Diff(simulated_proj_sig, target_proj_sig)
     if not diff.is_empty():
         raise SimulationFailure(diff)
 
-def compile_mutations(mutations, current_app_sig):
+def compile_mutations(app_label, mutations, current_proj_sig):
     "Convert a list of mutations into the equivalent SQL"
     sql_statements = []
     for mutation in mutations:
-        sql_statements.extend(mutation.mutate(current_app_sig))
+        sql_statements.extend(mutation.mutate(app_label, current_proj_sig))
     return sql_statements

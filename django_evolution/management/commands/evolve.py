@@ -14,7 +14,7 @@ from django.db import connection,transaction
 
 from django_evolution import EvolutionException, CannotSimulate, SimulationFailure
 from django_evolution.models import Evolution
-from django_evolution.management.signature import create_app_sig
+from django_evolution.management.signature import create_project_sig
 from django_evolution.management.diff import Diff
 from django_evolution.evolve import get_mutations, simulate_mutations, compile_mutations
 
@@ -61,82 +61,85 @@ class Command(BaseCommand):
         evolution_required = False
         all_sql = []
         new_evolutions = []
-        for app in app_list:
-            app_name = '.'.join(app.__name__.split('.')[:-1])
-            app_sig = create_app_sig(app)
-            signature = pickle.dumps(app_sig)
         
-            evolutions = Evolution.objects.filter(app_name=app_name)
-            if len(evolutions) > 0:
-                last_evolution = evolutions[0]
-                if last_evolution.signature != signature:
-                    # Migration Required. Evolve the model.
-                    evolution_required = True
-                    if verbosity > 1:
-                        print 'Application %s requires evolution' % app_name
-                    last_evolution_sig = pickle.loads(str(last_evolution.signature))
-                    
-                    if hint:
-                        diff = Diff(last_evolution_sig, app_sig)
-                        mutations = diff.evolution()
-                    else:
-                        try:
-                            mutations = get_mutations(app, last_evolution.version, 
-                                                      last_evolution_sig, app_sig)
-                        except EvolutionException, e:
-                            print self.style.ERROR(e)
-                            sys.exit(1)
-                                                  
-                    # Simulate the operation of the mutations
-                    try:
-                        simulate_mutations(app, mutations, last_evolution_sig, app_sig)
-                    except SimulationFailure, failure:
-                        print self.style.ERROR('Simulated evolution of application %s did not succeed:' % failure.diff.app_label)
-                        print failure.diff
-                        sys.exit(1)
-                    except CannotSimulate:
-                        simulated = False
-                    
-                    # Compile the mutations into SQL
-                    sql = compile_mutations(mutations, last_evolution_sig)
-                    all_sql.extend(sql)
-                    if execute:
-                        # Create (BUT DONT SAVE) the new evolution table entry
-                        if hint:
-                            # Hinted evolutions are stored as temporary versions
-                            version = None
-                        else:
-                            # If not hinted, we need to find and increment the version number
-                            full_evolutions = Evolution.objects.filter(app_name=app_name, 
-                                                                       version__isnull=False)
-                            last_full_evolution = full_evolutions[0]
-                            version = last_full_evolution.version + 1 
-                        new_evolution = Evolution(app_name=app_name,
-                                                  version=version,
-                                                  signature=signature)
-                        new_evolutions.append(new_evolution)                     
-                    else:
-                        
-                        if compile_sql:
-                            print ';; Compiled evolution SQL for %s' % app_name 
-                            for s in sql:
-                                print s                            
-                        else:
-                            print '----- Evolution for %s' % app_name
-                            print 'from django_evolution.mutation import *'
-                            print 'from django.db import models'
-                            print 
-                            print 'MUTATIONS = ['
-                            print '   ',
-                            print ',\n    '.join([str(m) for m in mutations])
-                            print ']'
-                            print '----------------------'
+        current_proj_sig = create_project_sig()
+        signature = pickle.dumps(current_proj_sig)
+        
+        try:
+            latest_evolution = Evolution.objects.latest('when')
+            if latest_evolution.signature != signature:
+                # Migration Required. Evolve the model.
+                evolution_required = True
+                if verbosity > 1:
+                    print 'Project requires evolution'
+                latest_evolution_sig = pickle.loads(str(latest_evolution.signature))
+                
+                if hint:
+                    diff = Diff(latest_evolution_sig, current_proj_sig)
+                    mutations = diff.evolution()
                 else:
-                    if verbosity > 1:
-                        print 'Application %s is up to date' % app_name
+                    try:
+                        mutations = get_mutations(app, latest_evolution.version)
+                    except EvolutionException, e:
+                        print self.style.ERROR(e)
+                        sys.exit(1)
+                                                  
+                # Simulate the operation of the mutations
+                try:
+                    for app_label,app_sig in current_proj_sig.items():
+                        if app_label in mutations:
+                            simulate_mutations(app_label, mutations[app_label], latest_evolution_sig, current_proj_sig)
+                except SimulationFailure, failure:
+                    print self.style.ERROR('Simulated evolution of application %s did not succeed:' % failure.diff.app_label)
+                    print failure.diff
+                    sys.exit(1)
+                except CannotSimulate:
+                    simulated = False
+                    
+                # Compile the mutations into SQL
+                
+                for app_label in current_proj_sig:
+                    if app_label in mutations:
+                        all_sql.extend(compile_mutations(app_label, mutations[app_label], latest_evolution_sig))
+                if execute:
+                    # Create (BUT DONT SAVE) the new evolution table entry
+                    if hint:
+                        # Hinted evolutions are stored as temporary versions
+                        version = None
+                    else:
+                        # If not hinted, we need to find and increment the version number
+                        full_evolutions = Evolution.objects.filter(version__isnull=False)
+                        last_full_evolution = full_evolutions[0]
+                        version = last_full_evolution.version + 1 
+                    new_evolution = Evolution(version=version,
+                                              signature=signature)
+                    new_evolutions.append(new_evolution)                     
+                else:
+                    
+                    if compile_sql:
+                        for app_label in current_proj_sig:
+                            if app_label in mutations:
+                                print ';; Compiled evolution SQL for %s' % app_label
+                                for s in all_sql:
+                                    print s                            
+                    else:
+                        for app_label in current_proj_sig:
+                            if app_label in mutations:
+                                print '----- Evolution for %s' % app_label
+                                print 'from django_evolution.mutation import *'
+                                print 'from django.db import models'
+                                print 
+                                print 'MUTATIONS = ['
+                                print '   ',
+                                print ',\n    '.join([str(m) for m in mutations[app_label]])
+                                print ']'
+                                print '----------------------'
             else:
-                print self.style.ERROR("Can't evolve yet. Need to set a baseline for %s." % app_name)
-                sys.exit(1)
+                if verbosity > 1:
+                    print 'Application %s is up to date' % app_name
+        except Evolution.DoesNotExist:
+            print self.style.ERROR("Can't evolve yet. Need to set an evolution baseline.")
+            sys.exit(1)
 
         if evolution_required:
             if execute:

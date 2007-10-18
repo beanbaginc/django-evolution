@@ -6,8 +6,6 @@ from django.db import models
 from django_evolution.management.signature import ATTRIBUTE_DEFAULTS
 from django_evolution import EvolutionException, CannotSimulate
 
-import copy
-
 FK_INTEGER_TYPES = ['AutoField', 'PositiveIntegerField', 'PositiveSmallIntegerField']
 
 def get_evolution_module():
@@ -18,14 +16,14 @@ class BaseMutation:
     def __init__(self):
         pass
         
-    def mutate(self, app_sig):
+    def mutate(self, app_label, proj_sig):
         """
         Performs the mutation on the database. Database changes will occur 
         after this function is invoked.
         """
         raise NotImplementedError()
     
-    def simulate(self, app_sig):
+    def simulate(self, app_label, proj_sig):
         """
         Performs a simulation of the mutation to be performed. The purpose of
         the simulate function is to ensure that after all mutations have occured
@@ -43,14 +41,14 @@ class SQLMutation(BaseMutation):
     def __str__(self):
         return "SQLMutation(%s)" % self.tag
 
-    def mutate(self, app_sig):
+    def simulate(self, proj_sig):    
         "The mutation of an SQL mutation returns the raw SQL"
         return self.sql
     
-    def simulate(self, app_sig):
+    def mutate(self, proj_sig):
         "SQL mutations cannot be simulated unless an update function is provided"
         if callable(self.update_func):
-            self.update_func(app_sig)
+            self.update_func(proj_sig)
         else:
             raise CannotSimulate()
         
@@ -62,7 +60,8 @@ class DeleteField(BaseMutation):
     def __str__(self):
         return "DeleteField('%s', '%s')" % (self.model_name, self.field_name)
         
-    def simulate(self, app_sig):
+    def simulate(self, app_label, proj_sig):    
+        app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
 
         # If the field was used in the unique_together attribute, update it.
@@ -88,7 +87,8 @@ class DeleteField(BaseMutation):
         except KeyError, ke:
             print 'SIMULATE ERROR: Cannot find the field named "%s".' % self.field_name
             
-    def mutate(self, app_sig):
+    def mutate(self, app_label, proj_sig):
+        app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
         field_sig = model_sig['fields'][self.field_name]
         if field_sig['field_type'] == models.ManyToManyField:
@@ -96,8 +96,7 @@ class DeleteField(BaseMutation):
             if field_sig.has_key('db_table'):
                 m2m_table = field_sig['db_table']
             else:
-                m2m_table = '%s_%s' % (model_sig['meta']['db_table'], self.field_name)
-            
+                m2m_table = '%s_%s' % (model_sig['meta']['db_table'], self.field_name)    
             sql_statements = get_evolution_module().delete_table(app_sig, m2m_table)
         else:
             column_name =  field_sig.get('db_column', self.field_name)
@@ -123,20 +122,22 @@ class AddField(BaseMutation):
                 str_output.append("%s=%s" % (key,value))
         return 'AddField(' + ', '.join(str_output) + ')'
 
-    def simulate(self, app_sig):    
+    def simulate(self, app_label, proj_sig):    
+        app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]        
         model_sig['fields'][self.field_name] = {
             'field_type': self.field_type,
         }
         model_sig['fields'][self.field_name].update(self.field_attrs)
 
-    def mutate(self, app_sig):
+    def mutate(self, app_label, proj_sig):
         if self.field_type == models.ManyToManyField:
-            return self.mutate_table(app_sig)
+            return self.add_m2m_table(app_label, proj_sig)
         else:
-            return self.mutate_column(app_sig)
+            return self.add_column(app_label, proj_sig)
     
-    def mutate_column(self, app_sig):
+    def add_column(self, app_label, proj_sig):
+        app_sig = proj_sig[app_label]
         evo_module = get_evolution_module()        
         column_name =  self.field_attrs.get('db_column', self.field_name)
         model_sig = app_sig[self.model_name]
@@ -156,7 +157,8 @@ class AddField(BaseMutation):
                                                field.db_type())
         return sql_statements
 
-    def mutate_table(self, app_sig):
+    def add_m2m_table(self, app_label, proj_sig):
+        app_sig = proj_sig[app_label]
         evo_module = get_evolution_module()        
         model_sig = app_sig[self.model_name]
         if self.field_attrs.has_key('db_table'):
@@ -167,7 +169,7 @@ class AddField(BaseMutation):
         # If this is an m2m relation to self, avoid the inevitable name clash
         related_model = self.field_attrs['related_model']
         related_app_name, related_model_name = related_model.split('.')
-        if '.'.join([app_sig['__label__'], self.model_name]) == related_model:
+        if '.'.join([app_label, self.model_name]) == related_model:
             m2m_column_name = 'from_' + self.model_name.lower() + '_id'
             m2m_reverse_name = 'to_' + related_model_name.lower() + '_id'
         else:
