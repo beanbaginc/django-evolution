@@ -8,10 +8,12 @@ tests = r"""
 # Primary key field.
 # Indexed field
 # Unique field.
+# Null field
 # 
 # Foreign Key field.
 # M2M field between models with default table names.
 # M2M field between models with non-default table names.
+# M2M field between self
 
 >>> from django.db import models
 >>> from django_evolution.mutations import AddField
@@ -141,7 +143,7 @@ True
 # >>> for mutation in d.evolution()['testapp']:
 # ...     print mutation.mutate('testapp', test_sig)
 # ...     mutation.simulate('testapp', test_sig)
-# There should be a create index statement here.
+# # There should be a create index statement here.
 # ['ALTER TABLE django_evolution_addbasemodel ADD COLUMN add_field integer;']
 # 
 # >>> Diff(test_sig, new_sig).is_empty()
@@ -168,10 +170,71 @@ True
 # >>> Diff(test_sig, new_sig).is_empty()
 # True
 
-
+# # Null field
+# >>> class NullDatabaseColumnModel(models.Model):
+# ...     char_field = models.CharField(max_length=20)
+# ...     int_field = models.IntegerField()
+# ...     added_field = models.IntegerField(null=True)
 # 
+# >>> new_sig = test_app_sig(NullDatabaseColumnModel)
+# >>> d = Diff(base_sig, new_sig)
+# >>> print [str(e) for e in d.evolution()['testapp']]
+# ["AddField('TestModel', 'added_field', models.IntegerField, null=True)"]
+# 
+# >>> test_sig = copy.deepcopy(base_sig)
+# >>> for mutation in d.evolution()['testapp']:
+# ...     print mutation.mutate('testapp', test_sig)
+# ...     mutation.simulate('testapp', test_sig)
+# # Null Constraint is not enforced here.
+# ['ALTER TABLE django_evolution_addbasemodel ADD COLUMN added_field integer;']
+# 
+# >>> Diff(test_sig, new_sig).is_empty()
+# True
+
 # Foreign Key field.
-# M2M field between models with default table names.
+>>> class ForeignKeyDatabaseColumnModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     added_field = models.ForeignKey(AddAnchor1)
+
+>>> new_sig = test_app_sig(ForeignKeyDatabaseColumnModel)
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['testapp']]
+["AddField('TestModel', 'added_field', models.ForeignKey, related_model='django_evolution.AddAnchor1')"]
+
+>>> test_sig = copy.deepcopy(base_sig)
+>>> for mutation in d.evolution()['testapp']:
+...     print mutation.mutate('testapp', test_sig)
+...     mutation.simulate('testapp', test_sig)
+['ALTER TABLE django_evolution_addbasemodel ADD COLUMN added_field integer;']
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+
+# # M2M field between models with default table names.
+# >>> class AddM2MDatabaseTableModel(models.Model):
+# ...     char_field = models.CharField(max_length=20)
+# ...     int_field = models.IntegerField()
+# ...     added_field = models.ManyToManyField(AddAnchor1)
+# 
+# >>> new_sig = test_app_sig(AddM2MDatabaseTableModel)
+# >>> d = Diff(base_sig, new_sig)
+# >>> print [str(e) for e in d.evolution()['testapp']]
+# ["AddField('TestModel', 'added_field', models.ManyToManyField, related_model='django_evolution.AddAnchor1')"]
+# 
+# >>> test_sig = copy.deepcopy(base_sig)
+# >>> for mutation in d.evolution()['testapp']:
+# ...     print mutation.mutate('testapp', test_sig)
+# ...     mutation.simulate('testapp', test_sig)
+# 
+# # Simulation Failure Here.
+# #['ALTER TABLE django_evolution_addbasemodel ADD COLUMN added_field integer;']
+# 
+# >>> Diff(test_sig, new_sig).is_empty()
+# True
+
+
 # M2M field between models with non-default table names.
+# M2M field between self
 
 """
