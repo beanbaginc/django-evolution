@@ -1,3 +1,4 @@
+from django.db import connection
 
 def rename_column(signature, db_table, old_col_name, new_col_name):
     params = (db_table, old_col_name, new_col_name)
@@ -68,6 +69,32 @@ def add_table(app_sig, model_tablespace, field_tablespace,
             final_output.append(stmt)
     return final_output
     
-def add_column(signature, table_name, column_name, db_type):
-    params = (table_name, column_name, db_type)
-    return ['ALTER TABLE %s ADD COLUMN %s %s;' % params]
+def add_column(signature, table_name, column_name, db_type, primary_key, null, unique):
+    constraints = ['%sNULL' % (not null and 'NOT ' or '')]
+    if unique and (not primary_key or connection.features.allows_unique_and_pk):
+        constraints.append('UNIQUE')
+    params = (table_name, column_name, db_type,' '.join(constraints))    
+    output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
+    return output
+    
+def create_index(signature, primary_key, unique, field_tablespace, model_tablespace, table_name, column_name):
+    "Returns the CREATE INDEX SQL statements."
+    output = []
+    qn = connection.ops.quote_name
+
+    if not ((primary_key or unique) and connection.features.autoindexes_primary_keys):
+        unique = unique and 'UNIQUE ' or ''
+        tablespace = field_tablespace or model_tablespace
+        if tablespace and connection.features.supports_tablespaces:
+            tablespace_sql = ' ' + connection.ops.tablespace_sql(tablespace)
+        else:
+            tablespace_sql = ''
+        output.append(
+            'CREATE %sINDEX' % unique + ' ' + \
+            qn('%s_%s' % (table_name, column_name)) + ' ' + \
+            'ON' + ' ' + \
+            qn(table_name) + ' ' + \
+            "(%s)" % qn(column_name) + \
+            "%s;" % tablespace_sql
+        )
+    return output

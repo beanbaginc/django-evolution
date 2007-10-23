@@ -56,33 +56,30 @@ tests = r"""
 >>> for mutation in d.evolution()['testapp']:
 ...     print mutation.mutate('testapp', test_sig)
 ...     mutation.simulate('testapp', test_sig)
-['ALTER TABLE django_evolution_addbasemodel ADD COLUMN added_field integer;']
+['ALTER TABLE django_evolution_addbasemodel ADD COLUMN added_field integer NOT NULL;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
-# # Field resulting in a new database column with a non-default name.
-# >>> class NonDefaultDatabaseColumnModel(models.Model):
-# ...     char_field = models.CharField(max_length=20)
-# ...     int_field = models.IntegerField()
-# ...     add_field = models.IntegerField(db_column='non-default_column')
-# 
-# >>> new_sig = test_app_sig(NonDefaultDatabaseColumnModel)
-# >>> d = Diff(base_sig, new_sig)
-# >>> print [str(e) for e in d.evolution()['testapp']]
-# ["AddField('TestModel', 'add_field', models.IntegerField, db_column='non-default_column')"]
-# 
-# >>> test_sig = copy.deepcopy(base_sig)
-# >>> for mutation in d.evolution()['testapp']:
-# ...     print mutation.mutate('testapp', test_sig)
-# ...     mutation.simulate('testapp', test_sig)
-# This should be
-# ['ALTER TABLE django_evolution_addbasemodel ADD COLUMN non-default_column integer;']
-# instead of
-# ['ALTER TABLE django_evolution_addbasemodel ADD COLUMN add_field integer;']
-# 
-# >>> Diff(test_sig, new_sig).is_empty()
-# True
+# Field resulting in a new database column with a non-default name.
+>>> class NonDefaultDatabaseColumnModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     add_field = models.IntegerField(db_column='non-default_column')
+
+>>> new_sig = test_app_sig(NonDefaultDatabaseColumnModel)
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['testapp']]
+["AddField('TestModel', 'add_field', models.IntegerField, db_column='non-default_column')"]
+
+>>> test_sig = copy.deepcopy(base_sig)
+>>> for mutation in d.evolution()['testapp']:
+...     print mutation.mutate('testapp', test_sig)
+...     mutation.simulate('testapp', test_sig)
+['ALTER TABLE django_evolution_addbasemodel ADD COLUMN non-default_column integer NOT NULL;']
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
 
 # Field resulting in a new database column in a table with a non-default name.
 >>> class AddDatabaseColumnCustomTableModel(models.Model):
@@ -102,7 +99,7 @@ True
 >>> for mutation in d.evolution()['testapp']:
 ...     print mutation.mutate('testapp', test_sig)
 ...     mutation.simulate('testapp', test_sig)
-['ALTER TABLE custom_table_name ADD COLUMN added_field integer;']
+['ALTER TABLE custom_table_name ADD COLUMN added_field integer NOT NULL;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -128,68 +125,65 @@ True
 # >>> Diff(test_sig, new_sig).is_empty()
 # True
 
-# # Indexed field
-# >>> class AddIndexedDatabaseColumnModel(models.Model):
-# ...     char_field = models.CharField(max_length=20)
-# ...     int_field = models.IntegerField()
-# ...     add_field = models.IntegerField(db_index=True)
-# 
-# >>> new_sig = test_app_sig(AddIndexedDatabaseColumnModel)
-# >>> d = Diff(base_sig, new_sig)
-# >>> print [str(e) for e in d.evolution()['testapp']]
-# ["AddField('TestModel', 'add_field', models.IntegerField, db_index=True)"]
-# 
-# >>> test_sig = copy.deepcopy(base_sig)
-# >>> for mutation in d.evolution()['testapp']:
-# ...     print mutation.mutate('testapp', test_sig)
-# ...     mutation.simulate('testapp', test_sig)
-# # There should be a create index statement here.
-# ['ALTER TABLE django_evolution_addbasemodel ADD COLUMN add_field integer;']
-# 
-# >>> Diff(test_sig, new_sig).is_empty()
-# True
+# Indexed field
+>>> class AddIndexedDatabaseColumnModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     add_field = models.IntegerField(db_index=True)
 
-# # Unique field.
-# >>> class AddUniqueDatabaseColumnModel(models.Model):
-# ...     char_field = models.CharField(max_length=20)
-# ...     int_field = models.IntegerField()
-# ...     added_field = models.IntegerField(unique=True)
-# 
-# >>> new_sig = test_app_sig(AddUniqueDatabaseColumnModel)
-# >>> d = Diff(base_sig, new_sig)
-# >>> print [str(e) for e in d.evolution()['testapp']]
-# ["AddField('TestModel', 'added_field', models.IntegerField, unique=True)"]
-# 
-# >>> test_sig = copy.deepcopy(base_sig)
-# >>> for mutation in d.evolution()['testapp']:
-# ...     print mutation.mutate('testapp', test_sig)
-# ...     mutation.simulate('testapp', test_sig)
-# There should be some words in the following statement about the uniqueness constraint of the field.
-# ['ALTER TABLE django_evolution_addbasemodel ADD COLUMN added_field integer;']
-# 
-# >>> Diff(test_sig, new_sig).is_empty()
-# True
+>>> new_sig = test_app_sig(AddIndexedDatabaseColumnModel)
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['testapp']]
+["AddField('TestModel', 'add_field', models.IntegerField, db_index=True)"]
 
-# # Null field
-# >>> class NullDatabaseColumnModel(models.Model):
-# ...     char_field = models.CharField(max_length=20)
-# ...     int_field = models.IntegerField()
-# ...     added_field = models.IntegerField(null=True)
-# 
-# >>> new_sig = test_app_sig(NullDatabaseColumnModel)
-# >>> d = Diff(base_sig, new_sig)
-# >>> print [str(e) for e in d.evolution()['testapp']]
-# ["AddField('TestModel', 'added_field', models.IntegerField, null=True)"]
-# 
-# >>> test_sig = copy.deepcopy(base_sig)
-# >>> for mutation in d.evolution()['testapp']:
-# ...     print mutation.mutate('testapp', test_sig)
-# ...     mutation.simulate('testapp', test_sig)
-# # Null Constraint is not enforced here.
-# ['ALTER TABLE django_evolution_addbasemodel ADD COLUMN added_field integer;']
-# 
-# >>> Diff(test_sig, new_sig).is_empty()
-# True
+>>> test_sig = copy.deepcopy(base_sig)
+>>> for mutation in d.evolution()['testapp']:
+...     print mutation.mutate('testapp', test_sig)
+...     mutation.simulate('testapp', test_sig)
+['ALTER TABLE django_evolution_addbasemodel ADD COLUMN add_field integer NOT NULL;', 'CREATE INDEX "django_evolution_addbasemodel_add_field" ON "django_evolution_addbasemodel" ("add_field");']
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+
+# Unique field.
+>>> class AddUniqueDatabaseColumnModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     added_field = models.IntegerField(unique=True)
+
+>>> new_sig = test_app_sig(AddUniqueDatabaseColumnModel)
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['testapp']]
+["AddField('TestModel', 'added_field', models.IntegerField, unique=True)"]
+
+>>> test_sig = copy.deepcopy(base_sig)
+>>> for mutation in d.evolution()['testapp']:
+...     print mutation.mutate('testapp', test_sig)
+...     mutation.simulate('testapp', test_sig)
+['ALTER TABLE django_evolution_addbasemodel ADD COLUMN added_field integer NOT NULL UNIQUE;']
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+
+# Null field
+>>> class NullDatabaseColumnModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     added_field = models.IntegerField(null=True)
+
+>>> new_sig = test_app_sig(NullDatabaseColumnModel)
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['testapp']]
+["AddField('TestModel', 'added_field', models.IntegerField, null=True)"]
+
+>>> test_sig = copy.deepcopy(base_sig)
+>>> for mutation in d.evolution()['testapp']:
+...     print mutation.mutate('testapp', test_sig)
+...     mutation.simulate('testapp', test_sig)
+['ALTER TABLE django_evolution_addbasemodel ADD COLUMN added_field integer NULL;']
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
 
 # Foreign Key field.
 >>> class ForeignKeyDatabaseColumnModel(models.Model):
@@ -206,7 +200,7 @@ True
 >>> for mutation in d.evolution()['testapp']:
 ...     print mutation.mutate('testapp', test_sig)
 ...     mutation.simulate('testapp', test_sig)
-['ALTER TABLE django_evolution_addbasemodel ADD COLUMN added_field integer;']
+['ALTER TABLE django_evolution_addbasemodel ADD COLUMN added_field integer NOT NULL;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True

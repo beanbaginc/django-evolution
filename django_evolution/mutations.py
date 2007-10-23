@@ -140,8 +140,13 @@ class AddField(BaseMutation):
         app_sig = proj_sig[app_label]
         evo_module = get_evolution_module()        
         column_name =  self.field_attrs.get('db_column', self.field_name)
+        primary_key = self.field_attrs.get('primary_key',False)
+        unique = self.field_attrs.get('unique',False)
+        null = self.field_attrs.get('null',False)
+        field_tablespace = self.field_attrs.get('db_tablespace',None)
         model_sig = app_sig[self.model_name]
         table_name = model_sig['meta']['db_table']
+        model_tablespace = model_sig['meta'].get('db_tablespace',None)
         
         related_model = self.field_attrs.pop('related_model', None)
         if related_model:
@@ -151,10 +156,25 @@ class AddField(BaseMutation):
             self.field_attrs['related_model'] = related_model
         else:
             field = self.field_type(**self.field_attrs)
+            
         sql_statements = evo_module.add_column(app_sig, 
                                                table_name, 
-                                               self.field_name,
-                                               field.db_type())
+                                               column_name,
+                                               field.db_type(),
+                                               primary_key,
+                                               null,
+                                               unique)
+        # Create SQL index if necessary
+        if self.field_attrs.get('db_index', False):
+            sql_statements.extend(evo_module.create_index(app_sig, 
+                                                          primary_key, 
+                                                          unique, 
+                                                          field_tablespace, 
+                                                          model_tablespace, 
+                                                          table_name, 
+                                                          column_name))
+            
+            
         return sql_statements
 
     def add_m2m_table(self, app_label, proj_sig):
