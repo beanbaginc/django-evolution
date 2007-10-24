@@ -20,6 +20,7 @@ tests = r"""
 >>> from django.db import models
 >>> from django_evolution.tests.utils import test_app_sig
 >>> from django_evolution.management.diff import Diff
+>>> from django_evolution.management import signature
 >>> from django_evolution import models as test_app
 >>> from pprint import pprint
 >>> import copy
@@ -27,12 +28,16 @@ tests = r"""
 >>> class AddAnchor1(models.Model):
 ...     value = models.IntegerField()
 
+>>> class AddAnchor2(models.Model):
+...     value = models.IntegerField()
+...     class Meta:
+...         db_table = 'custom_add_anchor_table'
+
 >>> class AddBaseModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 
 >>> base_sig = test_app_sig(AddBaseModel)
- 
 >>> class CustomTableModel(models.Model):
 ...     value = models.IntegerField()
 ...     alt_value = models.CharField(max_length=20)
@@ -205,30 +210,66 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
-# # M2M field between models with default table names.
-# >>> class AddM2MDatabaseTableModel(models.Model):
-# ...     char_field = models.CharField(max_length=20)
-# ...     int_field = models.IntegerField()
-# ...     added_field = models.ManyToManyField(AddAnchor1)
-# 
-# >>> new_sig = test_app_sig(AddM2MDatabaseTableModel)
-# >>> d = Diff(base_sig, new_sig)
-# >>> print [str(e) for e in d.evolution()['testapp']]
-# ["AddField('TestModel', 'added_field', models.ManyToManyField, related_model='django_evolution.AddAnchor1')"]
-# 
-# >>> test_sig = copy.deepcopy(base_sig)
-# >>> for mutation in d.evolution()['testapp']:
-# ...     print mutation.mutate('testapp', test_sig)
-# ...     mutation.simulate('testapp', test_sig)
-# 
-# # Simulation Failure Here.
-# #['ALTER TABLE django_evolution_addbasemodel ADD COLUMN added_field integer;']
-# 
-# >>> Diff(test_sig, new_sig).is_empty()
-# True
+# M2M field between models with default table names.
+>>> class AddM2MDatabaseTableModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     added_field = models.ManyToManyField(AddAnchor1)
 
+>>> new_sig = test_app_sig(AddM2MDatabaseTableModel)
+>>> new_sig['testapp'][AddAnchor1.__name__] = signature.create_model_sig(AddAnchor1)
+>>> anchor_sig = copy.deepcopy(base_sig)
+>>> anchor_sig['testapp'][AddAnchor1.__name__] = signature.create_model_sig(AddAnchor1)
+>>> d = Diff(anchor_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['testapp']]
+["AddField('TestModel', 'added_field', models.ManyToManyField, related_model='django_evolution.AddAnchor1')"]
+
+>>> test_sig = copy.deepcopy(anchor_sig)
+>>> for mutation in d.evolution()['testapp']:
+...     print mutation.mutate('testapp', test_sig)
+...     mutation.simulate('testapp', test_sig)
+['CREATE TABLE "django_evolution_addbasemodel_added_field" (\n    "id" serial NOT NULL PRIMARY KEY,\n    "testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,\n    "addanchor1_id" integer NOT NULL REFERENCES "django_evolution_addanchor1" ("id") DEFERRABLE INITIALLY DEFERRED,\n    UNIQUE ("testmodel_id", "addanchor1_id")\n)\n;']
+>>> Diff(test_sig, new_sig).is_empty()
+True
 
 # M2M field between models with non-default table names.
+>>> class AddM2MNonDefaultDatabaseTableModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     added_field = models.ManyToManyField(AddAnchor2)
+
+>>> new_sig = test_app_sig(AddM2MNonDefaultDatabaseTableModel)
+>>> new_sig['testapp'][AddAnchor2.__name__] = signature.create_model_sig(AddAnchor2)
+>>> anchor_sig = copy.deepcopy(base_sig)
+>>> anchor_sig['testapp'][AddAnchor2.__name__] = signature.create_model_sig(AddAnchor2)
+>>> d = Diff(anchor_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['testapp']]
+["AddField('TestModel', 'added_field', models.ManyToManyField, related_model='django_evolution.AddAnchor2')"]
+
+>>> test_sig = copy.deepcopy(anchor_sig)
+>>> for mutation in d.evolution()['testapp']:
+...     print mutation.mutate('testapp', test_sig)
+...     mutation.simulate('testapp', test_sig)
+['CREATE TABLE "django_evolution_addbasemodel_added_field" (\n    "id" serial NOT NULL PRIMARY KEY,\n    "testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,\n    "addanchor2_id" integer NOT NULL REFERENCES "custom_add_anchor_table" ("id") DEFERRABLE INITIALLY DEFERRED,\n    UNIQUE ("testmodel_id", "addanchor2_id")\n)\n;']
+>>> Diff(test_sig, new_sig).is_empty()
+True
+
 # M2M field between self
+# Need to find a better way to do this.
+>>> new_sig = copy.deepcopy(base_sig)
+>>> new_sig['testapp']['TestModel']['fields']['added_field'] = {'field_type': models.ManyToManyField,'related_model': 'django_evolution.TestModel'}
+
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['testapp']]
+["AddField('TestModel', 'added_field', models.ManyToManyField, related_model='django_evolution.TestModel')"]
+
+>>> test_sig = copy.deepcopy(base_sig)
+>>> for mutation in d.evolution()['testapp']:
+...     print mutation.mutate('testapp', test_sig)
+...     mutation.simulate('testapp', test_sig)
+# I don't think this is right.
+['CREATE TABLE "django_evolution_addbasemodel_added_field" (\n    "id" serial NOT NULL PRIMARY KEY,\n    "testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,\n    "testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,\n    UNIQUE ("testmodel_id", "testmodel_id")\n)\n;']
+>>> Diff(test_sig, new_sig).is_empty()
+True
 
 """
