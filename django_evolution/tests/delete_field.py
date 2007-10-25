@@ -2,7 +2,7 @@
 tests = r"""
 >>> from django.db import models
 >>> from django_evolution.mutations import DeleteField
->>> from django_evolution.tests.utils import test_app_sig
+>>> from django_evolution.tests.utils import *
 >>> from django_evolution.management.diff import Diff
 >>> from pprint import pprint
 >>> import copy
@@ -95,13 +95,19 @@ tests = r"""
 ["DeleteField('TestModel', 'int_field')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
+>>> all_delete_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     print mutation.mutate('testapp', test_sig)
+...     all_delete_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
+>>> print all_delete_sql
 ['ALTER TABLE django_evolution_deletebasemodel DROP COLUMN int_field CASCADE;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
+>>> execute_sql(mock_sql_create([DeleteBaseModel, DeleteAnchor1, DeleteAnchor2, DeleteAnchor3, DeleteAnchor4]))
+>>> execute_sql(all_delete_sql)
+>>> execute_sql(mock_sql_delete([DeleteBaseModel, DeleteAnchor1, DeleteAnchor2, DeleteAnchor3, DeleteAnchor4]))
 
 # Deleting a non-default named column
 >>> class NonDefaultNamedColumnModel(models.Model):
@@ -119,13 +125,19 @@ True
 ["DeleteField('TestModel', 'int_field2')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
+>>> all_delete_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     print mutation.mutate('testapp', test_sig)
+...     all_delete_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
+>>> print all_delete_sql
 ['ALTER TABLE django_evolution_deletebasemodel DROP COLUMN non-default_db_column CASCADE;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
+>>> execute_sql(mock_sql_create([DeleteBaseModel, DeleteAnchor1, DeleteAnchor2, DeleteAnchor3, DeleteAnchor4]))
+>>> execute_sql(all_delete_sql)
+>>> execute_sql(mock_sql_delete([DeleteBaseModel, DeleteAnchor1, DeleteAnchor2, DeleteAnchor3, DeleteAnchor4]))
 
 # Deleting a column with database constraints (unique)
 # TODO: Verify that the produced SQL is actually correct
