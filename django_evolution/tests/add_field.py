@@ -257,18 +257,17 @@ True
 # M2M field between self
 # Need to find a better way to do this.
 >>> new_sig = copy.deepcopy(base_sig)
->>> new_sig['testapp']['TestModel']['fields']['added_field'] = {'field_type': models.ManyToManyField,'related_model': 'django_evolution.TestModel'}
+>>> new_sig['testapp']['TestModel']['fields']['added_field'] = {'field_type': models.ManyToManyField,'related_model': 'testapp.TestModel'}
 
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['testapp']]
-["AddField('TestModel', 'added_field', models.ManyToManyField, related_model='django_evolution.TestModel')"]
+["AddField('TestModel', 'added_field', models.ManyToManyField, related_model='testapp.TestModel')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> for mutation in d.evolution()['testapp']:
 ...     print mutation.mutate('testapp', test_sig)
 ...     mutation.simulate('testapp', test_sig)
-# I don't think this is right.
-['CREATE TABLE "django_evolution_addbasemodel_added_field" (\n    "id" serial NOT NULL PRIMARY KEY,\n    "testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,\n    "testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,\n    UNIQUE ("testmodel_id", "testmodel_id")\n)\n;']
+['CREATE TABLE "django_evolution_addbasemodel_added_field" (\n    "id" serial NOT NULL PRIMARY KEY,\n    "from_testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,\n    "to_testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,\n    UNIQUE ("from_testmodel_id", "to_testmodel_id")\n)\n;']
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
