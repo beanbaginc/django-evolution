@@ -37,11 +37,11 @@ tests = r"""
 ...     my_id = models.AutoField(primary_key=True)
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
-...     int_field2 = models.IntegerField(db_column='non-default_db_column')
+...     int_field2 = models.IntegerField(db_column='non_default_db_column')
 ...     int_field3 = models.IntegerField(unique=True)
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
-...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
+...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
 
 >>> base_sig = test_app_sig(DeleteBaseModel)
  
@@ -58,11 +58,11 @@ tests = r"""
 # >>> class PrimaryKeyModel(models.Model):
 # ...     char_field = models.CharField(max_length=20)
 # ...     int_field = models.IntegerField()
-# ...     int_field2 = models.IntegerField(db_column='non-default_db_column')
+# ...     int_field2 = models.IntegerField(db_column='non_default_db_column')
 # ...     int_field3 = models.IntegerField(unique=True)
 # ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 # ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
-# ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
+# ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
 # 
 # >>> new_sig = test_app_sig(PrimaryKeyModel)
 # >>> d = Diff(base_sig, new_sig)
@@ -83,11 +83,11 @@ tests = r"""
 >>> class DefaultNamedColumnModel(models.Model):
 ...     my_id = models.AutoField(primary_key=True)
 ...     char_field = models.CharField(max_length=20)
-...     int_field2 = models.IntegerField(db_column='non-default_db_column')
+...     int_field2 = models.IntegerField(db_column='non_default_db_column')
 ...     int_field3 = models.IntegerField(unique=True)
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
-...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
+...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
 
 >>> new_sig = test_app_sig(DefaultNamedColumnModel)
 >>> d = Diff(base_sig, new_sig)
@@ -117,7 +117,7 @@ True
 ...     int_field3 = models.IntegerField(unique=True)
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
-...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
+...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
 
 >>> new_sig = test_app_sig(NonDefaultNamedColumnModel)
 >>> d = Diff(base_sig, new_sig)
@@ -130,7 +130,7 @@ True
 ...     all_delete_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
 >>> print all_delete_sql
-['ALTER TABLE django_evolution_deletebasemodel DROP COLUMN non-default_db_column CASCADE;']
+['ALTER TABLE django_evolution_deletebasemodel DROP COLUMN non_default_db_column CASCADE;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -146,10 +146,10 @@ True
 ...     my_id = models.AutoField(primary_key=True)
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
-...     int_field2 = models.IntegerField(db_column='non-default_db_column')
+...     int_field2 = models.IntegerField(db_column='non_default_db_column')
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
-...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
+...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
 
 >>> new_sig = test_app_sig(ConstrainedColumnModel)
 >>> d = Diff(base_sig, new_sig)
@@ -170,10 +170,10 @@ True
 ...     my_id = models.AutoField(primary_key=True)
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
-...     int_field2 = models.IntegerField(db_column='non-default_db_column')
+...     int_field2 = models.IntegerField(db_column='non_default_db_column')
 ...     int_field3 = models.IntegerField(unique=True)
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
-...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
+...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
 
 >>> new_sig = test_app_sig(DefaultM2MModel)
 >>> d = Diff(base_sig, new_sig)
@@ -194,7 +194,7 @@ True
 ...     my_id = models.AutoField(primary_key=True)
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
-...     int_field2 = models.IntegerField(db_column='non-default_db_column')
+...     int_field2 = models.IntegerField(db_column='non_default_db_column')
 ...     int_field3 = models.IntegerField(unique=True)
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
@@ -208,7 +208,7 @@ True
 >>> for mutation in d.evolution()['testapp']:
 ...     print mutation.mutate('testapp', test_sig)
 ...     mutation.simulate('testapp', test_sig)
-['DROP TABLE non-default_m2m_table;']
+['DROP TABLE non_default_m2m_table;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -218,10 +218,10 @@ True
 ...     my_id = models.AutoField(primary_key=True)
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
-...     int_field2 = models.IntegerField(db_column='non-default_db_column')
+...     int_field2 = models.IntegerField(db_column='non_default_db_column')
 ...     int_field3 = models.IntegerField(unique=True)
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
-...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
+...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
 
 >>> new_sig = test_app_sig(DeleteForeignKeyModel)
 >>> d = Diff(base_sig, new_sig)
