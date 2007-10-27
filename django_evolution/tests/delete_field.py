@@ -1,10 +1,12 @@
 
 tests = r"""
 >>> from django.db import models
+>>> from django.db.models.loading import cache
+
 >>> from django_evolution.mutations import DeleteField
 >>> from django_evolution.tests.utils import *
 >>> from django_evolution.management.diff import Diff
->>> from pprint import pprint
+
 >>> import copy
  
 # All Fields
@@ -43,16 +45,19 @@ tests = r"""
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
 
->>> base_sig = test_app_sig(DeleteBaseModel)
- 
 >>> class CustomTableModel(models.Model):
 ...     value = models.IntegerField()
 ...     alt_value = models.CharField(max_length=20)
 ...     class Meta:
 ...         db_table = 'custom_table_name'
 
->>> custom_table_sig = test_app_sig(CustomTableModel)
- 
+# Store the base signatures
+>>> base_sig = test_proj_sig(DeleteBaseModel)
+>>> custom_table_sig = test_proj_sig(CustomTableModel)
+
+# Register the test models with the Django app cache
+>>> cache.register_models('tests', CustomTableModel, DeleteBaseModel, DeleteAnchor1, DeleteAnchor2, DeleteAnchor3, DeleteAnchor4)
+
 # Deleting the primary key 
 # RKM: Can't do this (yet?) - PK deletion is disabled by simulate 
 # >>> class PrimaryKeyModel(models.Model):
@@ -64,7 +69,7 @@ tests = r"""
 # ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 # ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
 # 
-# >>> new_sig = test_app_sig(PrimaryKeyModel)
+# >>> new_sig = test_proj_sig(PrimaryKeyModel)
 # >>> d = Diff(base_sig, new_sig)
 # >>> print [str(e) for e in d.evolution()['testapp']]
 # ["AddField('TestModel', 'id', models.AutoField, primary_key=True)", "DeleteField('TestModel', 'my_id')"]
@@ -89,25 +94,22 @@ tests = r"""
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
 
->>> new_sig = test_app_sig(DefaultNamedColumnModel)
+>>> new_sig = test_proj_sig(DefaultNamedColumnModel)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['testapp']]
 ["DeleteField('TestModel', 'int_field')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
->>> all_delete_sql = []
+>>> test_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     all_delete_sql.extend(mutation.mutate('testapp', test_sig))
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
->>> print all_delete_sql
-['ALTER TABLE django_evolution_deletebasemodel DROP COLUMN int_field CASCADE;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_sql(mock_sql_create([DeleteBaseModel, DeleteAnchor1, DeleteAnchor2, DeleteAnchor3, DeleteAnchor4]))
->>> execute_sql(all_delete_sql)
->>> execute_sql(mock_sql_delete([DeleteBaseModel, DeleteAnchor1, DeleteAnchor2, DeleteAnchor3, DeleteAnchor4]))
+>>> execute_test_sql(test_sql)
+ALTER TABLE django_evolution_deletebasemodel DROP COLUMN int_field CASCADE;
 
 # Deleting a non-default named column
 >>> class NonDefaultNamedColumnModel(models.Model):
@@ -119,25 +121,22 @@ True
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
 
->>> new_sig = test_app_sig(NonDefaultNamedColumnModel)
+>>> new_sig = test_proj_sig(NonDefaultNamedColumnModel)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['testapp']]
 ["DeleteField('TestModel', 'int_field2')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
->>> all_delete_sql = []
+>>> test_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     all_delete_sql.extend(mutation.mutate('testapp', test_sig))
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
->>> print all_delete_sql
-['ALTER TABLE django_evolution_deletebasemodel DROP COLUMN non_default_db_column CASCADE;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_sql(mock_sql_create([DeleteBaseModel, DeleteAnchor1, DeleteAnchor2, DeleteAnchor3, DeleteAnchor4]))
->>> execute_sql(all_delete_sql)
->>> execute_sql(mock_sql_delete([DeleteBaseModel, DeleteAnchor1, DeleteAnchor2, DeleteAnchor3, DeleteAnchor4]))
+>>> execute_test_sql(test_sql)
+ALTER TABLE django_evolution_deletebasemodel DROP COLUMN non_default_db_column CASCADE;
 
 # Deleting a column with database constraints (unique)
 # TODO: Verify that the produced SQL is actually correct
@@ -151,19 +150,22 @@ True
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
 
->>> new_sig = test_app_sig(ConstrainedColumnModel)
+>>> new_sig = test_proj_sig(ConstrainedColumnModel)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['testapp']]
 ["DeleteField('TestModel', 'int_field3')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     print mutation.mutate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
-['ALTER TABLE django_evolution_deletebasemodel DROP COLUMN int_field3 CASCADE;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
+>>> execute_test_sql(test_sql)
+ALTER TABLE django_evolution_deletebasemodel DROP COLUMN int_field3 CASCADE;
 
 # Deleting a default m2m
 >>> class DefaultM2MModel(models.Model):
@@ -175,19 +177,22 @@ True
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
 
->>> new_sig = test_app_sig(DefaultM2MModel)
+>>> new_sig = test_proj_sig(DefaultM2MModel)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['testapp']]
 ["DeleteField('TestModel', 'm2m_field1')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     print mutation.mutate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
-['DROP TABLE django_evolution_deletebasemodel_m2m_field1;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
+>>> execute_test_sql(test_sql)
+DROP TABLE django_evolution_deletebasemodel_m2m_field1;
 
 # Deleting a m2m stored in a non-default table
 >>> class NonDefaultM2MModel(models.Model):
@@ -199,19 +204,22 @@ True
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 
->>> new_sig = test_app_sig(NonDefaultM2MModel)
+>>> new_sig = test_proj_sig(NonDefaultM2MModel)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['testapp']]
 ["DeleteField('TestModel', 'm2m_field2')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     print mutation.mutate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
-['DROP TABLE non_default_m2m_table;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
+>>> execute_test_sql(test_sql)
+DROP TABLE non_default_m2m_table;
 
 # Delete a foreign key
 >>> class DeleteForeignKeyModel(models.Model):
@@ -223,19 +231,22 @@ True
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
 
->>> new_sig = test_app_sig(DeleteForeignKeyModel)
+>>> new_sig = test_proj_sig(DeleteForeignKeyModel)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['testapp']]
 ["DeleteField('TestModel', 'fk_field1')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     print mutation.mutate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
-['ALTER TABLE django_evolution_deletebasemodel DROP COLUMN fk_field1 CASCADE;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
+>>> execute_test_sql(test_sql)
+ALTER TABLE django_evolution_deletebasemodel DROP COLUMN fk_field1_id CASCADE;
 
 # Deleting a column from a non-default table
 >>> class DeleteColumnCustomTableModel(models.Model):
@@ -243,18 +254,21 @@ True
 ...     class Meta:
 ...         db_table = 'custom_table_name'
 
->>> new_sig = test_app_sig(DeleteColumnCustomTableModel)
+>>> new_sig = test_proj_sig(DeleteColumnCustomTableModel)
 >>> d = Diff(custom_table_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['testapp']]
 ["DeleteField('TestModel', 'value')"]
 
 >>> test_sig = copy.deepcopy(custom_table_sig)
+>>> test_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     print mutation.mutate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
-['ALTER TABLE custom_table_name DROP COLUMN value CASCADE;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
+>>> execute_test_sql(test_sql)
+ALTER TABLE custom_table_name DROP COLUMN value CASCADE;
 
 """

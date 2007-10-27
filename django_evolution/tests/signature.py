@@ -3,7 +3,7 @@ tests = r"""
 >>> from django.db import models
 >>> from django_evolution.management import signature
 >>> from django_evolution.management.diff import Diff
->>> from django_evolution.tests.utils import test_app_sig
+>>> from django_evolution.tests.utils import test_proj_sig
 >>> from pprint import pprint
 
 # First, a model that has one of everything so we can validate all cases for a signature
@@ -69,15 +69,14 @@ tests = r"""
 ...     name = models.CharField(max_length=20)
 ...     age = models.IntegerField()
 
-
->>> base_sig = test_app_sig(BaseModel)
+>>> base_sig = test_proj_sig(BaseModel)
 
 # An identical model gives an empty Diff
 >>> class TestModel(models.Model):
 ...     name = models.CharField(max_length=20)
 ...     age = models.IntegerField()
 
->>> test_sig = test_app_sig(TestModel)
+>>> test_sig = test_proj_sig(TestModel)
 >>> d = Diff(base_sig, test_sig)
 >>> d.is_empty()
 True
@@ -90,7 +89,7 @@ True
 ...     age = models.IntegerField()
 ...     date_of_birth = models.DateField()
 
->>> test_sig = test_app_sig(AddFieldModel)
+>>> test_sig = test_proj_sig(AddFieldModel)
 >>> d = Diff(base_sig, test_sig)
 >>> d.is_empty()
 False
@@ -101,7 +100,7 @@ False
 >>> class DeleteFieldModel(models.Model):
 ...     name = models.CharField(max_length=20)
 
->>> test_sig = test_app_sig(DeleteFieldModel)
+>>> test_sig = test_proj_sig(DeleteFieldModel)
 >>> d = Diff(base_sig, test_sig)
 >>> d.is_empty()
 False
@@ -114,7 +113,7 @@ False
 ...     full_name = models.CharField(max_length=20)
 ...     age = models.IntegerField()
 
->>> test_sig = test_app_sig(RenameFieldModel)
+>>> test_sig = test_proj_sig(RenameFieldModel)
 >>> d = Diff(base_sig, test_sig)
 >>> d.is_empty()
 False

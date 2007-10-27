@@ -18,7 +18,7 @@ tests = r"""
 >>> from django.db import models
 >>> from django_evolution.mutations import AddField
 >>> from django.db import models
->>> from django_evolution.tests.utils import test_app_sig
+>>> from django_evolution.tests.utils import test_proj_sig
 >>> from django_evolution.management.diff import Diff
 >>> from django_evolution.management import signature
 >>> from django_evolution import models as test_app
@@ -37,14 +37,14 @@ tests = r"""
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 
->>> base_sig = test_app_sig(AddBaseModel)
+>>> base_sig = test_proj_sig(AddBaseModel)
 >>> class CustomTableModel(models.Model):
 ...     value = models.IntegerField()
 ...     alt_value = models.CharField(max_length=20)
 ...     class Meta:
 ...         db_table = 'custom_table_name'
 
->>> custom_table_sig = test_app_sig(CustomTableModel)
+>>> custom_table_sig = test_proj_sig(CustomTableModel)
 
 # Field resulting in a new database column.
 >>> class AddDatabaseColumnModel(models.Model):
@@ -52,7 +52,7 @@ tests = r"""
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField()
 
->>> new_sig = test_app_sig(AddDatabaseColumnModel)
+>>> new_sig = test_proj_sig(AddDatabaseColumnModel)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['testapp']]
 ["AddField('TestModel', 'added_field', models.IntegerField)"]
@@ -72,7 +72,7 @@ True
 ...     int_field = models.IntegerField()
 ...     add_field = models.IntegerField(db_column='non_default_column')
 
->>> new_sig = test_app_sig(NonDefaultDatabaseColumnModel)
+>>> new_sig = test_proj_sig(NonDefaultDatabaseColumnModel)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['testapp']]
 ["AddField('TestModel', 'add_field', models.IntegerField, db_column='non_default_column')"]
@@ -95,7 +95,7 @@ True
 ...         db_table = 'custom_table_name'
 
 
->>> new_sig = test_app_sig(AddDatabaseColumnCustomTableModel)
+>>> new_sig = test_proj_sig(AddDatabaseColumnCustomTableModel)
 >>> d = Diff(custom_table_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['testapp']]
 ["AddField('TestModel', 'added_field', models.IntegerField)"]
@@ -116,7 +116,7 @@ True
 # ...     char_field = models.CharField(max_length=20)
 # ...     int_field = models.IntegerField()
 # 
-# >>> new_sig = test_app_sig(AddPrimaryKeyModel)
+# >>> new_sig = test_proj_sig(AddPrimaryKeyModel)
 # >>> d = Diff(base_sig, new_sig)
 # >>> print [str(e) for e in d.evolution()['testapp']]
 # ["AddField('TestModel', 'my_primary_key', models.AutoField, primary_key=True)", "DeleteField('TestModel', 'id')"]
@@ -136,7 +136,7 @@ True
 ...     int_field = models.IntegerField()
 ...     add_field = models.IntegerField(db_index=True)
 
->>> new_sig = test_app_sig(AddIndexedDatabaseColumnModel)
+>>> new_sig = test_proj_sig(AddIndexedDatabaseColumnModel)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['testapp']]
 ["AddField('TestModel', 'add_field', models.IntegerField, db_index=True)"]
@@ -156,7 +156,7 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField(unique=True)
 
->>> new_sig = test_app_sig(AddUniqueDatabaseColumnModel)
+>>> new_sig = test_proj_sig(AddUniqueDatabaseColumnModel)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['testapp']]
 ["AddField('TestModel', 'added_field', models.IntegerField, unique=True)"]
@@ -176,7 +176,7 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField(null=True)
 
->>> new_sig = test_app_sig(NullDatabaseColumnModel)
+>>> new_sig = test_proj_sig(NullDatabaseColumnModel)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['testapp']]
 ["AddField('TestModel', 'added_field', models.IntegerField, null=True)"]
@@ -196,7 +196,7 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.ForeignKey(AddAnchor1)
 
->>> new_sig = test_app_sig(ForeignKeyDatabaseColumnModel)
+>>> new_sig = test_proj_sig(ForeignKeyDatabaseColumnModel)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['testapp']]
 ["AddField('TestModel', 'added_field', models.ForeignKey, related_model='django_evolution.AddAnchor1')"]
@@ -216,7 +216,7 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.ManyToManyField(AddAnchor1)
 
->>> new_sig = test_app_sig(AddM2MDatabaseTableModel)
+>>> new_sig = test_proj_sig(AddM2MDatabaseTableModel)
 >>> new_sig['testapp'][AddAnchor1.__name__] = signature.create_model_sig(AddAnchor1)
 >>> anchor_sig = copy.deepcopy(base_sig)
 >>> anchor_sig['testapp'][AddAnchor1.__name__] = signature.create_model_sig(AddAnchor1)
@@ -238,7 +238,7 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.ManyToManyField(AddAnchor2)
 
->>> new_sig = test_app_sig(AddM2MNonDefaultDatabaseTableModel)
+>>> new_sig = test_proj_sig(AddM2MNonDefaultDatabaseTableModel)
 >>> new_sig['testapp'][AddAnchor2.__name__] = signature.create_model_sig(AddAnchor2)
 >>> anchor_sig = copy.deepcopy(base_sig)
 >>> anchor_sig['testapp'][AddAnchor2.__name__] = signature.create_model_sig(AddAnchor2)

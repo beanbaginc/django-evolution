@@ -99,7 +99,10 @@ class DeleteField(BaseMutation):
                 m2m_table = '%s_%s' % (model_sig['meta']['db_table'], self.field_name)    
             sql_statements = get_evolution_module().delete_table(app_sig, m2m_table)
         else:
-            column_name =  field_sig.get('db_column', self.field_name)
+            if field_sig['field_type'] == models.ForeignKey:
+                column_name =  field_sig.get('db_column', '%s_id' % self.field_name)
+            else:
+                column_name =  field_sig.get('db_column', self.field_name)
             table_name = app_sig[self.model_name]['meta'].get('db_table')
             sql_statements = get_evolution_module().delete_column(app_sig, table_name, column_name)
             
