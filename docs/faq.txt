@@ -47,12 +47,122 @@ separate Django Evolution mailing list in the future.
 I think I've found a bug! What should I do?
 -------------------------------------------
 
-Django Evolution has a `bug tracker`_. Please lodge your issue there.
+Django Evolution has a `bug tracker`_. Check the list of bugs that are
+already known; if your bug doesn't appear to be logged, please add it
+to the list.
+
+When you lodge your bug, *please* remember to provide clear instructions
+on how to reproduce your problem. This means providing sample models,
+sample migrations, and any error logs that appeared during the evolution 
+process.
 
 .. _`bug tracker`: http://code.google.com/p/django-evolution/issues/list
 
+Status
+======
+
+What works? 
+-----------
+
+The general framework should be stable. Any difficulties installing 
+Django Evolution into your project, running the evolve command, or identifying
+changes in your models should be reported as a bug.
+
+The following is a list of the model changes that we believe to be working:
+
+    * Addition of simple fields (e.g., a new CharField) with ``null=True``.
+    * Addition of ForeignKey fields with ``null=True``
+    * Addition of Many To Many Fields
+    * Deletion of most fields (of any type)
+    * Renaming of a field. Renames won't ever appear in a hinted evolution,
+      but they can be manually added as a replacement for the Add+Delete pair
+      that a hinted evolution will provide.
+    
+What doesn't work?
+------------------
+  
+Django Evolution is a work in progress, and as a result, there are many
+things that don't work, or don't work as expected. The following are
+known issues that will hopefully be addressed in the near future:
+
+Django Evolution is currently PostgreSQL specific. Adding support for 
+other database backends is planned in the future.
+
+The following model changes are known to cause difficulty:
+
+    * Addition of fields with ``null=False``. At present, there isn't a way
+      to define default values for a field, so fields must be allowed to be
+      empty when they are created.
+    * Changes to the properties of a given field. Property changes are
+      identified as a change during ``syncdb``, but there isn't a 
+      mutation that can apply those changes to the database.
+    * Deletion of models or applications. Again, these are identified, but
+      no mutation exists.
+    * Deletion of primary keys (including adding a manual primary key as
+      a replacement for an automatically installed primary key)
+    * Deletion of fields referenced by other database constraints.
+
+Dependencies between applications can also cause difficulties. If you have
+changes in one application that are dependent on changes in another 
+application, you may experience difficulties in applying evolutions.
+
 Design
 ======
+
+What are the design goals for Django Evolution?
+-----------------------------------------------
+
+Django Evolution has the following design goals:
+  
+    1. Provide a way for simple changes to be applied to a database 
+       without significant user intervention.
+    2. Provide an entry point for using raw SQL as a migration tactic.
+    3. Provide a way to 'hint and tweak' - i.e., use an automatic method to
+       generate a first pass at a migration, but provide a way for a
+       developer to fine tune the migration before application.
+    4. Provide a way to be self-documenting and self-auditing - i.e., keep
+       a permanent archive of the changes that have been made, which ones
+       have been applied to which database, etc.
+    5. Provide some manner of validation that a migration, when applied, 
+       will be correct.
+    6. Provide an easy way for end users to integrate their own custom
+       migration needs into the framework.
+
+Isn't this just ActiveRecord::Migration in Python?
+--------------------------------------------------
+
+Superficially, yes, but not really.
+
+There is a degree of similarity - the Django Evolution syntax is
+a DSL for describing the changes that have been made to a model.
+
+However, there are also some significant differences. In addition to 
+ActiveRecord::Migration, Django Evolution provides:
+
+    1. An audit trail - a permanent archive in the database of the 
+       changes that have been applied, and when.
+    2. An automated hinting scheme. If you don't want to write the
+       migrations yourself, you don't have to.
+    3. Validation that an evolution script will leave the database
+       in a state consistent with the current model definition.
+       
+These differences are largely afforded by the model-centric design of
+Django itself. Whereas a Ruby on Rails model is a description of a
+database that has been created by hand, Django uses the Python model
+to creates the database. As a result, the model definition is canonical 
+- not the database. 
+
+This means that audit, hinting, and verification schemes can use the 
+Django model as a point of reference. A Django Evo lution script is 
+much more than just an alternate syntax for SQL ALTER statements - it
+is an evolution scheme that is bound to the canonical model definition.
+
+.. admonition:: Ultracrepidation
+
+    We're not Rails developers, so when we talk about Ruby on Rails and 
+    ActiveRecord::Migration, it's not from extensive personal experience. 
+    If we have misrepresented or misunderstood Ruby on Rails or 
+    ActiveRecord::Migration, feel free to correct us.
 
 Why do you generate signatures based on the model, rather than introspecting the database?
 ------------------------------------------------------------------------------------------
@@ -98,6 +208,9 @@ Thanks for asking! If you're interested in contributing to Django-Evolution,
 please send a private email to Ben or Russell. However, be advised that if you
 you want your request to be taken seriously, you need to have a track record
 of producing high quality patches. 
+
+A good place to start would be to pick a non-trivial missing feature from the 
+ticket database, and implement a fix.
 
 I submitted a bug fix in the ticket system several weeks ago. Why are you ignoring my patch?
 --------------------------------------------------------------------------------------------
