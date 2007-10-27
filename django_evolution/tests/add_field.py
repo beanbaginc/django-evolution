@@ -16,13 +16,14 @@ tests = r"""
 # M2M field between self
 
 >>> from django.db import models
+>>> from django.db.models.loading import cache
+
 >>> from django_evolution.mutations import AddField
->>> from django.db import models
->>> from django_evolution.tests.utils import test_proj_sig
+>>> from django_evolution.tests.utils import test_proj_sig, execute_test_sql
 >>> from django_evolution.management.diff import Diff
 >>> from django_evolution.management import signature
 >>> from django_evolution import models as test_app
->>> from pprint import pprint
+
 >>> import copy
 
 >>> class AddAnchor1(models.Model):
@@ -37,14 +38,18 @@ tests = r"""
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 
->>> base_sig = test_proj_sig(AddBaseModel)
 >>> class CustomTableModel(models.Model):
 ...     value = models.IntegerField()
 ...     alt_value = models.CharField(max_length=20)
 ...     class Meta:
 ...         db_table = 'custom_table_name'
 
+# Store the base signatures
+>>> base_sig = test_proj_sig(AddBaseModel)
 >>> custom_table_sig = test_proj_sig(CustomTableModel)
+
+# Register the test models with the Django app cache
+>>> cache.register_models('tests', CustomTableModel, AddBaseModel, AddAnchor1, AddAnchor2)
 
 # Field resulting in a new database column.
 >>> class AddDatabaseColumnModel(models.Model):
@@ -58,13 +63,16 @@ tests = r"""
 ["AddField('TestModel', 'added_field', models.IntegerField)"]
 
 >>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     print mutation.mutate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
-['ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NOT NULL;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
+>>> execute_test_sql(test_sql)
+ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NOT NULL;
 
 # Field resulting in a new database column with a non-default name.
 >>> class NonDefaultDatabaseColumnModel(models.Model):
@@ -78,13 +86,16 @@ True
 ["AddField('TestModel', 'add_field', models.IntegerField, db_column='non-default_column')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     print mutation.mutate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
-['ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "non-default_column" integer NOT NULL;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
+>>> execute_test_sql(test_sql)
+ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "non-default_column" integer NOT NULL;
 
 # Field resulting in a new database column in a table with a non-default name.
 >>> class AddDatabaseColumnCustomTableModel(models.Model):
@@ -101,13 +112,16 @@ True
 ["AddField('TestModel', 'added_field', models.IntegerField)"]
 
 >>> test_sig = copy.deepcopy(custom_table_sig)
+>>> test_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     print mutation.mutate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
-['ALTER TABLE "custom_table_name" ADD COLUMN "added_field" integer NOT NULL;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
+>>> execute_test_sql(test_sql)
+ALTER TABLE "custom_table_name" ADD COLUMN "added_field" integer NOT NULL;
 
 # # Primary key field.
 # RKM: prohibited by simulation
@@ -122,13 +136,17 @@ True
 # ["AddField('TestModel', 'my_primary_key', models.AutoField, primary_key=True)", "DeleteField('TestModel', 'id')"]
 # 
 # >>> test_sig = copy.deepcopy(base_sig)
+# >>> test_sql = []
 # >>> for mutation in d.evolution()['testapp']:
-# ...     print mutation.mutate('testapp', test_sig)
+# ...     test_sql.extend(mutation.mutate('testapp', test_sig))
 # ...     mutation.simulate('testapp', test_sig)
-# ['ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "my_primary_key serial";', 'ALTER TABLE "django_evolution_addbasemodel" DROP COLUMN "id" CASCADE;']
 # 
 # >>> Diff(test_sig, new_sig).is_empty()
 # True
+#
+# >>> execute_test_sql(test_sql)
+# ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "my_primary_key serial";
+# ALTER TABLE "django_evolution_addbasemodel" DROP COLUMN "id" CASCADE;
 
 # Indexed field
 >>> class AddIndexedDatabaseColumnModel(models.Model):
@@ -142,13 +160,17 @@ True
 ["AddField('TestModel', 'add_field', models.IntegerField, db_index=True)"]
 
 >>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     print mutation.mutate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
-['ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "add_field" integer NOT NULL;', 'CREATE INDEX "django_evolution_addbasemodel_add_field" ON "django_evolution_addbasemodel" ("add_field");']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
+>>> execute_test_sql(test_sql)
+ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "add_field" integer NOT NULL;
+CREATE INDEX "django_evolution_addbasemodel_add_field" ON "django_evolution_addbasemodel" ("add_field");
 
 # Unique field.
 >>> class AddUniqueDatabaseColumnModel(models.Model):
@@ -162,13 +184,16 @@ True
 ["AddField('TestModel', 'added_field', models.IntegerField, unique=True)"]
 
 >>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     print mutation.mutate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
-['ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NOT NULL UNIQUE;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
+>>> execute_test_sql(test_sql)
+ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NOT NULL UNIQUE;
 
 # Null field
 >>> class NullDatabaseColumnModel(models.Model):
@@ -182,13 +207,16 @@ True
 ["AddField('TestModel', 'added_field', models.IntegerField, null=True)"]
 
 >>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     print mutation.mutate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
-['ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NULL;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
+>>> execute_test_sql(test_sql)
+ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NULL;
 
 # Foreign Key field.
 >>> class ForeignKeyDatabaseColumnModel(models.Model):
@@ -202,13 +230,16 @@ True
 ["AddField('TestModel', 'added_field', models.ForeignKey, related_model='django_evolution.AddAnchor1')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     print mutation.mutate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
-['ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NOT NULL;']
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
+>>> execute_test_sql(test_sql)
+ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NOT NULL;
 
 # M2M field between models with default table names.
 >>> class AddM2MDatabaseTableModel(models.Model):
@@ -225,12 +256,22 @@ True
 ["AddField('TestModel', 'added_field', models.ManyToManyField, related_model='django_evolution.AddAnchor1')"]
 
 >>> test_sig = copy.deepcopy(anchor_sig)
+>>> test_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     print mutation.mutate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
-['CREATE TABLE "django_evolution_addbasemodel_added_field" (\n    "id" serial NOT NULL PRIMARY KEY,\n    "testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,\n    "addanchor1_id" integer NOT NULL REFERENCES "django_evolution_addanchor1" ("id") DEFERRABLE INITIALLY DEFERRED,\n    UNIQUE ("testmodel_id", "addanchor1_id")\n)\n;']
+
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
+>>> execute_test_sql(test_sql, cleanup=['DROP TABLE "django_evolution_addbasemodel_added_field"'])
+CREATE TABLE "django_evolution_addbasemodel_added_field" (
+    "id" serial NOT NULL PRIMARY KEY,
+    "testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,
+    "addanchor1_id" integer NOT NULL REFERENCES "django_evolution_addanchor1" ("id") DEFERRABLE INITIALLY DEFERRED,
+    UNIQUE ("testmodel_id", "addanchor1_id")
+)
+;
 
 # M2M field between models with non-default table names.
 >>> class AddM2MNonDefaultDatabaseTableModel(models.Model):
@@ -247,12 +288,22 @@ True
 ["AddField('TestModel', 'added_field', models.ManyToManyField, related_model='django_evolution.AddAnchor2')"]
 
 >>> test_sig = copy.deepcopy(anchor_sig)
+>>> test_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     print mutation.mutate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
-['CREATE TABLE "django_evolution_addbasemodel_added_field" (\n    "id" serial NOT NULL PRIMARY KEY,\n    "testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,\n    "addanchor2_id" integer NOT NULL REFERENCES "custom_add_anchor_table" ("id") DEFERRABLE INITIALLY DEFERRED,\n    UNIQUE ("testmodel_id", "addanchor2_id")\n)\n;']
+
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
+>>> execute_test_sql(test_sql, cleanup=['DROP TABLE "django_evolution_addbasemodel_added_field"'])
+CREATE TABLE "django_evolution_addbasemodel_added_field" (
+    "id" serial NOT NULL PRIMARY KEY,
+    "testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,
+    "addanchor2_id" integer NOT NULL REFERENCES "custom_add_anchor_table" ("id") DEFERRABLE INITIALLY DEFERRED,
+    UNIQUE ("testmodel_id", "addanchor2_id")
+)
+;
 
 # M2M field between self
 # Need to find a better way to do this.
@@ -264,11 +315,21 @@ True
 ["AddField('TestModel', 'added_field', models.ManyToManyField, related_model='testapp.TestModel')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
 >>> for mutation in d.evolution()['testapp']:
-...     print mutation.mutate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
 ...     mutation.simulate('testapp', test_sig)
-['CREATE TABLE "django_evolution_addbasemodel_added_field" (\n    "id" serial NOT NULL PRIMARY KEY,\n    "from_testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,\n    "to_testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,\n    UNIQUE ("from_testmodel_id", "to_testmodel_id")\n)\n;']
+
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
+>>> execute_test_sql(test_sql, cleanup=['DROP TABLE "django_evolution_addbasemodel_added_field"'])
+CREATE TABLE "django_evolution_addbasemodel_added_field" (
+    "id" serial NOT NULL PRIMARY KEY,
+    "from_testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,
+    "to_testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,
+    UNIQUE ("from_testmodel_id", "to_testmodel_id")
+)
+;
 
 """

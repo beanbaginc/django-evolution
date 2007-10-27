@@ -4,7 +4,7 @@ tests = r"""
 >>> from django.db.models.loading import cache
 
 >>> from django_evolution.mutations import DeleteField
->>> from django_evolution.tests.utils import *
+>>> from django_evolution.tests.utils import test_proj_sig, execute_test_sql
 >>> from django_evolution.management.diff import Diff
 
 >>> import copy

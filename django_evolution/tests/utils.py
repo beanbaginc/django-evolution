@@ -35,12 +35,30 @@ def execute_sql(sql, output=False):
         transaction.rollback()
         raise ex
 
-def execute_test_sql(sql):
+def execute_test_sql(sql, cleanup=None, debug=False):
     """
     Execute a test SQL sequence. This method also creates and destroys the models
     that have been registered against the test module.
+    
+    cleanup is a list of extra sql statements required to clean up. This is
+    primarily for any extra m2m tables that were added during a test that won't 
+    be cleaned up by Django's sql_delete() implementation.
+    
+    debug is a helper flag. It displays the ALL the SQL that would be executed,
+    (including setup and teardown SQL), and executes the Django-derived setup/teardown
+    SQL.
     """
     style = no_style()
-    execute_sql(sql_create(evo_test, style))    
-    execute_sql(sql, output=True)
-    execute_sql(sql_delete(evo_test, style))
+    execute_sql(sql_create(evo_test, style), output=debug)
+    if debug:
+        for statement in sql:
+            print statement
+    else:
+        execute_sql(sql, output=True)
+    if cleanup:
+        if debug:
+            for statement in sql:
+                print statement
+        else:
+            execute_sql(cleanup, output=debug)
+    execute_sql(sql_delete(evo_test, style), output=debug)
