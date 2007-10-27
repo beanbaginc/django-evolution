@@ -21,7 +21,7 @@ tests = r"""
 >>> from django_evolution.mutations import AddField
 >>> from django_evolution.tests.utils import test_proj_sig, execute_test_sql
 >>> from django_evolution.diff import Diff
->>> from django_evolution.management import signature
+>>> from django_evolution import signature
 >>> from django_evolution import models as test_app
 
 >>> import copy

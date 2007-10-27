@@ -1,7 +1,7 @@
 
 tests = r"""
 >>> from django.db import models
->>> from django_evolution.management import signature
+>>> from django_evolution import signature
 >>> from django_evolution.diff import Diff
 >>> from django_evolution.tests.utils import test_proj_sig
 >>> from pprint import pprint

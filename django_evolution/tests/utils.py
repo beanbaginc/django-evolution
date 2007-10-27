@@ -3,7 +3,7 @@ from django.core.management.sql import sql_create, sql_delete
 from django.db.backends.util import truncate_name
 from django.db import connection, transaction
 
-from django_evolution.management import signature
+from django_evolution import signature
 from django_evolution.tests import models as evo_test
 
 def test_proj_sig(model, app_label='testapp', model_name='TestModel', version=1):
