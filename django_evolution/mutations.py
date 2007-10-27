@@ -3,7 +3,7 @@ from django.contrib.contenttypes import generic
 from django.db.models.fields import *
 from django.db.models.fields.related import *
 from django.db import models
-from django_evolution.management.signature import ATTRIBUTE_DEFAULTS
+from django_evolution.signature import ATTRIBUTE_DEFAULTS
 from django_evolution import EvolutionException, CannotSimulate
 
 FK_INTEGER_TYPES = ['AutoField', 'PositiveIntegerField', 'PositiveSmallIntegerField']

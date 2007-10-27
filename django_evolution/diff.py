@@ -3,7 +3,7 @@ from django.db.models.fields.related import *
 
 from django_evolution import EvolutionException
 from django_evolution.mutations import DeleteField, AddField
-from django_evolution.management.signature import ATTRIBUTE_DEFAULTS
+from django_evolution.signature import ATTRIBUTE_DEFAULTS
 
 class Diff(object):
     """

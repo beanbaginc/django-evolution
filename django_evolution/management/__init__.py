@@ -9,8 +9,8 @@ from django.db.models import signals, get_apps
 
 from django_evolution import models as django_evolution
 from django_evolution.evolve import get_evolution_sequence, get_unapplied_evolutions
-from django_evolution.management.signature import create_project_sig
-from django_evolution.management.diff import Diff
+from django_evolution.signature import create_project_sig
+from django_evolution.diff import Diff
 
 style = color_style()
     

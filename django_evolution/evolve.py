@@ -8,7 +8,7 @@ from django.db.models import loading
 
 from django_evolution import EvolutionException, CannotSimulate, SimulationFailure
 from django_evolution.models import Evolution
-from django_evolution.management.diff import Diff
+from django_evolution.diff import Diff
 from django_evolution.mutations import SQLMutation
 
 def get_evolution_sequence(app):

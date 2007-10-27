@@ -14,8 +14,8 @@ from django.db import connection, transaction
 
 from django_evolution import CannotSimulate
 from django_evolution.models import Version, Evolution
-from django_evolution.management.signature import create_project_sig
-from django_evolution.management.diff import Diff
+from django_evolution.signature import create_project_sig
+from django_evolution.diff import Diff
 from django_evolution.evolve import get_unapplied_evolutions, get_mutations
 
 class Command(BaseCommand):
