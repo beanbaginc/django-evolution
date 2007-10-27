@@ -112,11 +112,14 @@ class Command(BaseCommand):
                 if verbosity > 1:
                     print 'Application %s is up to date' % app_label
 
-        diff = Diff(database_sig, current_proj_sig)
-        if not diff.is_empty():
-            print self.style.ERROR('Simulation failure.')
-            print diff
-            sys.exit(1)
+        if simulated:
+            diff = Diff(database_sig, current_proj_sig)
+            if not diff.is_empty():
+                print self.style.ERROR('Simulation failure.')
+                print diff
+                sys.exit(1)
+        else:
+            print self.style.NOTICE('Evolution could not be simulated, possibly due to raw SQL mutations')
 
         if evolution_required:
             if execute:
@@ -168,8 +171,6 @@ Type 'yes' to continue, or 'no' to cancel: """ % settings.DATABASE_NAME)
                     if simulated:
                         print "Trial evolution successful."
                         print "Run './manage.py evolve --execute' to apply evolution."
-                    else:
-                        print self.style.NOTICE('Evolution could not be simulated, possibly due to raw SQL mutations')
         else:
             if verbosity > 0:
                 print 'No evolution required.'

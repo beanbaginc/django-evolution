@@ -16,7 +16,7 @@ class Version(models.Model):
     def __unicode__(self):
         if not self.evolutions.count():
             return u'Hinted version, updated on %s' % self.when
-        return u'Formal version, updated on %s' % self.when
+        return u'Stored version, updated on %s' % self.when
 
 class Evolution(models.Model):
     version = models.ForeignKey(Version, related_name='evolutions')

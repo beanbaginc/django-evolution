@@ -62,16 +62,16 @@ the tables for tracking model changes::
 
     $ ./manage.py syncdb
     Creating table django_evolution
-    Installing baseline evolution entry for application testproject.blogette
+    Installing baseline version for testproject.blogette
     Loading 'initial_data' fixtures...
     No fixtures found.
 
-Now we can go into ``models.py`` remove the ``date_of_birth`` field. Now 
-when we run ./manage.py syncdb, we will get a warning that changes have 
-been detected::
+Now we can go into ``models.py`` remove the ``date_of_birth`` field. 
+After removing the field, ``./manage.py syncdb`` will provide a warning 
+that changes have been detected::
 
     $ ./manage.py syncdb
-    Models in testproject.blogette have changed - an evolution is required
+    Project signature has changed - an evolution is required
     Loading 'initial_data' fixtures...
     No fixtures found.
 
@@ -83,15 +83,16 @@ If you want to know what has changed, you can use ask Django Evolution
 to provide a hint::
         
     $ ./manage.py evolve --hint
-    ----- Evolution for testproject.blogette
+    ----- Evolution for blogette
     from django_evoluton.mutations import *
-    from testproject.blogette import *
-
+    from django.db import models
+    
     MUTATIONS = [
-         DeleteField(Author, 'date_of_birth')
+         DeleteField('Author', 'date_of_birth')
     ]
     ----------------------
-    Trial evolution successful. Run './manage.py evolve --execute' to apply evolution.
+    Trial evolution successful. 
+    Run './manage.py evolve --execute' to apply evolution.
 
 The output of the hint is a Django Evolution. An Evolution is python code
 that defines a list of mutations that need to be made to update a model - 
@@ -102,8 +103,8 @@ If you want to see what the SQL would look like for this evolution, you can
 use the ``--sql`` option::
     
     $ ./manage.py evolve --hint --sql
-    ;; Compiled evolution SQL for testproject.blogette
-    ALTER TABLE blogette_person DROP COLUMN date_of_birth CASCADE;
+    ;; Compiled evolution SQL for blogette
+    ALTER TABLE "blogette_person" DROP COLUMN "date_of_birth" CASCADE;
 
 If we wanted to, we could pipe this SQL output directly into our database.
 however, we don't need to - we can get Django Evolution to do this for us, 
@@ -158,20 +159,21 @@ Mutation defintions
 -------------------
 
 Let's start with adding the ``location`` field to ``Authors``. First, we edit 
-``models.py`` to add a new CharField definition. Since we have made a change,
-we know an evolution will be required; if we run ``evolve --hint`` we will get
-the exact change required::
+``models.py`` to add a new CharField definition, with a length of 100. 
+Since we have made a change, we know an evolution will be required; if we 
+run ``evolve --hint`` we will get the exact change required::
 
     $ ./manage.py evolve --hint
-    ----- Evolution for testproject.blogette
+    ----- Evolution for blogette
     from django_evoluton.mutations import *
-    from testproject.blogette import *
+    from django.db import models
 
     MUTATIONS = [
-         AddField(Author, 'location')
+         AddField('Author', 'location', models.CharField, max_length=100)
     ]
     ----------------------
-    Trial evolution successful. Run './manage.py evolve --execute' to apply evolution.
+    Trial evolution successful. 
+    Run './manage.py evolve --execute' to apply evolution.
 
 At this point, we *could* just run ``evolve --hint --execute`` to update the
 development server. However, we want to remember this change, so we need to store
@@ -207,15 +209,16 @@ Now we can apply the evolution. We don't need a hint this time - we have
 a stored evolution, so we can just run ``evolve``::
 
     $ ./manage.py evolve
-    ----- Evolution for testproject.blogette
+    ----- Evolution for blogette
     from django_evoluton.mutations import *
-    from testproject.blogette import *
+    from django.db import models
 
     MUTATIONS = [
-         AddField(Author, 'location')
+         AddField(Author, 'location', models.CharField, max_length=100)
     ]
     ----------------------
-    Trial evolution successful. Run './manage.py evolve --execute' to apply evolution.
+    Trial evolution successful. 
+    Run './manage.py evolve --execute' to apply evolution.
 
 This shows us the sequence of mutations described by our stored evolution 
 sequence. It also tells us that the trial evolution was successful - every
@@ -251,7 +254,7 @@ stored Python evolution. In this case, we're going to call our mutation
 evolutions directory. Into this file, we put the SQL that will make the 
 change we require. In our case, this means::
 
-    ALTER TABLE blogette_entry ADD COLUMN summary varchar(200);
+    ALTER TABLE blogette_entry ADD COLUMN summary varchar(100);
     
 Then, we add the new evolution to the evolution sequence in 
 ``evolutions/__init__.py``. The sequence should now look like this::
@@ -262,9 +265,9 @@ We have now defined our SQL mutation, and how it should be executed, so we
 can trial the evolution::
 
     $ ./manage.py evolve
-    ----- Evolution for testproject.blogette
+    ----- Evolution for blogette
     from django_evoluton.mutations import *
-    from testproject.blogette import *
+    from django.db import models
 
     MUTATIONS = [
         SQLMutation('add_summary')
@@ -277,8 +280,8 @@ sure that the mutation is correct. However, we can inspect the SQL that will
 be used using the --sql option::
 
     $ ./manage.py evolve --sql
-    ;; Compiled evolution SQL for testproject.blogette
-    ALTER TABLE blogette_entry ADD COLUMN summary varchar(200);
+    ;; Compiled evolution SQL for blogette
+    ALTER TABLE blogette_entry ADD COLUMN summary varchar(100);
 
 If we are satisfied that this SQL is correct, we can execute it::
 
@@ -295,7 +298,8 @@ to the production server. We then run ./manage.py syncdb, which reports that
 evolutions are required::
 
     $ ./manage.py syncdb
-    Models in testproject.blogette have changed - an evolution is required
+    Project signature has changed - an evolution is required
+    There are unapplied evolutions for blogette.
     Loading 'initial_data' fixtures...
     No fixtures found.
 
@@ -303,12 +307,12 @@ If we run evolve, we can see the full sequence of mutations that will be
 applied::
 
     $ ./manage.py evolve
-    ----- Evolution for testproject.blogette
+    ----- Evolution for blogette
     from django_evoluton.mutations import *
-    from testproject.blogette import *
+    from django.db import models
 
     MUTATIONS = [
-        AddField(Author, 'location'),
+        AddField(Author, 'location', models.CharField, max_length=100),
         SQLMutation('add_summary')
     ]
     ----------------------
@@ -319,14 +323,17 @@ the migration ourself using the --sql option::
 
     $ ./manage.py evolve --sql
     ;; Compiled evolution SQL for testproject.blogette
-    ALTER TABLE blogette_author ADD COLUMN location varchar(200);
-    ALTER TABLE blogette_entry ADD COLUMN summary varchar(200);
+    ALTER TABLE blogette_author ADD COLUMN location varchar(100);
+    ALTER TABLE blogette_entry ADD COLUMN summary varchar(100);
 
 If we are happy with this sequence, we can apply it::
 
     $ ./manage.py evolve --execute
     ...
     Evolution successful.
+
+There we have it - our production site now has a database that fits the
+changes made on the development server.
 
 Reference
 =========
@@ -372,7 +379,7 @@ command.
 Provide a hinted list of mutations for migrating. If no application labels are
 provided, hints for the entire project will be generated. If one or more 
 application names are provided, the hints provided will be restricted to those
-applications
+applications.
 
 May be combined with ``--sql`` to generate hinted mutations in SQL format.
 
@@ -424,14 +431,14 @@ Built-in Mutations
 Django Evolution comes with a number of mutations built-in. These mutations 
 cover the simple cases for model evolutions.
 
-AddField(Model, field_name)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+AddField(Model, field_name, **kwargs)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Add the field 'field_name' to the model.
+Add the field 'field_name' to the model. The extra keyword arguments are the
 
 Example::
 
-    AddField(Author, 'name')
+    AddField(Author, 'name', models.CharField, max_length=100)
 
 DeleteField(Model, field_name)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -451,22 +458,44 @@ Example::
    
     RenameField(Author, 'name', 'full_name')
     
-SQLMutation(sql)
-~~~~~~~~~~~~~~~~
+SQLMutation(tag, sql, update_func=None)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Run a list of SQL statements as a mutation. This can be used as an alternative 
-to defining an mutation as an SQL file.
+to defining an mutation as an SQL file. By default, SQLMutations cannot be
+simulated - therefore, you should carefully audit the SQL for any evolution 
+sequence including an SQLMutation before you execute that SQL on a database.
+
+``tag`` is a text description of the changes. It will usually be the 
+evolution name. 
+
+``update_func`` is a optional function that will be invoked to update the 
+project signature when the mutation is simulated. This allows SQLMutations 
+to be included as part of a simulated evolution sequence. 
+
+An update function takes the application label and current project signature, 
+and mutates that signature until it reflects the changes implemented by the
+SQL. For example, a simple mutation function to remove an 'Author' table
+from an application might look something like:
+
+    def my_update_func(app_label, project_signature):
+        del project_signature[app_label]['Author']
+
+If you provide an update function, it will be invoked as part of the 
+simulation sequence. Any discrepancies between the simulated and expected
+project signatures will be reported as an error during the evolution process.
 
 Example::
 
-    SQLMutation(['ALTER TABLE blogette_author ADD COLUMN location varchar(200);'])
+    SQLMutation('add_location', ['ALTER TABLE blogette_author ADD COLUMN location varchar(100);'])
 
 Defining your own mutations
 ---------------------------
 
 If you have a special set of mutation requirements, you can define your own 
 mutation. All you need to do is subclass 
-``django_evolution.mutations.BaseMutation``.
+``django_evolution.mutations.BaseMutation``, and include the mutation in an
+stored evolution.
 
 More to come
 ============

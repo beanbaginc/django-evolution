@@ -30,8 +30,8 @@ Management
 Who is behind Django Evolution?
 -------------------------------
 
-Django Evolution was developed as a part time project by two software 
-engineers based in Perth, Western Australia: `Ben Khoo`_ and `Russell Keith-Magee`_.
+Django Evolution was developed as a part time project by two guys based in 
+Perth, Western Australia: `Ben Khoo`_ and `Russell Keith-Magee`_.
 Russell is also a core developer of Django itself.
     
 .. _`Ben Khoo`: mailto:khoobks@westnet.com.au
@@ -82,7 +82,7 @@ philosophy - for example, in default usage, you write a Django model,
 and Django creates the tables. You *can* manually create the tables if
 you want, and you *can* manually tweak the tables if you need to - but
 if you do, Django doesn't guarantee that that anything will work as
-expected. Django provides initial sql hooks that implicitly encoure
+expected. Django provides initial sql hooks that implicitly encourage
 you to store/document any external modifications. Django doesn't go
 out of its way to make life difficult in this regard, but the core
 design of Django isn't going to change fundamentally in order to

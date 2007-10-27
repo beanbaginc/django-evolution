@@ -39,18 +39,18 @@ class SQLMutation(BaseMutation):
         self.update_func = update_func
         
     def __str__(self):
-        return "SQLMutation(%s)" % self.tag
-
-    def simulate(self, proj_sig):    
-        "The mutation of an SQL mutation returns the raw SQL"
-        return self.sql
+        return "SQLMutation('%s')" % self.tag
     
-    def mutate(self, proj_sig):
+    def simulate(self, app_label, proj_sig):    
         "SQL mutations cannot be simulated unless an update function is provided"
         if callable(self.update_func):
-            self.update_func(proj_sig)
+            self.update_func(app_label, proj_sig)
         else:
             raise CannotSimulate()
+
+    def mutate(self, app_label, proj_sig):
+        "The mutation of an SQL mutation returns the raw SQL"
+        return self.sql
         
 class DeleteField(BaseMutation):
     def __init__(self, model_name, field_name):
