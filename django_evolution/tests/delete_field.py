@@ -39,11 +39,11 @@ tests = r"""
 ...     my_id = models.AutoField(primary_key=True)
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
-...     int_field2 = models.IntegerField(db_column='non_default_db_column')
+...     int_field2 = models.IntegerField(db_column='non-default_db_column')
 ...     int_field3 = models.IntegerField(unique=True)
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
-...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
+...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 
 >>> class CustomTableModel(models.Model):
 ...     value = models.IntegerField()
@@ -63,11 +63,11 @@ tests = r"""
 # >>> class PrimaryKeyModel(models.Model):
 # ...     char_field = models.CharField(max_length=20)
 # ...     int_field = models.IntegerField()
-# ...     int_field2 = models.IntegerField(db_column='non_default_db_column')
+# ...     int_field2 = models.IntegerField(db_column='non-default_db_column')
 # ...     int_field3 = models.IntegerField(unique=True)
 # ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 # ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
-# ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
+# ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 # 
 # >>> new_sig = test_proj_sig(PrimaryKeyModel)
 # >>> d = Diff(base_sig, new_sig)
@@ -88,11 +88,11 @@ tests = r"""
 >>> class DefaultNamedColumnModel(models.Model):
 ...     my_id = models.AutoField(primary_key=True)
 ...     char_field = models.CharField(max_length=20)
-...     int_field2 = models.IntegerField(db_column='non_default_db_column')
+...     int_field2 = models.IntegerField(db_column='non-default_db_column')
 ...     int_field3 = models.IntegerField(unique=True)
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
-...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
+...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 
 >>> new_sig = test_proj_sig(DefaultNamedColumnModel)
 >>> d = Diff(base_sig, new_sig)
@@ -109,7 +109,7 @@ tests = r"""
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE django_evolution_deletebasemodel DROP COLUMN int_field CASCADE;
+ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "int_field" CASCADE;
 
 # Deleting a non-default named column
 >>> class NonDefaultNamedColumnModel(models.Model):
@@ -119,7 +119,7 @@ ALTER TABLE django_evolution_deletebasemodel DROP COLUMN int_field CASCADE;
 ...     int_field3 = models.IntegerField(unique=True)
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
-...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
+...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 
 >>> new_sig = test_proj_sig(NonDefaultNamedColumnModel)
 >>> d = Diff(base_sig, new_sig)
@@ -136,7 +136,7 @@ ALTER TABLE django_evolution_deletebasemodel DROP COLUMN int_field CASCADE;
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE django_evolution_deletebasemodel DROP COLUMN non_default_db_column CASCADE;
+ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "non-default_db_column" CASCADE;
 
 # Deleting a column with database constraints (unique)
 # TODO: Verify that the produced SQL is actually correct
@@ -145,10 +145,10 @@ ALTER TABLE django_evolution_deletebasemodel DROP COLUMN non_default_db_column C
 ...     my_id = models.AutoField(primary_key=True)
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
-...     int_field2 = models.IntegerField(db_column='non_default_db_column')
+...     int_field2 = models.IntegerField(db_column='non-default_db_column')
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
-...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
+...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 
 >>> new_sig = test_proj_sig(ConstrainedColumnModel)
 >>> d = Diff(base_sig, new_sig)
@@ -165,17 +165,17 @@ ALTER TABLE django_evolution_deletebasemodel DROP COLUMN non_default_db_column C
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE django_evolution_deletebasemodel DROP COLUMN int_field3 CASCADE;
+ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "int_field3" CASCADE;
 
 # Deleting a default m2m
 >>> class DefaultM2MModel(models.Model):
 ...     my_id = models.AutoField(primary_key=True)
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
-...     int_field2 = models.IntegerField(db_column='non_default_db_column')
+...     int_field2 = models.IntegerField(db_column='non-default_db_column')
 ...     int_field3 = models.IntegerField(unique=True)
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
-...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
+...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 
 >>> new_sig = test_proj_sig(DefaultM2MModel)
 >>> d = Diff(base_sig, new_sig)
@@ -192,14 +192,14 @@ ALTER TABLE django_evolution_deletebasemodel DROP COLUMN int_field3 CASCADE;
 True
 
 >>> execute_test_sql(test_sql)
-DROP TABLE django_evolution_deletebasemodel_m2m_field1;
+DROP TABLE "django_evolution_deletebasemodel_m2m_field1";
 
 # Deleting a m2m stored in a non-default table
 >>> class NonDefaultM2MModel(models.Model):
 ...     my_id = models.AutoField(primary_key=True)
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
-...     int_field2 = models.IntegerField(db_column='non_default_db_column')
+...     int_field2 = models.IntegerField(db_column='non-default_db_column')
 ...     int_field3 = models.IntegerField(unique=True)
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
@@ -219,17 +219,17 @@ DROP TABLE django_evolution_deletebasemodel_m2m_field1;
 True
 
 >>> execute_test_sql(test_sql)
-DROP TABLE non_default_m2m_table;
+DROP TABLE "non-default_m2m_table";
 
 # Delete a foreign key
 >>> class DeleteForeignKeyModel(models.Model):
 ...     my_id = models.AutoField(primary_key=True)
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
-...     int_field2 = models.IntegerField(db_column='non_default_db_column')
+...     int_field2 = models.IntegerField(db_column='non-default_db_column')
 ...     int_field3 = models.IntegerField(unique=True)
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
-...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non_default_m2m_table')
+...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 
 >>> new_sig = test_proj_sig(DeleteForeignKeyModel)
 >>> d = Diff(base_sig, new_sig)
@@ -246,7 +246,7 @@ DROP TABLE non_default_m2m_table;
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE django_evolution_deletebasemodel DROP COLUMN fk_field1_id CASCADE;
+ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "fk_field1_id" CASCADE;
 
 # Deleting a column from a non-default table
 >>> class DeleteColumnCustomTableModel(models.Model):
@@ -269,6 +269,6 @@ ALTER TABLE django_evolution_deletebasemodel DROP COLUMN fk_field1_id CASCADE;
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE custom_table_name DROP COLUMN value CASCADE;
+ALTER TABLE "custom_table_name" DROP COLUMN "value" CASCADE;
 
 """

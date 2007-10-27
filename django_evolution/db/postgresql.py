@@ -1,19 +1,23 @@
 from django.db import connection
 
 def rename_column(signature, db_table, old_col_name, new_col_name):
-    params = (db_table, old_col_name, new_col_name)
-    return ['ALTER TABLE %s RENAME COLUMN %s TO %s;'%params]
+    qn = connection.ops.quote_name
+    params = (qn(db_table), qn(old_col_name), qn(new_col_name))
+    return ['ALTER TABLE %s RENAME COLUMN %s TO %s;' % params]
     
 def rename_table(signature, old_db_tablename, new_db_tablename):
-    params = (old_db_tablename, new_db_tablename)
-    return ['ALTER TABLE %s RENAME TO %s;'%params]
+    qn = connection.ops.quote_name
+    params = (qn(old_db_tablename), qn(new_db_tablename))
+    return ['ALTER TABLE %s RENAME TO %s;' % params]
     
 def delete_column(signature, table_name, column_name):
-    params = (table_name,column_name)
-    return ['ALTER TABLE %s DROP COLUMN %s CASCADE;'%params]
+    qn = connection.ops.quote_name
+    params = (qn(table_name),qn(column_name))
+    return ['ALTER TABLE %s DROP COLUMN %s CASCADE;' % params]
 
 def delete_table(signature, table_name):
-    return ['DROP TABLE %s;'%table_name]
+    qn = connection.ops.quote_name
+    return ['DROP TABLE %s;' % qn(table_name)]
 
 def add_table(app_sig, model_tablespace, field_tablespace,
               m2m_db_table, auto_field_db_type,
@@ -70,10 +74,11 @@ def add_table(app_sig, model_tablespace, field_tablespace,
     return final_output
     
 def add_column(signature, table_name, column_name, db_type, primary_key, null, unique):
+    qn = connection.ops.quote_name
     constraints = ['%sNULL' % (not null and 'NOT ' or '')]
     if unique and (not primary_key or connection.features.allows_unique_and_pk):
         constraints.append('UNIQUE')
-    params = (table_name, column_name, db_type,' '.join(constraints))    
+    params = (qn(table_name), qn(column_name), db_type,' '.join(constraints))    
     output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
     return output
     
