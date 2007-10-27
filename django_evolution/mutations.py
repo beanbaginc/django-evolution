@@ -55,7 +55,7 @@ class SQLMutation(BaseMutation):
 class DeleteField(BaseMutation):
     def __init__(self, model_name, field_name):
         self.model_name = model_name
-        self.field_name = str(field_name)
+        self.field_name = field_name
     
     def __str__(self):
         return "DeleteField('%s', '%s')" % (self.model_name, self.field_name)
@@ -77,13 +77,13 @@ class DeleteField(BaseMutation):
                     
             unique_together_list.append(tuple(unique_together_fields))
         model_sig['meta']['unique_together'] = tuple(unique_together_list)
+
+        if model_sig['fields'][self.field_name].get('primary_key',False):
+            raise SimulationFailure('Cannot delete a primary key.')
         
         # Simulate the deletion of the field.
         try:
-            if model_sig['fields'][self.field_name].has_key('primary_key') and model_sig['fields'][self.field_name]['primary_key']:
-                raise SimulationFailure('Cannot delete a primary key.')
-            else:
-                field_sig = model_sig['fields'].pop(self.field_name)
+            field_sig = model_sig['fields'].pop(self.field_name)
         except KeyError, ke:
             raise SimulationFailure('Cannot find the field named "%s".' % self.field_name)
             
@@ -91,12 +91,13 @@ class DeleteField(BaseMutation):
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
         field_sig = model_sig['fields'][self.field_name]
+
         if field_sig['field_type'] == models.ManyToManyField:
-            # Deletion of the many to many field involve dropping a table
+            # Deletion of the many to many field involves dropping a table
             if field_sig.has_key('db_table'):
                 m2m_table = field_sig['db_table']
             else:
-                m2m_table = '%s_%s' % (model_sig['meta']['db_table'], self.field_name)    
+                m2m_table = '%s_%s' % (model_sig['meta']['db_table'], self.field_name)
             sql_statements = get_evolution_module().delete_table(app_sig, m2m_table)
         else:
             if field_sig['field_type'] == models.ForeignKey:
@@ -133,7 +134,11 @@ class AddField(BaseMutation):
             if not self.field_attrs.get('null', False):
                 raise SimulationFailure("Cannot create new column '%s' on '%s.%s' that prohibits null values" % (
                         self.field_name, app_label, self.model_name))
-                
+        
+        if self.field_name in model_sig['fields']:
+            raise SimulationFailure("Model '%s.%s' already has a field named '%s'" %
+                        app_label, self.model_name, self.field_name))
+            
         model_sig['fields'][self.field_name] = {
             'field_type': self.field_type,
         }

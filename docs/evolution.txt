@@ -516,7 +516,7 @@ stored evolution.
 More to come
 ============
 
-Django-evolution isn't complete - yet. There is still lots to do, and we'd
+Django Evolution isn't complete - yet. There is still lots to do, and we'd
 appreciate any help or suggestions you may have. The following are some examples
 of features that we would like to add:
 

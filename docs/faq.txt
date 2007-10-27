@@ -201,10 +201,10 @@ accommodate externalities.
 Contributing code
 =================
 
-How can I get started contributing code to Django-Evolution?
+How can I get started contributing code to Django Evolution?
 ------------------------------------------------------------
 
-Thanks for asking! If you're interested in contributing to Django-Evolution, 
+Thanks for asking! If you're interested in contributing to Django Evolution, 
 please send a private email to Ben or Russell. However, be advised that if you
 you want your request to be taken seriously, you need to have a track record
 of producing high quality patches. 
