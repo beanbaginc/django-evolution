@@ -153,7 +153,7 @@ to creates the database. As a result, the model definition is canonical
 - not the database. 
 
 This means that audit, hinting, and verification schemes can use the 
-Django model as a point of reference. A Django Evo lution script is 
+Django model as a point of reference. A Django Evolution script is 
 much more than just an alternate syntax for SQL ALTER statements - it
 is an evolution scheme that is bound to the canonical model definition.
 
@@ -192,7 +192,7 @@ philosophy - for example, in default usage, you write a Django model,
 and Django creates the tables. You *can* manually create the tables if
 you want, and you *can* manually tweak the tables if you need to - but
 if you do, Django doesn't guarantee that that anything will work as
-expected. Django provides initial sql hooks that implicitly encourage
+expected. Django provides initial SQL hooks that implicitly encourage
 you to store/document any external modifications. Django doesn't go
 out of its way to make life difficult in this regard, but the core
 design of Django isn't going to change fundamentally in order to
