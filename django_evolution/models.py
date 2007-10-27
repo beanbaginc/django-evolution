@@ -31,4 +31,3 @@ class Evolution(models.Model):
         
     def __unicode__(self):
         return u"Evolution %s, applied to %s" % (self.label, self.app_label)
-    

@@ -1,5 +1,14 @@
-
+================
 Django Evolution
 ================
 
 An implementation of schema evolution for the Django web framework.
+
+For details on how to use Django Evolution, read the tutorial/instructions
+contained in docs/evolution.txt.
+
+Django Evolution is a work in progress; the interfaces are not guaranteed 
+to be stable, and the SQL that is generated may sometimes be in error. 
+
+In short, don't deploy this on a production site. If you do, and it breaks,
+you get to keep every single one of the shiny little pieces. :-)

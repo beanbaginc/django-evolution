@@ -53,7 +53,7 @@ class Diff(object):
                                 new_field_data = new_model_sig['fields'].get(field_name,None)
                                 if new_field_data:
                                     for prop,value in old_field_data.items():
-                                        if new_field_data[prop] != value:
+                                        if new_field_data.get(prop, None) != value:
                                             # Field definition has changed
                                             self.changed.setdefault(app_name, 
                                                 {}).setdefault('changed', 
@@ -123,7 +123,9 @@ class Diff(object):
             for model_name, change in app_changes.get('changed',{}).items():
                 for field_name in change.get('added',{}):
                     field_sig = self.current_sig[app_label][model_name]['fields'][field_name]
-                    add_params = [(key,field_sig[key]) for key in field_sig.keys() if key in ATTRIBUTE_DEFAULTS.keys()]
+                    add_params = [(key,field_sig[key]) 
+                                    for key in field_sig.keys() 
+                                    if key in ATTRIBUTE_DEFAULTS.keys()]
                     add_params.append(('field_type', field_sig['field_type']))
                     if 'related_model' in field_sig:
                         add_params.append(('related_model', '%s' % field_sig['related_model']))

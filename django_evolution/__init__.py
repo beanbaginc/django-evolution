@@ -1,14 +1,12 @@
 class EvolutionException(Exception):
-    def __init__(self,value):
-        self.value=value
+    def __init__(self,msg):
+        self.msg = msg
 
     def __str__(self):
-        return str(self.value)
+        return str(self.msg)
         
-class CannotSimulate(Exception):
+class CannotSimulate(EvolutionException):
     pass
     
-class SimulationFailure(Exception):
-    def __init__(self, diff):
-        self.diff = diff
-    
+class SimulationFailure(EvolutionException):
+    pass

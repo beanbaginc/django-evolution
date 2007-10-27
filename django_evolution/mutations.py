@@ -4,7 +4,7 @@ from django.db.models.fields import *
 from django.db.models.fields.related import *
 from django.db import models
 from django_evolution.signature import ATTRIBUTE_DEFAULTS
-from django_evolution import EvolutionException, CannotSimulate
+from django_evolution import CannotSimulate, SimulationFailure
 
 FK_INTEGER_TYPES = ['AutoField', 'PositiveIntegerField', 'PositiveSmallIntegerField']
 
@@ -46,7 +46,7 @@ class SQLMutation(BaseMutation):
         if callable(self.update_func):
             self.update_func(app_label, proj_sig)
         else:
-            raise CannotSimulate()
+            raise CannotSimulate('Cannot simulate SQLMutations')
 
     def mutate(self, app_label, proj_sig):
         "The mutation of an SQL mutation returns the raw SQL"
@@ -81,11 +81,11 @@ class DeleteField(BaseMutation):
         # Simulate the deletion of the field.
         try:
             if model_sig['fields'][self.field_name].has_key('primary_key') and model_sig['fields'][self.field_name]['primary_key']:
-                raise EvolutionError('Cannot delete a primary key.')
+                raise SimulationFailure('Cannot delete a primary key.')
             else:
                 field_sig = model_sig['fields'].pop(self.field_name)
         except KeyError, ke:
-            print 'SIMULATE ERROR: Cannot find the field named "%s".' % self.field_name
+            raise SimulationFailure('Cannot find the field named "%s".' % self.field_name)
             
     def mutate(self, app_label, proj_sig):
         app_sig = proj_sig[app_label]
@@ -128,6 +128,12 @@ class AddField(BaseMutation):
     def simulate(self, app_label, proj_sig):    
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]        
+                
+        if self.field_type != models.ManyToManyField:
+            if not self.field_attrs.get('null', False):
+                raise SimulationFailure("Cannot create new column '%s' on '%s.%s' that prohibits null values" % (
+                        self.field_name, app_label, self.model_name))
+                
         model_sig['fields'][self.field_name] = {
             'field_type': self.field_type,
         }

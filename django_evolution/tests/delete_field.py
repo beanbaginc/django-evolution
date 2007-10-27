@@ -58,32 +58,6 @@ tests = r"""
 # Register the test models with the Django app cache
 >>> cache.register_models('tests', CustomTableModel, DeleteBaseModel, DeleteAnchor1, DeleteAnchor2, DeleteAnchor3, DeleteAnchor4)
 
-# Deleting the primary key 
-# RKM: Can't do this (yet?) - PK deletion is disabled by simulate 
-# >>> class PrimaryKeyModel(models.Model):
-# ...     char_field = models.CharField(max_length=20)
-# ...     int_field = models.IntegerField()
-# ...     int_field2 = models.IntegerField(db_column='non-default_db_column')
-# ...     int_field3 = models.IntegerField(unique=True)
-# ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
-# ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
-# ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
-# 
-# >>> new_sig = test_proj_sig(PrimaryKeyModel)
-# >>> d = Diff(base_sig, new_sig)
-# >>> print [str(e) for e in d.evolution()['testapp']]
-# ["AddField('TestModel', 'id', models.AutoField, primary_key=True)", "DeleteField('TestModel', 'my_id')"]
-# 
-# >>> test_sig = copy.deepcopy(base_sig)
-# >>> for mutation in d.evolution()['testapp']:
-# ...     print mutation.mutate('testapp', test_sig)
-# ...     mutation.simulate('testapp', test_sig)
-# ['ALTER TABLE django_evolution_deletebasemodel ADD COLUMN id serial'];
-# ['ALTER TABLE django_evolution_deletebasemodel DROP COLUMN my_id CASCADE'];
-# 
-# >>> Diff(test_sig, new_sig).is_empty()
-# True
-
 # Deleting a default named column
 >>> class DefaultNamedColumnModel(models.Model):
 ...     my_id = models.AutoField(primary_key=True)

@@ -12,7 +12,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db.models import get_apps, get_app, signals
 from django.db import connection, transaction
 
-from django_evolution import CannotSimulate
+from django_evolution import CannotSimulate, SimulationFailure
 from django_evolution.models import Version, Evolution
 from django_evolution.signature import create_project_sig
 from django_evolution.diff import Diff
@@ -71,51 +71,55 @@ class Command(BaseCommand):
         except Evolution.DoesNotExist:
             print self.style.ERROR("Can't evolve yet. Need to set an evolution baseline.")
             sys.exit(1)
-                    
-        for app in app_list:
-            app_label = app.__name__.split('.')[-2]
-            if hint:
-                evolutions = []
-                mutations = diff.evolution().get(app_label,[])
-            else:
-                evolutions = get_unapplied_evolutions(app)
-                mutations = get_mutations(app, evolutions)
+        
+        try:            
+            for app in app_list:
+                app_label = app.__name__.split('.')[-2]
+                if hint:
+                    evolutions = []
+                    mutations = diff.evolution().get(app_label,[])
+                else:
+                    evolutions = get_unapplied_evolutions(app)
+                    mutations = get_mutations(app, evolutions)
                 
-            if mutations:
-                evolution_required = True
-                for mutation in mutations:
-                    sql.extend(mutation.mutate(app_label, database_sig))
-                    try:
-                        mutation.simulate(app_label, database_sig)
-                    except CannotSimulate:
-                        simulated = False
-                new_evolutions.extend(Evolution(app_label=app_label, label=label) 
-                                        for label in evolutions)
+                if mutations:
+                    evolution_required = True
+                    for mutation in mutations:
+                        sql.extend(mutation.mutate(app_label, database_sig))
+                        try:
+                            mutation.simulate(app_label, database_sig)
+                        except CannotSimulate:
+                            simulated = False
+                    new_evolutions.extend(Evolution(app_label=app_label, label=label) 
+                                            for label in evolutions)
                     
-                if not execute:
-                    if compile_sql:
-                        print ';; Compiled evolution SQL for %s' % app_label
-                        for s in sql:
-                            print s                            
-                    else:
-                        print '----- Evolution for %s' % app_label
-                        print 'from django_evolution.mutation import *'
-                        print 'from django.db import models'
-                        print 
-                        print 'MUTATIONS = ['
-                        print '   ',
-                        print ',\n    '.join(str(m) for m in mutations)
-                        print ']'
-                        print '----------------------'
+                    if not execute:
+                        if compile_sql:
+                            print ';; Compiled evolution SQL for %s' % app_label
+                            for s in sql:
+                                print s                            
+                        else:
+                            print '----- Evolution for %s' % app_label
+                            print 'from django_evolution.mutation import *'
+                            print 'from django.db import models'
+                            print 
+                            print 'MUTATIONS = ['
+                            print '   ',
+                            print ',\n    '.join(str(m) for m in mutations)
+                            print ']'
+                            print '----------------------'
 
-            else:
-                if verbosity > 1:
-                    print 'Application %s is up to date' % app_label
-
+                else:
+                    if verbosity > 1:
+                        print 'Application %s is up to date' % app_label
+        except SimulationFailure,s:
+            print self.style.ERROR('Simulation failure: %s' % s)
+            sys.exit(1)
+            
         if simulated:
             diff = Diff(database_sig, current_proj_sig)
             if not diff.is_empty():
-                print self.style.ERROR('Simulation failure.')
+                print self.style.ERROR('Simulation failure: Signatures do not match at end of simulation')
                 print diff
                 sys.exit(1)
         else:

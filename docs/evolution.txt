@@ -14,7 +14,9 @@ update the database to reflect those changes.
 .. admonition:: Work in Progress 
 
     Django Evolution is a work in progress. The interface and usage described
-    in this document is subject to change as we finess the details. 
+    in this document is subject to change as we finess the details. The SQL
+    that is automatically generated may occasionally be wrong. In short,
+    Django Evolution is not yet ready for a production rollout.
     
 An example
 ==========
@@ -160,8 +162,13 @@ Mutation defintions
 
 Let's start with adding the ``location`` field to ``Authors``. First, we edit 
 ``models.py`` to add a new CharField definition, with a length of 100. 
-Since we have made a change, we know an evolution will be required; if we 
-run ``evolve --hint`` we will get the exact change required::
+We will also allow null values, since we have existing data that won't have
+an author location. Add the following field defintion to authors::
+
+    location = models.CharField(max_length=100, null=True)
+
+After making this change to the Author model, we know an evolution will be 
+required; if we run ``evolve --hint`` we will get the exact change required::
 
     $ ./manage.py evolve --hint
     ----- Evolution for blogette
@@ -169,7 +176,7 @@ run ``evolve --hint`` we will get the exact change required::
     from django.db import models
 
     MUTATIONS = [
-         AddField('Author', 'location', models.CharField, max_length=100)
+         AddField('Author', 'location', models.CharField, max_length=100, null=True)
     ]
     ----------------------
     Trial evolution successful. 
@@ -214,7 +221,7 @@ a stored evolution, so we can just run ``evolve``::
     from django.db import models
 
     MUTATIONS = [
-         AddField(Author, 'location', models.CharField, max_length=100)
+         AddField(Author, 'location', models.CharField, max_length=100, null=True)
     ]
     ----------------------
     Trial evolution successful. 
@@ -254,7 +261,7 @@ stored Python evolution. In this case, we're going to call our mutation
 evolutions directory. Into this file, we put the SQL that will make the 
 change we require. In our case, this means::
 
-    ALTER TABLE blogette_entry ADD COLUMN summary varchar(100);
+    ALTER TABLE blogette_entry ADD COLUMN summary varchar(100) NULL;
     
 Then, we add the new evolution to the evolution sequence in 
 ``evolutions/__init__.py``. The sequence should now look like this::
@@ -281,7 +288,7 @@ be used using the --sql option::
 
     $ ./manage.py evolve --sql
     ;; Compiled evolution SQL for blogette
-    ALTER TABLE blogette_entry ADD COLUMN summary varchar(100);
+    ALTER TABLE blogette_entry ADD COLUMN summary varchar(100) NULL;
 
 If we are satisfied that this SQL is correct, we can execute it::
 
@@ -312,7 +319,7 @@ applied::
     from django.db import models
 
     MUTATIONS = [
-        AddField(Author, 'location', models.CharField, max_length=100),
+        AddField(Author, 'location', models.CharField, max_length=100, null=True),
         SQLMutation('add_summary')
     ]
     ----------------------
@@ -323,8 +330,8 @@ the migration ourself using the --sql option::
 
     $ ./manage.py evolve --sql
     ;; Compiled evolution SQL for testproject.blogette
-    ALTER TABLE blogette_author ADD COLUMN location varchar(100);
-    ALTER TABLE blogette_entry ADD COLUMN summary varchar(100);
+    ALTER TABLE blogette_author ADD COLUMN location varchar(100) NULL;
+    ALTER TABLE blogette_entry ADD COLUMN summary varchar(100) NULL;
 
 If we are happy with this sequence, we can apply it::
 
@@ -332,8 +339,8 @@ If we are happy with this sequence, we can apply it::
     ...
     Evolution successful.
 
-There we have it - our production site now has a database that fits the
-changes made on the development server.
+Our production site now has a database that mirrors the changes made on 
+the development server.
 
 Reference
 =========
@@ -435,10 +442,19 @@ AddField(Model, field_name, **kwargs)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Add the field 'field_name' to the model. The extra keyword arguments are the
+arguments used to construct the new field.
+
+.. admonition:: New fields and NULL
+
+    If you are adding a column to a existing table, you will need to specify
+    ``null=True`` on the field definition. This is because after adding the 
+    field, every item in the database must be able to provide a value for the 
+    new field. Since existing rows will not have a value for the new field, 
+    a value of NULL must be allowed.
 
 Example::
 
-    AddField(Author, 'name', models.CharField, max_length=100)
+    AddField(Author, 'name', models.CharField, max_length=100, null=True)
 
 DeleteField(Model, field_name)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -511,8 +527,11 @@ of features that we would like to add:
        c. ChangeModel - to handle model constraints like ``unique_together``,
        d. ChangeData - to handle data changes without a corresponding field 
           definition change.
-       
-   2. Support for other database backends (SQLite, MySQL, Oracle...)
 
-   3. Support for database introspection - the ability to look at the acutal
+   2. Improvements to existing mutations, including:
+       a. Adding support for default values to AddField
+              
+   3. Support for other database backends (SQLite, MySQL, Oracle...)
+
+   4. Support for database introspection - the ability to look at the actual
       database structure to determine if evolutions are required.
