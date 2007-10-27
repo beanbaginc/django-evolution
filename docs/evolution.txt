@@ -14,7 +14,7 @@ update the database to reflect those changes.
 .. admonition:: Work in Progress 
 
     Django Evolution is a work in progress. The interface and usage described
-    in this document is subject to change as we finess the details. The SQL
+    in this document is subject to change as we finesse the details. The SQL
     that is automatically generated may occasionally be wrong. In short,
     Django Evolution is not yet ready for a production rollout.
     
@@ -157,7 +157,7 @@ production server.
 To do this, we make use of stored evolutions - a mechanism for defining
 and reusing collections of evolutions for later use.
 
-Mutation defintions
+Mutation definitions
 -------------------
 
 Let's start with adding the ``location`` field to ``Authors``. First, we edit 
