@@ -19,7 +19,7 @@ def delete_table(signature, table_name):
     qn = connection.ops.quote_name
     return ['DROP TABLE %s;' % qn(table_name)]
 
-def add_table(app_sig, model_tablespace, field_tablespace,
+def add_table(model_tablespace, field_tablespace,
               m2m_db_table, auto_field_db_type,
               m2m_column_name, m2m_reverse_name,
               fk_db_type, model_table, model_pk_column,
@@ -73,33 +73,35 @@ def add_table(app_sig, model_tablespace, field_tablespace,
             final_output.append(stmt)
     return final_output
     
-def add_column(signature, table_name, column_name, db_type, primary_key, null, unique):
+def add_column(table_name, field):
     qn = connection.ops.quote_name
-    constraints = ['%sNULL' % (not null and 'NOT ' or '')]
-    if unique and (not primary_key or connection.features.allows_unique_and_pk):
+    constraints = ['%sNULL' % (not field.null and 'NOT ' or '')]
+    if field.unique and (not field.primary_key or connection.features.allows_unique_and_pk):
         constraints.append('UNIQUE')
-    params = (qn(table_name), qn(column_name), db_type,' '.join(constraints))    
+    attname, column = field.get_attname_column()
+    params = (qn(table_name), qn(column), field.db_type(),' '.join(constraints))    
     output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
     return output
     
-def create_index(signature, primary_key, unique, field_tablespace, model_tablespace, table_name, column_name):
+def create_index(table_name, model_tablespace, field):
     "Returns the CREATE INDEX SQL statements."
     output = []
     qn = connection.ops.quote_name
 
-    if not ((primary_key or unique) and connection.features.autoindexes_primary_keys):
-        unique = unique and 'UNIQUE ' or ''
-        tablespace = field_tablespace or model_tablespace
+    attname, column = field.get_attname_column()
+    if not ((field.primary_key or field.unique) and connection.features.autoindexes_primary_keys):
+        unique = field.unique and 'UNIQUE ' or ''
+        tablespace = field.db_tablespace or model_tablespace
         if tablespace and connection.features.supports_tablespaces:
             tablespace_sql = ' ' + connection.ops.tablespace_sql(tablespace)
         else:
             tablespace_sql = ''
         output.append(
             'CREATE %sINDEX' % unique + ' ' + \
-            qn('%s_%s' % (table_name, column_name)) + ' ' + \
+            qn('%s_%s' % (table_name, column)) + ' ' + \
             'ON' + ' ' + \
             qn(table_name) + ' ' + \
-            "(%s)" % qn(column_name) + \
+            "(%s)" % qn(column) + \
             "%s;" % tablespace_sql
         )
     return output

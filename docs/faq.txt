@@ -9,18 +9,18 @@ What is Django Evolution?
 -------------------------
 
 When you run ``./manage.py syncdb``, Django will look for any new models that
-have been defined, and add a database table to represent those new models. 
-However, if you make a change to an existing model, ``./manage.py syncdb`` will 
-not make any changes to the database. 
+have been defined, and add a database table to represent those new models.
+However, if you make a change to an existing model, ``./manage.py syncdb`` will
+not make any changes to the database.
 
-This is where **Django Evolution** fits in. Django Evolution is an extension to 
-Django that allows you to track changes in your models over time, and to update 
+This is where **Django Evolution** fits in. Django Evolution is an extension to
+Django that allows you to track changes in your models over time, and to update
 the database to reflect those changes.
 
 When will Django Evolution be merged into Django trunk?
 -------------------------------------------------------
 
-Possibly never, and certainly not before it's ready. Django Evolution is 
+Possibly never, and certainly not before it's ready. Django Evolution is
 still in the early stages of development; considering plans for merging to the
 Django trunk would be premature.
 
@@ -30,18 +30,18 @@ Management
 Who is behind Django Evolution?
 -------------------------------
 
-Django Evolution was developed as a part time project by two guys based in 
+Django Evolution was developed as a part time project by two guys based in
 Perth, Western Australia: `Ben Khoo`_ and `Russell Keith-Magee`_.
 Russell is also a core developer of Django itself.
-    
+
 .. _`Ben Khoo`: mailto:khoobks@westnet.com.au
 .. _`Russell Keith-Magee`: mailto:russell@keith-magee.com
 
 Where should I ask questions about Django Evolution?
 ----------------------------------------------------
 
-For the moment, any questions about Django Evolution should be directed to the 
-Django-users mailing list. If there is sufficient interest, we may open a 
+For the moment, any questions about Django Evolution should be directed to the
+Django-users mailing list. If there is sufficient interest, we may open a
 separate Django Evolution mailing list in the future.
 
 I think I've found a bug! What should I do?
@@ -53,7 +53,7 @@ to the list.
 
 When you lodge your bug, *please* remember to provide clear instructions
 on how to reproduce your problem. This means providing sample models,
-sample migrations, and any error logs that appeared during the evolution 
+sample migrations, and any error logs that appeared during the evolution
 process.
 
 .. _`bug tracker`: http://code.google.com/p/django-evolution/issues/list
@@ -61,31 +61,30 @@ process.
 Status
 ======
 
-What works? 
+What works?
 -----------
 
-The general framework should be stable. Any difficulties installing 
+The general framework should be stable. Any difficulties installing
 Django Evolution into your project, running the evolve command, or identifying
 changes in your models should be reported as a bug.
 
 The following is a list of the model changes that we believe to be working:
 
     * Addition of simple fields (e.g., a new CharField) with ``null=True``.
-    * Addition of ForeignKey fields with ``null=True``
     * Addition of Many To Many Fields
     * Deletion of most fields (of any type)
     * Renaming of a field. Renames won't ever appear in a hinted evolution,
       but they can be manually added as a replacement for the Add+Delete pair
       that a hinted evolution will provide.
-    
+
 What doesn't work?
 ------------------
-  
+
 Django Evolution is a work in progress, and as a result, there are many
 things that don't work, or don't work as expected. The following are
 known issues that will hopefully be addressed in the near future:
 
-Django Evolution is currently PostgreSQL specific. Adding support for 
+Django Evolution is currently PostgreSQL specific. Adding support for
 other database backends is planned in the future.
 
 The following model changes are known to cause difficulty:
@@ -93,8 +92,10 @@ The following model changes are known to cause difficulty:
     * Addition of fields with ``null=False``. At present, there isn't a way
       to define default values for a field, so fields must be allowed to be
       empty when they are created.
+    * Addition of ForeignKey fields. A field will be added, but the foreign
+      key constraints are not correctly constructed.
     * Changes to the properties of a given field. Property changes are
-      identified as a change during ``syncdb``, but there isn't a 
+      identified as a change during ``syncdb``, but there isn't a
       mutation that can apply those changes to the database.
     * Deletion of models or applications. Again, these are identified, but
       no mutation exists.
@@ -103,7 +104,7 @@ The following model changes are known to cause difficulty:
     * Deletion of fields referenced by other database constraints.
 
 Dependencies between applications can also cause difficulties. If you have
-changes in one application that are dependent on changes in another 
+changes in one application that are dependent on changes in another
 application, you may experience difficulties in applying evolutions.
 
 Design
@@ -113,8 +114,8 @@ What are the design goals for Django Evolution?
 -----------------------------------------------
 
 Django Evolution has the following design goals:
-  
-    1. Provide a way for simple changes to be applied to a database 
+
+    1. Provide a way for simple changes to be applied to a database
        without significant user intervention.
     2. Provide an entry point for using raw SQL as a migration tactic.
     3. Provide a way to 'hint and tweak' - i.e., use an automatic method to
@@ -123,7 +124,7 @@ Django Evolution has the following design goals:
     4. Provide a way to be self-documenting and self-auditing - i.e., keep
        a permanent archive of the changes that have been made, which ones
        have been applied to which database, etc.
-    5. Provide some manner of validation that a migration, when applied, 
+    5. Provide some manner of validation that a migration, when applied,
        will be correct.
     6. Provide an easy way for end users to integrate their own custom
        migration needs into the framework.
@@ -136,55 +137,55 @@ Superficially, yes, but not really.
 There is a degree of similarity - the Django Evolution syntax is
 a DSL for describing the changes that have been made to a model.
 
-However, there are also some significant differences. In addition to 
+However, there are also some significant differences. In addition to
 ActiveRecord::Migration, Django Evolution provides:
 
-    1. An audit trail - a permanent archive in the database of the 
+    1. An audit trail - a permanent archive in the database of the
        changes that have been applied, and when.
     2. An automated hinting scheme. If you don't want to write the
        migrations yourself, you don't have to.
     3. Validation that an evolution script will leave the database
        in a state consistent with the current model definition.
-       
+
 These differences are largely afforded by the model-centric design of
 Django itself. Whereas a Ruby on Rails model is a description of a
 database that has been created by hand, Django uses the Python model
-to creates the database. As a result, the model definition is canonical 
-- not the database. 
+to creates the database. As a result, the model definition is canonical
+- not the database.
 
-This means that audit, hinting, and verification schemes can use the 
-Django model as a point of reference. A Django Evolution script is 
+This means that audit, hinting, and verification schemes can use the
+Django model as a point of reference. A Django Evolution script is
 much more than just an alternate syntax for SQL ALTER statements - it
 is an evolution scheme that is bound to the canonical model definition.
 
 .. admonition:: Ultracrepidation
 
-    We're not Rails developers, so when we talk about Ruby on Rails and 
-    ActiveRecord::Migration, it's not from extensive personal experience. 
-    If we have misrepresented or misunderstood Ruby on Rails or 
+    We're not Rails developers, so when we talk about Ruby on Rails and
+    ActiveRecord::Migration, it's not from extensive personal experience.
+    If we have misrepresented or misunderstood Ruby on Rails or
     ActiveRecord::Migration, feel free to correct us.
 
 Why do you generate signatures based on the model, rather than introspecting the database?
 ------------------------------------------------------------------------------------------
 
-There are two arguments for using model-based signatures rather than database 
+There are two arguments for using model-based signatures rather than database
 introspection: One is practical; the other is philosophical.
 
 The practical argument is that introspection is _much_ harder to do
 properly. To prove the point: ``inspectdb`` has been in Django since
-the beginning, and it still doesn't work right 100% of the time. 
+the beginning, and it still doesn't work right 100% of the time.
 Introspection of fields with custom column names or custom field types
 will always be very difficult to resolve. By using model-based signatures,
 we always have access to all the properties that Django considers significant,
-in a format directly relevant to Django - as a result, it was possible to 
-get model-based signatures working with pretty much 100% accuracy in 
+in a format directly relevant to Django - as a result, it was possible to
+get model-based signatures working with pretty much 100% accuracy in
 relatively short order.
 
 The philosophical argument is that by making the model the canonical
 reference point (rather than the database) it puts the emphasis on
 Django as the centre of the process, and discourages external
 modification. This has the side effect of encouraging users to store
-(which is to say *document*) all the changes they make to the database, 
+(which is to say *document*) all the changes they make to the database,
 rather than just poking the schema as they see fit.
 
 This also has the advantage of being consistent with general Django
@@ -204,12 +205,12 @@ Contributing code
 How can I get started contributing code to Django Evolution?
 ------------------------------------------------------------
 
-Thanks for asking! If you're interested in contributing to Django Evolution, 
+Thanks for asking! If you're interested in contributing to Django Evolution,
 please send a private email to Ben or Russell. However, be advised that if you
 you want your request to be taken seriously, you need to have a track record
-of producing high quality patches. 
+of producing high quality patches.
 
-A good place to start would be to pick a non-trivial missing feature from the 
+A good place to start would be to pick a non-trivial missing feature from the
 ticket database, and implement a fix.
 
 I submitted a bug fix in the ticket system several weeks ago. Why are you ignoring my patch?
@@ -218,12 +219,12 @@ I submitted a bug fix in the ticket system several weeks ago. Why are you ignori
 Don't worry: We're not ignoring you!
 
 It's important to understand there is a difference between "a ticket is being
-ignored" and "a ticket has not been attended to yet." Django Evolution is 
+ignored" and "a ticket has not been attended to yet." Django Evolution is
 a volunteer project, and the core developers may sometimes get distracted by
 other things; if this happens, a ticket may sit unattended for a while. Don't
-worry - we'll get to your issue eventually. 
+worry - we'll get to your issue eventually.
 
-Besides, if your feature request stands no chance of inclusion in Django Evolution, 
+Besides, if your feature request stands no chance of inclusion in Django Evolution,
 we won't ignore it -- we'll just close the ticket. So if your ticket is still
 open, it doesn't mean we're ignoring you; it just means we haven't had time to
 look at it yet.

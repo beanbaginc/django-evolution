@@ -136,7 +136,7 @@ class AddField(BaseMutation):
                         self.field_name, app_label, self.model_name))
         
         if self.field_name in model_sig['fields']:
-            raise SimulationFailure("Model '%s.%s' already has a field named '%s'" %
+            raise SimulationFailure("Model '%s.%s' already has a field named '%s'" % (
                         app_label, self.model_name, self.field_name))
             
         model_sig['fields'][self.field_name] = {
@@ -152,48 +152,34 @@ class AddField(BaseMutation):
     
     def add_column(self, app_label, proj_sig):
         app_sig = proj_sig[app_label]
-        evo_module = get_evolution_module()        
-        column_name =  self.field_attrs.get('db_column', self.field_name)
-        primary_key = self.field_attrs.get('primary_key',False)
-        unique = self.field_attrs.get('unique',False)
-        null = self.field_attrs.get('null',False)
-        field_tablespace = self.field_attrs.get('db_tablespace',None)
         model_sig = app_sig[self.model_name]
-        table_name = model_sig['meta']['db_table']
-        model_tablespace = model_sig['meta'].get('db_tablespace',None)
         
+        # Create new field instance
         related_model = self.field_attrs.pop('related_model', None)
         if related_model:
             related_app_name, related_model_name = related_model.split('.')
             to = models.get_model(related_app_name, related_model_name)
-            field = self.field_type(to, **self.field_attrs)
+            field = self.field_type(to, name=self.field_name, **self.field_attrs)
+            # related_model isn't a valid field attribute, so it must be removed
+            # prior to instantiating the field, but it must be restored
+            # to keep the signature consistent.
             self.field_attrs['related_model'] = related_model
         else:
-            field = self.field_type(**self.field_attrs)
+            field = self.field_type(name=self.field_name, **self.field_attrs)
             
-        sql_statements = evo_module.add_column(app_sig, 
-                                               table_name, 
-                                               column_name,
-                                               field.db_type(),
-                                               primary_key,
-                                               null,
-                                               unique)
+        sql_statements = get_evolution_module().add_column(model_sig['meta']['db_table'], field)
+                                               
         # Create SQL index if necessary
         if self.field_attrs.get('db_index', False):
-            sql_statements.extend(evo_module.create_index(app_sig, 
-                                                          primary_key, 
-                                                          unique, 
-                                                          field_tablespace, 
-                                                          model_tablespace, 
-                                                          table_name, 
-                                                          column_name))
-            
-            
+            sql_statements.extend(get_evolution_module().create_index(
+                                        model_sig['meta']['db_table'], 
+                                        model_sig['meta'].get('db_tablespace',None), 
+                                        field))
+
         return sql_statements
 
     def add_m2m_table(self, app_label, proj_sig):
         app_sig = proj_sig[app_label]
-        evo_module = get_evolution_module()        
         model_sig = app_sig[self.model_name]
         if self.field_attrs.has_key('db_table'):
             m2m_table = self.field_attrs['db_table']
@@ -245,11 +231,13 @@ class AddField(BaseMutation):
         rel_db_table = rel_model_sig['meta']['db_table']
         rel_pk_column = rel_model_sig['meta']['pk_column']
 
-        sql_statements = evo_module.add_table(app_sig, model_tablespace, field_tablespace,
-                                              m2m_table, auto_field_db_type,
-                                              m2m_column_name, m2m_reverse_name,
-                                              fk_db_type, model_table, model_pk_column,
-                                              rel_fk_db_type, rel_db_table, rel_pk_column)
+        sql_statements = get_evolution_module().add_table(
+                            model_tablespace, field_tablespace,
+                            m2m_table, auto_field_db_type,
+                            m2m_column_name, m2m_reverse_name,
+                            fk_db_type, model_table, model_pk_column,
+                            rel_fk_db_type, rel_db_table, rel_pk_column)
+                            
         return sql_statements
 
 class RenameField(BaseMutation):
