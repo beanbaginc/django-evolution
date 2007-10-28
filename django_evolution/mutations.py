@@ -239,87 +239,155 @@ class AddField(BaseMutation):
                             rel_fk_db_type, rel_db_table, rel_pk_column)
                             
         return sql_statements
-
+        
 class RenameField(BaseMutation):
-    def __init__(self, model_class, old_field_name, new_field_name):
-        self.model_class = model_class
-        self.old_field_name = str(old_field_name)
-        self.new_field_name = str(new_field_name)
+    
+    def __init__(self, model_name, old_field_name, new_field_name, new_db_column=None, new_db_table=None):
+        self.model_name = model_name
+        self.old_field_name = old_field_name
+        self.new_field_name = new_field_name
+        self.new_db_column = new_db_column
+        self.new_db_table = new_db_table
         
     def __str__(self):
-        return "RenameField(%s, '%s', '%s')" % (self.model_class._meta.object_name, self.old_field_name, self.new_field_name)
+        if self.new_db_table:
+            params = "'%s', '%s', '%s', '%s'"%(self.model_name, self.old_field_name, self.new_field_name, self.new_db_table)
+        else:
+            params = "'%s', '%s', '%s'"%(self.model_name, self.old_field_name, self.new_field_name)            
+        return "RenameField(%s)"%params
         
-    def simulate(self, app_sig):
-        model_sig = app_sig[self.model_class._meta.object_name]
-
-        # If the field was used in the unique_together attribute, update it.
-        unique_together = model_sig['meta']['unique_together']
-        unique_together_list = [] 
-        for ut_index in range(0, len(unique_together), 1):
-            ut = unique_together[ut_index]
-            unique_together_fields = []
-            for field_name_index in range(0, len(ut), 1):
-                field_name = ut[field_name_index]
-                if field_name == self.old_field_name:
-                    unique_together_fields.append(self.new_field_name)
-                else:
-                    unique_together_fields.append(field_name)
-            unique_together_list.append(tuple(unique_together_fields))
-        model_sig['meta']['unique_together'] = tuple(unique_together_list)
+    def simulate(self, app_label, proj_sig):
+        if self.new_db_column and self.new_db_table:
+            raise SimulationFailure('Cannot rename a field with both a custom column name and custome table name.')
         
-        # Update the column names
-        field = self.model_class._meta.get_field(self.new_field_name)
+        app_sig = proj_sig[app_label]
+        model_sig = app_sig[self.model_name]        
+        field_dict = model_sig['fields']
+        field_sig = field_dict[self.old_field_name]
+        
+        if models.ManyToManyField == field_sig['field_type'] and self.new_db_column:
+            raise SimulationFailure("A custom column name is not valid for a ManyToManyField.")
+        elif self.new_db_table:
+            raise SimulationFailure("A custom table name is not valid for a %s."%field_sig['field_type'].__class__.__name__)
+        
+        if self.new_db_table:
+            field_sig['db_table'] = self.new_db_table
+        field_dict[self.new_field_name] = field_dict.pop(self.old_field_name)
+        
+    def mutate(self, app_label, proj_sig):
+        app_sig = proj_sig[app_label]
+        model_sig = app_sig[self.model_name]        
         field_sig = model_sig['fields'][self.old_field_name]
-        if not isinstance(field,(ManyToManyField)):
-            old_column_name = field_sig['column']
-            new_column_name = field.column
-            
-        # Simulate the renaming of the field.
-        try:
-            field = self.model_class._meta.get_field(self.new_field_name)
-            field_sig = model_sig['fields'].pop(self.old_field_name)
-            if isinstance(field,(ManyToManyField)):
-                # Many to Many fields involve the renaming of a database table.
-                field_sig['m2m_db_table'] = field.m2m_db_table()
-            else:
-                # All other fields involve renaming of a column only.
-                field_sig['column'] = field.column
-            field_sig[field.name] = field_sig
-                
-        except KeyError, ke:
-            print 'ERROR: Cannot find the field named "%s".' % self.old_field_name
-            
-    def pre_mutate(self, app_sig):
-        model_sig = app_sig[self.model_class._meta.object_name]
-        try:
-            field = self.model_class._meta.get_field(self.new_field_name)
-            field_sig = model_sig['fields'][self.old_field_name]
-            if isinstance(field,(ManyToManyField)):
-                # Many to Many fields involve the renaming of a database table.
-                self.mutate_func = self.mutate_table
-                self.old_table_name = field_sig['m2m_db_table']
-                self.new_table_name = field.m2m_db_table()
-            else:
-                # All other fields involve renaming of a column only.
-                self.mutate_func = self.mutate_column
-                self.old_column_name = field_sig['column']
-                self.new_column_name = field.column
-        except KeyError, ke:
-            print 'ERROR: Cannot find the field named "%s".' % self.old_field_name
-            
-    def mutate(self, app_sig):
-        evo_module = get_evolution_module()
-        return self.mutate_func(evo_module, app_sig)
         
-    def mutate_table(self, evo_module, app_sig):
-        return evo_module.rename_table(app_sig, 
-                                       self.old_table_name, 
-                                       self.new_table_name)
+        if models.ManyToManyField == field_sig['field_type']:
+            return self.rename_table(app_sig, model_sig, field_sig)
+        else:
+            return self.rename_column(app_sig, model_sig, field_sig)
+        
+    def rename_column(self, app_sig, model_sig, field_sig):
+        table_name = model_sig['meta']['db_table']
+        field_type = field_sig['field_type']
 
-    def mutate_column(self, evo_module, app_sig):
-        table_data = app_sig[self.model_class._meta.object_name]
-        sql_statements = evo_module.rename_column(app_sig,
-                                                  self.model_class._meta.db_table,
-                                                  self.old_column_name,
-                                                  self.new_column_name)
-        return sql_statements
+        if models.ForeignKey == field_type:
+            print 'Foreign Key Column Rename'
+            return []
+        else:
+            old_col_name = field_sig.get('db_column', self.old_field_name)
+        
+        new_col_name = self.new_db_column or self.new_field_name
+        return get_evolution_module().rename_column(table_name, old_col_name, new_col_name)
+    
+    def rename_table(self, app_sig, model_sig, field_sig):
+        # ALTER TABLE products RENAME TO items;
+        print 'Rename Table'
+        return []
+
+    # def mutate(self, app_label, proj_sig):
+    #     if self.field_type == models.ManyToManyField:
+    #         return self.add_m2m_table(app_label, proj_sig)
+    #     else:
+    #         return self.add_column(app_label, proj_sig)
+
+# class RenameField(BaseMutation):
+#     def __init__(self, model_class, old_field_name, new_field_name):
+#         self.model_class = model_class
+#         self.old_field_name = str(old_field_name)
+#         self.new_field_name = str(new_field_name)
+#         
+#     def __str__(self):
+#         return "RenameField(%s, '%s', '%s')" % (self.model_class._meta.object_name, self.old_field_name, self.new_field_name)
+#         
+#     def simulate(self, app_sig):
+#         model_sig = app_sig[self.model_class._meta.object_name]
+# 
+#         # If the field was used in the unique_together attribute, update it.
+#         unique_together = model_sig['meta']['unique_together']
+#         unique_together_list = [] 
+#         for ut_index in range(0, len(unique_together), 1):
+#             ut = unique_together[ut_index]
+#             unique_together_fields = []
+#             for field_name_index in range(0, len(ut), 1):
+#                 field_name = ut[field_name_index]
+#                 if field_name == self.old_field_name:
+#                     unique_together_fields.append(self.new_field_name)
+#                 else:
+#                     unique_together_fields.append(field_name)
+#             unique_together_list.append(tuple(unique_together_fields))
+#         model_sig['meta']['unique_together'] = tuple(unique_together_list)
+#         
+#         # Update the column names
+#         field = self.model_class._meta.get_field(self.new_field_name)
+#         field_sig = model_sig['fields'][self.old_field_name]
+#         if not isinstance(field,(ManyToManyField)):
+#             old_column_name = field_sig['column']
+#             new_column_name = field.column
+#             
+#         # Simulate the renaming of the field.
+#         try:
+#             field = self.model_class._meta.get_field(self.new_field_name)
+#             field_sig = model_sig['fields'].pop(self.old_field_name)
+#             if isinstance(field,(ManyToManyField)):
+#                 # Many to Many fields involve the renaming of a database table.
+#                 field_sig['m2m_db_table'] = field.m2m_db_table()
+#             else:
+#                 # All other fields involve renaming of a column only.
+#                 field_sig['column'] = field.column
+#             field_sig[field.name] = field_sig
+#                 
+#         except KeyError, ke:
+#             print 'ERROR: Cannot find the field named "%s".' % self.old_field_name
+#             
+#     def pre_mutate(self, app_sig):
+#         model_sig = app_sig[self.model_class._meta.object_name]
+#         try:
+#             field = self.model_class._meta.get_field(self.new_field_name)
+#             field_sig = model_sig['fields'][self.old_field_name]
+#             if isinstance(field,(ManyToManyField)):
+#                 # Many to Many fields involve the renaming of a database table.
+#                 self.mutate_func = self.mutate_table
+#                 self.old_table_name = field_sig['m2m_db_table']
+#                 self.new_table_name = field.m2m_db_table()
+#             else:
+#                 # All other fields involve renaming of a column only.
+#                 self.mutate_func = self.mutate_column
+#                 self.old_column_name = field_sig['column']
+#                 self.new_column_name = field.column
+#         except KeyError, ke:
+#             print 'ERROR: Cannot find the field named "%s".' % self.old_field_name
+#             
+#     def mutate(self, app_sig):
+#         evo_module = get_evolution_module()
+#         return self.mutate_func(evo_module, app_sig)
+#         
+#     def mutate_table(self, evo_module, app_sig):
+#         return evo_module.rename_table(app_sig, 
+#                                        self.old_table_name, 
+#                                        self.new_table_name)
+# 
+#     def mutate_column(self, evo_module, app_sig):
+#         table_data = app_sig[self.model_class._meta.object_name]
+#         sql_statements = evo_module.rename_column(app_sig,
+#                                                   self.model_class._meta.db_table,
+#                                                   self.old_column_name,
+#                                                   self.new_column_name)
+#         return sql_statements

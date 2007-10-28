@@ -1,6 +1,6 @@
 from django.db import connection
 
-def rename_column(signature, db_table, old_col_name, new_col_name):
+def rename_column(db_table, old_col_name, new_col_name):
     qn = connection.ops.quote_name
     params = (qn(db_table), qn(old_col_name), qn(new_col_name))
     return ['ALTER TABLE %s RENAME COLUMN %s TO %s;' % params]
