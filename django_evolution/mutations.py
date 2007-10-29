@@ -31,6 +31,13 @@ def create_field(field_name, field_type, field_attrs):
 
     return field
 
+class MockMeta:
+    "A mockup of a models Options object, based on the model signature"
+    def __init__(self, model_sig):
+        self.meta = model_sig['meta']
+    def __getattr__(self, name):
+        return self.meta[name]
+            
 class BaseMutation:
     def __init__(self):
         pass
@@ -118,11 +125,8 @@ class DeleteField(BaseMutation):
         field_sig['field_type'] = field_type
         
         if field_type == models.ManyToManyField:
-            # Deletion of the many to many field involves dropping a table
-            if field_sig.has_key('db_table'):
-                m2m_table = field_sig['db_table']
-            else:
-                m2m_table = '%s_%s' % (model_sig['meta']['db_table'], self.field_name)
+            opts = MockMeta(model_sig)
+            m2m_table = field._get_m2m_db_table(opts)
             sql_statements = get_evolution_module().delete_table(m2m_table)
         else:            
             table_name = app_sig[self.model_name]['meta'].get('db_table')
@@ -191,10 +195,10 @@ class AddField(BaseMutation):
     def add_m2m_table(self, app_label, proj_sig):
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
-        if self.field_attrs.has_key('db_table'):
-            m2m_table = self.field_attrs['db_table']
-        else:
-            m2m_table = '%s_%s' % (model_sig['meta']['db_table'], self.field_name)
+        
+        opts = MockMeta(model_sig)
+        field = create_field(self.field_name, self.field_type, self.field_attrs)
+        m2m_table = field._get_m2m_db_table(opts)
 
         # If this is an m2m relation to self, avoid the inevitable name clash
         related_model = self.field_attrs['related_model']
