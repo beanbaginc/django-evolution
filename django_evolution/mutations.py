@@ -12,6 +12,25 @@ def get_evolution_module():
     module_name = ['django_evolution.db',settings.DATABASE_ENGINE]
     return __import__('.'.join(module_name),{},{},[''])
 
+def create_field(field_name, field_type, field_attrs):
+    """
+    Create an instance of a field from a field signature. This is useful for
+    accessing all the database property mechanisms built into fields.
+    """
+    # related_model isn't a valid field attribute, so it must be removed
+    # prior to instantiating the field, but it must be restored
+    # to keep the signature consistent.
+    related_model = field_attrs.pop('related_model', None)
+    if related_model:
+        related_app_name, related_model_name = related_model.split('.')
+        to = models.get_model(related_app_name, related_model_name)
+        field = field_type(to, name=field_name, **field_attrs)
+        field_attrs['related_model'] = related_model
+    else:
+        field = field_type(name=field_name, **field_attrs)
+
+    return field
+
 class BaseMutation:
     def __init__(self):
         pass
@@ -92,20 +111,22 @@ class DeleteField(BaseMutation):
         model_sig = app_sig[self.model_name]
         field_sig = model_sig['fields'][self.field_name]
 
-        if field_sig['field_type'] == models.ManyToManyField:
+        # Temporarily remove field_type from the field signature 
+        # so that we can create a field
+        field_type = field_sig.pop('field_type')
+        field = create_field(self.field_name, field_type, field_sig)
+        field_sig['field_type'] = field_type
+        
+        if field_type == models.ManyToManyField:
             # Deletion of the many to many field involves dropping a table
             if field_sig.has_key('db_table'):
                 m2m_table = field_sig['db_table']
             else:
                 m2m_table = '%s_%s' % (model_sig['meta']['db_table'], self.field_name)
-            sql_statements = get_evolution_module().delete_table(app_sig, m2m_table)
-        else:
-            if field_sig['field_type'] == models.ForeignKey:
-                column_name =  field_sig.get('db_column', '%s_id' % self.field_name)
-            else:
-                column_name =  field_sig.get('db_column', self.field_name)
+            sql_statements = get_evolution_module().delete_table(m2m_table)
+        else:            
             table_name = app_sig[self.model_name]['meta'].get('db_table')
-            sql_statements = get_evolution_module().delete_column(app_sig, table_name, column_name)
+            sql_statements = get_evolution_module().delete_column(table_name, field)
             
         return sql_statements
         
@@ -153,20 +174,9 @@ class AddField(BaseMutation):
     def add_column(self, app_label, proj_sig):
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
-        
-        # Create new field instance
-        related_model = self.field_attrs.pop('related_model', None)
-        if related_model:
-            related_app_name, related_model_name = related_model.split('.')
-            to = models.get_model(related_app_name, related_model_name)
-            field = self.field_type(to, name=self.field_name, **self.field_attrs)
-            # related_model isn't a valid field attribute, so it must be removed
-            # prior to instantiating the field, but it must be restored
-            # to keep the signature consistent.
-            self.field_attrs['related_model'] = related_model
-        else:
-            field = self.field_type(name=self.field_name, **self.field_attrs)
-            
+
+        field = create_field(self.field_name, self.field_type, self.field_attrs)
+
         sql_statements = get_evolution_module().add_column(model_sig['meta']['db_table'], field)
                                                
         # Create SQL index if necessary
@@ -239,10 +249,11 @@ class AddField(BaseMutation):
                             rel_fk_db_type, rel_db_table, rel_pk_column)
                             
         return sql_statements
-        
+
 class RenameField(BaseMutation):
     
-    def __init__(self, model_name, old_field_name, new_field_name, new_db_column=None, new_db_table=None):
+    def __init__(self, model_name, old_field_name, new_field_name, 
+                 new_db_column=None, new_db_table=None):
         self.model_name = model_name
         self.old_field_name = old_field_name
         self.new_field_name = new_field_name
@@ -251,10 +262,10 @@ class RenameField(BaseMutation):
         
     def __str__(self):
         if self.new_db_table:
-            params = "'%s', '%s', '%s', '%s'"%(self.model_name, self.old_field_name, self.new_field_name, self.new_db_table)
+            params = "'%s', '%s', '%s', '%s'" % (self.model_name, self.old_field_name, self.new_field_name, self.new_db_table)
         else:
-            params = "'%s', '%s', '%s'"%(self.model_name, self.old_field_name, self.new_field_name)            
-        return "RenameField(%s)"%params
+            params = "'%s', '%s', '%s'" % (self.model_name, self.old_field_name, self.new_field_name)            
+        return "RenameField(%s)" % params
         
     def simulate(self, app_label, proj_sig):
         if self.new_db_column and self.new_db_table:
@@ -268,7 +279,7 @@ class RenameField(BaseMutation):
         if models.ManyToManyField == field_sig['field_type'] and self.new_db_column:
             raise SimulationFailure("A custom column name is not valid for a ManyToManyField.")
         elif self.new_db_table:
-            raise SimulationFailure("A custom table name is not valid for a %s."%field_sig['field_type'].__class__.__name__)
+            raise SimulationFailure("A custom table name is not valid for a %s." % field_sig['field_type'].__class__.__name__)
         
         if self.new_db_table:
             field_sig['db_table'] = self.new_db_table

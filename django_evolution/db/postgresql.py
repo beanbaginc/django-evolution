@@ -10,12 +10,14 @@ def rename_table(signature, old_db_tablename, new_db_tablename):
     params = (qn(old_db_tablename), qn(new_db_tablename))
     return ['ALTER TABLE %s RENAME TO %s;' % params]
     
-def delete_column(signature, table_name, column_name):
+def delete_column(table_name, field):
     qn = connection.ops.quote_name
-    params = (qn(table_name),qn(column_name))
+    attname, column = field.get_attname_column()
+    params = (qn(table_name), qn(column))
+    
     return ['ALTER TABLE %s DROP COLUMN %s CASCADE;' % params]
 
-def delete_table(signature, table_name):
+def delete_table(table_name):
     qn = connection.ops.quote_name
     return ['DROP TABLE %s;' % qn(table_name)]
 
