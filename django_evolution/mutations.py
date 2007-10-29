@@ -265,27 +265,22 @@ class RenameField(BaseMutation):
         self.new_db_table = new_db_table
         
     def __str__(self):
+        params = "'%s', '%s', '%s'" % (self.model_name, self.old_field_name, self.new_field_name)
+        
+        if self.new_db_column:
+            params = params + ", new_db_column='%s'" % (self.new_db_column)
         if self.new_db_table:
-            params = "'%s', '%s', '%s', '%s'" % (self.model_name, self.old_field_name, self.new_field_name, self.new_db_table)
-        else:
-            params = "'%s', '%s', '%s'" % (self.model_name, self.old_field_name, self.new_field_name)            
+            params = params + ", new_db_table='%s'" % (self.new_db_table)
+        
         return "RenameField(%s)" % params
         
     def simulate(self, app_label, proj_sig):
-        if self.new_db_column and self.new_db_table:
-            raise SimulationFailure('Cannot rename a field with both a custom column name and custome table name.')
-        
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]        
         field_dict = model_sig['fields']
         field_sig = field_dict[self.old_field_name]
         
-        if models.ManyToManyField == field_sig['field_type'] and self.new_db_column:
-            raise SimulationFailure("A custom column name is not valid for a ManyToManyField.")
-        elif self.new_db_table:
-            raise SimulationFailure("A custom table name is not valid for a %s." % field_sig['field_type'].__class__.__name__)
-        
-        if self.new_db_table:
+        if models.ManyToManyField == field_sig['field_type'] and self.new_db_table:
             field_sig['db_table'] = self.new_db_table
         field_dict[self.new_field_name] = field_dict.pop(self.old_field_name)
         

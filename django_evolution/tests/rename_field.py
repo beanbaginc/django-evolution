@@ -1,20 +1,21 @@
 
 tests = r"""
 # Rename a database column (done)
+# -- RenameField with a specified db table for a field other than a M2MField is allowed (but will be ignored) (done)
 # Rename a primary key database column (done)
 # Rename a foreign key database column (done)
 
 # Rename a database column with a non-default name to a default name (done)
 # -- Rename a database column with a non-default name to a different non-default name (done)
+# -- RenameField with a specified db column and db table is allowed (but one will be ignored) (done)
 
 # Rename a database column in a non-default table (done)
-# Rename an indexed database column (Is this redundant?)
-# Rename a database column with null constraints (Is this redundant?)
-# RenameField with a specified db_column and db_table is not allowed
-# RenameField with a specified db_column for a M2MField is not allowed
-# RenameField with a specified db_table for a field other than a M2MField is not allowed
+
+# Rename an indexed database column (Redundant, Not explicitly tested)
+# Rename a database column with null constraints (Redundant, Not explicitly tested)
 
 # Rename a M2M database table (done)
+# -- RenameField with a specified db column for a M2MField is allowed (but will be ignored) (done)
 # Rename a M2M non-default database table to a default name (done)
 
 >>> from django.db import models
@@ -76,6 +77,20 @@ tests = r"""
 ["AddField('TestModel', 'renamed_field', models.IntegerField)", "DeleteField('TestModel', 'int_field')"]
 
 >>> evolution = [RenameField('TestModel', 'int_field', 'renamed_field')]
+>>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
+>>> for mutation in evolution:
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
+...     mutation.simulate('testapp', test_sig)
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+
+>>> execute_test_sql(test_sql)
+ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "int_field" TO "renamed_field";
+
+# -- RenameField with a specified db table for a field other than a M2MField is allowed (but will be ignored) (done)
+>>> evolution = [RenameField('TestModel', 'int_field', 'renamed_field', new_db_table='ignored_db-table')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
@@ -188,6 +203,20 @@ True
 >>> execute_test_sql(test_sql)
 ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name" TO "custom_rename_field-column";
 
+# -- RenameField with a specified db column and db table is allowed (but one will be ignored)
+>>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field', new_db_column='custom_rename_field-column_2', new_db_table='custom_ignored_db-table')]
+>>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
+>>> for mutation in evolution:
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
+...     mutation.simulate('testapp', test_sig)
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+
+>>> execute_test_sql(test_sql)
+ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name" TO "custom_rename_field-column_2";
+
 # Rename a database column in a non-default table
 # Rename a database column
 >>> class RenameColumnCustomTableModel(models.Model):
@@ -231,6 +260,19 @@ ALTER TABLE "custom_rename_table_name" RENAME COLUMN "value" TO "renamed_field";
 ["AddField('TestModel', 'renamed_field', models.ManyToManyField, related_model='django_evolution.RenameAnchor2')", "DeleteField('TestModel', 'm2m_field')"]
 
 >>> evolution = [RenameField('TestModel', 'm2m_field', 'renamed_field')]
+>>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
+>>> for mutation in evolution:
+...     test_sql.extend(mutation.mutate('testapp', test_sig))
+...     mutation.simulate('testapp', test_sig)
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+>>> execute_test_sql(test_sql, cleanup=['DROP TABLE "django_evolution_renamebasemodel_renamed_field"'])
+ALTER TABLE "django_evolution_renamebasemodel_m2m_field" RENAME TO "django_evolution_renamebasemodel_renamed_field";
+
+# -- RenameField with a specified db column for a M2MField is allowed (but will be ignored)
+>>> evolution = [RenameField('TestModel', 'm2m_field', 'renamed_field', new_db_column='ignored_db-column')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
