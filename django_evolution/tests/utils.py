@@ -28,7 +28,6 @@ def execute_sql(sql, output=False):
             if output:
                 print statement
             cursor.execute(statement)  
-        
         transaction.commit()
         transaction.leave_transaction_management()
     except Exception, ex:

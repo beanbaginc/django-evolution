@@ -300,18 +300,18 @@ class RenameField(BaseMutation):
         field_type = field_sig['field_type']
 
         if models.ForeignKey == field_type:
-            print 'Foreign Key Column Rename'
-            return []
+            old_col_name = field_sig.get('db_column', '%s_id' % self.old_field_name)
+            new_col_name = self.new_db_column or '%s_id' % self.new_field_name
         else:
             old_col_name = field_sig.get('db_column', self.old_field_name)
-        
-        new_col_name = self.new_db_column or self.new_field_name
+            new_col_name = self.new_db_column or self.new_field_name
+            
         return get_evolution_module().rename_column(table_name, old_col_name, new_col_name)
     
     def rename_table(self, app_sig, model_sig, field_sig):
-        # ALTER TABLE products RENAME TO items;
-        print 'Rename Table'
-        return []
+        old_db_tablename = field_sig.get('db_table', '%s_%s' % (model_sig['meta']['db_table'], self.old_field_name))
+        new_db_tablename = self.new_db_table or '%s_%s' % (model_sig['meta']['db_table'], self.new_field_name)
+        return get_evolution_module().rename_table(old_db_tablename, new_db_tablename)
 
     # def mutate(self, app_label, proj_sig):
     #     if self.field_type == models.ManyToManyField:

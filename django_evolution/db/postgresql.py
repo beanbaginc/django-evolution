@@ -5,7 +5,7 @@ def rename_column(db_table, old_col_name, new_col_name):
     params = (qn(db_table), qn(old_col_name), qn(new_col_name))
     return ['ALTER TABLE %s RENAME COLUMN %s TO %s;' % params]
     
-def rename_table(signature, old_db_tablename, new_db_tablename):
+def rename_table(old_db_tablename, new_db_tablename):
     qn = connection.ops.quote_name
     params = (qn(old_db_tablename), qn(new_db_tablename))
     return ['ALTER TABLE %s RENAME TO %s;' % params]
