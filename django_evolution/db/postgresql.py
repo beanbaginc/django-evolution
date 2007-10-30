@@ -77,12 +77,29 @@ def add_table(model_tablespace, field_tablespace,
     
 def add_column(table_name, field):
     qn = connection.ops.quote_name
-    constraints = ['%sNULL' % (not field.null and 'NOT ' or '')]
-    if field.unique and (not field.primary_key or connection.features.allows_unique_and_pk):
-        constraints.append('UNIQUE')
-    attname, column = field.get_attname_column()
-    params = (qn(table_name), qn(column), field.db_type(),' '.join(constraints))    
-    output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
+    
+    if field.rel:
+        # it is a foreign key field
+        # NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED
+        # ALTER TABLE <tablename> ADD COLUMN <column name> NULL REFERENCES <tablename1> ("<colname>") DEFERRABLE INITIALLY DEFERRED
+        related_model = field.rel.to
+        related_table = related_model._meta.db_table
+        related_pk_col = related_model._meta.pk.name
+        attname, column = field.get_attname_column()
+        constraints = ['%sNULL' % (not field.null and 'NOT ' or '')]
+        if field.unique and (not field.primary_key or connection.features.allows_unique_and_pk):
+            constraints.append('UNIQUE')
+        params = (qn(table_name), qn(column), field.db_type(), ' '.join(constraints), 
+            qn(related_table), qn(related_pk_col), connection.ops.deferrable_sql())
+        output = ['ALTER TABLE %s ADD COLUMN %s %s %s REFERENCES %s (%s) %s;' % params]
+    else:
+        constraints = ['%sNULL' % (not field.null and 'NOT ' or '')]
+        if field.unique and (not field.primary_key or connection.features.allows_unique_and_pk):
+            constraints.append('UNIQUE')
+        attname, column = field.get_attname_column()
+        params = (qn(table_name), qn(column), field.db_type(),' '.join(constraints))    
+        output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
+        
     return output
     
 def create_index(table_name, model_tablespace, field):

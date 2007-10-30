@@ -234,7 +234,7 @@ ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NUL
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field_id" integer NULL;
+ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field_id" integer NULL REFERENCES "django_evolution_addanchor1" ("id")  DEFERRABLE INITIALLY DEFERRED;
 
 # M2M field between models with default table names.
 >>> class AddM2MDatabaseTableModel(models.Model):
