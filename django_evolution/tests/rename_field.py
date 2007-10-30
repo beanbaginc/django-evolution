@@ -281,6 +281,7 @@ ALTER TABLE "django_evolution_renamebasemodel_m2m_field" RENAME TO "django_evolu
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
 >>> execute_test_sql(test_sql, cleanup=['DROP TABLE "django_evolution_renamebasemodel_renamed_field"'])
 ALTER TABLE "django_evolution_renamebasemodel_m2m_field" RENAME TO "django_evolution_renamebasemodel_renamed_field";
 
@@ -309,6 +310,7 @@ ALTER TABLE "django_evolution_renamebasemodel_m2m_field" RENAME TO "django_evolu
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
+
 >>> execute_test_sql(test_sql, cleanup=['DROP TABLE "django_evolution_renamebasemodel_renamed_field"'])
 ALTER TABLE "non-default_db_table" RENAME TO "django_evolution_renamebasemodel_renamed_field";
 """
