@@ -1,13 +1,13 @@
 
 tests = r"""
 # Rename a database column (done)
-# -- RenameField with a specified db table for a field other than a M2MField is allowed (but will be ignored) (done)
+# RenameField with a specified db table for a field other than a M2MField is allowed (but will be ignored) (done)
 # Rename a primary key database column (done)
 # Rename a foreign key database column (done)
 
 # Rename a database column with a non-default name to a default name (done)
-# -- Rename a database column with a non-default name to a different non-default name (done)
-# -- RenameField with a specified db column and db table is allowed (but one will be ignored) (done)
+# Rename a database column with a non-default name to a different non-default name (done)
+# RenameField with a specified db column and db table is allowed (but one will be ignored) (done)
 
 # Rename a database column in a non-default table (done)
 
@@ -15,7 +15,7 @@ tests = r"""
 # Rename a database column with null constraints (Redundant, Not explicitly tested)
 
 # Rename a M2M database table (done)
-# -- RenameField with a specified db column for a M2MField is allowed (but will be ignored) (done)
+# RenameField with a specified db column for a M2MField is allowed (but will be ignored) (done)
 # Rename a M2M non-default database table to a default name (done)
 
 >>> from django.db import models
@@ -89,7 +89,21 @@ True
 >>> execute_test_sql(test_sql)
 ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "int_field" TO "renamed_field";
 
-# -- RenameField with a specified db table for a field other than a M2MField is allowed (but will be ignored) (done)
+# RenameField with a specified db table for a field other than a M2MField is allowed (but will be ignored) (done)
+>>> class RenameColumnWithTableNameModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     renamed_field = models.IntegerField()
+...     int_field_named = models.IntegerField(db_column='custom_db_col_name')
+...     int_field_named_indexed = models.IntegerField(db_column='custom_db_col_name_indexed', db_index=True)
+...     fk_field = models.ForeignKey(RenameAnchor1)
+...     m2m_field = models.ManyToManyField(RenameAnchor2)
+...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
+
+>>> new_sig = test_proj_sig(RenameColumnWithTableNameModel)
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['testapp']]
+["AddField('TestModel', 'renamed_field', models.IntegerField)", "DeleteField('TestModel', 'int_field')"]
+
 >>> evolution = [RenameField('TestModel', 'int_field', 'renamed_field', new_db_table='ignored_db-table')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
@@ -165,7 +179,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "fk_field_id" TO "r
 >>> class RenameNonDefaultColumnNameModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
-...     renamed_field = models.IntegerField(db_column='custom_db_col_name')
+...     renamed_field = models.IntegerField()
 ...     int_field_named_indexed = models.IntegerField(db_column='custom_db_col_name_indexed', db_index=True)
 ...     fk_field = models.ForeignKey(RenameAnchor1)
 ...     m2m_field = models.ManyToManyField(RenameAnchor2)
@@ -174,7 +188,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "fk_field_id" TO "r
 >>> new_sig = test_proj_sig(RenameNonDefaultColumnNameModel)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['testapp']]
-["AddField('TestModel', 'renamed_field', models.IntegerField, db_column='custom_db_col_name')", "DeleteField('TestModel', 'int_field_named')"]
+["AddField('TestModel', 'renamed_field', models.IntegerField)", "DeleteField('TestModel', 'int_field_named')"]
 
 >>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field')]
 >>> test_sig = copy.deepcopy(base_sig)
@@ -189,8 +203,22 @@ True
 >>> execute_test_sql(test_sql)
 ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name" TO "renamed_field";
 
-# -- Rename a database column with a non-default name to a different non-default name
->>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field', new_db_column='custom_rename_field-column')]
+# Rename a database column with a non-default name to a different non-default name
+>>> class RenameNonDefaultColumnNameToNonDefaultNameModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     renamed_field = models.IntegerField(db_column='non-default_column_name')
+...     int_field_named_indexed = models.IntegerField(db_column='custom_db_col_name_indexed', db_index=True)
+...     fk_field = models.ForeignKey(RenameAnchor1)
+...     m2m_field = models.ManyToManyField(RenameAnchor2)
+...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
+
+>>> new_sig = test_proj_sig(RenameNonDefaultColumnNameToNonDefaultNameModel)
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['testapp']]
+["AddField('TestModel', 'renamed_field', models.IntegerField, db_column='non-default_column_name')", "DeleteField('TestModel', 'int_field_named')"]
+
+>>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field', new_db_column='non-default_column_name')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
@@ -201,10 +229,24 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name" TO "custom_rename_field-column";
+ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name" TO "non-default_column_name";
+ 
+# RenameField with a specified db column and db table is allowed (but one will be ignored)
+>>> class RenameNonDefaultColumnNameToNonDefaultNameAndTableModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     renamed_field = models.IntegerField(db_column='non-default_column_name2')
+...     int_field_named_indexed = models.IntegerField(db_column='custom_db_col_name_indexed', db_index=True)
+...     fk_field = models.ForeignKey(RenameAnchor1)
+...     m2m_field = models.ManyToManyField(RenameAnchor2)
+...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
-# -- RenameField with a specified db column and db table is allowed (but one will be ignored)
->>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field', new_db_column='custom_rename_field-column_2', new_db_table='custom_ignored_db-table')]
+>>> new_sig = test_proj_sig(RenameNonDefaultColumnNameToNonDefaultNameAndTableModel)
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['testapp']]
+["AddField('TestModel', 'renamed_field', models.IntegerField, db_column='non-default_column_name2')", "DeleteField('TestModel', 'int_field_named')"]
+
+>>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field', new_db_column='non-default_column_name2', new_db_table='custom_ignored_db-table')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
@@ -215,7 +257,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name" TO "custom_rename_field-column_2";
+ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name" TO "non-default_column_name2";
 
 # Rename a database column in a non-default table
 # Rename a database column
@@ -271,7 +313,22 @@ True
 >>> execute_test_sql(test_sql, cleanup=['DROP TABLE "django_evolution_renamebasemodel_renamed_field"'])
 ALTER TABLE "django_evolution_renamebasemodel_m2m_field" RENAME TO "django_evolution_renamebasemodel_renamed_field";
 
-# -- RenameField with a specified db column for a M2MField is allowed (but will be ignored)
+# RenameField with a specified db column for a M2MField is allowed (but will be ignored)
+>>> class RenameM2MTableWithColumnNameModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     int_field_named = models.IntegerField(db_column='custom_db_col_name')
+...     int_field_named_indexed = models.IntegerField(db_column='custom_db_col_name_indexed', db_index=True)
+...     fk_field = models.ForeignKey(RenameAnchor1)
+...     renamed_field = models.ManyToManyField(RenameAnchor2)
+...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
+
+>>> new_sig = test_proj_sig(RenameM2MTableWithColumnNameModel)
+>>> base_sig = copy.deepcopy(base_sig)
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['testapp']]
+["AddField('TestModel', 'renamed_field', models.ManyToManyField, related_model='django_evolution.RenameAnchor2')", "DeleteField('TestModel', 'm2m_field')"]
+
 >>> evolution = [RenameField('TestModel', 'm2m_field', 'renamed_field', new_db_column='ignored_db-column')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []

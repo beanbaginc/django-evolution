@@ -281,11 +281,19 @@ class RenameField(BaseMutation):
         field_dict = model_sig['fields']
         field_sig = field_dict[self.old_field_name]
         
-        if models.ManyToManyField == field_sig['field_type'] and self.new_db_table:
-            field_sig['db_table'] = self.new_db_table
-        # FIXME! This should be stored as part of the simulate change
-        # else:
-        #     field_sig['db_column'] = self.new_db_column
+        if models.ManyToManyField == field_sig['field_type']:
+            if self.new_db_table:
+                field_sig['db_table'] = self.new_db_table
+            else:
+                field_sig.pop('db_table',None)
+        elif self.new_db_column:
+            field_sig['db_column'] = self.new_db_column
+        else:
+            # new_db_column and new_db_table was not specified (or not specified for the appropriate field types)
+            # clear the old value if one was set. This amounts to resetting the column or table name
+            # to the django default name
+            field_sig.pop('db_column',None)
+
         field_dict[self.new_field_name] = field_dict.pop(self.old_field_name)
         
     def mutate(self, app_label, proj_sig):
@@ -298,8 +306,14 @@ class RenameField(BaseMutation):
         # Duplicate the old field sig, and apply the table/column changes
         new_field_sig = copy.copy(old_field_sig)
         if models.ManyToManyField == field_type:
-            new_field_sig['db_table'] = self.new_db_table
-        new_field_sig['db_column'] = self.new_db_column
+            if self.new_db_table:
+                new_field_sig['db_table'] = self.new_db_table
+            else:
+                new_field_sig.pop('db_table', None)
+        elif self.new_db_column:
+            new_field_sig['db_column'] = self.new_db_column
+        else:
+            new_field_sig.pop('db_column', None)
 
         # Create the mock field instances.
         old_field = create_field(self.old_field_name, field_type, old_field_sig)
