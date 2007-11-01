@@ -5,6 +5,8 @@ from django.contrib.contenttypes import generic
 from django.db.models.fields import *
 from django.db.models.fields.related import *
 from django.db import models
+from django.utils.functional import curry
+
 from django_evolution.signature import ATTRIBUTE_DEFAULTS
 from django_evolution import CannotSimulate, SimulationFailure
 
@@ -33,13 +35,39 @@ def create_field(field_name, field_type, field_attrs):
 
     return field
 
-class MockMeta:
+class MockMeta(object):
     "A mockup of a models Options object, based on the model signature"
-    def __init__(self, model_sig):
+    def __init__(self, model_name, model_sig):
+        self.object_name = model_name
         self.meta = model_sig['meta']
     def __getattr__(self, name):
         return self.meta[name]
-            
+
+class MockModel(object):
+    """
+    A mockup of a model object, providing sufficient detail 
+    to derive database column and table names using the standard
+    Django fields.
+    """    
+    def __init__(self, app_name, model_name, model_sig):
+        self.app_name = app_name
+        self.model_name = model_name
+        self._meta = MockMeta(model_name, model_sig)
+        
+    def __eq__(self, other):
+        return self.app_name == other.app_name and self.model_name == other.model_name
+    
+class MockRelated(object):
+    """
+    A mockup of django.db.models.related.RelatedObject, providing 
+    sufficient detail to derive database column and table names using 
+    the standard Django fields.
+    """    
+    def __init__(self, related_model, model, field):
+        self.parent_model = related_model
+        self.model = model
+        self.field = field
+
 class BaseMutation:
     def __init__(self):
         pass
@@ -127,7 +155,7 @@ class DeleteField(BaseMutation):
         field_sig['field_type'] = field_type
         
         if field_type == models.ManyToManyField:
-            opts = MockMeta(model_sig)
+            opts = MockMeta(self.model_name, model_sig)
             m2m_table = field._get_m2m_db_table(opts)
             sql_statements = get_evolution_module().delete_table(m2m_table)
         else:            
@@ -198,19 +226,17 @@ class AddField(BaseMutation):
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
         
-        opts = MockMeta(model_sig)
+        model = MockModel(app_label, self.model_name, model_sig)
         field = create_field(self.field_name, self.field_type, self.field_attrs)
-        m2m_table = field._get_m2m_db_table(opts)
+        field.m2m_table = curry(field._get_m2m_db_table, model._meta)
 
-        # If this is an m2m relation to self, avoid the inevitable name clash
-        related_model = self.field_attrs['related_model']
-        related_app_name, related_model_name = related_model.split('.')
-        if '.'.join([app_label, self.model_name]) == related_model:
-            m2m_column_name = 'from_' + self.model_name.lower() + '_id'
-            m2m_reverse_name = 'to_' + related_model_name.lower() + '_id'
-        else:
-            m2m_column_name = self.model_name.lower() + '_id'
-            m2m_reverse_name = related_model_name.lower() + '_id'
+        related_app_label, related_model_name = self.field_attrs['related_model'].split('.')
+        related_sig = proj_sig[related_app_label][related_model_name]
+        related_model = MockModel(related_app_label, related_model_name, related_sig)
+        related = MockRelated(related_model, model, field)
+
+        field.m2m_column_name = curry(field._get_m2m_column_name, related)
+        field.m2m_reverse_name = curry(field._get_m2m_reverse_name, related)
     
         model_tablespace = model_sig['meta']['db_tablespace']
         if self.field_attrs.has_key('db_tablespace'):
@@ -249,8 +275,9 @@ class AddField(BaseMutation):
 
         sql_statements = get_evolution_module().add_table(
                             model_tablespace, field_tablespace,
-                            m2m_table, auto_field_db_type,
-                            m2m_column_name, m2m_reverse_name,
+                            field.m2m_table(), 
+                            auto_field_db_type,
+                            field.m2m_column_name(), field.m2m_reverse_name(),
                             fk_db_type, model_table, model_pk_column,
                             rel_fk_db_type, rel_db_table, rel_pk_column)
                             
@@ -323,7 +350,7 @@ class RenameField(BaseMutation):
         old_field_sig['field_type'] = field_type
         
         if models.ManyToManyField == field_type:
-            opts = MockMeta(model_sig)
+            opts = MockMeta(self.model_name, model_sig)
             old_m2m_table = old_field._get_m2m_db_table(opts)
             new_m2m_table = new_field._get_m2m_db_table(opts)
             
