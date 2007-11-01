@@ -6,7 +6,7 @@ from django.db import connection, transaction
 from django_evolution import signature
 from django_evolution.tests import models as evo_test
 
-def test_proj_sig(model, app_label='testapp', model_name='TestModel', version=1):
+def test_proj_sig(model, app_label='django_evolution', model_name='TestModel', version=1):
     "Generate a dummy project signature based around a single model"
     return {
         app_label: {

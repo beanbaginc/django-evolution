@@ -61,17 +61,17 @@ tests = r"""
 
 >>> new_sig = test_proj_sig(AddDatabaseColumnModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'added_field', models.IntegerField)"]
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 Traceback (most recent call last):
 ...
-SimulationFailure: Cannot create new column 'added_field' on 'testapp.TestModel' that prohibits null values
+SimulationFailure: Cannot create new column 'added_field' on 'django_evolution.TestModel' that prohibits null values
 
 # Null field
 >>> class NullDatabaseColumnModel(models.Model):
@@ -81,14 +81,14 @@ SimulationFailure: Cannot create new column 'added_field' on 'testapp.TestModel'
 
 >>> new_sig = test_proj_sig(NullDatabaseColumnModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'added_field', models.IntegerField, null=True)"]
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -104,14 +104,14 @@ ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NUL
 
 >>> new_sig = test_proj_sig(NonDefaultDatabaseColumnModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'add_field', models.IntegerField, null=True, db_column='non-default_column')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -130,14 +130,14 @@ ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "non-default_column" inte
 
 >>> new_sig = test_proj_sig(AddDatabaseColumnCustomTableModel)
 >>> d = Diff(custom_table_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'added_field', models.IntegerField, null=True)"]
 
 >>> test_sig = copy.deepcopy(custom_table_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -154,17 +154,17 @@ ALTER TABLE "custom_table_name" ADD COLUMN "added_field" integer NULL;
 
 >>> new_sig = test_proj_sig(AddPrimaryKeyModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'my_primary_key', models.AutoField, primary_key=True)", "DeleteField('TestModel', 'id')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 Traceback (most recent call last):
 ...
-SimulationFailure: Cannot create new column 'my_primary_key' on 'testapp.TestModel' that prohibits null values
+SimulationFailure: Cannot create new column 'my_primary_key' on 'django_evolution.TestModel' that prohibits null values
 
 # Indexed field
 >>> class AddIndexedDatabaseColumnModel(models.Model):
@@ -174,14 +174,14 @@ SimulationFailure: Cannot create new column 'my_primary_key' on 'testapp.TestMod
 
 >>> new_sig = test_proj_sig(AddIndexedDatabaseColumnModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'add_field', models.IntegerField, null=True, db_index=True)"]
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -198,14 +198,14 @@ CREATE INDEX "django_evolution_addbasemodel_add_field" ON "django_evolution_addb
 
 >>> new_sig = test_proj_sig(AddUniqueDatabaseColumnModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'added_field', models.IntegerField, unique=True, null=True)"]
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -221,14 +221,14 @@ ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NUL
 
 >>> new_sig = test_proj_sig(ForeignKeyDatabaseColumnModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'added_field', models.ForeignKey, null=True, related_model='django_evolution.AddAnchor1')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -243,18 +243,18 @@ ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field_id" integer 
 ...     added_field = models.ManyToManyField(AddAnchor1)
 
 >>> new_sig = test_proj_sig(AddM2MDatabaseTableModel)
->>> new_sig['testapp'][AddAnchor1.__name__] = signature.create_model_sig(AddAnchor1)
+>>> new_sig['django_evolution'][AddAnchor1.__name__] = signature.create_model_sig(AddAnchor1)
 >>> anchor_sig = copy.deepcopy(base_sig)
->>> anchor_sig['testapp'][AddAnchor1.__name__] = signature.create_model_sig(AddAnchor1)
+>>> anchor_sig['django_evolution'][AddAnchor1.__name__] = signature.create_model_sig(AddAnchor1)
 >>> d = Diff(anchor_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'added_field', models.ManyToManyField, related_model='django_evolution.AddAnchor1')"]
 
 >>> test_sig = copy.deepcopy(anchor_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -275,18 +275,18 @@ CREATE TABLE "django_evolution_addbasemodel_added_field" (
 ...     added_field = models.ManyToManyField(AddAnchor2)
 
 >>> new_sig = test_proj_sig(AddM2MNonDefaultDatabaseTableModel)
->>> new_sig['testapp'][AddAnchor2.__name__] = signature.create_model_sig(AddAnchor2)
+>>> new_sig['django_evolution'][AddAnchor2.__name__] = signature.create_model_sig(AddAnchor2)
 >>> anchor_sig = copy.deepcopy(base_sig)
->>> anchor_sig['testapp'][AddAnchor2.__name__] = signature.create_model_sig(AddAnchor2)
+>>> anchor_sig['django_evolution'][AddAnchor2.__name__] = signature.create_model_sig(AddAnchor2)
 >>> d = Diff(anchor_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'added_field', models.ManyToManyField, related_model='django_evolution.AddAnchor2')"]
 
 >>> test_sig = copy.deepcopy(anchor_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -303,17 +303,17 @@ CREATE TABLE "django_evolution_addbasemodel_added_field" (
 # M2M field between self
 # Need to find a better way to do this.
 >>> new_sig = copy.deepcopy(base_sig)
->>> new_sig['testapp']['TestModel']['fields']['added_field'] = {'field_type': models.ManyToManyField,'related_model': 'testapp.TestModel'}
+>>> new_sig['django_evolution']['TestModel']['fields']['added_field'] = {'field_type': models.ManyToManyField,'related_model': 'django_evolution.TestModel'}
 
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
-["AddField('TestModel', 'added_field', models.ManyToManyField, related_model='testapp.TestModel')"]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
+["AddField('TestModel', 'added_field', models.ManyToManyField, related_model='django_evolution.TestModel')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True

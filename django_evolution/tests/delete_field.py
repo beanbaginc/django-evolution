@@ -70,14 +70,14 @@ tests = r"""
 
 >>> new_sig = test_proj_sig(DefaultNamedColumnModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["DeleteField('TestModel', 'int_field')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -97,14 +97,14 @@ ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "int_field" CASCADE;
 
 >>> new_sig = test_proj_sig(NonDefaultNamedColumnModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["DeleteField('TestModel', 'int_field2')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -126,14 +126,14 @@ ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "non-default_db_colum
 
 >>> new_sig = test_proj_sig(ConstrainedColumnModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["DeleteField('TestModel', 'int_field3')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -153,14 +153,14 @@ ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "int_field3" CASCADE;
 
 >>> new_sig = test_proj_sig(DefaultM2MModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["DeleteField('TestModel', 'm2m_field1')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -180,14 +180,14 @@ DROP TABLE "django_evolution_deletebasemodel_m2m_field1";
 
 >>> new_sig = test_proj_sig(NonDefaultM2MModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["DeleteField('TestModel', 'm2m_field2')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -207,14 +207,14 @@ DROP TABLE "non-default_m2m_table";
 
 >>> new_sig = test_proj_sig(DeleteForeignKeyModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["DeleteField('TestModel', 'fk_field1')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -230,14 +230,14 @@ ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "fk_field1_id" CASCAD
 
 >>> new_sig = test_proj_sig(DeleteColumnCustomTableModel)
 >>> d = Diff(custom_table_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["DeleteField('TestModel', 'value')"]
 
 >>> test_sig = copy.deepcopy(custom_table_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['testapp']:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True

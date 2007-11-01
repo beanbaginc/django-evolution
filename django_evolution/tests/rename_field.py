@@ -73,15 +73,15 @@ tests = r"""
 
 >>> new_sig = test_proj_sig(RenameColumnModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField)", "DeleteField('TestModel', 'int_field')"]
 
 >>> evolution = [RenameField('TestModel', 'int_field', 'renamed_field')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -101,15 +101,15 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "int_field" TO "ren
 
 >>> new_sig = test_proj_sig(RenameColumnWithTableNameModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField)", "DeleteField('TestModel', 'int_field')"]
 
 >>> evolution = [RenameField('TestModel', 'int_field', 'renamed_field', new_db_table='ignored_db-table')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -130,15 +130,15 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "int_field" TO "ren
 
 >>> new_sig = test_proj_sig(RenamePrimaryKeyColumnModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'my_pk_id', models.AutoField, primary_key=True)", "DeleteField('TestModel', 'id')"]
 
 >>> evolution = [RenameField('TestModel', 'id', 'my_pk_id')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -159,15 +159,15 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "id" TO "my_pk_id";
 >>> new_sig = test_proj_sig(RenameForeignKeyColumnModel)
 >>> base_sig = copy.deepcopy(base_sig)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.ForeignKey, related_model='django_evolution.RenameAnchor1')", "DeleteField('TestModel', 'fk_field')"]
 
 >>> evolution = [RenameField('TestModel', 'fk_field', 'renamed_field')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -187,15 +187,15 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "fk_field_id" TO "r
 
 >>> new_sig = test_proj_sig(RenameNonDefaultColumnNameModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField)", "DeleteField('TestModel', 'int_field_named')"]
 
 >>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -215,15 +215,15 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name
 
 >>> new_sig = test_proj_sig(RenameNonDefaultColumnNameToNonDefaultNameModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField, db_column='non-default_column_name')", "DeleteField('TestModel', 'int_field_named')"]
 
 >>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field', new_db_column='non-default_column_name')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -243,15 +243,15 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name
 
 >>> new_sig = test_proj_sig(RenameNonDefaultColumnNameToNonDefaultNameAndTableModel)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField, db_column='non-default_column_name2')", "DeleteField('TestModel', 'int_field_named')"]
 
 >>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field', new_db_column='non-default_column_name2', new_db_table='custom_ignored_db-table')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -269,15 +269,15 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name
 
 >>> new_sig = test_proj_sig(RenameColumnCustomTableModel)
 >>> d = Diff(custom_table_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField)", "DeleteField('TestModel', 'value')"]
 
 >>> evolution = [RenameField('TestModel', 'value', 'renamed_field')]
 >>> test_sig = copy.deepcopy(custom_table_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -298,15 +298,15 @@ ALTER TABLE "custom_rename_table_name" RENAME COLUMN "value" TO "renamed_field";
 >>> new_sig = test_proj_sig(RenameM2MTableModel)
 >>> base_sig = copy.deepcopy(base_sig)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.ManyToManyField, related_model='django_evolution.RenameAnchor2')", "DeleteField('TestModel', 'm2m_field')"]
 
 >>> evolution = [RenameField('TestModel', 'm2m_field', 'renamed_field')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -326,15 +326,15 @@ ALTER TABLE "django_evolution_renamebasemodel_m2m_field" RENAME TO "django_evolu
 >>> new_sig = test_proj_sig(RenameM2MTableWithColumnNameModel)
 >>> base_sig = copy.deepcopy(base_sig)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.ManyToManyField, related_model='django_evolution.RenameAnchor2')", "DeleteField('TestModel', 'm2m_field')"]
 
 >>> evolution = [RenameField('TestModel', 'm2m_field', 'renamed_field', new_db_column='ignored_db-column')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
@@ -355,15 +355,15 @@ ALTER TABLE "django_evolution_renamebasemodel_m2m_field" RENAME TO "django_evolu
 >>> new_sig = test_proj_sig(RenameNonDefaultM2MTableModel)
 >>> base_sig = copy.deepcopy(base_sig)
 >>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['testapp']]
+>>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.ManyToManyField, db_table='non-default_db_table', related_model='django_evolution.RenameAnchor3')", "DeleteField('TestModel', 'm2m_field_named')"]
 
 >>> evolution = [RenameField('TestModel', 'm2m_field_named', 'renamed_field')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('testapp', test_sig))
-...     mutation.simulate('testapp', test_sig)
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
