@@ -55,8 +55,9 @@ tests = r"""
 ...         db_table = 'custom_rename_table_name'
 
 # Store the base signatures
->>> base_sig = test_proj_sig(RenameBaseModel)
->>> custom_table_sig = test_proj_sig(CustomRenameTableModel)
+>>> anchors = [('RenameAnchor1', RenameAnchor1), ('RenameAnchor2', RenameAnchor2), ('RenameAnchor3',RenameAnchor3)]
+>>> base_sig = test_proj_sig(('TestModel', RenameBaseModel), *anchors)
+>>> custom_table_sig = test_proj_sig(('TestModel', CustomRenameTableModel))
 
 # Register the test models with the Django app cache
 >>> cache.register_models('tests', CustomRenameTableModel, RenameBaseModel, RenameAnchor1, RenameAnchor2, RenameAnchor3)
@@ -71,7 +72,7 @@ tests = r"""
 ...     m2m_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> new_sig = test_proj_sig(RenameColumnModel)
+>>> new_sig = test_proj_sig(('TestModel', RenameColumnModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField)", "DeleteField('TestModel', 'int_field')"]
@@ -99,7 +100,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "int_field" TO "ren
 ...     m2m_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> new_sig = test_proj_sig(RenameColumnWithTableNameModel)
+>>> new_sig = test_proj_sig(('TestModel',RenameColumnWithTableNameModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField)", "DeleteField('TestModel', 'int_field')"]
@@ -128,7 +129,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "int_field" TO "ren
 ...     m2m_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> new_sig = test_proj_sig(RenamePrimaryKeyColumnModel)
+>>> new_sig = test_proj_sig(('TestModel',RenamePrimaryKeyColumnModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'my_pk_id', models.AutoField, primary_key=True)", "DeleteField('TestModel', 'id')"]
@@ -156,7 +157,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "id" TO "my_pk_id";
 ...     m2m_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> new_sig = test_proj_sig(RenameForeignKeyColumnModel)
+>>> new_sig = test_proj_sig(('TestModel',RenameForeignKeyColumnModel), *anchors)
 >>> base_sig = copy.deepcopy(base_sig)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
@@ -185,7 +186,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "fk_field_id" TO "r
 ...     m2m_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> new_sig = test_proj_sig(RenameNonDefaultColumnNameModel)
+>>> new_sig = test_proj_sig(('TestModel',RenameNonDefaultColumnNameModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField)", "DeleteField('TestModel', 'int_field_named')"]
@@ -213,7 +214,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name
 ...     m2m_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> new_sig = test_proj_sig(RenameNonDefaultColumnNameToNonDefaultNameModel)
+>>> new_sig = test_proj_sig(('TestModel',RenameNonDefaultColumnNameToNonDefaultNameModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField, db_column='non-default_column_name')", "DeleteField('TestModel', 'int_field_named')"]
@@ -241,7 +242,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name
 ...     m2m_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> new_sig = test_proj_sig(RenameNonDefaultColumnNameToNonDefaultNameAndTableModel)
+>>> new_sig = test_proj_sig(('TestModel',RenameNonDefaultColumnNameToNonDefaultNameAndTableModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField, db_column='non-default_column_name2')", "DeleteField('TestModel', 'int_field_named')"]
@@ -267,7 +268,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name
 ...     class Meta:
 ...         db_table = 'custom_rename_table_name'
 
->>> new_sig = test_proj_sig(RenameColumnCustomTableModel)
+>>> new_sig = test_proj_sig(('TestModel',RenameColumnCustomTableModel), *anchors)
 >>> d = Diff(custom_table_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField)", "DeleteField('TestModel', 'value')"]
@@ -295,7 +296,7 @@ ALTER TABLE "custom_rename_table_name" RENAME COLUMN "value" TO "renamed_field";
 ...     renamed_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> new_sig = test_proj_sig(RenameM2MTableModel)
+>>> new_sig = test_proj_sig(('TestModel',RenameM2MTableModel), *anchors)
 >>> base_sig = copy.deepcopy(base_sig)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
@@ -323,7 +324,7 @@ ALTER TABLE "django_evolution_renamebasemodel_m2m_field" RENAME TO "django_evolu
 ...     renamed_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> new_sig = test_proj_sig(RenameM2MTableWithColumnNameModel)
+>>> new_sig = test_proj_sig(('TestModel',RenameM2MTableWithColumnNameModel), *anchors)
 >>> base_sig = copy.deepcopy(base_sig)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
@@ -352,7 +353,7 @@ ALTER TABLE "django_evolution_renamebasemodel_m2m_field" RENAME TO "django_evolu
 ...     m2m_field = models.ManyToManyField(RenameAnchor2)
 ...     renamed_field = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> new_sig = test_proj_sig(RenameNonDefaultM2MTableModel)
+>>> new_sig = test_proj_sig(('TestModel',RenameNonDefaultM2MTableModel), *anchors)
 >>> base_sig = copy.deepcopy(base_sig)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]

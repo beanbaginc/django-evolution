@@ -69,14 +69,14 @@ tests = r"""
 ...     name = models.CharField(max_length=20)
 ...     age = models.IntegerField()
 
->>> base_sig = test_proj_sig(BaseModel)
+>>> base_sig = test_proj_sig(('TestModel',BaseModel))
 
 # An identical model gives an empty Diff
 >>> class TestModel(models.Model):
 ...     name = models.CharField(max_length=20)
 ...     age = models.IntegerField()
 
->>> test_sig = test_proj_sig(TestModel)
+>>> test_sig = test_proj_sig(('TestModel',TestModel))
 >>> d = Diff(base_sig, test_sig)
 >>> d.is_empty()
 True
@@ -89,7 +89,7 @@ True
 ...     age = models.IntegerField()
 ...     date_of_birth = models.DateField()
 
->>> test_sig = test_proj_sig(AddFieldModel)
+>>> test_sig = test_proj_sig(('TestModel',AddFieldModel))
 >>> d = Diff(base_sig, test_sig)
 >>> d.is_empty()
 False
@@ -100,7 +100,7 @@ False
 >>> class DeleteFieldModel(models.Model):
 ...     name = models.CharField(max_length=20)
 
->>> test_sig = test_proj_sig(DeleteFieldModel)
+>>> test_sig = test_proj_sig(('TestModel',DeleteFieldModel))
 >>> d = Diff(base_sig, test_sig)
 >>> d.is_empty()
 False
@@ -113,7 +113,7 @@ False
 ...     full_name = models.CharField(max_length=20)
 ...     age = models.IntegerField()
 
->>> test_sig = test_proj_sig(RenameFieldModel)
+>>> test_sig = test_proj_sig(('TestModel',RenameFieldModel))
 >>> d = Diff(base_sig, test_sig)
 >>> d.is_empty()
 False

@@ -6,14 +6,20 @@ from django.db import connection, transaction
 from django_evolution import signature
 from django_evolution.tests import models as evo_test
 
-def test_proj_sig(model, app_label='django_evolution', model_name='TestModel', version=1):
+def test_proj_sig(*models, **kwargs):
     "Generate a dummy project signature based around a single model"
-    return {
+    app_label = kwargs.get('app_label','django_evolution')
+    version = kwargs.get('version',1)
+    proj_sig = {
         app_label: {
-            model_name: signature.create_model_sig(model),
         }, 
         '__version__': version,
     }
+    
+    for name,model in models:
+        proj_sig[app_label][name] = signature.create_model_sig(model)
+        
+    return proj_sig
     
 def execute_sql(sql, output=False):
     "A transaction wrapper for executing a list of SQL statements"

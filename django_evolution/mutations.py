@@ -16,7 +16,7 @@ def get_evolution_module():
     module_name = ['django_evolution.db',settings.DATABASE_ENGINE]
     return __import__('.'.join(module_name),{},{},[''])
 
-def create_field(field_name, field_type, field_attrs):
+def create_field(proj_sig, field_name, field_type, field_attrs):
     """
     Create an instance of a field from a field signature. This is useful for
     accessing all the database property mechanisms built into fields.
@@ -27,7 +27,8 @@ def create_field(field_name, field_type, field_attrs):
     related_model = field_attrs.pop('related_model', None)
     if related_model:
         related_app_name, related_model_name = related_model.split('.')
-        to = models.get_model(related_app_name, related_model_name)
+        related_model_sig = proj_sig[related_app_name][related_model_name]
+        to = MockModel(proj_sig, related_app_name, related_model_name, related_model_sig, stub=True)
         field = field_type(to, name=field_name, **field_attrs)
         field_attrs['related_model'] = related_model
     else:
@@ -36,23 +37,44 @@ def create_field(field_name, field_type, field_attrs):
     return field
 
 class MockMeta(object):
-    "A mockup of a models Options object, based on the model signature"
-    def __init__(self, model_name, model_sig):
+    """
+    A mockup of a models Options object, based on the model signature.
+    
+    The stub argument is used to circumvent recursive relationships. If 
+    'stub' is provided, the constructed model will only be a stub - 
+    it will only have a primary key field.    
+    """
+    def __init__(self, proj_sig, model_name, model_sig, stub=False):
         self.object_name = model_name
         self.meta = model_sig['meta']
+        self.fields = {}
+        
+        for field_name,field_sig in model_sig['fields'].items():
+            if not stub or field_sig.get('primary_key', False):
+                field_type = field_sig.pop('field_type')
+                field = create_field(proj_sig, field_name, field_type, field_sig)
+                field_sig['field_type'] = field_type
+                    
+                self.fields[field_name] = field
+                field.set_attributes_from_name(field_name)
+                if field_sig.get('primary_key', False):
+                    self.pk = field
     def __getattr__(self, name):
         return self.meta[name]
-
+        
+    def get_field(self, name):
+        return self.fields[name]
+        
 class MockModel(object):
     """
     A mockup of a model object, providing sufficient detail 
     to derive database column and table names using the standard
     Django fields.
     """    
-    def __init__(self, app_name, model_name, model_sig):
+    def __init__(self, proj_sig, app_name, model_name, model_sig, stub=False):
         self.app_name = app_name
         self.model_name = model_name
-        self._meta = MockMeta(model_name, model_sig)
+        self._meta = MockMeta(proj_sig, model_name, model_sig, stub)
         
     def __eq__(self, other):
         return self.app_name == other.app_name and self.model_name == other.model_name
@@ -151,11 +173,11 @@ class DeleteField(BaseMutation):
         # Temporarily remove field_type from the field signature 
         # so that we can create a field
         field_type = field_sig.pop('field_type')
-        field = create_field(self.field_name, field_type, field_sig)
+        field = create_field(proj_sig, self.field_name, field_type, field_sig)
         field_sig['field_type'] = field_type
         
         if field_type == models.ManyToManyField:
-            opts = MockMeta(self.model_name, model_sig)
+            opts = MockMeta(proj_sig, self.model_name, model_sig)
             m2m_table = field._get_m2m_db_table(opts)
             sql_statements = get_evolution_module().delete_table(m2m_table)
         else:            
@@ -209,7 +231,7 @@ class AddField(BaseMutation):
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
 
-        field = create_field(self.field_name, self.field_type, self.field_attrs)
+        field = create_field(proj_sig, self.field_name, self.field_type, self.field_attrs)
 
         sql_statements = get_evolution_module().add_column(model_sig['meta']['db_table'], field)
                                                
@@ -226,60 +248,19 @@ class AddField(BaseMutation):
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
         
-        model = MockModel(app_label, self.model_name, model_sig)
-        field = create_field(self.field_name, self.field_type, self.field_attrs)
-        field.m2m_table = curry(field._get_m2m_db_table, model._meta)
+        model = MockModel(proj_sig, app_label, self.model_name, model_sig)
+        field = create_field(proj_sig, self.field_name, self.field_type, self.field_attrs)
+        field.m2m_db_table = curry(field._get_m2m_db_table, model._meta)
 
         related_app_label, related_model_name = self.field_attrs['related_model'].split('.')
         related_sig = proj_sig[related_app_label][related_model_name]
-        related_model = MockModel(related_app_label, related_model_name, related_sig)
+        related_model = MockModel(proj_sig, related_app_label, related_model_name, related_sig)
         related = MockRelated(related_model, model, field)
 
         field.m2m_column_name = curry(field._get_m2m_column_name, related)
         field.m2m_reverse_name = curry(field._get_m2m_reverse_name, related)
     
-        model_tablespace = model_sig['meta']['db_tablespace']
-        if self.field_attrs.has_key('db_tablespace'):
-            field_tablespace = self.field_attrs['db_tablespace']
-        else:
-            field_tablespace = ATTRIBUTE_DEFAULTS['db_tablespace']
-        
-        auto_field_db_type = models.AutoField(primary_key=True).db_type()
-        if self.field_type in FK_INTEGER_TYPES:
-            fk_db_type = models.IntegerField().db_type()
-        else:
-            # TODO: Fix me
-            fk_db_type = models.IntegerField().db_type()
-            #fk_db_type = getattr(models,self.field_type)(**self.field_attrs).db_type()
-
-        model_table = model_sig['meta']['db_table']
-        model_pk_column = model_sig['meta']['pk_column']
-
-        rel_model_sig = app_sig[related_model_name]
-        
-        # Refer to the way that sql_all creates the necessary sql to create the table.
-        # It requires the data types of the column that it is related to. How we get this
-        # in our context is unclear.
-        
-#        rel_model_pk_col = rel_model_sig['meta']['pk_column']
-#        rel_field_sig = rel_model_sig['fields'][rel_model_pk_col]
-        # FIXME
-#        if rel_field_sig['field_type'] in FK_INTEGER_TYPES:
-        rel_fk_db_type = models.IntegerField().db_type()
-#        else:
-
-#            rel_fk_db_type = getattr(models,rel_field_sig['field_type'])(**rel_field_sig).db_type()
-        
-        rel_db_table = rel_model_sig['meta']['db_table']
-        rel_pk_column = rel_model_sig['meta']['pk_column']
-
-        sql_statements = get_evolution_module().add_table(
-                            model_tablespace, field_tablespace,
-                            field.m2m_table(), 
-                            auto_field_db_type,
-                            field.m2m_column_name(), field.m2m_reverse_name(),
-                            fk_db_type, model_table, model_pk_column,
-                            rel_fk_db_type, rel_db_table, rel_pk_column)
+        sql_statements = get_evolution_module().add_m2m_table(model, field)
                             
         return sql_statements
 
@@ -343,14 +324,14 @@ class RenameField(BaseMutation):
             new_field_sig.pop('db_column', None)
 
         # Create the mock field instances.
-        old_field = create_field(self.old_field_name, field_type, old_field_sig)
-        new_field = create_field(self.new_field_name, field_type, new_field_sig)
+        old_field = create_field(proj_sig, self.old_field_name, field_type, old_field_sig)
+        new_field = create_field(proj_sig, self.new_field_name, field_type, new_field_sig)
         
         # Restore the field type to the signature
         old_field_sig['field_type'] = field_type
         
         if models.ManyToManyField == field_type:
-            opts = MockMeta(self.model_name, model_sig)
+            opts = MockMeta(proj_sig, self.model_name, model_sig)
             old_m2m_table = old_field._get_m2m_db_table(opts)
             new_m2m_table = new_field._get_m2m_db_table(opts)
             

@@ -45,8 +45,9 @@ tests = r"""
 ...         db_table = 'custom_table_name'
 
 # Store the base signatures
->>> base_sig = test_proj_sig(AddBaseModel)
->>> custom_table_sig = test_proj_sig(CustomTableModel)
+>>> anchors = [('AddAnchor1',AddAnchor1),('AddAnchor2',AddAnchor2)]
+>>> base_sig = test_proj_sig(('TestModel',AddBaseModel), *anchors)
+>>> custom_table_sig = test_proj_sig(('TestModel',CustomTableModel))
 
 # Register the test models with the Django app cache
 >>> cache.register_models('tests', CustomTableModel, AddBaseModel, AddAnchor1, AddAnchor2)
@@ -59,7 +60,7 @@ tests = r"""
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField()
 
->>> new_sig = test_proj_sig(AddDatabaseColumnModel)
+>>> new_sig = test_proj_sig(('TestModel',AddDatabaseColumnModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'added_field', models.IntegerField)"]
@@ -79,7 +80,7 @@ SimulationFailure: Cannot create new column 'added_field' on 'django_evolution.T
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField(null=True)
 
->>> new_sig = test_proj_sig(NullDatabaseColumnModel)
+>>> new_sig = test_proj_sig(('TestModel', NullDatabaseColumnModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'added_field', models.IntegerField, null=True)"]
@@ -102,7 +103,7 @@ ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NUL
 ...     int_field = models.IntegerField()
 ...     add_field = models.IntegerField(db_column='non-default_column', null=True)
 
->>> new_sig = test_proj_sig(NonDefaultDatabaseColumnModel)
+>>> new_sig = test_proj_sig(('TestModel',NonDefaultDatabaseColumnModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'add_field', models.IntegerField, null=True, db_column='non-default_column')"]
@@ -128,7 +129,7 @@ ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "non-default_column" inte
 ...         db_table = 'custom_table_name'
 
 
->>> new_sig = test_proj_sig(AddDatabaseColumnCustomTableModel)
+>>> new_sig = test_proj_sig(('TestModel',AddDatabaseColumnCustomTableModel), *anchors)
 >>> d = Diff(custom_table_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'added_field', models.IntegerField, null=True)"]
@@ -152,7 +153,7 @@ ALTER TABLE "custom_table_name" ADD COLUMN "added_field" integer NULL;
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 
->>> new_sig = test_proj_sig(AddPrimaryKeyModel)
+>>> new_sig = test_proj_sig(('TestModel',AddPrimaryKeyModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'my_primary_key', models.AutoField, primary_key=True)", "DeleteField('TestModel', 'id')"]
@@ -172,7 +173,7 @@ SimulationFailure: Cannot create new column 'my_primary_key' on 'django_evolutio
 ...     int_field = models.IntegerField()
 ...     add_field = models.IntegerField(db_index=True, null=True)
 
->>> new_sig = test_proj_sig(AddIndexedDatabaseColumnModel)
+>>> new_sig = test_proj_sig(('TestModel',AddIndexedDatabaseColumnModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'add_field', models.IntegerField, null=True, db_index=True)"]
@@ -196,7 +197,7 @@ CREATE INDEX "django_evolution_addbasemodel_add_field" ON "django_evolution_addb
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField(unique=True, null=True)
 
->>> new_sig = test_proj_sig(AddUniqueDatabaseColumnModel)
+>>> new_sig = test_proj_sig(('TestModel',AddUniqueDatabaseColumnModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'added_field', models.IntegerField, unique=True, null=True)"]
@@ -219,7 +220,7 @@ ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NUL
 ...     int_field = models.IntegerField()
 ...     added_field = models.ForeignKey(AddAnchor1, null=True)
 
->>> new_sig = test_proj_sig(ForeignKeyDatabaseColumnModel)
+>>> new_sig = test_proj_sig(('TestModel',ForeignKeyDatabaseColumnModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'added_field', models.ForeignKey, null=True, related_model='django_evolution.AddAnchor1')"]
@@ -242,7 +243,7 @@ ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field_id" integer 
 ...     int_field = models.IntegerField()
 ...     added_field = models.ManyToManyField(AddAnchor1)
 
->>> new_sig = test_proj_sig(AddM2MDatabaseTableModel)
+>>> new_sig = test_proj_sig(('TestModel',AddM2MDatabaseTableModel), *anchors)
 >>> new_sig['django_evolution'][AddAnchor1.__name__] = signature.create_model_sig(AddAnchor1)
 >>> anchor_sig = copy.deepcopy(base_sig)
 >>> anchor_sig['django_evolution'][AddAnchor1.__name__] = signature.create_model_sig(AddAnchor1)
@@ -274,7 +275,7 @@ CREATE TABLE "django_evolution_addbasemodel_added_field" (
 ...     int_field = models.IntegerField()
 ...     added_field = models.ManyToManyField(AddAnchor2)
 
->>> new_sig = test_proj_sig(AddM2MNonDefaultDatabaseTableModel)
+>>> new_sig = test_proj_sig(('TestModel', AddM2MNonDefaultDatabaseTableModel), *anchors)
 >>> new_sig['django_evolution'][AddAnchor2.__name__] = signature.create_model_sig(AddAnchor2)
 >>> anchor_sig = copy.deepcopy(base_sig)
 >>> anchor_sig['django_evolution'][AddAnchor2.__name__] = signature.create_model_sig(AddAnchor2)

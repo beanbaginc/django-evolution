@@ -52,8 +52,9 @@ tests = r"""
 ...         db_table = 'custom_table_name'
 
 # Store the base signatures
->>> base_sig = test_proj_sig(DeleteBaseModel)
->>> custom_table_sig = test_proj_sig(CustomTableModel)
+>>> anchors = [('DeleteAnchor1', DeleteAnchor1), ('DeleteAnchor2', DeleteAnchor2), ('DeleteAnchor3',DeleteAnchor3), ('DeleteAnchor4',DeleteAnchor4)]
+>>> base_sig = test_proj_sig(('TestModel', DeleteBaseModel), *anchors)
+>>> custom_table_sig = test_proj_sig(('TestModel', CustomTableModel))
 
 # Register the test models with the Django app cache
 >>> cache.register_models('tests', CustomTableModel, DeleteBaseModel, DeleteAnchor1, DeleteAnchor2, DeleteAnchor3, DeleteAnchor4)
@@ -68,7 +69,7 @@ tests = r"""
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 
->>> new_sig = test_proj_sig(DefaultNamedColumnModel)
+>>> new_sig = test_proj_sig(('TestModel', DefaultNamedColumnModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["DeleteField('TestModel', 'int_field')"]
@@ -95,7 +96,7 @@ ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "int_field" CASCADE;
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 
->>> new_sig = test_proj_sig(NonDefaultNamedColumnModel)
+>>> new_sig = test_proj_sig(('TestModel',NonDefaultNamedColumnModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["DeleteField('TestModel', 'int_field2')"]
@@ -124,7 +125,7 @@ ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "non-default_db_colum
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 
->>> new_sig = test_proj_sig(ConstrainedColumnModel)
+>>> new_sig = test_proj_sig(('TestModel',ConstrainedColumnModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["DeleteField('TestModel', 'int_field3')"]
@@ -151,7 +152,7 @@ ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "int_field3" CASCADE;
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 
->>> new_sig = test_proj_sig(DefaultM2MModel)
+>>> new_sig = test_proj_sig(('TestModel',DefaultM2MModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["DeleteField('TestModel', 'm2m_field1')"]
@@ -178,7 +179,7 @@ DROP TABLE "django_evolution_deletebasemodel_m2m_field1";
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 
->>> new_sig = test_proj_sig(NonDefaultM2MModel)
+>>> new_sig = test_proj_sig(('TestModel',NonDefaultM2MModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["DeleteField('TestModel', 'm2m_field2')"]
@@ -205,7 +206,7 @@ DROP TABLE "non-default_m2m_table";
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 
->>> new_sig = test_proj_sig(DeleteForeignKeyModel)
+>>> new_sig = test_proj_sig(('TestModel', DeleteForeignKeyModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["DeleteField('TestModel', 'fk_field1')"]
@@ -228,7 +229,7 @@ ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "fk_field1_id" CASCAD
 ...     class Meta:
 ...         db_table = 'custom_table_name'
 
->>> new_sig = test_proj_sig(DeleteColumnCustomTableModel)
+>>> new_sig = test_proj_sig(('TestModel',DeleteColumnCustomTableModel), *anchors)
 >>> d = Diff(custom_table_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["DeleteField('TestModel', 'value')"]
