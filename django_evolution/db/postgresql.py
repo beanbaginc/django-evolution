@@ -21,8 +21,7 @@ def rename_table(old_db_tablename, new_db_tablename):
     
 def delete_column(table_name, field):
     qn = connection.ops.quote_name
-    attname, column = field.get_attname_column()
-    params = (qn(table_name), qn(column))
+    params = (qn(table_name), qn(field.column))
     
     return ['ALTER TABLE %s DROP COLUMN %s CASCADE;' % params]
 
@@ -97,42 +96,44 @@ def add_column(table_name, field):
         related_model = field.rel.to
         related_table = related_model._meta.db_table
         related_pk_col = related_model._meta.pk.name
-        attname, column = field.get_attname_column()
         constraints = ['%sNULL' % (not field.null and 'NOT ' or '')]
         if field.unique and (not field.primary_key or connection.features.allows_unique_and_pk):
             constraints.append('UNIQUE')
-        params = (qn(table_name), qn(column), field.db_type(), ' '.join(constraints), 
+        params = (qn(table_name), qn(field.column), field.db_type(), ' '.join(constraints), 
             qn(related_table), qn(related_pk_col), connection.ops.deferrable_sql())
         output = ['ALTER TABLE %s ADD COLUMN %s %s %s REFERENCES %s (%s) %s;' % params]
     else:
         constraints = ['%sNULL' % (not field.null and 'NOT ' or '')]
         if field.unique and (not field.primary_key or connection.features.allows_unique_and_pk):
             constraints.append('UNIQUE')
-        attname, column = field.get_attname_column()
-        params = (qn(table_name), qn(column), field.db_type(),' '.join(constraints))    
+        params = (qn(table_name), qn(field.column), field.db_type(),' '.join(constraints))    
         output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
         
     return output
     
-def create_index(table_name, model_tablespace, field):
+def create_index(model, f):
     "Returns the CREATE INDEX SQL statements."
     output = []
     qn = connection.ops.quote_name
-
-    attname, column = field.get_attname_column()
-    if not ((field.primary_key or field.unique) and connection.features.autoindexes_primary_keys):
-        unique = field.unique and 'UNIQUE ' or ''
-        tablespace = field.db_tablespace or model_tablespace
+    style = color.no_style()
+    
+    #### Duplicated from django.core.management.sql - sql_indexes_for_model()
+    #### If the Django core is refactored to expose single index creation, 
+    #### this method can be removed.
+    if f.db_index and not ((f.primary_key or f.unique) and connection.features.autoindexes_primary_keys):
+        unique = f.unique and 'UNIQUE ' or ''
+        tablespace = f.db_tablespace or model._meta.db_tablespace
         if tablespace and connection.features.supports_tablespaces:
             tablespace_sql = ' ' + connection.ops.tablespace_sql(tablespace)
         else:
             tablespace_sql = ''
         output.append(
-            'CREATE %sINDEX' % unique + ' ' + \
-            qn('%s_%s' % (table_name, column)) + ' ' + \
-            'ON' + ' ' + \
-            qn(table_name) + ' ' + \
-            "(%s)" % qn(column) + \
+            style.SQL_KEYWORD('CREATE %sINDEX' % unique) + ' ' + \
+            style.SQL_TABLE(qn('%s_%s' % (model._meta.db_table, f.column))) + ' ' + \
+            style.SQL_KEYWORD('ON') + ' ' + \
+            style.SQL_TABLE(qn(model._meta.db_table)) + ' ' + \
+            "(%s)" % style.SQL_FIELD(qn(f.column)) + \
             "%s;" % tablespace_sql
         )
+    #### END duplicated code
     return output

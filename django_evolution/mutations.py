@@ -33,6 +33,7 @@ def create_field(proj_sig, field_name, field_type, field_attrs):
         field_attrs['related_model'] = related_model
     else:
         field = field_type(name=field_name, **field_attrs)
+    field.set_attributes_from_name(field_name)
 
     return field
 
@@ -231,16 +232,13 @@ class AddField(BaseMutation):
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
 
+        model = MockModel(proj_sig, app_label, self.model_name, model_sig)
         field = create_field(proj_sig, self.field_name, self.field_type, self.field_attrs)
 
         sql_statements = get_evolution_module().add_column(model_sig['meta']['db_table'], field)
                                                
         # Create SQL index if necessary
-        if self.field_attrs.get('db_index', False):
-            sql_statements.extend(get_evolution_module().create_index(
-                                        model_sig['meta']['db_table'], 
-                                        model_sig['meta'].get('db_tablespace',None), 
-                                        field))
+        sql_statements.extend(get_evolution_module().create_index(model, field))
 
         return sql_statements
 
