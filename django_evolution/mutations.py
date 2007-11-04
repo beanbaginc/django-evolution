@@ -171,6 +171,7 @@ class DeleteField(BaseMutation):
         model_sig = app_sig[self.model_name]
         field_sig = model_sig['fields'][self.field_name]
 
+        model = MockModel(proj_sig, app_label, self.model_name, model_sig)
         # Temporarily remove field_type from the field signature 
         # so that we can create a field
         field_type = field_sig.pop('field_type')
@@ -178,12 +179,9 @@ class DeleteField(BaseMutation):
         field_sig['field_type'] = field_type
         
         if field_type == models.ManyToManyField:
-            opts = MockMeta(proj_sig, self.model_name, model_sig)
-            m2m_table = field._get_m2m_db_table(opts)
-            sql_statements = get_evolution_module().delete_table(m2m_table)
+            sql_statements = get_evolution_module().delete_table(field._get_m2m_db_table(model._meta))
         else:            
-            table_name = app_sig[self.model_name]['meta'].get('db_table')
-            sql_statements = get_evolution_module().delete_column(table_name, field)
+            sql_statements = get_evolution_module().delete_column(model, field)
             
         return sql_statements
         
@@ -235,7 +233,7 @@ class AddField(BaseMutation):
         model = MockModel(proj_sig, app_label, self.model_name, model_sig)
         field = create_field(proj_sig, self.field_name, self.field_type, self.field_attrs)
 
-        sql_statements = get_evolution_module().add_column(model_sig['meta']['db_table'], field)
+        sql_statements = get_evolution_module().add_column(model, field)
                                                
         # Create SQL index if necessary
         sql_statements.extend(get_evolution_module().create_index(model, field))

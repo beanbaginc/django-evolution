@@ -19,9 +19,9 @@ def rename_table(old_db_tablename, new_db_tablename):
     params = (qn(old_db_tablename), qn(new_db_tablename))
     return ['ALTER TABLE %s RENAME TO %s;' % params]
     
-def delete_column(table_name, field):
+def delete_column(model, f):
     qn = connection.ops.quote_name
-    params = (qn(table_name), qn(field.column))
+    params = (qn(model._meta.db_table), qn(f.column))
     
     return ['ALTER TABLE %s DROP COLUMN %s CASCADE;' % params]
 
@@ -86,27 +86,27 @@ def add_m2m_table(model, f):
     
     return final_output
     
-def add_column(table_name, field):
+def add_column(model, f):
     qn = connection.ops.quote_name
     
-    if field.rel:
+    if f.rel:
         # it is a foreign key field
         # NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED
         # ALTER TABLE <tablename> ADD COLUMN <column name> NULL REFERENCES <tablename1> ("<colname>") DEFERRABLE INITIALLY DEFERRED
-        related_model = field.rel.to
+        related_model = f.rel.to
         related_table = related_model._meta.db_table
         related_pk_col = related_model._meta.pk.name
-        constraints = ['%sNULL' % (not field.null and 'NOT ' or '')]
-        if field.unique and (not field.primary_key or connection.features.allows_unique_and_pk):
+        constraints = ['%sNULL' % (not f.null and 'NOT ' or '')]
+        if f.unique and (not f.primary_key or connection.features.allows_unique_and_pk):
             constraints.append('UNIQUE')
-        params = (qn(table_name), qn(field.column), field.db_type(), ' '.join(constraints), 
+        params = (qn(model._meta.db_table), qn(f.column), f.db_type(), ' '.join(constraints), 
             qn(related_table), qn(related_pk_col), connection.ops.deferrable_sql())
         output = ['ALTER TABLE %s ADD COLUMN %s %s %s REFERENCES %s (%s) %s;' % params]
     else:
-        constraints = ['%sNULL' % (not field.null and 'NOT ' or '')]
-        if field.unique and (not field.primary_key or connection.features.allows_unique_and_pk):
+        constraints = ['%sNULL' % (not f.null and 'NOT ' or '')]
+        if f.unique and (not f.primary_key or connection.features.allows_unique_and_pk):
             constraints.append('UNIQUE')
-        params = (qn(table_name), qn(field.column), field.db_type(),' '.join(constraints))    
+        params = (qn(model._meta.db_table), qn(f.column), f.db_type(),' '.join(constraints))    
         output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
         
     return output
