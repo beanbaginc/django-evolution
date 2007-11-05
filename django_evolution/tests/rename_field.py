@@ -1,3 +1,4 @@
+from django_evolution.tests.utils import test_sql_mapping
 
 tests = r"""
 # Rename a database column (done)
@@ -88,7 +89,7 @@ tests = r"""
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "int_field" TO "renamed_field";
+%(RenameColumnModel)s
 
 # RenameField with a specified db table for a field other than a M2MField is allowed (but will be ignored) (done)
 >>> class RenameColumnWithTableNameModel(models.Model):
@@ -116,7 +117,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "int_field" TO "ren
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "int_field" TO "renamed_field";
+%(RenameColumnWithTableNameModel)s
 
 # Rename a primary key database column
 >>> class RenamePrimaryKeyColumnModel(models.Model):
@@ -145,7 +146,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "int_field" TO "ren
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "id" TO "my_pk_id";
+%(RenamePrimaryKeyColumnModel)s
 
 # Rename a foreign key database column 
 >>> class RenameForeignKeyColumnModel(models.Model):
@@ -174,7 +175,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "id" TO "my_pk_id";
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "fk_field_id" TO "renamed_field_id";
+%(RenameForeignKeyColumnModel)s
 
 # Rename a database column with a non-default name
 >>> class RenameNonDefaultColumnNameModel(models.Model):
@@ -202,7 +203,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "fk_field_id" TO "r
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name" TO "renamed_field";
+%(RenameNonDefaultColumnNameModel)s
 
 # Rename a database column with a non-default name to a different non-default name
 >>> class RenameNonDefaultColumnNameToNonDefaultNameModel(models.Model):
@@ -230,7 +231,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name" TO "non-default_column_name";
+%(RenameNonDefaultColumnNameToNonDefaultNameModel)s
  
 # RenameField with a specified db column and db table is allowed (but one will be ignored)
 >>> class RenameNonDefaultColumnNameToNonDefaultNameAndTableModel(models.Model):
@@ -258,7 +259,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name" TO "non-default_column_name2";
+%(RenameNonDefaultColumnNameToNonDefaultNameAndTableModel)s
 
 # Rename a database column in a non-default table
 # Rename a database column
@@ -284,7 +285,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "custom_rename_table_name" RENAME COLUMN "value" TO "renamed_field";
+%(RenameColumnCustomTableModel)s
 
 # Rename a M2M database table
 >>> class RenameM2MTableModel(models.Model):
@@ -311,8 +312,8 @@ ALTER TABLE "custom_rename_table_name" RENAME COLUMN "value" TO "renamed_field";
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
->>> execute_test_sql(test_sql, cleanup=['DROP TABLE "django_evolution_renamebasemodel_renamed_field"'])
-ALTER TABLE "django_evolution_renamebasemodel_m2m_field" RENAME TO "django_evolution_renamebasemodel_renamed_field";
+>>> execute_test_sql(test_sql, cleanup=['%(RenameManyToManyTableModel_cleanup)s'])
+%(RenameManyToManyTableModel)s
 
 # RenameField with a specified db column for a M2MField is allowed (but will be ignored)
 >>> class RenameM2MTableWithColumnNameModel(models.Model):
@@ -340,8 +341,8 @@ ALTER TABLE "django_evolution_renamebasemodel_m2m_field" RENAME TO "django_evolu
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql, cleanup=['DROP TABLE "django_evolution_renamebasemodel_renamed_field"'])
-ALTER TABLE "django_evolution_renamebasemodel_m2m_field" RENAME TO "django_evolution_renamebasemodel_renamed_field";
+>>> execute_test_sql(test_sql, cleanup=['%(RenameManyToManyTableWithColumnNameModel_cleanup)s'])
+%(RenameManyToManyTableWithColumnNameModel)s
 
 # Rename a M2M non-default database table to a default name
 >>> class RenameNonDefaultM2MTableModel(models.Model):
@@ -369,6 +370,6 @@ ALTER TABLE "django_evolution_renamebasemodel_m2m_field" RENAME TO "django_evolu
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql, cleanup=['DROP TABLE "django_evolution_renamebasemodel_renamed_field"'])
-ALTER TABLE "non-default_db_table" RENAME TO "django_evolution_renamebasemodel_renamed_field";
-"""
+>>> execute_test_sql(test_sql, cleanup=['%(RenameNonDefaultManyToManyTableModel_cleanup)s'])
+%(RenameNonDefaultManyToManyTableModel)s
+""" % test_sql_mapping('rename_field')

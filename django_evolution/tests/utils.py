@@ -1,7 +1,7 @@
 from django.core.management.color import no_style
 from django.core.management.sql import sql_create, sql_delete
 from django.db.backends.util import truncate_name
-from django.db import connection, transaction
+from django.db import connection, transaction, settings
 
 from django_evolution import signature
 from django_evolution.tests import models as evo_test
@@ -67,3 +67,8 @@ def execute_test_sql(sql, cleanup=None, debug=False):
         else:
             execute_sql(cleanup, output=debug)
     execute_sql(sql_delete(evo_test, style), output=debug)
+    
+def test_sql_mapping(test_field_name):
+    engine = settings.DATABASE_ENGINE
+    sql_for_engine = __import__('django_evolution.tests.%s' % (settings.DATABASE_ENGINE), {}, {}, [''])
+    return sql_for_engine.mappings[test_field_name]

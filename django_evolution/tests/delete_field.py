@@ -1,3 +1,4 @@
+from django_evolution.tests.utils import test_sql_mapping
 
 tests = r"""
 >>> from django.db import models
@@ -84,7 +85,7 @@ tests = r"""
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "int_field" CASCADE;
+%(DefaultNamedColumnModel)s
 
 # Deleting a non-default named column
 >>> class NonDefaultNamedColumnModel(models.Model):
@@ -111,7 +112,7 @@ ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "int_field" CASCADE;
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "non-default_db_column" CASCADE;
+%(NonDefaultNamedColumnModel)s
 
 # Deleting a column with database constraints (unique)
 # TODO: Verify that the produced SQL is actually correct
@@ -140,7 +141,7 @@ ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "non-default_db_colum
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "int_field3" CASCADE;
+%(ConstrainedColumnModel)s
 
 # Deleting a default m2m
 >>> class DefaultM2MModel(models.Model):
@@ -167,7 +168,7 @@ ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "int_field3" CASCADE;
 True
 
 >>> execute_test_sql(test_sql)
-DROP TABLE "django_evolution_deletebasemodel_m2m_field1";
+%(DefaultManyToManyModel)s
 
 # Deleting a m2m stored in a non-default table
 >>> class NonDefaultM2MModel(models.Model):
@@ -194,7 +195,7 @@ DROP TABLE "django_evolution_deletebasemodel_m2m_field1";
 True
 
 >>> execute_test_sql(test_sql)
-DROP TABLE "non-default_m2m_table";
+%(NonDefaultManyToManyModel)s
 
 # Delete a foreign key
 >>> class DeleteForeignKeyModel(models.Model):
@@ -221,7 +222,7 @@ DROP TABLE "non-default_m2m_table";
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "fk_field1_id" CASCADE;
+%(DeleteForeignKeyModel)s
 
 # Deleting a column from a non-default table
 >>> class DeleteColumnCustomTableModel(models.Model):
@@ -244,6 +245,7 @@ ALTER TABLE "django_evolution_deletebasemodel" DROP COLUMN "fk_field1_id" CASCAD
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "custom_table_name" DROP COLUMN "value" CASCADE;
+%(DeleteColumnCustomTableModel)s
 
-"""
+
+""" % test_sql_mapping('delete_field')

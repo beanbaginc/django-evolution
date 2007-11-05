@@ -1,6 +1,6 @@
+from django_evolution.tests.utils import test_sql_mapping
 
 tests = r"""
-
 # The AddField tests will aim to test the following usecases:
 # Field resulting in a new database column.
 # Field resulting in a new database column with a non-default name.
@@ -95,7 +95,7 @@ SimulationFailure: Cannot create new column 'added_field' on 'django_evolution.T
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NULL;
+%(NullDatabaseColumnModel)s
 
 # Field resulting in a new database column with a non-default name.
 >>> class NonDefaultDatabaseColumnModel(models.Model):
@@ -118,7 +118,7 @@ ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NUL
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "non-default_column" integer NULL;
+%(NonDefaultDatabaseColumnModel)s
 
 # Field resulting in a new database column in a table with a non-default name.
 >>> class AddDatabaseColumnCustomTableModel(models.Model):
@@ -144,7 +144,7 @@ ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "non-default_column" inte
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "custom_table_name" ADD COLUMN "added_field" integer NULL;
+%(AddDatabaseColumnCustomTableModel)s
 
 # Add Primary key field.
 # Prohibited by simulation
@@ -188,8 +188,7 @@ SimulationFailure: Cannot create new column 'my_primary_key' on 'django_evolutio
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "add_field" integer NULL;
-CREATE INDEX "django_evolution_addbasemodel_add_field" ON "django_evolution_addbasemodel" ("add_field");
+%(AddIndexedDatabaseColumnModel)s
 
 # Unique field.
 >>> class AddUniqueDatabaseColumnModel(models.Model):
@@ -212,7 +211,7 @@ CREATE INDEX "django_evolution_addbasemodel_add_field" ON "django_evolution_addb
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NULL UNIQUE;
+%(AddUniqueDatabaseColumnModel)s
 
 # Foreign Key field.
 >>> class ForeignKeyDatabaseColumnModel(models.Model):
@@ -235,8 +234,7 @@ ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NUL
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field_id" integer NULL REFERENCES "django_evolution_addanchor1" ("id")  DEFERRABLE INITIALLY DEFERRED;
-CREATE INDEX "django_evolution_addbasemodel_added_field_id" ON "django_evolution_addbasemodel" ("added_field_id");
+%(ForeignKeyDatabaseColumnModel)s
 
 # M2M field between models with default table names.
 >>> class AddM2MDatabaseTableModel(models.Model):
@@ -261,14 +259,8 @@ CREATE INDEX "django_evolution_addbasemodel_added_field_id" ON "django_evolution
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql, cleanup=['DROP TABLE "django_evolution_addbasemodel_added_field"'])
-CREATE TABLE "django_evolution_addbasemodel_added_field" (
-    "id" serial NOT NULL PRIMARY KEY,
-    "testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,
-    "addanchor1_id" integer NOT NULL REFERENCES "django_evolution_addanchor1" ("id") DEFERRABLE INITIALLY DEFERRED,
-    UNIQUE ("testmodel_id", "addanchor1_id")
-)
-;
+>>> execute_test_sql(test_sql, cleanup=['%(AddManyToManyDatabaseTableModel_cleanup)s'])
+%(AddManyToManyDatabaseTableModel)s
 
 # M2M field between models with non-default table names.
 >>> class AddM2MNonDefaultDatabaseTableModel(models.Model):
@@ -293,14 +285,8 @@ CREATE TABLE "django_evolution_addbasemodel_added_field" (
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql, cleanup=['DROP TABLE "django_evolution_addbasemodel_added_field"'])
-CREATE TABLE "django_evolution_addbasemodel_added_field" (
-    "id" serial NOT NULL PRIMARY KEY,
-    "testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,
-    "addanchor2_id" integer NOT NULL REFERENCES "custom_add_anchor_table" ("id") DEFERRABLE INITIALLY DEFERRED,
-    UNIQUE ("testmodel_id", "addanchor2_id")
-)
-;
+>>> execute_test_sql(test_sql, cleanup=['%(AddManyToManyNonDefaultDatabaseTableModel_cleanup)s'])
+%(AddManyToManyNonDefaultDatabaseTableModel)s
 
 # M2M field between self
 # Need to find a better way to do this.
@@ -320,13 +306,7 @@ CREATE TABLE "django_evolution_addbasemodel_added_field" (
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql, cleanup=['DROP TABLE "django_evolution_addbasemodel_added_field"'])
-CREATE TABLE "django_evolution_addbasemodel_added_field" (
-    "id" serial NOT NULL PRIMARY KEY,
-    "from_testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,
-    "to_testmodel_id" integer NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED,
-    UNIQUE ("from_testmodel_id", "to_testmodel_id")
-)
-;
+>>> execute_test_sql(test_sql, cleanup=['%(ManyToManySelf_cleanup)s'])
+%(ManyToManySelf)s
 
-"""
+""" % test_sql_mapping('add_field')
