@@ -22,11 +22,6 @@ def create_field_sig(field):
     field_sig = {
         'field_type': field.__class__,
     }
-    # if isinstance(field, ManyToManyField):
-    #     field_sig['m2m_db_table'] = field.m2m_db_table()
-    #     field_sig['m2m_column_name'] = field.m2m_column_name()
-    #     field_sig['m2m_reverse_name'] = field.m2m_reverse_name()
-    #     field_sig['related_model_class_name'] = field.rel.to._meta.object_name
         
     for attrib in ATTRIBUTE_DEFAULTS.keys():
         if hasattr(field,attrib):
