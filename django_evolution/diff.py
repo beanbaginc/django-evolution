@@ -43,48 +43,50 @@ class Diff(object):
                                         self.current_sig['__version__'])
 
         for app_name, old_app_sig in original.items():
-            if app_name != '__version__':
-                new_app_sig = self.current_sig.get(app_name, None)
-                if new_app_sig:                
-                    for model_name, old_model_sig in old_app_sig.items():
-                        new_model_sig = new_app_sig.get(model_name, None)
-                        if new_model_sig:
-                            for field_name,old_field_data in old_model_sig['fields'].items():
-                                new_field_data = new_model_sig['fields'].get(field_name,None)
-                                if new_field_data:
-                                    for prop,value in old_field_data.items():
-                                        if new_field_data.get(prop, None) != value:
-                                            # Field definition has changed
-                                            self.changed.setdefault(app_name, 
-                                                {}).setdefault('changed', 
-                                                {}).setdefault(model_name,
-                                                {}).setdefault('changed',
-                                                {}).setdefault(field_name,[]).append(prop)
-                                else:
-                                    # Field has been deleted
-                                    self.changed.setdefault(app_name, 
-                                        {}).setdefault('changed', 
-                                        {}).setdefault(model_name,
-                                        {}).setdefault('deleted',
-                                        []).append(field_name)
-                    
-                            for field_name,new_field_data in new_model_sig['fields'].items():
-                                old_field_data = old_model_sig['fields'].get(field_name,None)
-                                if old_field_data is None:
-                                    # Field has been added
-                                    self.changed.setdefault(app_name, 
-                                        {}).setdefault('changed', 
-                                        {}).setdefault(model_name,
-                                        {}).setdefault('added',
-                                        []).append(field_name)
-                        else:
-                            # Model has been deleted
+            if app_name == '__version__':
+                # Ignore the __version__ tag
+                continue
+            new_app_sig = self.current_sig.get(app_name, None)
+            if new_app_sig is None:
+                # App has been deleted
+                self.deleted[app_name] = old_app_sig.keys()
+                continue
+            for model_name, old_model_sig in old_app_sig.items():
+                new_model_sig = new_app_sig.get(model_name, None)
+                if new_model_sig is None:
+                    # Model has been deleted
+                    self.changed.setdefault(app_name, 
+                        {}).setdefault('deleted', 
+                        []).append(model_name)
+                    continue
+                # Look for deleted or modified fields
+                for field_name,old_field_data in old_model_sig['fields'].items():
+                    new_field_data = new_model_sig['fields'].get(field_name,None)
+                    if new_field_data is None:
+                        # Field has been deleted
+                        self.changed.setdefault(app_name, 
+                            {}).setdefault('changed', 
+                            {}).setdefault(model_name,
+                            {}).setdefault('deleted',
+                            []).append(field_name)
+                        continue
+                    for prop,value in old_field_data.items():
+                        if new_field_data.get(prop, None) != value:
+                            # Field has been changed
                             self.changed.setdefault(app_name, 
-                                {}).setdefault('deleted', 
-                                []).append(model_name)
-                else:
-                    # App has been deleted
-                    self.deleted[app_name] = old_app_sig.keys()
+                                {}).setdefault('changed', 
+                                {}).setdefault(model_name,
+                                {}).setdefault('changed',
+                                {}).setdefault(field_name,[]).append(prop)
+                # Look for added fields
+                for field_name,new_field_data in new_model_sig['fields'].items():
+                    old_field_data = old_model_sig['fields'].get(field_name,None)
+                    if old_field_data is None:
+                        self.changed.setdefault(app_name, 
+                            {}).setdefault('changed', 
+                            {}).setdefault(model_name,
+                            {}).setdefault('added',
+                            []).append(field_name)
                     
     def is_empty(self):
         "Is this an empty diff? i.e., is the source and target the same?"
@@ -114,10 +116,12 @@ class Diff(object):
         "Generate an evolution that would neutralize the diff"
         mutations = {}
         for app_label, model_names in self.deleted.items():
+            # TODO: Define and utilize a DeleteModel mutation
             # mutations.setdefault(app_label,[]).append(DeleteModel(model_name))
             pass
         for app_label, app_changes in self.changed.items():
             for model_name in app_changes.get('deleted',{}):
+                # TODO Define and utilize a DeleteModel mutation
                 # mutations.setdefault(app_label,[]).append(DeleteModel(model_name))
                 pass                
             for model_name, change in app_changes.get('changed',{}).items():
@@ -135,6 +139,7 @@ class Diff(object):
                     mutations.setdefault(app_label,[]).append(
                         DeleteField(model_name, field_name))
                 for field_name,field_change in change.get('changed',{}).items():
+                    # TODO: Define and utilize a ChangeField mutation
                     # mutations.setdefault(app_label,[]).append(ChangeField())
                     pass
         
