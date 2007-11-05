@@ -142,7 +142,7 @@ Type 'yes' to continue, or 'no' to cancel: """ % settings.DATABASE_NAME)
                 else:
                     confirm = 'yes'
                 
-                if confirm:
+                if confirm.lower() == 'yes':
                     # Begin Transaction
                     transaction.enter_transaction_management()
                     transaction.managed(True)
@@ -169,7 +169,7 @@ Type 'yes' to continue, or 'no' to cancel: """ % settings.DATABASE_NAME)
                     if verbosity > 0:
                         print 'Evolution successful.'
                 else:
-                    print 'Evolution cancelled.'
+                    print self.style.ERROR('Evolution cancelled.')
             elif not compile_sql:
                 if verbosity > 0:
                     if simulated:
