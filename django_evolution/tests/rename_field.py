@@ -105,7 +105,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "int_field" TO "ren
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField)", "DeleteField('TestModel', 'int_field')"]
 
->>> evolution = [RenameField('TestModel', 'int_field', 'renamed_field', new_db_table='ignored_db-table')]
+>>> evolution = [RenameField('TestModel', 'int_field', 'renamed_field', db_table='ignored_db-table')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
@@ -219,7 +219,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField, db_column='non-default_column_name')", "DeleteField('TestModel', 'int_field_named')"]
 
->>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field', new_db_column='non-default_column_name')]
+>>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field', db_column='non-default_column_name')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
@@ -247,7 +247,7 @@ ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "custom_db_col_name
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField, db_column='non-default_column_name2')", "DeleteField('TestModel', 'int_field_named')"]
 
->>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field', new_db_column='non-default_column_name2', new_db_table='custom_ignored_db-table')]
+>>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field', db_column='non-default_column_name2', db_table='custom_ignored_db-table')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
@@ -330,7 +330,7 @@ ALTER TABLE "django_evolution_renamebasemodel_m2m_field" RENAME TO "django_evolu
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'renamed_field', models.ManyToManyField, related_model='django_evolution.RenameAnchor2')", "DeleteField('TestModel', 'm2m_field')"]
 
->>> evolution = [RenameField('TestModel', 'm2m_field', 'renamed_field', new_db_column='ignored_db-column')]
+>>> evolution = [RenameField('TestModel', 'm2m_field', 'renamed_field', db_column='ignored_db-column')]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:

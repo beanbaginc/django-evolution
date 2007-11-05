@@ -262,20 +262,20 @@ class AddField(BaseMutation):
 
 class RenameField(BaseMutation):
     def __init__(self, model_name, old_field_name, new_field_name, 
-                 new_db_column=None, new_db_table=None):
+                 db_column=None, db_table=None):
         self.model_name = model_name
         self.old_field_name = old_field_name
         self.new_field_name = new_field_name
-        self.new_db_column = new_db_column
-        self.new_db_table = new_db_table
+        self.db_column = db_column
+        self.db_table = db_table
         
     def __str__(self):
         params = "'%s', '%s', '%s'" % (self.model_name, self.old_field_name, self.new_field_name)
         
-        if self.new_db_column:
-            params = params + ", new_db_column='%s'" % (self.new_db_column)
-        if self.new_db_table:
-            params = params + ", new_db_table='%s'" % (self.new_db_table)
+        if self.db_column:
+            params = params + ", db_column='%s'" % (self.db_column)
+        if self.db_table:
+            params = params + ", db_table='%s'" % (self.db_table)
         
         return "RenameField(%s)" % params
         
@@ -286,16 +286,16 @@ class RenameField(BaseMutation):
         field_sig = field_dict[self.old_field_name]
         
         if models.ManyToManyField == field_sig['field_type']:
-            if self.new_db_table:
-                field_sig['db_table'] = self.new_db_table
+            if self.db_table:
+                field_sig['db_table'] = self.db_table
             else:
                 field_sig.pop('db_table',None)
-        elif self.new_db_column:
-            field_sig['db_column'] = self.new_db_column
+        elif self.db_column:
+            field_sig['db_column'] = self.db_column
         else:
-            # new_db_column and new_db_table was not specified (or not specified for the appropriate field types)
-            # clear the old value if one was set. This amounts to resetting the column or table name
-            # to the django default name
+            # db_column and db_table were not specified (or not specified for the 
+            # appropriate field types). Clear the old value if one was set. This 
+            # amounts to resetting the column or table name to the Django default name
             field_sig.pop('db_column',None)
 
         field_dict[self.new_field_name] = field_dict.pop(self.old_field_name)
@@ -310,12 +310,12 @@ class RenameField(BaseMutation):
         # Duplicate the old field sig, and apply the table/column changes
         new_field_sig = copy.copy(old_field_sig)
         if models.ManyToManyField == field_type:
-            if self.new_db_table:
-                new_field_sig['db_table'] = self.new_db_table
+            if self.db_table:
+                new_field_sig['db_table'] = self.db_table
             else:
                 new_field_sig.pop('db_table', None)
-        elif self.new_db_column:
-            new_field_sig['db_column'] = self.new_db_column
+        elif self.db_column:
+            new_field_sig['db_column'] = self.db_column
         else:
             new_field_sig.pop('db_column', None)
 

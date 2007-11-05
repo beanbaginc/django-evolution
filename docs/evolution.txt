@@ -468,10 +468,16 @@ Example::
 
     DeleteField('Author', 'name')
 
-RenameField(model_name, old_field_name, new_field_name)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+RenameField(model_name, old_field_name, new_field_name, db_column=None, db_table=None)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Rename the field 'old_name' to 'new_name'.
+Rename the field 'old_name' to 'new_name'. 
+
+``db_column`` and ``db_table`` are optional arguments; if provided, they
+specify the new column/table name for the field. If you attempt to specify
+a table name for a normal or ForeignKey rename, an Exception will be raised; 
+similarly, and exception will be raised if you attempt to specify a column 
+name for a ManyToManyField rename. 
 
 Example::
 
