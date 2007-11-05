@@ -40,9 +40,16 @@ Russell is also a core developer of Django itself.
 Where should I ask questions about Django Evolution?
 ----------------------------------------------------
 
-Django Evolution has a `Google Groups mailing list`_. 
+Django Evolution has a `Google Groups mailing list`_ for discussing
+the usage and development of the project. 
 
 .. _`Google Groups mailing list`: http://groups.google.com/group/django-evolution
+
+There is also a read-only mailing list if you wish to be notified
+whenever code is checked into the Subversion repository, or whenever
+a ticket is added or modified.
+
+.. _`read-only mailing list`: http://groups.google.com/group/django-evolution-changes
 
 I think I've found a bug! What should I do?
 -------------------------------------------

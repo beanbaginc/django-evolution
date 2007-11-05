@@ -15,7 +15,8 @@ update the database to reflect those changes.
 
     Django Evolution is a work in progress. The interface and usage described
     in this document is subject to change as we finesse the details. The SQL
-    that is automatically generated may occasionally be wrong. In short,
+    that is automatically generated may occasionally be wrong. There are some
+    significant limitations to the capabilities of the system. In short,
     Django Evolution is not yet ready for a production rollout.
 
 An example
