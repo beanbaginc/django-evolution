@@ -40,9 +40,9 @@ Russell is also a core developer of Django itself.
 Where should I ask questions about Django Evolution?
 ----------------------------------------------------
 
-For the moment, any questions about Django Evolution should be directed to the
-Django-users mailing list. If there is sufficient interest, we may open a
-separate Django Evolution mailing list in the future.
+Django Evolution has a `Google Groups mailing list`_. 
+
+.. _`Google Groups mailing list`: http://groups.google.com/group/django-evolution
 
 I think I've found a bug! What should I do?
 -------------------------------------------
