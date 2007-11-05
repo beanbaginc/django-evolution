@@ -367,13 +367,16 @@ or establishing if evolution simulations have been successful.
 Usage of the ``evolve`` command
 -------------------------------
 
-``./manage.py evolve`` does not require any arguments or options.
+``./manage.py evolve`` does not require any arguments or options. When run 
+without any options, ``./manage.py evolve`` will list the evolutions that
+have been stored and are available, but have not yet been applied to the
+database.
 
 You may optionally provide the name of one or more applications as an argument
 to evolve. This will restrict the output of the command to those applications
 that are named.
 
-However, you cannot specify application names if you use the ``--execute``
+You cannot specify application names if you use the ``--execute``
 option. Evolutions cannot be executed on a per-application basis. They must
 be applied across the entire project, or not at all.
 
