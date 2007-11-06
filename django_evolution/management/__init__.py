@@ -61,11 +61,12 @@ def evolution(app, created_models, verbosity=1):
         #     nudge = Version(signature=actual)
         #     nudge.save()
         #     latest_version = nudge
-        if latest_version.signature != signature:
-            # Signatures do not match - an evolution is required. 
+        old_proj_sig = pickle.loads(str(latest_version.signature))
+        diff = Diff(old_proj_sig, proj_sig)
+        if not diff.is_empty():
             print style.NOTICE('Project signature has changed - an evolution is required')
             if verbosity > 1:
                 old_proj_sig = pickle.loads(str(latest_version.signature))
-                print Diff(old_proj_sig, proj_sig)
+                print diff
 
 dispatcher.connect(evolution, signal=signals.post_syncdb)
