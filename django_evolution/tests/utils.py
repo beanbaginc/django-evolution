@@ -70,5 +70,5 @@ def execute_test_sql(sql, cleanup=None, debug=False):
     
 def test_sql_mapping(test_field_name):
     engine = settings.DATABASE_ENGINE
-    sql_for_engine = __import__('django_evolution.tests.%s' % (settings.DATABASE_ENGINE), {}, {}, [''])
-    return sql_for_engine.mappings[test_field_name]
+    sql_for_engine = __import__('django_evolution.tests.db.%s' % (settings.DATABASE_ENGINE), {}, {}, [''])
+    return getattr(sql_for_engine, test_field_name)
