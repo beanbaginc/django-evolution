@@ -74,21 +74,21 @@ delete_field = {
 
 rename_field = {
     'RenameColumnModel': 
-        'ALTER TABLE `django_evolution_renamebasemodel` RENAME COLUMN `int_field` TO `renamed_field`;',
+        'ALTER TABLE `django_evolution_renamebasemodel` CHANGE `int_field` `renamed_field` integer NOT NULL;',
     'RenameColumnWithTableNameModel': 
-        'ALTER TABLE `django_evolution_renamebasemodel` RENAME COLUMN `int_field` TO `renamed_field`;',
+        'ALTER TABLE `django_evolution_renamebasemodel` CHANGE `int_field` `renamed_field` integer NOT NULL;',
     'RenamePrimaryKeyColumnModel': 
-        'ALTER TABLE `django_evolution_renamebasemodel` RENAME COLUMN `id` TO `my_pk_id`;',
+        'ALTER TABLE `django_evolution_renamebasemodel` CHANGE `id` `my_pk_id`;',
     'RenameForeignKeyColumnModel': 
-        'ALTER TABLE `django_evolution_renamebasemodel` RENAME COLUMN `fk_field_id` TO `renamed_field_id`;',
+        'ALTER TABLE `django_evolution_renamebasemodel` CHANGE `fk_field_id` `renamed_field_id`;',
     'RenameNonDefaultColumnNameModel': 
-        'ALTER TABLE `django_evolution_renamebasemodel` RENAME COLUMN `custom_db_col_name` TO `renamed_field`;',
+        'ALTER TABLE `django_evolution_renamebasemodel` CHANGE `custom_db_col_name` `renamed_field`;',
     'RenameNonDefaultColumnNameToNonDefaultNameModel': 
-        'ALTER TABLE `django_evolution_renamebasemodel` RENAME COLUMN `custom_db_col_name` TO `non-default_column_name`;',
+        'ALTER TABLE `django_evolution_renamebasemodel` CHANGE `custom_db_col_name` `non-default_column_name`;',
     'RenameNonDefaultColumnNameToNonDefaultNameAndTableModel': 
-        'ALTER TABLE `django_evolution_renamebasemodel` RENAME COLUMN `custom_db_col_name` TO `non-default_column_name2`;',
+        'ALTER TABLE `django_evolution_renamebasemodel` CHANGE `custom_db_col_name` `non-default_column_name2`;',
     'RenameColumnCustomTableModel': 
-        'ALTER TABLE `custom_rename_table_name` RENAME COLUMN `value` TO `renamed_field`;',
+        'ALTER TABLE `custom_rename_table_name` CHANGE `value` `renamed_field`;',
     'RenameManyToManyTableModel': 
         'ALTER TABLE `django_evolution_renamebasemodel_m2m_field` RENAME TO `django_evolution_renamebasemodel_renamed_field`;',
     'RenameManyToManyTableModel_cleanup': 

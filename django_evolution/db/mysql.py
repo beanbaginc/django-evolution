@@ -33,16 +33,11 @@ def rename_column(opts, old_field, f):
         # won't be generating a CREATE INDEX statement for this field.
         field_output.append(connection.ops.tablespace_sql(tablespace, inline=True))
     if f.rel:
-        if f.rel.to in known_models:
-            field_output.append(style.SQL_KEYWORD('REFERENCES') + ' ' + \
-                style.SQL_TABLE(qn(f.rel.to._meta.db_table)) + ' (' + \
-                style.SQL_FIELD(qn(f.rel.to._meta.get_field(f.rel.field_name).column)) + ')' +
-                connection.ops.deferrable_sql()
-            )
-        else:
-            # We haven't yet created the table to which this field
-            # is related, so save it for later.
-            pr = pending_references.setdefault(f.rel.to, []).append((model, f))
+        field_output.append(style.SQL_KEYWORD('REFERENCES') + ' ' + \
+            style.SQL_TABLE(qn(f.rel.to._meta.db_table)) + ' (' + \
+            style.SQL_FIELD(qn(f.rel.to._meta.get_field(f.rel.field_name).column)) + ')' +
+            connection.ops.deferrable_sql()
+        )
         
     params = (qn(opts.db_table), qn(old_field.column), ' '.join(field_output))
     return ['ALTER TABLE %s CHANGE %s %s;' % params]
