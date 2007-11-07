@@ -326,15 +326,11 @@ class RenameField(BaseMutation):
         # Restore the field type to the signature
         old_field_sig['field_type'] = field_type
         
+        opts = MockMeta(proj_sig, self.model_name, model_sig)
         if models.ManyToManyField == field_type:
-            opts = MockMeta(proj_sig, self.model_name, model_sig)
             old_m2m_table = old_field._get_m2m_db_table(opts)
             new_m2m_table = new_field._get_m2m_db_table(opts)
             
             return get_evolution_module().rename_table(old_m2m_table, new_m2m_table)
         else:
-            table_name = table_name = model_sig['meta']['db_table']
-            attname, old_column = old_field.get_attname_column()
-            attname, new_column = new_field.get_attname_column()
-
-            return get_evolution_module().rename_column(table_name, old_column, new_column)
+            return get_evolution_module().rename_column(opts, old_field, new_field)
