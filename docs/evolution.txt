@@ -159,7 +159,7 @@ To do this, we make use of stored evolutions - a mechanism for defining
 and reusing collections of evolutions for later use.
 
 Mutation definitions
--------------------
+--------------------
 
 Let's start with adding the ``location`` field to ``Authors``. First, we edit
 ``models.py`` to add a new CharField definition, with a length of 100.
@@ -442,8 +442,8 @@ Built-in Mutations
 Django Evolution comes with a number of mutations built-in. These mutations
 cover the simple cases for model evolutions.
 
-AddField(model_name, field_name, **kwargs)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+AddField(model_name, field_name, \*\*kwargs)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Add the field 'field_name' to the model. The extra keyword arguments are the
 arguments used to construct the new field.
@@ -541,7 +541,7 @@ of features that we would like to add:
    2. Improvements to existing mutations, including:
        a. Adding support for default values to AddField
 
-   3. Support for other database backends (SQLite, MySQL, Oracle...)
+   3. Support for other database backends (SQLite, Oracle...)
 
    4. Support for database introspection - the ability to look at the actual
       database structure to determine if evolutions are required.

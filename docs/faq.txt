@@ -84,6 +84,12 @@ The following is a list of the model changes that we believe to be working:
       but they can be manually added as a replacement for the Add+Delete pair
       that a hinted evolution will provide.
 
+Primary development for Django Evolution has used the Psycopg1 interface to
+PostgreSQL. As a result, this is the most stable database interface. A 
+Psycopg2 PostgreSQL backend also exists, and should work without difficulty.
+The MySQL backend works for most mutations, with some exceptions (details 
+below).
+
 What doesn't work?
 ------------------
 
@@ -109,7 +115,9 @@ The following model changes are known to cause difficulty:
     * Deletion of primary keys (including adding a manual primary key as
       a replacement for an automatically installed primary key)
     * Deletion of fields referenced by other database constraints.
-
+    * Renaming of primary key fields and foreign key fields when using the 
+      MySQL backend. 
+    
 Dependencies between applications can also cause difficulties. If you have
 changes in one application that are dependent on changes in another
 application, you may experience difficulties in applying evolutions.
