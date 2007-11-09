@@ -80,15 +80,15 @@ rename_field = {
     'RenamePrimaryKeyColumnModel': 
         'ALTER TABLE `django_evolution_renamebasemodel` CHANGE `id` `my_pk_id`;',
     'RenameForeignKeyColumnModel': 
-        'ALTER TABLE `django_evolution_renamebasemodel` CHANGE `fk_field_id` `renamed_field_id`;',
+        'ALTER TABLE `django_evolution_renamebasemodel` CHANGE `fk_field_id` `renamed_field_id` integer NOT NULL;',
     'RenameNonDefaultColumnNameModel': 
-        'ALTER TABLE `django_evolution_renamebasemodel` CHANGE `custom_db_col_name` `renamed_field`;',
+        'ALTER TABLE `django_evolution_renamebasemodel` CHANGE `custom_db_col_name` `renamed_field` integer NOT NULL;',
     'RenameNonDefaultColumnNameToNonDefaultNameModel': 
-        'ALTER TABLE `django_evolution_renamebasemodel` CHANGE `custom_db_col_name` `non-default_column_name`;',
+        'ALTER TABLE `django_evolution_renamebasemodel` CHANGE `custom_db_col_name` `non-default_column_name` integer NOT NULL;',
     'RenameNonDefaultColumnNameToNonDefaultNameAndTableModel': 
-        'ALTER TABLE `django_evolution_renamebasemodel` CHANGE `custom_db_col_name` `non-default_column_name2`;',
+        'ALTER TABLE `django_evolution_renamebasemodel` CHANGE `custom_db_col_name` `non-default_column_name2` integer NOT NULL;',
     'RenameColumnCustomTableModel': 
-        'ALTER TABLE `custom_rename_table_name` CHANGE `value` `renamed_field`;',
+        'ALTER TABLE `custom_rename_table_name` CHANGE `value` `renamed_field` integer NOT NULL;',
     'RenameManyToManyTableModel': 
         'ALTER TABLE `django_evolution_renamebasemodel_m2m_field` RENAME TO `django_evolution_renamebasemodel_renamed_field`;',
     'RenameManyToManyTableModel_cleanup': 
@@ -101,4 +101,23 @@ rename_field = {
         'ALTER TABLE `non-default_db_table` RENAME TO `django_evolution_renamebasemodel_renamed_field`;',
     'RenameNonDefaultManyToManyTableModel_cleanup': 
         'DROP TABLE `django_evolution_renamebasemodel_renamed_field`',
+}
+
+
+sql_mutation = {
+    'SQLMutationSequence': """[
+...    SQLMutation('first-two-fields', [
+...        'ALTER TABLE `django_evolution_sqlbasemodel` ADD COLUMN `added_field1` integer NULL;',
+...        'ALTER TABLE `django_evolution_sqlbasemodel` ADD COLUMN `added_field2` integer NULL;'
+...    ], update_first_two),
+...    SQLMutation('third-field', [
+...        'ALTER TABLE `django_evolution_sqlbasemodel` ADD COLUMN `added_field3` integer NULL;',
+...    ], update_third)]
+""",
+    'SQLMutationOutput': 
+        '\n'.join([
+            'ALTER TABLE `django_evolution_sqlbasemodel` ADD COLUMN `added_field1` integer NULL;',
+            'ALTER TABLE `django_evolution_sqlbasemodel` ADD COLUMN `added_field2` integer NULL;',
+            'ALTER TABLE `django_evolution_sqlbasemodel` ADD COLUMN `added_field3` integer NULL;',
+        ]),
 }

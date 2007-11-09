@@ -1,3 +1,4 @@
+from django_evolution.tests.utils import test_sql_mapping
 
 tests = r"""
 >>> from django.db import models
@@ -75,14 +76,7 @@ CannotSimulate: Cannot simulate SQLMutations
 ...         'null': True
 ...     }
 
->>> sequence = [
-...    SQLMutation('first-two-fields', [
-...        'ALTER TABLE "django_evolution_sqlbasemodel" ADD COLUMN "added_field1" integer NULL;',
-...        'ALTER TABLE "django_evolution_sqlbasemodel" ADD COLUMN "added_field2" integer NULL;'
-...    ], update_first_two),
-...    SQLMutation('third-field', [
-...        'ALTER TABLE "django_evolution_sqlbasemodel" ADD COLUMN "added_field3" integer NULL;',
-...    ], update_third)]
+>>> sequence = %(SQLMutationSequence)s
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
@@ -94,8 +88,6 @@ CannotSimulate: Cannot simulate SQLMutations
 True
 
 >>> execute_test_sql(test_sql)
-ALTER TABLE "django_evolution_sqlbasemodel" ADD COLUMN "added_field1" integer NULL;
-ALTER TABLE "django_evolution_sqlbasemodel" ADD COLUMN "added_field2" integer NULL;
-ALTER TABLE "django_evolution_sqlbasemodel" ADD COLUMN "added_field3" integer NULL;
+%(SQLMutationOutput)s
 
-"""
+""" % test_sql_mapping('sql_mutation')

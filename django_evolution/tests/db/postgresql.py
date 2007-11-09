@@ -102,3 +102,21 @@ rename_field = {
     'RenameNonDefaultManyToManyTableModel_cleanup': 
         'DROP TABLE "django_evolution_renamebasemodel_renamed_field"',
 }
+
+sql_mutation = {
+    'SQLMutationSequence': """[
+...    SQLMutation('first-two-fields', [
+...        'ALTER TABLE "django_evolution_sqlbasemodel" ADD COLUMN "added_field1" integer NULL;',
+...        'ALTER TABLE "django_evolution_sqlbasemodel" ADD COLUMN "added_field2" integer NULL;'
+...    ], update_first_two),
+...    SQLMutation('third-field', [
+...        'ALTER TABLE "django_evolution_sqlbasemodel" ADD COLUMN "added_field3" integer NULL;',
+...    ], update_third)]
+""",
+    'SQLMutationOutput': 
+        '\n'.join([
+            'ALTER TABLE "django_evolution_sqlbasemodel" ADD COLUMN "added_field1" integer NULL;',
+            'ALTER TABLE "django_evolution_sqlbasemodel" ADD COLUMN "added_field2" integer NULL;',
+            'ALTER TABLE "django_evolution_sqlbasemodel" ADD COLUMN "added_field3" integer NULL;',
+        ]),
+}
