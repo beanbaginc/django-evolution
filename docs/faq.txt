@@ -24,6 +24,28 @@ Possibly never, and certainly not before it's ready. Django Evolution is
 still in the early stages of development; considering plans for merging to the
 Django trunk would be premature.
 
+Installation
+============
+
+How do I install Django Evolution?
+----------------------------------
+
+There have not been any official releases of Django Evolution. If you want to 
+use Django Evolution, you will need to use a subversion checkout.
+
+Check out the Django Evolution sources, and put the checkout directory into
+your Python Path.
+
+Then add 'django_evolution' to the list of installed applications for the 
+project in which you want to use Django Evolution.
+
+What version of Django does Django Evolution support?
+-----------------------------------------------------
+
+Django Evolution requires features that are only available in Django trunk; specifically,
+a Django trunk checkout of Revision 6400 or higher. You cannot use Django Evolution 
+with a 0.96 (or earlier) release of Django.
+
 Management
 ==========
 
