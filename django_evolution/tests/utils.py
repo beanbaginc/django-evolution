@@ -1,5 +1,5 @@
 from django.core.management.color import no_style
-from django.core.management.sql import sql_create, sql_delete
+from django.core.management.sql import sql_create, sql_delete, sql_indexes
 from django.db.backends.util import truncate_name
 from django.db import connection, transaction, settings
 
@@ -33,7 +33,7 @@ def execute_sql(sql, output=False):
         for statement in sql:
             if output:
                 print statement
-            cursor.execute(statement)  
+            cursor.execute(statement)
         transaction.commit()
         transaction.leave_transaction_management()
     except Exception, ex:
@@ -55,6 +55,7 @@ def execute_test_sql(sql, cleanup=None, debug=False):
     """
     style = no_style()
     execute_sql(sql_create(evo_test, style), output=debug)
+    execute_sql(sql_indexes(evo_test, style), output=debug)
     if debug:
         for statement in sql:
             print statement

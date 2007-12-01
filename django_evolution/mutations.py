@@ -45,26 +45,57 @@ class MockMeta(object):
     'stub' is provided, the constructed model will only be a stub - 
     it will only have a primary key field.    
     """
-    def __init__(self, proj_sig, model_name, model_sig, stub=False):
+    def __init__(self, proj_sig, app_name, model_name, model_sig, stub=False):
         self.object_name = model_name
-        self.meta = model_sig['meta']
-        self.fields = {}
+        self.app_label = app_name
+        self.meta = {
+            'order_with_respect_to': None,
+            'has_auto_field': None
+        }
+        self.meta.update(model_sig['meta'])
+        self._fields = {}
+        self._many_to_many = {}
         
         for field_name,field_sig in model_sig['fields'].items():
             if not stub or field_sig.get('primary_key', False):
                 field_type = field_sig.pop('field_type')
                 field = create_field(proj_sig, field_name, field_type, field_sig)
+
+                if AutoField == type(field):
+                    self.meta['has_auto_field'] = True
+                    self.meta['auto_field'] = field
+                    
                 field_sig['field_type'] = field_type
                     
-                self.fields[field_name] = field
+                if ManyToManyField == type(field):
+                    self._many_to_many[field.name] = field
+                else:
+                    self._fields[field.name] = field
+
                 field.set_attributes_from_name(field_name)
                 if field_sig.get('primary_key', False):
                     self.pk = field
+                    
     def __getattr__(self, name):
         return self.meta[name]
         
     def get_field(self, name):
-        return self.fields[name]
+        try:
+            return self._fields[name]
+        except KeyError:
+            try:
+                return self._many_to_many[name]
+            except KeyError:
+                raise FieldDoesNotExist, '%s has no field named %r' % (self.object_name, name)
+    
+    def get_fields(self):
+        return self._fields.values()
+        
+    def get_many_to_many_fields(self):
+        return self._many_to_many.values()
+            
+    fields = property(fget=get_fields)
+    many_to_many = property(fget=get_many_to_many_fields)
         
 class MockModel(object):
     """
@@ -75,7 +106,7 @@ class MockModel(object):
     def __init__(self, proj_sig, app_name, model_name, model_sig, stub=False):
         self.app_name = app_name
         self.model_name = model_name
-        self._meta = MockMeta(proj_sig, model_name, model_sig, stub)
+        self._meta = MockMeta(proj_sig, app_name, model_name, model_sig, stub)
         
     def __eq__(self, other):
         return self.app_name == other.app_name and self.model_name == other.model_name
@@ -133,6 +164,7 @@ class SQLMutation(BaseMutation):
         
 class DeleteField(BaseMutation):
     def __init__(self, model_name, field_name):
+    
         self.model_name = model_name
         self.field_name = field_name
     
@@ -326,7 +358,7 @@ class RenameField(BaseMutation):
         # Restore the field type to the signature
         old_field_sig['field_type'] = field_type
         
-        opts = MockMeta(proj_sig, self.model_name, model_sig)
+        opts = MockMeta(proj_sig, app_label, self.model_name, model_sig)
         if models.ManyToManyField == field_type:
             old_m2m_table = old_field._get_m2m_db_table(opts)
             new_m2m_table = new_field._get_m2m_db_table(opts)

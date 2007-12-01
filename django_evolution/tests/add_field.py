@@ -68,7 +68,7 @@ tests = r"""
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
 ...     mutation.simulate('django_evolution', test_sig)
 Traceback (most recent call last):
 ...
