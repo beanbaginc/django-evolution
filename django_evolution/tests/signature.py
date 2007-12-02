@@ -60,7 +60,7 @@ tests = r"""
             'ref7': {'field_type': <class 'django.db.models.fields.related.ManyToManyField'>,
                      'related_model': 'django_evolution.SigModel'}},
  'meta': {'db_table': 'django_evolution_sigmodel',
-          'db_tablespace': None,
+          'db_tablespace': '',
           'pk_column': 'id',
           'unique_together': []}}
 

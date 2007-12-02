@@ -1,5 +1,6 @@
 from django.db.models import get_apps, get_models
 from django.db.models.fields.related import *
+from django.conf import global_settings
 
 ATTRIBUTE_DEFAULTS = {
     # Common to all fields
@@ -9,7 +10,7 @@ ATTRIBUTE_DEFAULTS = {
     'null' : False,
     'db_index' : False,
     'db_column' : None,
-    'db_tablespace' : None,
+    'db_tablespace' : global_settings.DEFAULT_TABLESPACE,
     'rel': None,
     # Decimal Field
     'max_digits' : None,
