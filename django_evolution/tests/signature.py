@@ -134,6 +134,12 @@ False
 >>> print d.evolution()
 {}
 
+# Since we can't check the evolutions, check the diff instead
+>>> print d
+In model django_evolution.TestModel:
+    In field 'age':
+        Property 'null' has changed
+
 # Adding a property of a field which was not present in the original Model, but
 # is now set to the default for that property.
 >>> class AddDefaultPropertyModel(models.Model):
@@ -160,5 +166,12 @@ False
 # TODO: Eventually this will list the hinted ChangeFields
 >>> print d.evolution()
 {}
+
+# Since we can't check the evolutions, check the diff instead
+>>> print d
+In model django_evolution.TestModel:
+    In field 'name':
+        Property 'max_length' has changed
+
 """
 
