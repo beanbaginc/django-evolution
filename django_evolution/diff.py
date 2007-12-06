@@ -5,6 +5,11 @@ from django_evolution import EvolutionException
 from django_evolution.mutations import DeleteField, AddField
 from django_evolution.signature import ATTRIBUTE_DEFAULTS
 
+try:
+    set
+except ImportError:
+    from sets import Set as set #Python 2.3 Fallback
+
 class Diff(object):
     """
     A diff between two model signatures.
@@ -70,8 +75,14 @@ class Diff(object):
                             {}).setdefault('deleted',
                             []).append(field_name)
                         continue
-                    for prop,value in old_field_data.items():
-                        if new_field_data.get(prop, None) != value:
+                    properties = set(old_field_data.keys())
+                    properties.update(new_field_data.keys())
+                    for prop in properties:
+                        old_value = old_field_data.get(prop, 
+                            ATTRIBUTE_DEFAULTS.get(prop, None))
+                        new_value = new_field_data.get(prop, 
+                            ATTRIBUTE_DEFAULTS.get(prop, None))
+                        if old_value != new_value:
                             # Field has been changed
                             self.changed.setdefault(app_name, 
                                 {}).setdefault('changed', 

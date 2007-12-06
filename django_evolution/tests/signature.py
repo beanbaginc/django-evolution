@@ -119,5 +119,46 @@ False
 False
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'full_name', models.CharField, max_length=20)", "DeleteField('TestModel', 'name')"]
-    
+
+# Adding a property to a field which was not present in the original Model
+>>> class AddPropertyModel(models.Model):
+...     name = models.CharField(max_length=20)
+...     age = models.IntegerField(null=True)
+
+>>> test_sig = test_proj_sig(('TestModel',AddPropertyModel))
+>>> d = Diff(base_sig, test_sig)
+>>> d.is_empty()
+False
+
+# TODO: Eventually this will list the hinted ChangeFields
+>>> print d.evolution()
+{}
+
+# Adding a property of a field which was not present in the original Model, but
+# is now set to the default for that property.
+>>> class AddDefaultPropertyModel(models.Model):
+...     name = models.CharField(max_length=20)
+...     age = models.IntegerField(null=False)
+
+>>> test_sig = test_proj_sig(('TestModel',AddDefaultPropertyModel))
+>>> d = Diff(base_sig, test_sig)
+>>> d.is_empty()
+True
+>>> print d.evolution()
+{}
+
+# Changing a property of a field
+>>> class ChangePropertyModel(models.Model):
+...     name = models.CharField(max_length=30)
+...     age = models.IntegerField()
+
+>>> test_sig = test_proj_sig(('TestModel',ChangePropertyModel))
+>>> d = Diff(base_sig, test_sig)
+>>> d.is_empty()
+False
+
+# TODO: Eventually this will list the hinted ChangeFields
+>>> print d.evolution()
+{}
 """
+

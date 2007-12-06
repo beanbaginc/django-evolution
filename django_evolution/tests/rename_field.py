@@ -368,7 +368,7 @@ True
 ...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
-True
+False
 
 >>> execute_test_sql(test_sql, cleanup=['%(RenameNonDefaultManyToManyTableModel_cleanup)s'])
 %(RenameNonDefaultManyToManyTableModel)s
