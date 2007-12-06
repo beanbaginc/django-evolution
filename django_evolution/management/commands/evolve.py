@@ -100,7 +100,7 @@ class Command(BaseCommand):
                                 print s                            
                         else:
                             print '----- Evolution for %s' % app_label
-                            print 'from django_evolution.mutation import *'
+                            print 'from django_evolution.mutations import *'
                             print 'from django.db import models'
                             print 
                             print 'MUTATIONS = ['
