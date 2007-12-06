@@ -117,6 +117,23 @@ delete_field = {
         ]),
 }
 
+delete_model = {
+    'BasicModel': 
+        'DROP TABLE "django_evolution_basicmodel";',
+    'BasicWithM2MModel': 
+        '\n'.join([
+            'DROP TABLE "django_evolution_basicwithm2mmodel_m2m";',
+            'DROP TABLE "django_evolution_basicwithm2mmodel";'
+        ]),
+    'CustomTableModel': 
+        'DROP TABLE "custom_table_name";',
+    'CustomTableWithM2MModel': 
+        '\n'.join([
+            'DROP TABLE "another_custom_table_name_m2m";',
+            'DROP TABLE "another_custom_table_name";'
+        ]),
+}
+
 rename_field = {
     'RenameColumnModel': 
         '\n'.join([

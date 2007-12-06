@@ -72,12 +72,17 @@ class Command(BaseCommand):
             print self.style.ERROR("Can't evolve yet. Need to set an evolution baseline.")
             sys.exit(1)
         
-        try:            
-            for app in app_list:
-                app_label = app.__name__.split('.')[-2]
+        # If we're using a list of all apps then build the app_labels, including
+        # any deleted apps as well.
+        if not app_labels:
+            app_labels = [app.__name__.split('.')[-2] for app in app_list]
+        try:
+            if hint:
+                hinted_evolution = diff.evolution()
+            for app_label in app_labels:
                 if hint:
                     evolutions = []
-                    mutations = diff.evolution().get(app_label,[])
+                    mutations = hinted_evolution.get(app_label,[])
                 else:
                     evolutions = get_unapplied_evolutions(app)
                     mutations = get_mutations(app, evolutions)
@@ -86,6 +91,10 @@ class Command(BaseCommand):
                     evolution_required = True
                     for mutation in mutations:
                         sql.extend(mutation.mutate(app_label, database_sig))
+                    # Simulations have to be done after adding all mutations
+                    # because a mutation may rely on a field/mode removed during
+                    # simulation.
+                    for mutation in mutations:
                         try:
                             mutation.simulate(app_label, database_sig)
                         except CannotSimulate:
@@ -97,7 +106,7 @@ class Command(BaseCommand):
                         if compile_sql:
                             print ';; Compiled evolution SQL for %s' % app_label
                             for s in sql:
-                                print s                            
+                                print unicode(s)
                         else:
                             print '----- Evolution for %s' % app_label
                             print 'from django_evolution.mutations import *'
@@ -105,7 +114,7 @@ class Command(BaseCommand):
                             print 
                             print 'MUTATIONS = ['
                             print '   ',
-                            print ',\n    '.join(str(m) for m in mutations)
+                            print ',\n    '.join(unicode(m) for m in mutations)
                             print ']'
                             print '----------------------'
 
@@ -174,7 +183,7 @@ Type 'yes' to continue, or 'no' to cancel: """ % settings.DATABASE_NAME)
                 if verbosity > 0:
                     if simulated:
                         print "Trial evolution successful."
-                        print "Run './manage.py evolve --execute' to apply evolution."
+                        print "Run './manage.py evolve %s--execute' to apply evolution." % (hint and '--hint ' or '')
         else:
             if verbosity > 0:
                 print 'No evolution required.'

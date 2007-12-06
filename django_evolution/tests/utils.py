@@ -32,7 +32,7 @@ def execute_sql(sql, output=False):
         # Perform the SQL
         for statement in sql:
             if output:
-                print statement
+                print unicode(statement)
             cursor.execute(statement)
         transaction.commit()
         transaction.leave_transaction_management()

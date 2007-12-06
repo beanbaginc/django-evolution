@@ -7,7 +7,7 @@ from django.db.models.fields.related import *
 from django.db import models
 from django.utils.functional import curry
 
-from django_evolution.signature import ATTRIBUTE_DEFAULTS
+from django_evolution.signature import ATTRIBUTE_DEFAULTS, create_field_sig
 from django_evolution import CannotSimulate, SimulationFailure
 
 FK_INTEGER_TYPES = ['AutoField', 'PositiveIntegerField', 'PositiveSmallIntegerField']
@@ -366,3 +366,32 @@ class RenameField(BaseMutation):
             return get_evolution_module().rename_table(old_m2m_table, new_m2m_table)
         else:
             return get_evolution_module().rename_column(opts, old_field, new_field)
+
+class DeleteModel(BaseMutation):
+    def __init__(self, model_name):
+        self.model_name = model_name
+        
+    def __str__(self):
+        return "DeleteModel(%r)" % self.model_name
+
+    def simulate(self, app_label, proj_sig):    
+        app_sig = proj_sig[app_label]
+        # Simulate the deletion of the model.
+        del app_sig[self.model_name]
+            
+    def mutate(self, app_label, proj_sig):
+        app_sig = proj_sig[app_label]
+        model_sig = app_sig[self.model_name]
+
+        sql_statements = []
+        model = MockModel(proj_sig, app_label, self.model_name, model_sig)
+        # Remove any many to many tables.
+        for field_name, field_sig in model_sig['fields'].items():
+            if field_sig['field_type'] == models.ManyToManyField:
+                field = model._meta.get_field(field_name)
+                m2m_table = field._get_m2m_db_table(model._meta)
+                sql_statements += get_evolution_module().delete_table(m2m_table)
+        # Remove the table itself.
+        sql_statements += get_evolution_module().delete_table(model._meta.db_table)
+
+        return sql_statements

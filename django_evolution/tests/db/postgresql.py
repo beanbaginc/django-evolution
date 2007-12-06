@@ -72,6 +72,23 @@ delete_field = {
         'ALTER TABLE "custom_table_name" DROP COLUMN "value" CASCADE;',
 }
 
+delete_model = {
+    'BasicModel': 
+        'DROP TABLE "django_evolution_basicmodel";',
+    'BasicWithM2MModel': 
+        '\n'.join([
+            'DROP TABLE "django_evolution_basicwithm2mmodel_m2m";',
+            'DROP TABLE "django_evolution_basicwithm2mmodel";'
+        ]),
+    'CustomTableModel': 
+        'DROP TABLE "custom_table_name";',
+    'CustomTableWithM2MModel': 
+        '\n'.join([
+            'DROP TABLE "another_custom_table_name_m2m";',
+            'DROP TABLE "another_custom_table_name";'
+        ]),
+}
+
 rename_field = {
     'RenameColumnModel': 
         'ALTER TABLE "django_evolution_renamebasemodel" RENAME COLUMN "int_field" TO "renamed_field";',

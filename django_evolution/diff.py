@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models.fields.related import *
 
 from django_evolution import EvolutionException
-from django_evolution.mutations import DeleteField, AddField
+from django_evolution.mutations import DeleteField, AddField, DeleteModel
 from django_evolution.signature import ATTRIBUTE_DEFAULTS
 
 try:
@@ -126,15 +126,9 @@ class Diff(object):
     def evolution(self):
         "Generate an evolution that would neutralize the diff"
         mutations = {}
-        for app_label, model_names in self.deleted.items():
-            # TODO: Define and utilize a DeleteModel mutation
-            # mutations.setdefault(app_label,[]).append(DeleteModel(model_name))
-            pass
         for app_label, app_changes in self.changed.items():
             for model_name in app_changes.get('deleted',{}):
-                # TODO Define and utilize a DeleteModel mutation
-                # mutations.setdefault(app_label,[]).append(DeleteModel(model_name))
-                pass                
+                mutations.setdefault(app_label,[]).append(DeleteModel(model_name))
             for model_name, change in app_changes.get('changed',{}).items():
                 for field_name in change.get('added',{}):
                     field_sig = self.current_sig[app_label][model_name]['fields'][field_name]
