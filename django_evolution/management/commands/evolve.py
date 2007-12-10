@@ -90,11 +90,11 @@ class Command(BaseCommand):
                 if mutations:
                     evolution_required = True
                     for mutation in mutations:
-                        sql.extend(mutation.mutate(app_label, database_sig))
-                    # Simulations have to be done after adding all mutations
-                    # because a mutation may rely on a field/mode removed during
-                    # simulation.
-                    for mutation in mutations:
+                        # Only compile SQL if we want to show it
+                        if compile_sql or execute:
+                            sql.extend(mutation.mutate(app_label, database_sig))
+                            
+                        # Now run the simulation, which will modify the signatures
                         try:
                             mutation.simulate(app_label, database_sig)
                         except CannotSimulate:

@@ -63,6 +63,26 @@ def copy_from_temp_table(dest_table_name, field_list):
     
     return ['INSERT INTO %(dest_table_name)s (%(column_names)s) SELECT %(column_names)s FROM %(temp_table)s;' % params]
     
+def insert_to_temp_table(field, initial):
+    qn = connection.ops.quote_name
+    
+    # At this point, initial can only be None if null=True, otherwise it is 
+    # a user callable or the default AddFieldInitalCallback which will shortly raise an exception.
+    if not initial:
+        return []
+
+    if callable(initial):
+        initial_data = initial()
+    else:
+        initial_data = initial
+        
+    params = {
+        'table_name': qn(TEMP_TABLE_NAME),
+        'column_name': qn(field.column),
+        'value': initial_data,
+    }
+    return ['UPDATE %(table_name)s SET %(column_name)s = %(value)s;' % params]
+
 def create_temp_table(field_list):
     return create_table(TEMP_TABLE_NAME, field_list, True, False)
 
@@ -139,24 +159,18 @@ def rename_column(opts, old_field, new_field):
     
     return output
     
-def add_column(model, f):
-    # SQLite does not support the adding of unique columns.
-    if not f.unique:
-        return common_add_column(model,f)
-
-    # The code below should work in all situations but the code above
-    # should be more efficient so this is only done when we absolutely
-    # must.
+def add_column(model, f, initial):
     output = []
     table_name = model._meta.db_table
     original_fields = model._meta.fields
     new_fields = original_fields
     new_fields.append(f)
-
+    
     output.extend(create_temp_table(new_fields))
     output.extend(copy_to_temp_table(table_name, original_fields))
+    output.extend(insert_to_temp_table(f, initial))
     output.extend(delete_table(table_name))
-    output.extend(create_table(table_name, new_fields))
+    output.extend(create_table(table_name, new_fields, create_index=False))
     output.extend(copy_from_temp_table(table_name, new_fields))
     output.extend(delete_table(TEMP_TABLE_NAME))
     return output

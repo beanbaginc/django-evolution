@@ -14,17 +14,27 @@ tests = r"""
 # M2M field between models with default table names.
 # M2M field between models with non-default table names.
 # M2M field between self
+>>> from datetime import datetime
 
 >>> from django.db import models
 >>> from django.db.models.loading import cache
 
->>> from django_evolution.mutations import AddField
+>>> from django_evolution.mutations import AddField, DeleteField
 >>> from django_evolution.tests.utils import test_proj_sig, execute_test_sql
 >>> from django_evolution.diff import Diff
 >>> from django_evolution import signature
 >>> from django_evolution import models as test_app
 
 >>> import copy
+
+>>> class AddSequenceFieldInitial(object):
+...     def __init__(self, suffix):
+...         self.suffix = suffix
+...
+...     def __call__(self):
+...         from django.db import connection
+...         qn = connection.ops.quote_name
+...         return qn('int_field')
 
 >>> class AddAnchor1(models.Model):
 ...     value = models.IntegerField()
@@ -52,18 +62,87 @@ tests = r"""
 # Register the test models with the Django app cache
 >>> cache.register_models('tests', CustomTableModel, AddBaseModel, AddAnchor1, AddAnchor2)
 
-# Field resulting in a new database column.
-# This fails because the new column won't allow null values, which is a problem
-# if you are adding this column to an existing table with existing data.
->>> class AddDatabaseColumnModel(models.Model):
+# Add non-null field with non-callable initial value
+>>> class AddNonNullNonCallableDatabaseColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField()
 
->>> new_sig = test_proj_sig(('TestModel',AddDatabaseColumnModel), *anchors)
+>>> new_sig = test_proj_sig(('TestModel',AddNonNullNonCallableDatabaseColumnModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
-["AddField('TestModel', 'added_field', models.IntegerField)"]
+["AddField('TestModel', 'added_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>)"]
+
+# First try without an initial value. This will fail
+>>> evolution = [AddField('TestModel', 'added_field', models.IntegerField)]
+>>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
+>>> for mutation in evolution:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
+Traceback (most recent call last):
+...
+SimulationFailure: Cannot create new column 'added_field' on 'django_evolution.TestModel' without a non-null initial value.
+
+# Now try with an explicitly null initial value. This will also fail
+>>> evolution = [AddField('TestModel', 'added_field', models.IntegerField, initial=None)]
+>>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
+>>> for mutation in evolution:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
+Traceback (most recent call last):
+...
+SimulationFailure: Cannot create new column 'added_field' on 'django_evolution.TestModel' without a non-null initial value.
+
+# Now try with a good initial value
+>>> evolution = [AddField('TestModel', 'added_field', models.IntegerField, initial=1)]
+>>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
+>>> for mutation in evolution:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+
+>>> execute_test_sql(test_sql)
+%(AddNonNullNonCallableDatabaseColumnModel)s
+
+# Add non-null with callable initial value
+>>> class AddNonNullCallableDatabaseColumnModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     added_field = models.IntegerField()
+
+>>> new_sig = test_proj_sig(('TestModel',AddNonNullCallableDatabaseColumnModel), *anchors)
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['django_evolution']]
+["AddField('TestModel', 'added_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>)"]
+
+>>> evolution = [AddField('TestModel', 'added_field', models.IntegerField, initial=AddSequenceFieldInitial('AddNonNullCallableDatabaseColumnModel'))]
+>>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
+>>> for mutation in evolution:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+
+>>> execute_test_sql(test_sql)
+%(AddNonNullCallableDatabaseColumnModel)s
+
+# Add non-null with missing initial data
+>>> class AddNonNullMissingInitialDataDatabaseColumnModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     added_field = models.IntegerField()
+
+>>> new_sig = test_proj_sig(('TestModel',AddNonNullMissingInitialDataDatabaseColumnModel), *anchors)
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['django_evolution']]
+["AddField('TestModel', 'added_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>)"]
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
@@ -72,7 +151,31 @@ tests = r"""
 ...     mutation.simulate('django_evolution', test_sig)
 Traceback (most recent call last):
 ...
-SimulationFailure: Cannot create new column 'added_field' on 'django_evolution.TestModel' that prohibits null values
+EvolutionException: AddField mutation requires user-specified initial value.
+
+# Add nullable column with initial data
+>>> class AddNullColumnWithInitialDatabaseColumnModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     added_field = models.CharField(null=True, max_length=26)
+
+>>> new_sig = test_proj_sig(('TestModel',AddNullColumnWithInitialDatabaseColumnModel), *anchors)
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['django_evolution']]
+["AddField('TestModel', 'added_field', models.CharField, max_length=26, null=True)"]
+
+>>> evolution = [AddField('TestModel', 'added_field', models.CharField, initial="'abc'", max_length=26, null=True)]
+>>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
+>>> for mutation in evolution:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+
+>>> execute_test_sql(test_sql)
+%(AddNullColumnWithInitialDatabaseColumnModel)s
 
 # Null field
 >>> class NullDatabaseColumnModel(models.Model):
@@ -147,7 +250,7 @@ True
 %(AddDatabaseColumnCustomTableModel)s
 
 # Add Primary key field.
-# Prohibited by simulation
+# Delete of old Primary Key is prohibited.
 >>> class AddPrimaryKeyModel(models.Model):
 ...     my_primary_key = models.AutoField(primary_key=True)
 ...     char_field = models.CharField(max_length=20)
@@ -156,16 +259,17 @@ True
 >>> new_sig = test_proj_sig(('TestModel',AddPrimaryKeyModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
-["AddField('TestModel', 'my_primary_key', models.AutoField, primary_key=True)", "DeleteField('TestModel', 'id')"]
+["AddField('TestModel', 'my_primary_key', models.AutoField, initial=<<USER VALUE REQUIRED>>, primary_key=True)", "DeleteField('TestModel', 'id')"]
 
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
+
+>>> for mutation in [AddField('TestModel', 'my_primary_key', models.AutoField, initial=AddSequenceFieldInitial('AddPrimaryKeyModel'), primary_key=True), DeleteField('TestModel', 'id')]:
 ...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
 ...     mutation.simulate('django_evolution', test_sig)
 Traceback (most recent call last):
 ...
-SimulationFailure: Cannot create new column 'my_primary_key' on 'django_evolution.TestModel' that prohibits null values
+SimulationFailure: Cannot delete a primary key.
 
 # Indexed field
 >>> class AddIndexedDatabaseColumnModel(models.Model):
@@ -187,7 +291,7 @@ SimulationFailure: Cannot create new column 'my_primary_key' on 'django_evolutio
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql, debug=False)
 %(AddIndexedDatabaseColumnModel)s
 
 # Unique field.
@@ -213,7 +317,7 @@ True
 >>> execute_test_sql(test_sql)
 %(AddUniqueDatabaseColumnModel)s
 
-# Foreign Key field.
+Foreign Key field.
 >>> class ForeignKeyDatabaseColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()

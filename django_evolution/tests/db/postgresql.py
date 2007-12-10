@@ -1,13 +1,30 @@
 add_field = {
+    'AddNonNullNonCallableDatabaseColumnModel':
+        '\n'.join([
+            'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer ;',
+            'UPDATE "django_evolution_addbasemodel" SET "added_field" = 1 WHERE "added_field" IS NULL;',
+            'ALTER TABLE "django_evolution_addbasemodel" ALTER COLUMN "added_field" SET NOT NULL;',
+        ]),
+    'AddNonNullCallableDatabaseColumnModel':
+        '\n'.join([
+            'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer ;',
+            'UPDATE "django_evolution_addbasemodel" SET "added_field" = "int_field" WHERE "added_field" IS NULL;',
+            'ALTER TABLE "django_evolution_addbasemodel" ALTER COLUMN "added_field" SET NOT NULL;',
+        ]),
+    'AddNullColumnWithInitialDatabaseColumnModel':
+        '\n'.join([
+            'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" varchar(26) ;',
+            'UPDATE "django_evolution_addbasemodel" SET "added_field" = \'abc\' WHERE "added_field" IS NULL;',
+        ]),
     'NullDatabaseColumnModel': 
-        'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NULL;',
+        'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NULL ;',
     'NonDefaultDatabaseColumnModel': 
-        'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "non-default_column" integer NULL;',
+        'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "non-default_column" integer NULL ;',
     'AddDatabaseColumnCustomTableModel': 
-        'ALTER TABLE "custom_table_name" ADD COLUMN "added_field" integer NULL;',
+        'ALTER TABLE "custom_table_name" ADD COLUMN "added_field" integer NULL ;',
     'AddIndexedDatabaseColumnModel': 
         '\n'.join([
-            'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "add_field" integer NULL;',
+            'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "add_field" integer NULL ;',
             'CREATE INDEX "django_evolution_addbasemodel_add_field" ON "django_evolution_addbasemodel" ("add_field");'
         ]),
     'AddUniqueDatabaseColumnModel': 

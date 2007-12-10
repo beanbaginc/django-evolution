@@ -76,7 +76,7 @@ tests = r"""
 >>> new_sig = test_proj_sig(('TestModel', RenameColumnModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
-["AddField('TestModel', 'renamed_field', models.IntegerField)", "DeleteField('TestModel', 'int_field')"]
+["AddField('TestModel', 'renamed_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>)", "DeleteField('TestModel', 'int_field')"]
 
 >>> evolution = [RenameField('TestModel', 'int_field', 'renamed_field')]
 >>> test_sig = copy.deepcopy(base_sig)
@@ -104,7 +104,7 @@ True
 >>> new_sig = test_proj_sig(('TestModel',RenameColumnWithTableNameModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
-["AddField('TestModel', 'renamed_field', models.IntegerField)", "DeleteField('TestModel', 'int_field')"]
+["AddField('TestModel', 'renamed_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>)", "DeleteField('TestModel', 'int_field')"]
 
 >>> evolution = [RenameField('TestModel', 'int_field', 'renamed_field', db_table='ignored_db-table')]
 >>> test_sig = copy.deepcopy(base_sig)
@@ -133,7 +133,7 @@ True
 >>> new_sig = test_proj_sig(('TestModel',RenamePrimaryKeyColumnModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
-["AddField('TestModel', 'my_pk_id', models.AutoField, primary_key=True)", "DeleteField('TestModel', 'id')"]
+["AddField('TestModel', 'my_pk_id', models.AutoField, initial=<<USER VALUE REQUIRED>>, primary_key=True)", "DeleteField('TestModel', 'id')"]
 
 >>> evolution = [RenameField('TestModel', 'id', 'my_pk_id')]
 >>> test_sig = copy.deepcopy(base_sig)
@@ -162,7 +162,7 @@ True
 >>> base_sig = copy.deepcopy(base_sig)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
-["AddField('TestModel', 'renamed_field', models.ForeignKey, related_model='django_evolution.RenameAnchor1')", "DeleteField('TestModel', 'fk_field')"]
+["AddField('TestModel', 'renamed_field', models.ForeignKey, initial=<<USER VALUE REQUIRED>>, related_model='django_evolution.RenameAnchor1')", "DeleteField('TestModel', 'fk_field')"]
 
 >>> evolution = [RenameField('TestModel', 'fk_field', 'renamed_field')]
 >>> test_sig = copy.deepcopy(base_sig)
@@ -190,7 +190,7 @@ True
 >>> new_sig = test_proj_sig(('TestModel',RenameNonDefaultColumnNameModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
-["AddField('TestModel', 'renamed_field', models.IntegerField)", "DeleteField('TestModel', 'int_field_named')"]
+["AddField('TestModel', 'renamed_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>)", "DeleteField('TestModel', 'int_field_named')"]
 
 >>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field')]
 >>> test_sig = copy.deepcopy(base_sig)
@@ -218,7 +218,7 @@ True
 >>> new_sig = test_proj_sig(('TestModel',RenameNonDefaultColumnNameToNonDefaultNameModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
-["AddField('TestModel', 'renamed_field', models.IntegerField, db_column='non-default_column_name')", "DeleteField('TestModel', 'int_field_named')"]
+["AddField('TestModel', 'renamed_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>, db_column='non-default_column_name')", "DeleteField('TestModel', 'int_field_named')"]
 
 >>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field', db_column='non-default_column_name')]
 >>> test_sig = copy.deepcopy(base_sig)
@@ -246,7 +246,7 @@ True
 >>> new_sig = test_proj_sig(('TestModel',RenameNonDefaultColumnNameToNonDefaultNameAndTableModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
-["AddField('TestModel', 'renamed_field', models.IntegerField, db_column='non-default_column_name2')", "DeleteField('TestModel', 'int_field_named')"]
+["AddField('TestModel', 'renamed_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>, db_column='non-default_column_name2')", "DeleteField('TestModel', 'int_field_named')"]
 
 >>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field', db_column='non-default_column_name2', db_table='custom_ignored_db-table')]
 >>> test_sig = copy.deepcopy(base_sig)
@@ -272,7 +272,7 @@ True
 >>> new_sig = test_proj_sig(('TestModel',RenameColumnCustomTableModel), *anchors)
 >>> d = Diff(custom_table_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
-["AddField('TestModel', 'renamed_field', models.IntegerField)", "DeleteField('TestModel', 'value')"]
+["AddField('TestModel', 'renamed_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>)", "DeleteField('TestModel', 'value')"]
 
 >>> evolution = [RenameField('TestModel', 'value', 'renamed_field')]
 >>> test_sig = copy.deepcopy(custom_table_sig)

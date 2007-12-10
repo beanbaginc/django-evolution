@@ -94,7 +94,7 @@ True
 >>> d.is_empty()
 False
 >>> print [str(e) for e in d.evolution()['django_evolution']]
-["AddField('TestModel', 'date_of_birth', models.DateField)"]
+["AddField('TestModel', 'date_of_birth', models.DateField, initial=<<USER VALUE REQUIRED>>)"]
 
 # Deleting a field gives a non-empty diff
 >>> class DeleteFieldModel(models.Model):
@@ -118,7 +118,7 @@ False
 >>> d.is_empty()
 False
 >>> print [str(e) for e in d.evolution()['django_evolution']]
-["AddField('TestModel', 'full_name', models.CharField, max_length=20)", "DeleteField('TestModel', 'name')"]
+["AddField('TestModel', 'full_name', models.CharField, initial=<<USER VALUE REQUIRED>>, max_length=20)", "DeleteField('TestModel', 'name')"]
 
 # Adding a property to a field which was not present in the original Model
 >>> class AddPropertyModel(models.Model):

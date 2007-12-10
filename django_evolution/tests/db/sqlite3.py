@@ -1,14 +1,70 @@
 add_field = {
+    'AddNonNullNonCallableDatabaseColumnModel':
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" integer NOT NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "added_field" FROM "django_evolution_addbasemodel";',
+            'UPDATE "TEMP_TABLE" SET "added_field" = 1;',
+            'DROP TABLE "django_evolution_addbasemodel";',
+            'CREATE TABLE "django_evolution_addbasemodel"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" integer NOT NULL);',
+            'INSERT INTO "django_evolution_addbasemodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ]),
+    'AddNonNullCallableDatabaseColumnModel':
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" integer NOT NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "added_field" FROM "django_evolution_addbasemodel";',
+            'UPDATE "TEMP_TABLE" SET "added_field" = "int_field";',
+            'DROP TABLE "django_evolution_addbasemodel";',
+            'CREATE TABLE "django_evolution_addbasemodel"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" integer NOT NULL);',
+            'INSERT INTO "django_evolution_addbasemodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ]),
+    'AddNullColumnWithInitialDatabaseColumnModel':
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" varchar(26) NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "added_field" FROM "django_evolution_addbasemodel";',
+            'UPDATE "TEMP_TABLE" SET "added_field" = \'abc\';',
+            'DROP TABLE "django_evolution_addbasemodel";',
+            'CREATE TABLE "django_evolution_addbasemodel"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" varchar(26) NULL);',
+            'INSERT INTO "django_evolution_addbasemodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ]),
     'NullDatabaseColumnModel': 
-        'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NULL;',
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" integer NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "added_field" FROM "django_evolution_addbasemodel";',
+            'DROP TABLE "django_evolution_addbasemodel";',
+            'CREATE TABLE "django_evolution_addbasemodel"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" integer NULL);',
+            'INSERT INTO "django_evolution_addbasemodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ]),
     'NonDefaultDatabaseColumnModel': 
-        'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "non-default_column" integer NULL;',
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "non-default_column" integer NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "non-default_column" FROM "django_evolution_addbasemodel";',
+            'DROP TABLE "django_evolution_addbasemodel";',
+            'CREATE TABLE "django_evolution_addbasemodel"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "non-default_column" integer NULL);',
+            'INSERT INTO "django_evolution_addbasemodel" ("int_field", "id", "char_field", "non-default_column") SELECT "int_field", "id", "char_field", "non-default_column" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ]),
     'AddDatabaseColumnCustomTableModel': 
-        'ALTER TABLE "custom_table_name" ADD COLUMN "added_field" integer NULL;',
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("id" integer NOT NULL PRIMARY KEY, "value" integer NOT NULL, "alt_value" varchar(20) NOT NULL, "added_field" integer NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "id", "value", "alt_value", "added_field" FROM "custom_table_name";',
+            'DROP TABLE "custom_table_name";',
+            'CREATE TABLE "custom_table_name"("id" integer NOT NULL PRIMARY KEY, "value" integer NOT NULL, "alt_value" varchar(20) NOT NULL, "added_field" integer NULL);',
+            'INSERT INTO "custom_table_name" ("id", "value", "alt_value", "added_field") SELECT "id", "value", "alt_value", "added_field" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ]),
     'AddIndexedDatabaseColumnModel': 
         '\n'.join([
-            'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "add_field" integer NULL;',
-            'CREATE INDEX "django_evolution_addbasemodel_add_field" ON "django_evolution_addbasemodel" ("add_field");'
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "add_field" integer NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "add_field" FROM "django_evolution_addbasemodel";',
+            'DROP TABLE "django_evolution_addbasemodel";',
+            'CREATE TABLE "django_evolution_addbasemodel"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "add_field" integer NULL);',
+            'INSERT INTO "django_evolution_addbasemodel" ("int_field", "id", "char_field", "add_field") SELECT "int_field", "id", "char_field", "add_field" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+            'CREATE INDEX "django_evolution_addbasemodel_add_field" ON "django_evolution_addbasemodel" ("add_field");',
         ]),
     'AddUniqueDatabaseColumnModel': 
         '\n'.join([
@@ -21,7 +77,12 @@ add_field = {
         ]),
     'ForeignKeyDatabaseColumnModel': 
         '\n'.join([
-            'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field_id" integer NULL REFERENCES "django_evolution_addanchor1" ("id") ;',
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field_id" integer NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "added_field_id" FROM "django_evolution_addbasemodel";',
+            'DROP TABLE "django_evolution_addbasemodel";',
+            'CREATE TABLE "django_evolution_addbasemodel"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field_id" integer NULL);',
+            'INSERT INTO "django_evolution_addbasemodel" ("int_field", "id", "char_field", "added_field_id") SELECT "int_field", "id", "char_field", "added_field_id" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
             'CREATE INDEX "django_evolution_addbasemodel_added_field_id" ON "django_evolution_addbasemodel" ("added_field_id");',
         ]),
     'AddManyToManyDatabaseTableModel': 

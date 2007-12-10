@@ -77,7 +77,7 @@ def add_m2m_table(model, f):
     
     return final_output
     
-def add_column(model, f):
+def add_column(model, f, initial):
     qn = connection.ops.quote_name
     
     if f.rel:
@@ -94,12 +94,32 @@ def add_column(model, f):
             qn(related_table), qn(related_pk_col), connection.ops.deferrable_sql())
         output = ['ALTER TABLE %s ADD COLUMN %s %s %s REFERENCES %s (%s) %s;' % params]
     else:
-        constraints = ['%sNULL' % (not f.null and 'NOT ' or '')]
+        null_constraints = '%sNULL' % (not f.null and 'NOT ' or '')
         if f.unique and (not f.primary_key or connection.features.allows_unique_and_pk):
-            constraints.append('UNIQUE')
-        params = (qn(model._meta.db_table), qn(f.column), f.db_type(),' '.join(constraints))    
-        output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
-        
+            unique_constraints = 'UNIQUE'
+        else:
+            unique_constraints = ''
+
+        # At this point, initial can only be None if null=True, otherwise it is 
+        # a user callable or the default AddFieldInitalCallback which will shortly raise an exception.
+        if initial:
+            params = (qn(model._meta.db_table), qn(f.column), f.db_type(), unique_constraints)
+            output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
+            
+            if callable(initial):
+                initial_data = initial()
+            else:
+                initial_data = initial
+            params = (qn(model._meta.db_table), qn(f.column), initial_data, qn(f.column))
+            output.append('UPDATE %s SET %s = %s WHERE %s IS NULL;' % params)
+            
+            if not f.null:
+                # Only put this sql statement if the column cannot be null.
+                params = (qn(model._meta.db_table), qn(f.column))
+                output.append('ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;' % params)
+        else:
+            params = (qn(model._meta.db_table), qn(f.column), f.db_type(),' '.join([null_constraints, unique_constraints]))    
+            output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
     return output
     
 def create_index(model, f):

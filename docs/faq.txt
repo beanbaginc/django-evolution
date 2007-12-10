@@ -99,9 +99,10 @@ changes in your models should be reported as a bug.
 
 The following is a list of the model changes that we believe to be working:
 
-    * Addition of simple fields (e.g., a new CharField) with ``null=True``.
-    * Addition of Many To Many Fields
-    * Deletion of most fields (of any type)
+    * Addition of simple fields (e.g., a new CharField).
+    * Addition of Many To Many Fields.
+    * Deletion of most fields (of any type).
+    * Deletion of models.
     * Renaming of a field. Renames won't ever appear in a hinted evolution,
       but they can be manually added as a replacement for the Add+Delete pair
       that a hinted evolution will provide.
@@ -109,40 +110,41 @@ The following is a list of the model changes that we believe to be working:
 Primary development for Django Evolution has used the Psycopg1 interface to
 PostgreSQL. As a result, this is the most stable database interface. A 
 Psycopg2 PostgreSQL backend also exists, and should work without difficulty.
-The MySQL backend works for most mutations, with some exceptions (details 
-below).
+The SQLite backend is also fairly reliable. The MySQL backend works for most 
+mutations, with some exceptions (details below).
 
 What doesn't work?
 ------------------
 
-Django Evolution is a work in progress, and as a result, there are many
-things that don't work, or don't work as expected. The following are
-known issues that will hopefully be addressed in the near future:
+Django Evolution is a work in progress, and as a result, there are
+things that don't work, or don't work as expected. The following model 
+changes are known to cause difficulty:
 
-Django Evolution is currently PostgreSQL specific. Adding support for
-other database backends is planned in the future.
-
-The following model changes are known to cause difficulty:
-
-    * Addition of fields with ``null=False``. At present, there isn't a way
-      to define default values for a field, so fields must be allowed to be
-      empty when they are created.
     * Addition of ForeignKey fields. A field will be added, but the foreign
       key constraints are not correctly constructed.
     * Changes to the properties of a given field. Property changes are
       identified as a change during ``syncdb``, but there isn't a
       mutation that can apply those changes to the database.
-    * Deletion of models or applications. Again, these are identified, but
+    * Deletion of applications. Again, these are identified, but
       no mutation exists.
     * Deletion of primary keys (including adding a manual primary key as
       a replacement for an automatically installed primary key)
     * Deletion of fields referenced by other database constraints.
-    * Renaming of primary key fields and foreign key fields when using the 
-      MySQL backend. 
-    
+
 Dependencies between applications can also cause difficulties. If you have
 changes in one application that are dependent on changes in another
 application, you may experience difficulties in applying evolutions.
+
+Django Evolution is known to work well for PostgreSQL and SQLite. This is
+because the core developers both use PostgreSQL and SQLite on a daily basis.
+Support for MySQL is less complete. The following features are known to be
+buggy or broken under MySQL:
+
+    * Renaming of primary key fields and foreign key fields
+    * Adding fields with non-null initial values.
+    
+Improving MySQL support (as well as adding support for other database backends)
+is one big area where contributions would be most welcome. 
 
 Design
 ======

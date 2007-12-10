@@ -10,6 +10,16 @@ try:
 except ImportError:
     from sets import Set as set #Python 2.3 Fallback
 
+class AddFieldInitalCallback(object):
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return '<<USER VALUE REQUIRED>>'
+
+    def __call__(self):
+        raise EvolutionException('AddField mutation requires user-specified initial value.')
+                
 class Diff(object):
     """
     A diff between two model signatures.
@@ -136,6 +146,9 @@ class Diff(object):
                                     for key in field_sig.keys() 
                                     if key in ATTRIBUTE_DEFAULTS.keys()]
                     add_params.append(('field_type', field_sig['field_type']))
+                    
+                    if field_sig['field_type'] != models.ManyToManyField and not field_sig.get('null', ATTRIBUTE_DEFAULTS['null']):
+                        add_params.append(('initial', AddFieldInitalCallback()))
                     if 'related_model' in field_sig:
                         add_params.append(('related_model', '%s' % field_sig['related_model']))
                     mutations.setdefault(app_label,[]).append(

@@ -218,15 +218,20 @@ class DeleteField(BaseMutation):
         return sql_statements
         
 class AddField(BaseMutation):
-    def __init__(self, model_name, field_name, field_type, **kwargs):
+    def __init__(self, model_name, field_name, field_type, initial=None, **kwargs):
         self.model_name = model_name
         self.field_name = field_name
         self.field_type = field_type
-        self.field_attrs = kwargs        
-                
+        self.field_attrs = kwargs
+        self.initial = initial
+            
     def __str__(self):
         params = (self.model_name, self.field_name, self.field_type.__name__)
         str_output = ["'%s', '%s', models.%s" % params]
+
+        if self.initial:
+            str_output.append('initial=%s' % self.initial)
+
         for key,value in self.field_attrs.items():
             if isinstance(value, str):
                 str_output.append("%s='%s'" % (key,value))
@@ -238,15 +243,15 @@ class AddField(BaseMutation):
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]        
                 
-        if self.field_type != models.ManyToManyField:
-            if not self.field_attrs.get('null', False):
-                raise SimulationFailure("Cannot create new column '%s' on '%s.%s' that prohibits null values" % (
-                        self.field_name, app_label, self.model_name))
-        
         if self.field_name in model_sig['fields']:
             raise SimulationFailure("Model '%s.%s' already has a field named '%s'" % (
                         app_label, self.model_name, self.field_name))
-            
+        
+        if self.field_type != models.ManyToManyField and not self.field_attrs.get('null', ATTRIBUTE_DEFAULTS['null']):
+            if self.initial is None:
+                raise SimulationFailure("Cannot create new column '%s' on '%s.%s' without a non-null initial value." % (
+                        self.field_name, app_label, self.model_name))
+    
         model_sig['fields'][self.field_name] = {
             'field_type': self.field_type,
         }
@@ -265,7 +270,7 @@ class AddField(BaseMutation):
         model = MockModel(proj_sig, app_label, self.model_name, model_sig)
         field = create_field(proj_sig, self.field_name, self.field_type, self.field_attrs)
 
-        sql_statements = get_evolution_module().add_column(model, field)
+        sql_statements = get_evolution_module().add_column(model, field, self.initial)
                                                
         # Create SQL index if necessary
         sql_statements.extend(get_evolution_module().create_index(model, field))
@@ -291,7 +296,7 @@ class AddField(BaseMutation):
         sql_statements = get_evolution_module().add_m2m_table(model, field)
                             
         return sql_statements
-
+        
 class RenameField(BaseMutation):
     def __init__(self, model_name, old_field_name, new_field_name, 
                  db_column=None, db_table=None):

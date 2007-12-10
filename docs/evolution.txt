@@ -24,7 +24,7 @@ An example
 
 To demonstrate how Django Evolution works, let's work through the lifecycle of
 a Django application - a new super-cool blogging application called
-``blogette``. After some initial design work, we come up with the following
+``Blogette``. After some initial design work, we come up with the following
 models::
 
     class Author(models.Model):
@@ -109,6 +109,12 @@ use the ``--sql`` option::
     ;; Compiled evolution SQL for blogette
     ALTER TABLE "blogette_person" DROP COLUMN "date_of_birth" CASCADE;
 
+.. note::
+
+        The SQL output shown here is what would be produced by the Postgres 
+        backend; if you are using a different backend, the SQL produced by 
+        this step will be slightly different.
+        
 If we wanted to, we could pipe this SQL output directly into our database.
 however, we don't need to - we can get Django Evolution to do this for us,
 by passing the execute option to ``evolve``. When you do this, you will
@@ -164,7 +170,7 @@ Mutation definitions
 Let's start with adding the ``location`` field to ``Authors``. First, we edit
 ``models.py`` to add a new CharField definition, with a length of 100.
 We will also allow null values, since we have existing data that won't have
-an author location. Add the following field defintion to authors::
+an author location. Add the following field definition to authors::
 
     location = models.CharField(max_length=100, null=True)
 
@@ -327,7 +333,7 @@ applied::
     Evolution could not be simulated, possibly due to raw SQL mutations.
 
 Again, since there is a raw SQL migration involved, we will need to validate
-the migration ourself using the --sql option::
+the migration ourselves using the ``--sql`` option::
 
     $ ./manage.py evolve --sql
     ;; Compiled evolution SQL for testproject.blogette
@@ -442,23 +448,38 @@ Built-in Mutations
 Django Evolution comes with a number of mutations built-in. These mutations
 cover the simple cases for model evolutions.
 
-AddField(model_name, field_name, \*\*kwargs)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+AddField(model_name, field_name, initial=None, \*\*kwargs)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Add the field 'field_name' to the model. The extra keyword arguments are the
+Add the field 'field_name' to the model, using the provided initial value to
+populate the new column. The extra keyword arguments are the
 arguments used to construct the new field.
 
-.. admonition:: New fields and NULL
+If you are adding a column to a existing table, you will need to specify
+either ``null=True`` on the field definition, or provide an initial value for
+the new field. This is because after adding the field, every item in the 
+database must be able to provide a value for the new field. Since existing 
+rows will not have a value for the new field, you must either explicitly allow 
+a value of NULL in the model definition, or you must provide an initial value.
 
-    If you are adding a column to a existing table, you will need to specify
-    ``null=True`` on the field definition. This is because after adding the
-    field, every item in the database must be able to provide a value for the
-    new field. Since existing rows will not have a value for the new field,
-    a value of NULL must be allowed.
+The initial value can be a literal (e.g., ``initial=3`` for an `IntegerField`), 
+or a callable that takes no arguments and returns a literal. The literal will 
+be inserted directly into the SQL ``INSERT`` statement that populates the new 
+column, so it should be in a format appropriate for database insertion. 
 
 Example::
 
-    AddField('Author', 'name', models.CharField, max_length=100, null=True)
+    # Add a nickname field, allowing NULL values.
+    AddField('Author', 'nickname', models.CharField, max_length=100, null=True)
+
+    # Add a nickname field, specifying the nickname for all existing Authors
+    # to be 'That Guy'
+    AddField('Author', 'nickname', models.CharField, max_length=100, initial='That Guy')
+
+    # Add a note field, using a callable for the initial value.
+    def initial_note_value():
+        return "Registered %s" % datetime.now()
+    AddField('Author', 'note', models.CharField, max_length=100, initial=initial_note_value)
 
 DeleteField(model_name, field_name)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -467,6 +488,7 @@ Remove the field 'field_name' from the model.
 
 Example::
 
+    # Remove the author's name from the Author model
     DeleteField('Author', 'name')
 
 RenameField(model_name, old_field_name, new_field_name, db_column=None, db_table=None)
@@ -482,7 +504,18 @@ name for a ManyToManyField rename.
 
 Example::
 
+    # Rename the field 'name' as 'full_name'
     RenameField('Author', 'name', 'full_name')
+
+DeleteModel(model_name)
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Remove the model 'model_name' from the application.
+
+Example::
+
+    # Remove the Author model
+    DeleteModel('Author')
 
 SQLMutation(tag, sql, update_func=None)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -502,7 +535,7 @@ to be included as part of a simulated evolution sequence.
 An update function takes the application label and current project signature,
 and mutates that signature until it reflects the changes implemented by the
 SQL. For example, a simple mutation function to remove an 'Author' table
-from an application might look something like:
+from an application might look something like::
 
     def my_update_func(app_label, project_signature):
         del project_signature[app_label]['Author']
@@ -513,6 +546,7 @@ project signatures will be reported as an error during the evolution process.
 
 Example::
 
+    # Add a new column to the Author table
     SQLMutation('add_location', ['ALTER TABLE blogette_author ADD COLUMN location varchar(100);'])
 
 Defining your own mutations
@@ -531,17 +565,15 @@ appreciate any help or suggestions you may have. The following are some examples
 of features that we would like to add:
 
    1. Support for more mutation types, including:
-       a. DeleteModel - to remove a model that previously existed,
-       b. ChangeField - to change properties on a model field such as
+       a. ChangeField - to change properties on a model field such as
           ``max_length``,
-       c. ChangeModel - to handle model constraints like ``unique_together``,
-       d. ChangeData - to handle data changes without a corresponding field
+       b. ChangeModel - to handle model constraints like ``unique_together``,
+       c. ChangeData - to handle data changes without a corresponding field
           definition change.
 
-   2. Improvements to existing mutations, including:
-       a. Adding support for default values to AddField
+   2. Improving support for the MySQL database backend
 
-   3. Support for other database backends (SQLite, Oracle...)
+   3. Support for other database backends (Oracle...)
 
    4. Support for database introspection - the ability to look at the actual
       database structure to determine if evolutions are required.
