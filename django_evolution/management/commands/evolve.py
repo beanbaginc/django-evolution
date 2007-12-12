@@ -72,16 +72,12 @@ class Command(BaseCommand):
             print self.style.ERROR("Can't evolve yet. Need to set an evolution baseline.")
             sys.exit(1)
         
-        # If we're using a list of all apps then build the app_labels, including
-        # any deleted apps as well.
-        if not app_labels:
-            app_labels = [app.__name__.split('.')[-2] for app in app_list]
         try:
-            if hint:
-                hinted_evolution = diff.evolution()
-            for app_label in app_labels:
+            for app in app_list:
+                app_label = app.__name__.split('.')[-2]
                 if hint:
                     evolutions = []
+                    hinted_evolution = diff.evolution()
                     mutations = hinted_evolution.get(app_label,[])
                 else:
                     evolutions = get_unapplied_evolutions(app)
