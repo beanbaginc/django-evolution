@@ -84,7 +84,7 @@ tests = r"""
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #DefaultNamedColumnModel
 %(DefaultNamedColumnModel)s
 
 # Deleting a non-default named column
@@ -111,7 +111,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #NonDefaultNamedColumnModel
 %(NonDefaultNamedColumnModel)s
 
 # Deleting a column with database constraints (unique)
@@ -140,7 +140,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #ConstrainedColumnModel
 %(ConstrainedColumnModel)s
 
 # Deleting a default m2m
@@ -167,7 +167,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #DefaultManyToManyModel
 %(DefaultManyToManyModel)s
 
 # Deleting a m2m stored in a non-default table
@@ -194,7 +194,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #NonDefaultManyToManyModel
 %(NonDefaultManyToManyModel)s
 
 # Delete a foreign key
@@ -221,7 +221,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #DeleteForeignKeyModel
 %(DeleteForeignKeyModel)s
 
 # Deleting a column from a non-default table
@@ -244,7 +244,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #DeleteColumnCustomTableModel
 %(DeleteColumnCustomTableModel)s
 
 

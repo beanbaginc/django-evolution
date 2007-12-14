@@ -88,7 +88,7 @@ tests = r"""
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #RenameColumnModel
 %(RenameColumnModel)s
 
 # RenameField with a specified db table for a field other than a M2MField is allowed (but will be ignored) (done)
@@ -116,7 +116,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #RenameColumnWithTableNameModel
 %(RenameColumnWithTableNameModel)s
 
 # Rename a primary key database column
@@ -145,7 +145,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #RenamePrimaryKeyColumnModel
 %(RenamePrimaryKeyColumnModel)s
 
 # Rename a foreign key database column 
@@ -174,7 +174,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #RenameForeignKeyColumnModel
 %(RenameForeignKeyColumnModel)s
 
 # Rename a database column with a non-default name
@@ -202,7 +202,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #RenameNonDefaultColumnNameModel
 %(RenameNonDefaultColumnNameModel)s
 
 # Rename a database column with a non-default name to a different non-default name
@@ -230,7 +230,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #RenameNonDefaultColumnNameToNonDefaultNameModel
 %(RenameNonDefaultColumnNameToNonDefaultNameModel)s
  
 # RenameField with a specified db column and db table is allowed (but one will be ignored)
@@ -258,7 +258,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #RenameNonDefaultColumnNameToNonDefaultNameAndTableModel
 %(RenameNonDefaultColumnNameToNonDefaultNameAndTableModel)s
 
 # Rename a database column in a non-default table
@@ -284,7 +284,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #RenameColumnCustomTableModel
 %(RenameColumnCustomTableModel)s
 
 # Rename a M2M database table
@@ -312,7 +312,7 @@ True
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
->>> execute_test_sql(test_sql, cleanup=['%(RenameManyToManyTableModel_cleanup)s'])
+>>> execute_test_sql(test_sql, cleanup=['%(RenameManyToManyTableModel_cleanup)s']) #RenameManyToManyTableModel
 %(RenameManyToManyTableModel)s
 
 # RenameField with a specified db column for a M2MField is allowed (but will be ignored)
@@ -341,7 +341,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql, cleanup=['%(RenameManyToManyTableWithColumnNameModel_cleanup)s'])
+>>> execute_test_sql(test_sql, cleanup=['%(RenameManyToManyTableWithColumnNameModel_cleanup)s']) #RenameManyToManyTableWithColumnNameModel
 %(RenameManyToManyTableWithColumnNameModel)s
 
 # Rename a M2M non-default database table to a default name
@@ -370,6 +370,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 False
 
->>> execute_test_sql(test_sql, cleanup=['%(RenameNonDefaultManyToManyTableModel_cleanup)s'])
+>>> execute_test_sql(test_sql, cleanup=['%(RenameNonDefaultManyToManyTableModel_cleanup)s']) #RenameNonDefaultManyToManyTableModel
 %(RenameNonDefaultManyToManyTableModel)s
+
 """ % test_sql_mapping('rename_field')

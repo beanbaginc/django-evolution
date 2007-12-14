@@ -61,7 +61,7 @@ tests = r"""
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #BasicModel
 %(BasicModel)s
 
 # Delete a model with an m2m field
@@ -99,7 +99,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #CustomTableModel
 %(CustomTableModel)s
 
 # Delete a model with a custom table name and an m2m field
@@ -118,6 +118,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #CustomTableWithM2MModel
 %(CustomTableWithM2MModel)s
+
 """ % test_sql_mapping('delete_model')

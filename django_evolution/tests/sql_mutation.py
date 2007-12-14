@@ -87,7 +87,7 @@ CannotSimulate: Cannot simulate SQLMutations
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #SQLMutationOutput
 %(SQLMutationOutput)s
 
 """ % test_sql_mapping('sql_mutation')

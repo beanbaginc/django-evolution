@@ -78,7 +78,7 @@ tests = r"""
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
 ...     mutation.simulate('django_evolution', test_sig)
 Traceback (most recent call last):
 ...
@@ -89,7 +89,7 @@ SimulationFailure: Cannot create new column 'added_field' on 'django_evolution.T
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
 ...     mutation.simulate('django_evolution', test_sig)
 Traceback (most recent call last):
 ...
@@ -100,13 +100,13 @@ SimulationFailure: Cannot create new column 'added_field' on 'django_evolution.T
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
 ...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #AddNonNullNonCallableDatabaseColumnModel
 %(AddNonNullNonCallableDatabaseColumnModel)s
 
 # Add non-null with callable initial value
@@ -120,17 +120,18 @@ True
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'added_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>)"]
 
+# Now try with a good initial value
 >>> evolution = [AddField('TestModel', 'added_field', models.IntegerField, initial=AddSequenceFieldInitial('AddNonNullCallableDatabaseColumnModel'))]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
 ...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #AddNonNullCallableDatabaseColumnModel
 %(AddNonNullCallableDatabaseColumnModel)s
 
 # Add non-null with missing initial data
@@ -147,7 +148,7 @@ True
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
 ...     mutation.simulate('django_evolution', test_sig)
 Traceback (most recent call last):
 ...
@@ -157,26 +158,75 @@ EvolutionException: AddField mutation requires user-specified initial value.
 >>> class AddNullColumnWithInitialDatabaseColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
-...     added_field = models.CharField(null=True, max_length=26)
+...     added_field = models.IntegerField(null=True)
 
 >>> new_sig = test_proj_sig(('TestModel',AddNullColumnWithInitialDatabaseColumnModel), *anchors)
 >>> d = Diff(base_sig, new_sig)
 >>> print [str(e) for e in d.evolution()['django_evolution']]
-["AddField('TestModel', 'added_field', models.CharField, max_length=26, null=True)"]
+["AddField('TestModel', 'added_field', models.IntegerField, null=True)"]
 
->>> evolution = [AddField('TestModel', 'added_field', models.CharField, initial="'abc'", max_length=26, null=True)]
+>>> evolution = [AddField('TestModel', 'added_field', models.IntegerField, initial=1, null=True)]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
 ...     mutation.simulate('django_evolution', test_sig)
 
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #AddNullColumnWithInitialDatabaseColumnModel
 %(AddNullColumnWithInitialDatabaseColumnModel)s
 
+# Add a field that requires string-form initial data
+>>> class AddStringDatabaseColumnModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     added_field = models.CharField(max_length=10)
+
+>>> new_sig = test_proj_sig(('TestModel',AddStringDatabaseColumnModel), *anchors)
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['django_evolution']]
+["AddField('TestModel', 'added_field', models.CharField, initial=<<USER VALUE REQUIRED>>, max_length=10)"]
+
+>>> evolution = [AddField('TestModel', 'added_field', models.CharField, initial="'abc xyz'", max_length=10)]
+>>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
+>>> for mutation in evolution:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+
+>>> execute_test_sql(test_sql) #AddStringDatabaseColumnModel
+%(AddStringDatabaseColumnModel)s
+
+# # Add a field that requires date-form initial data
+# >>> class AddDateDatabaseColumnModel(models.Model):
+# ...     char_field = models.CharField(max_length=20)
+# ...     int_field = models.IntegerField()
+# ...     added_field = models.DateTimeField()
+# 
+# >>> new_sig = test_proj_sig(('TestModel',AddDateDatabaseColumnModel), *anchors)
+# >>> d = Diff(base_sig, new_sig)
+# >>> print [str(e) for e in d.evolution()['django_evolution']]
+# ["AddField('TestModel', 'added_field', models.DateTimeField, initial=<<USER VALUE REQUIRED>>)"]
+# 
+# >>> new_date = datetime(2007,12,13,16,42,0)
+# >>> evolution = [AddField('TestModel', 'added_field', models.DateTimeField, initial=new_date)]
+# >>> test_sig = copy.deepcopy(base_sig)
+# >>> test_sql = []
+# >>> for mutation in evolution:
+# ...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+# ...     mutation.simulate('django_evolution', test_sig)
+# 
+# >>> Diff(test_sig, new_sig).is_empty()
+# True
+# 
+# >>> execute_test_sql(test_sql) #AddDateDatabaseColumnModel
+# %(AddDateDatabaseColumnModel)s
+# 
 # Null field
 >>> class NullDatabaseColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
@@ -197,7 +247,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #NullDatabaseColumnModel
 %(NullDatabaseColumnModel)s
 
 # Field resulting in a new database column with a non-default name.
@@ -220,7 +270,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #NonDefaultDatabaseColumnModel
 %(NonDefaultDatabaseColumnModel)s
 
 # Field resulting in a new database column in a table with a non-default name.
@@ -246,7 +296,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #AddDatabaseColumnCustomTableModel
 %(AddDatabaseColumnCustomTableModel)s
 
 # Add Primary key field.
@@ -291,7 +341,7 @@ SimulationFailure: Cannot delete a primary key.
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql, debug=False)
+>>> execute_test_sql(test_sql, debug=False) #AddIndexedDatabaseColumnModel
 %(AddIndexedDatabaseColumnModel)s
 
 # Unique field.
@@ -314,7 +364,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #AddUniqueDatabaseColumnModel
 %(AddUniqueDatabaseColumnModel)s
 
 Foreign Key field.
@@ -337,7 +387,7 @@ Foreign Key field.
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(test_sql) #ForeignKeyDatabaseColumnModel
 %(ForeignKeyDatabaseColumnModel)s
 
 # M2M field between models with default table names.
@@ -363,7 +413,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql, cleanup=['%(AddManyToManyDatabaseTableModel_cleanup)s'])
+>>> execute_test_sql(test_sql, cleanup=['%(AddManyToManyDatabaseTableModel_cleanup)s']) #AddManyToManyDatabaseTableModel
 %(AddManyToManyDatabaseTableModel)s
 
 # M2M field between models with non-default table names.
@@ -389,7 +439,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql, cleanup=['%(AddManyToManyNonDefaultDatabaseTableModel_cleanup)s'])
+>>> execute_test_sql(test_sql, cleanup=['%(AddManyToManyNonDefaultDatabaseTableModel_cleanup)s']) #AddManyToManyNonDefaultDatabaseTableModel
 %(AddManyToManyNonDefaultDatabaseTableModel)s
 
 # M2M field between self
@@ -410,7 +460,7 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql, cleanup=['%(ManyToManySelf_cleanup)s'])
+>>> execute_test_sql(test_sql, cleanup=['%(ManyToManySelf_cleanup)s']) #ManyToManySelf
 %(ManyToManySelf)s
 
 """ % test_sql_mapping('add_field')
