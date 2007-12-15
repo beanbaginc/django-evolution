@@ -104,7 +104,7 @@ class Command(BaseCommand):
                             for s in sql:
                                 print unicode(s)
                         else:
-                            print '----- Evolution for %s' % app_label
+                            print '#----- Evolution for %s' % app_label
                             print 'from django_evolution.mutations import *'
                             print 'from django.db import models'
                             print 
@@ -112,7 +112,7 @@ class Command(BaseCommand):
                             print '   ',
                             print ',\n    '.join(unicode(m) for m in mutations)
                             print ']'
-                            print '----------------------'
+                            print '#----------------------'
 
                 else:
                     if verbosity > 1:
