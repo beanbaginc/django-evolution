@@ -131,7 +131,15 @@ class Command(BaseCommand):
         if simulated:
             diff = Diff(database_sig, current_proj_sig)
             if not diff.is_empty():
-                print self.style.ERROR('Simulation failure: Signatures do not match at end of simulation')
+                if hint:   
+                    print self.style.ERROR('Your models contain changes that Django Evolution cannot resolve automatically.')
+                    print 'This is probably due to a currently unimplemented mutation type.'
+                    print 'You will need to manually construct a mutation to resolve the remaining changes.'
+                else:
+                    print self.style.ERROR('The stored evolutions do not completely resolve all model changes.')
+                    print 'Run `./manage.py evolve --hint` to see a suggestion for the changes required.'
+                print
+                print 'The following are the changes that could not be resolved:'
                 print diff
                 sys.exit(1)
         else:
