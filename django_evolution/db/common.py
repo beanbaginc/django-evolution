@@ -1,6 +1,13 @@
 from django.core.management import color
 from django.db import connection, models
 
+def quote_sql_param(param):
+    "Add protective quoting around an SQL string parameter"
+    if isinstance(param, basestring):
+        return u"'%s'" % unicode(param).replace(u"'",ur"\'")
+    else:
+        return param
+
 def rename_table(old_db_tablename, db_tablename):
     if old_db_tablename == db_tablename:
         # No Operation
@@ -107,18 +114,18 @@ def add_column(model, f, initial):
             output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
             
             if callable(initial):
-                initial_data = initial()
+                params = (qn(model._meta.db_table), qn(f.column), initial(), qn(f.column))
+                output.append('UPDATE %s SET %s = %s WHERE %s IS NULL;' % params)
             else:
-                initial_data = initial
-            params = (qn(model._meta.db_table), qn(f.column), initial_data, qn(f.column))
-            output.append('UPDATE %s SET %s = %s WHERE %s IS NULL;' % params)
+                params = (qn(model._meta.db_table), qn(f.column), qn(f.column))
+                output.append(('UPDATE %s SET %s = %%s WHERE %s IS NULL;' % params, (initial,)))
             
             if not f.null:
                 # Only put this sql statement if the column cannot be null.
                 params = (qn(model._meta.db_table), qn(f.column))
                 output.append('ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;' % params)
         else:
-            params = (qn(model._meta.db_table), qn(f.column), f.db_type(),' '.join([null_constraints, unique_constraints]))    
+            params = (qn(model._meta.db_table), qn(f.column), f.db_type(),' '.join([null_constraints, unique_constraints]))
             output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
     return output
     

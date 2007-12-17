@@ -189,7 +189,7 @@ True
 >>> print [str(e) for e in d.evolution()['django_evolution']]
 ["AddField('TestModel', 'added_field', models.CharField, initial=<<USER VALUE REQUIRED>>, max_length=10)"]
 
->>> evolution = [AddField('TestModel', 'added_field', models.CharField, initial="'abc xyz'", max_length=10)]
+>>> evolution = [AddField('TestModel', 'added_field', models.CharField, initial="abc's xyz", max_length=10)]
 >>> test_sig = copy.deepcopy(base_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
@@ -202,31 +202,31 @@ True
 >>> execute_test_sql(test_sql) #AddStringDatabaseColumnModel
 %(AddStringDatabaseColumnModel)s
 
-# # Add a field that requires date-form initial data
-# >>> class AddDateDatabaseColumnModel(models.Model):
-# ...     char_field = models.CharField(max_length=20)
-# ...     int_field = models.IntegerField()
-# ...     added_field = models.DateTimeField()
-# 
-# >>> new_sig = test_proj_sig(('TestModel',AddDateDatabaseColumnModel), *anchors)
-# >>> d = Diff(base_sig, new_sig)
-# >>> print [str(e) for e in d.evolution()['django_evolution']]
-# ["AddField('TestModel', 'added_field', models.DateTimeField, initial=<<USER VALUE REQUIRED>>)"]
-# 
-# >>> new_date = datetime(2007,12,13,16,42,0)
-# >>> evolution = [AddField('TestModel', 'added_field', models.DateTimeField, initial=new_date)]
-# >>> test_sig = copy.deepcopy(base_sig)
-# >>> test_sql = []
-# >>> for mutation in evolution:
-# ...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-# ...     mutation.simulate('django_evolution', test_sig)
-# 
-# >>> Diff(test_sig, new_sig).is_empty()
-# True
-# 
-# >>> execute_test_sql(test_sql) #AddDateDatabaseColumnModel
-# %(AddDateDatabaseColumnModel)s
-# 
+# Add a field that requires date-form initial data
+>>> class AddDateDatabaseColumnModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     added_field = models.DateTimeField()
+
+>>> new_sig = test_proj_sig(('TestModel',AddDateDatabaseColumnModel), *anchors)
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['django_evolution']]
+["AddField('TestModel', 'added_field', models.DateTimeField, initial=<<USER VALUE REQUIRED>>)"]
+
+>>> new_date = datetime(2007,12,13,16,42,0)
+>>> evolution = [AddField('TestModel', 'added_field', models.DateTimeField, initial=new_date)]
+>>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
+>>> for mutation in evolution:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+
+>>> execute_test_sql(test_sql) #AddDateDatabaseColumnModel
+%(AddDateDatabaseColumnModel)s
+
 # Null field
 >>> class NullDatabaseColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)

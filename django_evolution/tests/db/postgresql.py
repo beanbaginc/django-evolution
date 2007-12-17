@@ -19,7 +19,7 @@ add_field = {
     'AddStringDatabaseColumnModel':
         '\n'.join([
             'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" varchar(10) ;',
-            'UPDATE "django_evolution_addbasemodel" SET "added_field" = \'abc xyz\' WHERE "added_field" IS NULL;',
+            'UPDATE "django_evolution_addbasemodel" SET "added_field" = \'abc\\\'s xyz\' WHERE "added_field" IS NULL;',
             'ALTER TABLE "django_evolution_addbasemodel" ALTER COLUMN "added_field" SET NOT NULL;',
         ]),
     'AddDateDatabaseColumnModel':

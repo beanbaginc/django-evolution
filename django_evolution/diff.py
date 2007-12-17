@@ -14,7 +14,7 @@ class AddFieldInitalCallback(object):
     def __init__(self):
         pass
 
-    def __str__(self):
+    def __repr__(self):
         return '<<USER VALUE REQUIRED>>'
 
     def __call__(self):

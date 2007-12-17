@@ -14,9 +14,13 @@ from django.db import connection, transaction
 
 from django_evolution import CannotSimulate, SimulationFailure
 from django_evolution.models import Version, Evolution
+from django_evolution.mutations import get_evolution_module
 from django_evolution.signature import create_project_sig
 from django_evolution.diff import Diff
 from django_evolution.evolve import get_unapplied_evolutions, get_mutations
+
+# Import the quote_sql_param function from the database backend.
+quote_sql_param = get_evolution_module().quote_sql_param
 
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
@@ -101,8 +105,11 @@ class Command(BaseCommand):
                     if not execute:
                         if compile_sql:
                             print ';; Compiled evolution SQL for %s' % app_label
-                            for s in sql:
-                                print unicode(s)
+                            for statement in sql:
+                                if isinstance(statement, tuple):
+                                    print unicode(statement[0] % tuple(quote_sql_param(s) for s in statement[1]))
+                                else:
+                                    print unicode(statement)
                         else:
                             print '#----- Evolution for %s' % app_label
                             print 'from django_evolution.mutations import *'
@@ -155,7 +162,10 @@ Type 'yes' to continue, or 'no' to cancel: """ % settings.DATABASE_NAME)
                     try:
                         # Perform the SQL
                         for statement in sql:
-                            cursor.execute(statement)  
+                            if isinstance(statement, tuple):
+                                cursor.execute(*statement)
+                            else:
+                                cursor.execute(statement)  
                         
                         # Now update the evolution table
                         version = Version(signature=current_signature)

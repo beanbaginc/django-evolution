@@ -230,13 +230,10 @@ class AddField(BaseMutation):
         str_output = ["'%s', '%s', models.%s" % params]
 
         if self.initial:
-            str_output.append('initial=%s' % self.initial)
+            str_output.append('initial=%s' % repr(self.initial))
 
         for key,value in self.field_attrs.items():
-            if isinstance(value, str):
-                str_output.append("%s='%s'" % (key,value))
-            else:
-                str_output.append("%s=%s" % (key,value))
+            str_output.append("%s=%s" % (key,repr(value)))
         return 'AddField(' + ', '.join(str_output) + ')'
 
     def simulate(self, app_label, proj_sig):    

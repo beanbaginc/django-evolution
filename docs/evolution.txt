@@ -463,8 +463,10 @@ rows will not have a value for the new field, you must either explicitly allow
 a value of NULL in the model definition, or you must provide an initial value.
 
 The initial value can be a literal (e.g., ``initial=3`` for an `IntegerField`), 
-or a callable that takes no arguments and returns a literal. The literal will 
-be inserted directly into the SQL ``INSERT`` statement that populates the new 
+or a callable that takes no arguments and returns a literal. If you use a literal,
+Django Evolution will apply any quoting required to protect the literal value.
+If you use a callable, the value returned by the callable will be inserted 
+directly into the SQL ``INSERT`` statement that populates the new 
 column, so it should be in a format appropriate for database insertion. 
 
 Example::
@@ -478,7 +480,7 @@ Example::
 
     # Add a note field, using a callable for the initial value.
     def initial_note_value():
-        return "Registered %s" % datetime.now()
+        return "'Registered %s'" % datetime.now()
     AddField('Author', 'note', models.CharField, max_length=100, initial=initial_note_value)
 
 DeleteField(model_name, field_name)

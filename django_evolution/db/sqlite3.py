@@ -1,6 +1,7 @@
 from django.core.management import color, sql
 from django.db import connection, models
 # NB Sqlite may allow non null column adds with a default value as part of its syntax.
+from common import quote_sql_param
 from common import delete_table, rename_table, create_index, add_m2m_table
 from common import add_column as common_add_column
 
@@ -71,17 +72,17 @@ def insert_to_temp_table(field, initial):
     if not initial:
         return []
 
-    if callable(initial):
-        initial_data = initial()
-    else:
-        initial_data = initial
-        
     params = {
         'table_name': qn(TEMP_TABLE_NAME),
         'column_name': qn(field.column),
-        'value': initial_data,
     }
-    return ['UPDATE %(table_name)s SET %(column_name)s = %(value)s;' % params]
+
+    if callable(initial):
+        params['value'] = initial()
+        return ["UPDATE %(table_name)s SET %(column_name)s = %(value)s;" % params]
+    else:
+        return [("UPDATE %(table_name)s SET %(column_name)s = %%s;" % params, (initial,))]
+        
 
 def create_temp_table(field_list):
     return create_table(TEMP_TABLE_NAME, field_list, True, False)
