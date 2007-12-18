@@ -1,6 +1,7 @@
 from django.core.management import color
 from django.db import connection
 
+from common import quote_sql_param
 from common import add_column, add_m2m_table, create_index
 from common import delete_column, delete_table
 from common import rename_table
