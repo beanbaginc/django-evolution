@@ -216,6 +216,16 @@ delete_model = {
         ]),
 }
 
+delete_application = {
+    'DeleteApplication':
+        '\n'.join([
+            'DROP TABLE "django_evolution_appdeleteanchor1";',
+            'DROP TABLE "django_evolution_appdeletebasemodel_anchor_m2m";',
+            'DROP TABLE "django_evolution_appdeletebasemodel";',
+            'DROP TABLE "app_delete_custom_add_anchor_table";',
+        ]),
+}
+
 rename_field = {
     'RenameColumnModel': 
         '\n'.join([

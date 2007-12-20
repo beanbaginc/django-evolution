@@ -14,7 +14,7 @@ from django.db import connection, transaction
 
 from django_evolution import CannotSimulate, SimulationFailure
 from django_evolution.models import Version, Evolution
-from django_evolution.mutations import get_evolution_module
+from django_evolution.mutations import get_evolution_module, DeleteApplication
 from django_evolution.signature import create_project_sig
 from django_evolution.diff import Diff
 from django_evolution.evolve import get_unapplied_evolutions, get_mutations
@@ -31,6 +31,8 @@ class Command(BaseCommand):
             help='Tells Django to NOT prompt the user for input of any kind.'),        
         make_option('--hint', action='store_true', dest='hint', default=False,
             help='Generate an evolution script that would update the app.'),
+        make_option('--purge', action='store_true', dest='purge', default=False,
+            help='Generate evolutions to delete stale applications.'),
         make_option('--sql', action='store_true', dest='compile_sql', default=False,
             help='Compile a Django evolution script into SQL.'),
         make_option('-x','--execute', action='store_true', dest='execute', default=False,
@@ -47,6 +49,7 @@ class Command(BaseCommand):
         execute = options['execute']
         compile_sql = options['compile_sql']
         hint = options['hint']
+        purge = options['purge']
         
         # Use the list of all apps, unless app labels are specified.
         if app_labels:
@@ -86,8 +89,9 @@ class Command(BaseCommand):
                 else:
                     evolutions = get_unapplied_evolutions(app)
                     mutations = get_mutations(app, evolutions)
-                
+
                 if mutations:
+                    sql.append(';; Evolve application %s' % app_label)
                     evolution_required = True
                     for mutation in mutations:
                         # Only compile SQL if we want to show it
@@ -103,8 +107,7 @@ class Command(BaseCommand):
                                             for label in evolutions)
                     
                     if not execute:
-                        if compile_sql:
-                            print ';; Compiled evolution SQL for %s' % app_label
+                        if compile_sql:                            
                             for statement in sql:
                                 if isinstance(statement, tuple):
                                     print unicode(statement[0] % tuple(quote_sql_param(s) for s in statement[1]))
@@ -124,13 +127,42 @@ class Command(BaseCommand):
                 else:
                     if verbosity > 1:
                         print 'Application %s is up to date' % app_label
+        
+            # Process the purged applications if requested to do so.
+            if purge:
+                if diff.deleted:
+                    evolution_required = True
+                    delete_app = DeleteApplication()
+                    purge_sql = []
+                    for app_label in diff.deleted:
+                        if compile_sql or execute:
+                            purge_sql.append(';; Purge application %s' % app_label)
+                            purge_sql.extend(delete_app.mutate(app_label, database_sig))
+                        delete_app.simulate(app_label, database_sig)
+                    
+                    if not execute:
+                        if compile_sql:
+                            for statement in purge_sql:
+                                if isinstance(statement, tuple):
+                                    print unicode(statement[0] % tuple(quote_sql_param(s) for s in statement[1]))
+                                else:
+                                    print unicode(statement)
+                        else:
+                            print 'The following application(s) can be purged:'
+                            for app_label in diff.deleted:
+                                print '    ', app_label
+                            print
+                else:
+                    if verbosity > 1:
+                        print 'No applications need to be purged.'
+                                    
         except SimulationFailure,s:
             print self.style.ERROR('Simulation failure: %s' % s)
             sys.exit(1)
             
         if simulated:
             diff = Diff(database_sig, current_proj_sig)
-            if not diff.is_empty():
+            if not diff.is_empty(not purge):
                 if hint:   
                     print self.style.ERROR('Your models contain changes that Django Evolution cannot resolve automatically.')
                     print 'This is probably due to a currently unimplemented mutation type.'

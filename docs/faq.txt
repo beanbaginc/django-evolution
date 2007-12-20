@@ -103,6 +103,7 @@ The following is a list of the model changes that we believe to be working:
     * Addition of Many To Many Fields.
     * Deletion of most fields (of any type).
     * Deletion of models.
+    * Deletion of entire applications.
     * Renaming of a field. Renames won't ever appear in a hinted evolution,
       but they can be manually added as a replacement for the Add+Delete pair
       that a hinted evolution will provide.
@@ -125,8 +126,6 @@ changes are known to cause difficulty:
     * Changes to the properties of a given field. Property changes are
       identified as a change during ``syncdb``, but there isn't a
       mutation that can apply those changes to the database.
-    * Deletion of applications. Again, these are identified, but
-      no mutation exists.
     * Deletion of primary keys (including adding a manual primary key as
       a replacement for an automatically installed primary key)
     * Deletion of fields referenced by other database constraints.
@@ -145,6 +144,36 @@ buggy or broken under MySQL:
     
 Improving MySQL support (as well as adding support for other database backends)
 is one big area where contributions would be most welcome. 
+
+Usage
+=====
+
+How do I remove an entire application from my project?
+------------------------------------------------------
+
+If you remove an application from the ``INSTALLED_APPS`` list, Django 
+Evolution will not attempt to remove the tables for this application.
+
+If you want to remove any tables associated with a deleted application,
+you must specify the ``--purge`` option to evolve. 
+
+Why does Django Evolution generate an error when hinting an evolution?
+----------------------------------------------------------------------
+
+Django Evolution is a work in progress. The infrastructure necessary to 
+identify model changes is in place and is (to the best of our knowledge)
+complete. However, the definitions required to handle every possible type
+of model change have not yet been developed. As a result, there are some types
+of change that you can make to a model for which Django Evolution cannot 
+produce a corresponding SQL mutation. 
+
+The most common source of these changes is a change to the properties of a 
+field - for example, adding ``null=True``, or changing the ``max_length``
+for a ``CharField``. 
+
+We hope to eventually support these changes with a hinted mutation. However, 
+in the interim, the workaround is to manually define an SQL mutation
+and include it as a stored evolution in your project.
 
 Design
 ======

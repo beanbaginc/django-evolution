@@ -4,6 +4,7 @@ from signature import tests as signature_tests
 from add_field import tests as add_field_tests
 from delete_field import tests as delete_field_tests
 from delete_model import tests as delete_model_tests
+from delete_app import tests as delete_app_tests
 from rename_field import tests as rename_field_tests
 from sql_mutation import tests as sql_mutation_tests
 
@@ -13,6 +14,7 @@ __test__ = {
     'add_field': add_field_tests,
     'delete_field': delete_field_tests,
     'delete_model': delete_model_tests,
+    'delete_app': delete_app_tests,
     'rename_field': rename_field_tests,
     'sql_mutation': sql_mutation_tests,
 }

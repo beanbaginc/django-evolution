@@ -425,6 +425,15 @@ evolutions.
     You cannot specify an application name if you are trying to execute an
     evolution. Evolutions must be applied across the entire database.
 
+--purge
+~~~~~~~
+
+Remove any stale applications from the database. 
+
+If you remove an application from the ``INSTALLED_APPS`` list, the database
+tables for that application also need to be removed. Django Evolution will 
+only remove these tables if you specify --purge as a command line argument.
+
 --noinput
 ~~~~~~~~~
 
@@ -556,7 +565,7 @@ Defining your own mutations
 
 If you have a special set of mutation requirements, you can define your own
 mutation. All you need to do is subclass
-``django_evolution.mutations.BaseMutation``, and include the mutation in an
+``django_evolution.mutations.BaseMutation``, and include the mutation in a
 stored evolution.
 
 More to come

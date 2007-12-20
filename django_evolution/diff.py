@@ -109,9 +109,17 @@ class Diff(object):
                             {}).setdefault('added',
                             []).append(field_name)
                     
-    def is_empty(self):
-        "Is this an empty diff? i.e., is the source and target the same?"
-        return not self.deleted and not self.changed
+    def is_empty(self, ignore_apps=True):        
+        """Is this an empty diff? i.e., is the source and target the same?
+        
+        Set 'ignore_apps=False' if you wish to ignore changes caused by
+        deleted applications. This is used when you don't purge deleted
+        applications during an evolve.
+        """
+        if ignore_apps:
+            return not self.changed
+        else:
+            return not self.deleted and not self.changed
         
     def __str__(self):
         "Output an application signature diff in a human-readable format"
@@ -160,5 +168,4 @@ class Diff(object):
                     # TODO: Define and utilize a ChangeField mutation
                     # mutations.setdefault(app_label,[]).append(ChangeField())
                     pass
-        
         return mutations

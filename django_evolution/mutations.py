@@ -397,3 +397,17 @@ class DeleteModel(BaseMutation):
         sql_statements += get_evolution_module().delete_table(model._meta.db_table)
 
         return sql_statements
+
+class DeleteApplication(BaseMutation):
+    def __str__(self):
+        return 'DeleteApplication()'
+        
+    def simulate(self, app_label, proj_sig):
+        del proj_sig[app_label]
+        
+    def mutate(self, app_label, proj_sig):
+        sql_statements = []
+        app_sig = proj_sig[app_label]
+        for model_name in app_sig.keys():
+            sql_statements.extend(DeleteModel(model_name).mutate(app_label, proj_sig))
+        return sql_statements
