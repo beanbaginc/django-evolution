@@ -86,14 +86,14 @@ If you want to know what has changed, you can use ask Django Evolution
 to provide a hint::
 
     $ ./manage.py evolve --hint
-    ----- Evolution for blogette
+    #----- Evolution for blogette
     from django_evoluton.mutations import *
     from django.db import models
 
     MUTATIONS = [
          DeleteField('Author', 'date_of_birth')
     ]
-    ----------------------
+    #----------------------
     Trial evolution successful.
     Run './manage.py evolve --execute' to apply evolution.
 
@@ -178,14 +178,14 @@ After making this change to the Author model, we know an evolution will be
 required; if we run ``evolve --hint`` we will get the exact change required::
 
     $ ./manage.py evolve --hint
-    ----- Evolution for blogette
+    #----- Evolution for blogette
     from django_evoluton.mutations import *
     from django.db import models
 
     MUTATIONS = [
          AddField('Author', 'location', models.CharField, max_length=100, null=True)
     ]
-    ----------------------
+    #----------------------
     Trial evolution successful.
     Run './manage.py evolve --execute' to apply evolution.
 
@@ -223,14 +223,14 @@ Now we can apply the evolution. We don't need a hint this time - we have
 a stored evolution, so we can just run ``evolve``::
 
     $ ./manage.py evolve
-    ----- Evolution for blogette
+    #----- Evolution for blogette
     from django_evoluton.mutations import *
     from django.db import models
 
     MUTATIONS = [
          AddField(Author, 'location', models.CharField, max_length=100, null=True)
     ]
-    ----------------------
+    #----------------------
     Trial evolution successful.
     Run './manage.py evolve --execute' to apply evolution.
 
@@ -279,14 +279,14 @@ We have now defined our SQL mutation, and how it should be executed, so we
 can trial the evolution::
 
     $ ./manage.py evolve
-    ----- Evolution for blogette
+    #----- Evolution for blogette
     from django_evoluton.mutations import *
     from django.db import models
 
     MUTATIONS = [
         SQLMutation('add_summary')
     ]
-    ----------------------
+    #----------------------
     Evolution could not be simulated, possibly due to raw SQL mutations.
 
 Unfortunately, Django Evolution can't simulate SQL mutations, so we can't be
@@ -321,7 +321,7 @@ If we run evolve, we can see the full sequence of mutations that will be
 applied::
 
     $ ./manage.py evolve
-    ----- Evolution for blogette
+    #----- Evolution for blogette
     from django_evoluton.mutations import *
     from django.db import models
 
@@ -329,7 +329,7 @@ applied::
         AddField(Author, 'location', models.CharField, max_length=100, null=True),
         SQLMutation('add_summary')
     ]
-    ----------------------
+    #----------------------
     Evolution could not be simulated, possibly due to raw SQL mutations.
 
 Again, since there is a raw SQL migration involved, we will need to validate
@@ -432,7 +432,8 @@ Remove any stale applications from the database.
 
 If you remove an application from the ``INSTALLED_APPS`` list, the database
 tables for that application also need to be removed. Django Evolution will 
-only remove these tables if you specify --purge as a command line argument.
+only remove these tables if you specify ``--purge`` as a command line 
+argument.
 
 --noinput
 ~~~~~~~~~
@@ -444,8 +445,8 @@ is being executed as an unattended, automated script.
 --verbosity
 ~~~~~~~~~~~
 
-Use ``--verbosity`` to specify the amount of notification and debug information
-that the evolve command should print to the console.
+Use ``--verbosity`` to specify the amount of notification and debug 
+information that the evolve command should print to the console.
 
 	* ``0`` means no input.
 	* ``1`` means normal input (default).
@@ -472,10 +473,10 @@ rows will not have a value for the new field, you must either explicitly allow
 a value of NULL in the model definition, or you must provide an initial value.
 
 The initial value can be a literal (e.g., ``initial=3`` for an `IntegerField`), 
-or a callable that takes no arguments and returns a literal. If you use a literal,
-Django Evolution will apply any quoting required to protect the literal value.
-If you use a callable, the value returned by the callable will be inserted 
-directly into the SQL ``INSERT`` statement that populates the new 
+or a callable that takes no arguments and returns a literal. If you use a 
+literal, Django Evolution will apply any quoting required to protect the 
+literal value. If you use a callable, the value returned by the callable will 
+be inserted directly into the SQL ``INSERT`` statement that populates the new 
 column, so it should be in a format appropriate for database insertion. 
 
 Example::
@@ -488,6 +489,8 @@ Example::
     AddField('Author', 'nickname', models.CharField, max_length=100, initial='That Guy')
 
     # Add a note field, using a callable for the initial value.
+    # Note that the value returned by the callable has been wrapped in
+    # quotes, so it is ready for database insertion.
     def initial_note_value():
         return "'Registered %s'" % datetime.now()
     AddField('Author', 'note', models.CharField, max_length=100, initial=initial_note_value)
@@ -508,10 +511,11 @@ RenameField(model_name, old_field_name, new_field_name, db_column=None, db_table
 Rename the field 'old_name' to 'new_name'. 
 
 ``db_column`` and ``db_table`` are optional arguments; if provided, they
-specify the new column/table name for the field. If you attempt to specify
-a table name for a normal or ForeignKey rename, an Exception will be raised; 
-similarly, and exception will be raised if you attempt to specify a column 
-name for a ManyToManyField rename. 
+specify the new column name (in the case of a value or ForeignKey field) or
+the new table name (in the case of a ManyToManyField). If you attempt to 
+specify a table name for a normal or ForeignKey rename, an Exception will 
+be raised; similarly, and exception will be raised if you attempt to specify 
+a column name for a ManyToManyField rename. 
 
 Example::
 
