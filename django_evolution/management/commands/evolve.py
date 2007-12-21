@@ -13,14 +13,12 @@ from django.db.models import get_apps, get_app, signals
 from django.db import connection, transaction
 
 from django_evolution import CannotSimulate, SimulationFailure
-from django_evolution.models import Version, Evolution
-from django_evolution.mutations import get_evolution_module, DeleteApplication
-from django_evolution.signature import create_project_sig
 from django_evolution.diff import Diff
 from django_evolution.evolve import get_unapplied_evolutions, get_mutations
-
-# Import the quote_sql_param function from the database backend.
-quote_sql_param = get_evolution_module().quote_sql_param
+from django_evolution.models import Version, Evolution
+from django_evolution.mutations import DeleteApplication
+from django_evolution.signature import create_project_sig
+from django_evolution.utils import write_sql, execute_sql
 
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
@@ -108,11 +106,7 @@ class Command(BaseCommand):
                     
                     if not execute:
                         if compile_sql:                            
-                            for statement in sql:
-                                if isinstance(statement, tuple):
-                                    print unicode(statement[0] % tuple(quote_sql_param(s) for s in statement[1]))
-                                else:
-                                    print unicode(statement)
+                            write_sql(sql)
                         else:
                             print '#----- Evolution for %s' % app_label
                             print 'from django_evolution.mutations import *'
@@ -142,11 +136,7 @@ class Command(BaseCommand):
                     
                     if not execute:
                         if compile_sql:
-                            for statement in purge_sql:
-                                if isinstance(statement, tuple):
-                                    print unicode(statement[0] % tuple(quote_sql_param(s) for s in statement[1]))
-                                else:
-                                    print unicode(statement)
+                            write_sql(purge_sql)
                         else:
                             print 'The following application(s) can be purged:'
                             for app_label in diff.deleted:
@@ -201,11 +191,7 @@ Type 'yes' to continue, or 'no' to cancel: """ % settings.DATABASE_NAME)
                     cursor = connection.cursor()
                     try:
                         # Perform the SQL
-                        for statement in sql:
-                            if isinstance(statement, tuple):
-                                cursor.execute(*statement)
-                            else:
-                                cursor.execute(statement)  
+                        execute_sql(cursor, sql)
                         
                         # Now update the evolution table
                         version = Version(signature=current_signature)

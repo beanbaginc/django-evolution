@@ -4,11 +4,8 @@ from django.db.backends.util import truncate_name
 from django.db import connection, transaction, settings, models
 
 from django_evolution import signature
-from django_evolution.mutations import get_evolution_module
 from django_evolution.tests import models as evo_test
-
-# Import the quote_sql_param function from the database backend.
-quote_sql_param = get_evolution_module().quote_sql_param
+from django_evolution.utils import write_sql, execute_sql
 
 DEFAULT_TEST_ATTRIBUTE_VALUES = {
     models.CharField: 'TestCharField',
@@ -31,7 +28,7 @@ def test_proj_sig(*models, **kwargs):
         
     return proj_sig
     
-def execute_sql(sql, output=False):
+def execute_transaction(sql, output=False):
     "A transaction wrapper for executing a list of SQL statements"
     try:
         # Begin Transaction
@@ -40,15 +37,10 @@ def execute_sql(sql, output=False):
         cursor = connection.cursor()
         
         # Perform the SQL
-        for statement in sql:
-            if isinstance(statement, tuple):
-                if output:
-                    print unicode(statement[0] % tuple(quote_sql_param(s) for s in statement[1]))
-                cursor.execute(*statement)
-            else:
-                if output:
-                    print unicode(statement)
-                cursor.execute(statement)            
+        if output:
+            write_sql(sql)
+        execute_sql(cursor, sql)
+        
         transaction.commit()
         transaction.leave_transaction_management()
     except Exception, ex:
@@ -69,28 +61,20 @@ def execute_test_sql(sql, cleanup=None, debug=False):
     SQL.
     """
     style = no_style()
-    execute_sql(sql_create(evo_test, style), output=debug)
-    execute_sql(sql_indexes(evo_test, style), output=debug)
+    execute_transaction(sql_create(evo_test, style), output=debug)
+    execute_transaction(sql_indexes(evo_test, style), output=debug)
     create_test_data(models.get_models(evo_test))
     
     if debug:
-        for statement in sql:
-            if isinstance(statement, tuple):
-                print unicode(statement[0] % tuple(quote_sql_param(s) for s in statement[1]))
-            else:
-                print statement
+        write_sql(sql)
     else:
-        execute_sql(sql, output=True)
+        execute_transaction(sql, output=True)
     if cleanup:
         if debug:
-            for statement in cleanup:
-                if isinstance(statement, tuple):
-                    print unicode(statement[0] % tuple(quote_sql_param(s) for s in statement[1]))
-                else:
-                    print statement
+            write_sql(cleanup)
         else:
-            execute_sql(cleanup, output=debug)
-    execute_sql(sql_delete(evo_test, style), output=debug)
+            execute_transaction(cleanup, output=debug)
+    execute_transaction(sql_delete(evo_test, style), output=debug)
     
 def create_test_data(app_models):
     deferred_models = []
