@@ -89,7 +89,7 @@ class Command(BaseCommand):
                     mutations = get_mutations(app, evolutions)
 
                 if mutations:
-                    sql.append(';; Evolve application %s' % app_label)
+                    sql.append('-- Evolve application %s' % app_label)
                     evolution_required = True
                     for mutation in mutations:
                         # Only compile SQL if we want to show it
@@ -130,7 +130,7 @@ class Command(BaseCommand):
                     purge_sql = []
                     for app_label in diff.deleted:
                         if compile_sql or execute:
-                            purge_sql.append(';; Purge application %s' % app_label)
+                            purge_sql.append('-- Purge application %s' % app_label)
                             purge_sql.extend(delete_app.mutate(app_label, database_sig))
                         delete_app.simulate(app_label, database_sig)
                     

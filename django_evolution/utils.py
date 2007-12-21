@@ -18,6 +18,8 @@ def execute_sql(cursor, sql):
     """
     for statement in sql:
         if isinstance(statement, tuple):
-            cursor.execute(*statement)
+            if not statement[0].startswith('--'):
+                cursor.execute(*statement)
         else:
-            cursor.execute(statement)  
+            if not statement.startswith('--'):
+                cursor.execute(statement)  
