@@ -1,6 +1,5 @@
 import copy
 
-from django.conf import settings
 from django.contrib.contenttypes import generic
 from django.db.models.fields import *
 from django.db.models.fields.related import *
@@ -9,12 +8,9 @@ from django.utils.functional import curry
 
 from django_evolution.signature import ATTRIBUTE_DEFAULTS, create_field_sig
 from django_evolution import CannotSimulate, SimulationFailure
+from django_evolution.db import evolver
 
 FK_INTEGER_TYPES = ['AutoField', 'PositiveIntegerField', 'PositiveSmallIntegerField']
-
-def get_evolution_module():
-    module_name = ['django_evolution.db',settings.DATABASE_ENGINE]
-    return __import__('.'.join(module_name),{},{},[''])
 
 def create_field(proj_sig, field_name, field_type, field_attrs):
     """
@@ -211,9 +207,9 @@ class DeleteField(BaseMutation):
         field_sig['field_type'] = field_type
         
         if field_type == models.ManyToManyField:
-            sql_statements = get_evolution_module().delete_table(field._get_m2m_db_table(model._meta))
+            sql_statements = evolver.delete_table(field._get_m2m_db_table(model._meta))
         else:            
-            sql_statements = get_evolution_module().delete_column(model, field)
+            sql_statements = evolver.delete_column(model, field)
             
         return sql_statements
         
@@ -267,10 +263,10 @@ class AddField(BaseMutation):
         model = MockModel(proj_sig, app_label, self.model_name, model_sig)
         field = create_field(proj_sig, self.field_name, self.field_type, self.field_attrs)
 
-        sql_statements = get_evolution_module().add_column(model, field, self.initial)
+        sql_statements = evolver.add_column(model, field, self.initial)
                                                
         # Create SQL index if necessary
-        sql_statements.extend(get_evolution_module().create_index(model, field))
+        sql_statements.extend(evolver.create_index(model, field))
 
         return sql_statements
 
@@ -290,7 +286,7 @@ class AddField(BaseMutation):
         field.m2m_column_name = curry(field._get_m2m_column_name, related)
         field.m2m_reverse_name = curry(field._get_m2m_reverse_name, related)
     
-        sql_statements = get_evolution_module().add_m2m_table(model, field)
+        sql_statements = evolver.add_m2m_table(model, field)
                             
         return sql_statements
         
@@ -365,9 +361,9 @@ class RenameField(BaseMutation):
             old_m2m_table = old_field._get_m2m_db_table(opts)
             new_m2m_table = new_field._get_m2m_db_table(opts)
             
-            return get_evolution_module().rename_table(old_m2m_table, new_m2m_table)
+            return evolver.rename_table(old_m2m_table, new_m2m_table)
         else:
-            return get_evolution_module().rename_column(opts, old_field, new_field)
+            return evolver.rename_column(opts, old_field, new_field)
 
 class DeleteModel(BaseMutation):
     def __init__(self, model_name):
@@ -392,9 +388,9 @@ class DeleteModel(BaseMutation):
             if field_sig['field_type'] == models.ManyToManyField:
                 field = model._meta.get_field(field_name)
                 m2m_table = field._get_m2m_db_table(model._meta)
-                sql_statements += get_evolution_module().delete_table(m2m_table)
+                sql_statements += evolver.delete_table(m2m_table)
         # Remove the table itself.
-        sql_statements += get_evolution_module().delete_table(model._meta.db_table)
+        sql_statements += evolver.delete_table(model._meta.db_table)
 
         return sql_statements
 

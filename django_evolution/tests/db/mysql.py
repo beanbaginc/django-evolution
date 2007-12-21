@@ -3,40 +3,40 @@ add_field = {
         '\n'.join([
             'ALTER TABLE `django_evolution_addbasemodel` ADD COLUMN `added_field` integer ;',
             'UPDATE `django_evolution_addbasemodel` SET `added_field` = 1 WHERE `added_field` IS NULL;',
-            'ALTER TABLE `django_evolution_addbasemodel` ALTER COLUMN `added_field` SET NOT NULL;',
+            'ALTER TABLE `django_evolution_addbasemodel` MODIFY COLUMN `added_field` integer NOT NULL;',
         ]),
     'AddNonNullCallableDatabaseColumnModel':
         '\n'.join([
             'ALTER TABLE `django_evolution_addbasemodel` ADD COLUMN `added_field` integer ;',
             'UPDATE `django_evolution_addbasemodel` SET `added_field` = `int_field` WHERE `added_field` IS NULL;',
-            'ALTER TABLE `django_evolution_addbasemodel` ALTER COLUMN `added_field` SET NOT NULL;',
+            'ALTER TABLE `django_evolution_addbasemodel` MODIFY COLUMN `added_field` integer NOT NULL;',
         ]),
     'AddNullColumnWithInitialDatabaseColumnModel':
         '\n'.join([
-            'ALTER TABLE `django_evolution_addbasemodel` ADD COLUMN `added_field` varchar(26) ;',
+            'ALTER TABLE `django_evolution_addbasemodel` ADD COLUMN `added_field` integer ;',
             'UPDATE `django_evolution_addbasemodel` SET `added_field` = 1 WHERE `added_field` IS NULL;',
         ]),
     'AddStringDatabaseColumnModel':
         '\n'.join([
             'ALTER TABLE `django_evolution_addbasemodel` ADD COLUMN `added_field` varchar(10) ;',
             'UPDATE `django_evolution_addbasemodel` SET `added_field` = \'abc\\\'s xyz\' WHERE `added_field` IS NULL;',
-            'ALTER TABLE `django_evolution_addbasemodel` ALTER COLUMN `added_field` SET NOT NULL;',
+            'ALTER TABLE `django_evolution_addbasemodel` MODIFY COLUMN `added_field` varchar(10) NOT NULL;',
         ]),
     'AddDateDatabaseColumnModel':
         '\n'.join([
-            'ALTER TABLE `django_evolution_addbasemodel` ADD COLUMN `added_field` timestamp with time zone ;',
+            'ALTER TABLE `django_evolution_addbasemodel` ADD COLUMN `added_field` datetime ;',
             'UPDATE `django_evolution_addbasemodel` SET `added_field` = 2007-12-13 16:42:00 WHERE `added_field` IS NULL;',
-            'ALTER TABLE `django_evolution_addbasemodel` ALTER COLUMN `added_field` SET NOT NULL;',
+            'ALTER TABLE `django_evolution_addbasemodel` MODIFY COLUMN `added_field` datetime NOT NULL;',
         ]),    
     'NullDatabaseColumnModel': 
-        'ALTER TABLE `django_evolution_addbasemodel` ADD COLUMN `added_field` integer NULL;',
+        'ALTER TABLE `django_evolution_addbasemodel` ADD COLUMN `added_field` integer NULL ;',
     'NonDefaultDatabaseColumnModel': 
-        'ALTER TABLE `django_evolution_addbasemodel` ADD COLUMN `non-default_column` integer NULL;',
-    'AddDatabaseColumnCustomTableModel': 
-        'ALTER TABLE `custom_table_name` ADD COLUMN `added_field` integer NULL;',
+        'ALTER TABLE `django_evolution_addbasemodel` ADD COLUMN `non-default_column` integer NULL ;',
+    'AddDatabaseColumnCustomTableModel':  
+        'ALTER TABLE `custom_table_name` ADD COLUMN `added_field` integer NULL ;',
     'AddIndexedDatabaseColumnModel': 
         '\n'.join([
-            'ALTER TABLE `django_evolution_addbasemodel` ADD COLUMN `add_field` integer NULL;',
+            'ALTER TABLE `django_evolution_addbasemodel` ADD COLUMN `add_field` integer NULL ;',
             'CREATE INDEX `django_evolution_addbasemodel_add_field` ON `django_evolution_addbasemodel` (`add_field`);'
         ]),
     'AddUniqueDatabaseColumnModel': 
@@ -121,10 +121,10 @@ delete_model = {
 delete_application = {
     'DeleteApplication':
         '\n'.join([
-            'DROP TABLE "django_evolution_appdeleteanchor1";',
-            'DROP TABLE "django_evolution_appdeletebasemodel_anchor_m2m";',
-            'DROP TABLE "django_evolution_appdeletebasemodel";',
-            'DROP TABLE "app_delete_custom_add_anchor_table";',
+            'DROP TABLE `django_evolution_appdeleteanchor1`;',
+            'DROP TABLE `django_evolution_appdeletebasemodel_anchor_m2m`;',
+            'DROP TABLE `django_evolution_appdeletebasemodel`;',
+            'DROP TABLE `app_delete_custom_add_anchor_table`;',
         ]),
 }
 

@@ -140,7 +140,6 @@ Support for MySQL is less complete. The following features are known to be
 buggy or broken under MySQL:
 
     * Renaming of primary key fields and foreign key fields
-    * Adding fields with non-null initial values.
     
 Improving MySQL support (as well as adding support for other database backends)
 is one big area where contributions would be most welcome. 

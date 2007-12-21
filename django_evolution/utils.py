@@ -1,13 +1,10 @@
-from django_evolution.mutations import get_evolution_module
-
-# Import the quote_sql_param function from the database backend.
-quote_sql_param = get_evolution_module().quote_sql_param
+from django_evolution.db import evolver
 
 def write_sql(sql):
     "Output a list of SQL statements, unrolling parameters as required"
     for statement in sql:
         if isinstance(statement, tuple):
-            print unicode(statement[0] % tuple(quote_sql_param(s) for s in statement[1]))
+            print unicode(statement[0] % tuple(evolver.quote_sql_param(s) for s in statement[1]))
         else:
             print unicode(statement)
 
