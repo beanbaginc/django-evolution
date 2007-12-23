@@ -11,14 +11,17 @@ except ImportError:
     from sets import Set as set #Python 2.3 Fallback
 
 class AddFieldInitalCallback(object):
-    def __init__(self):
-        pass
+    def __init__(self, app, model, field):
+        self.app = app
+        self.model = model
+        self.field = field
 
     def __repr__(self):
         return '<<USER VALUE REQUIRED>>'
 
     def __call__(self):
-        raise EvolutionException('AddField mutation requires user-specified initial value.')
+        raise EvolutionException("Cannot use hinted evolution: AddField mutation for '%s.%s' in '%s' requires user-specified initial value." % (
+                                    self.model, self.field, self.app))
                 
 class Diff(object):
     """
@@ -156,7 +159,7 @@ class Diff(object):
                     add_params.append(('field_type', field_sig['field_type']))
                     
                     if field_sig['field_type'] != models.ManyToManyField and not field_sig.get('null', ATTRIBUTE_DEFAULTS['null']):
-                        add_params.append(('initial', AddFieldInitalCallback()))
+                        add_params.append(('initial', AddFieldInitalCallback(app_label, model_name, field_name)))
                     if 'related_model' in field_sig:
                         add_params.append(('related_model', '%s' % field_sig['related_model']))
                     mutations.setdefault(app_label,[]).append(

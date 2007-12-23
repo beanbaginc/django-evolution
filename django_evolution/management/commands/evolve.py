@@ -146,8 +146,8 @@ class Command(BaseCommand):
                     if verbosity > 1:
                         print 'No applications need to be purged.'
                                     
-        except SimulationFailure,s:
-            print self.style.ERROR('Simulation failure: %s' % s)
+        except Exception, e:
+            print self.style.ERROR(e)
             sys.exit(1)
             
         if simulated:
