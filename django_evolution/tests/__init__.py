@@ -6,6 +6,7 @@ from delete_field import tests as delete_field_tests
 from delete_model import tests as delete_model_tests
 from delete_app import tests as delete_app_tests
 from rename_field import tests as rename_field_tests
+from change_field import tests as change_field_tests
 from sql_mutation import tests as sql_mutation_tests
 
 # Define doctests
@@ -16,5 +17,6 @@ __test__ = {
     'delete_model': delete_model_tests,
     'delete_app': delete_app_tests,
     'rename_field': rename_field_tests,
+    'change_field': change_field_tests,
     'sql_mutation': sql_mutation_tests,
 }

@@ -101,6 +101,32 @@ delete_field = {
         'ALTER TABLE "custom_table_name" DROP COLUMN "value" CASCADE;',
 }
 
+change_field = {
+    "SetNotNullChangeModelDiff":
+        '\n'.join([
+            "In model django_evolution.TestModel:",
+            "    In field 'char_field1':",
+            "        Property 'null' has changed",]),
+    "SetNotNullChangeModelWithConstant":
+        '\n'.join([
+            'UPDATE "django_evolution_changebasemodel" SET "char_field1" = \'abc\\\'s xyz\' WHERE "char_field1" IS NULL;',
+            'ALTER TABLE "django_evolution_changebasemodel" ALTER COLUMN "char_field1" SET NOT NULL;',
+        ]),
+    "SetNotNullChangeModelWithCallable":
+            '\n'.join([
+                'UPDATE "django_evolution_changebasemodel" SET "char_field1" = "char_field" WHERE "char_field1" IS NULL;',
+                'ALTER TABLE "django_evolution_changebasemodel" ALTER COLUMN "char_field1" SET NOT NULL;',
+            ]),
+    "SetNullChangeModelDiff":
+        '\n'.join([
+            "In model django_evolution.TestModel:",
+            "    In field 'char_field2':",
+            "        Property 'null' has changed",]),
+    "SetNullChangeModel": 'ALTER TABLE "django_evolution_changebasemodel" ALTER COLUMN "char_field2" DROP NOT NULL;',
+    "NoOpChangeModelDiff": '<BLANKLINE>',
+    "NoOpChangeModel": '',
+}
+
 delete_model = {
     'BasicModel': 
         'DROP TABLE "django_evolution_basicmodel";',

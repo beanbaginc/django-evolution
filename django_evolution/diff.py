@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models.fields.related import *
 
 from django_evolution import EvolutionException
-from django_evolution.mutations import DeleteField, AddField, DeleteModel
+from django_evolution.mutations import DeleteField, AddField, DeleteModel, ChangeField
 from django_evolution.signature import ATTRIBUTE_DEFAULTS
 
 try:
@@ -10,7 +10,7 @@ try:
 except ImportError:
     from sets import Set as set #Python 2.3 Fallback
 
-class AddFieldInitalCallback(object):
+class NullFieldInitalCallback(object):
     def __init__(self, app, model, field):
         self.app = app
         self.model = model
@@ -20,9 +20,9 @@ class AddFieldInitalCallback(object):
         return '<<USER VALUE REQUIRED>>'
 
     def __call__(self):
-        raise EvolutionException("Cannot use hinted evolution: AddField mutation for '%s.%s' in '%s' requires user-specified initial value." % (
+        raise EvolutionException("Cannot use hinted evolution: AddField or ChangeField mutation for '%s.%s' in '%s' requires user-specified initial value." % (
                                     self.model, self.field, self.app))
-                
+
 class Diff(object):
     """
     A diff between two model signatures.
@@ -159,7 +159,7 @@ class Diff(object):
                     add_params.append(('field_type', field_sig['field_type']))
                     
                     if field_sig['field_type'] != models.ManyToManyField and not field_sig.get('null', ATTRIBUTE_DEFAULTS['null']):
-                        add_params.append(('initial', AddFieldInitalCallback(app_label, model_name, field_name)))
+                        add_params.append(('initial', NullFieldInitalCallback(app_label, model_name, field_name)))
                     if 'related_model' in field_sig:
                         add_params.append(('related_model', '%s' % field_sig['related_model']))
                     mutations.setdefault(app_label,[]).append(
@@ -168,7 +168,13 @@ class Diff(object):
                     mutations.setdefault(app_label,[]).append(
                         DeleteField(model_name, field_name))
                 for field_name,field_change in change.get('changed',{}).items():
-                    # TODO: Define and utilize a ChangeField mutation
-                    # mutations.setdefault(app_label,[]).append(ChangeField())
-                    pass
+                    changed_attrs = {}
+                    current_field_sig = self.current_sig[app_label][model_name]['fields'][field_name]
+                    for prop in field_change:
+                        changed_attrs[prop] = current_field_sig.get(prop, ATTRIBUTE_DEFAULTS[prop])
+                    if changed_attrs.has_key('null') and \
+                        current_field_sig['field_type'] != models.ManyToManyField and \
+                        not current_field_sig.get('null', ATTRIBUTE_DEFAULTS['null']):
+                        changed_attrs['initial'] = NullFieldInitalCallback(app_label, model_name, field_name)
+                    mutations.setdefault(app_label,[]).append(ChangeField(model_name, field_name, **changed_attrs))
         return mutations

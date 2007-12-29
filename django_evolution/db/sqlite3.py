@@ -171,3 +171,19 @@ class EvolutionOperations(BaseEvolutionOperations):
         output.extend(self.copy_from_temp_table(table_name, new_fields))
         output.extend(self.delete_table(TEMP_TABLE_NAME))
         return output
+
+    def change_null(self, model, field_name, new_null_attr, initial=None):
+        output = []
+        opts = model._meta
+        table_name = opts.db_table
+        opts.get_field(field_name).null = new_null_attr
+        fields = opts.fields
+        
+        output.extend(self.create_temp_table(fields))
+        output.extend(self.copy_to_temp_table(table_name, fields))
+        output.extend(self.insert_to_temp_table(opts.get_field(field_name), initial))
+        output.extend(self.delete_table(table_name))
+        output.extend(self.create_table(table_name, fields, create_index=False))
+        output.extend(self.copy_from_temp_table(table_name, fields))
+        output.extend(self.delete_table(TEMP_TABLE_NAME))
+        return output

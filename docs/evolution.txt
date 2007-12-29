@@ -495,6 +495,31 @@ Example::
         return "'Registered %s'" % datetime.now()
     AddField('Author', 'note', models.CharField, max_length=100, initial=initial_note_value)
 
+ChangeField(model_name, field_name, initial=None, \*\*kwargs)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Change database affecting attributes of the field 'field_name' to the model. Changes to the field
+are specified using keyword arguments such as ''null=True'' and ''max_length=20''.
+
+Like the AddField, if the change to the field is to set ''null=False'', an initial value must be provided
+as either a literal or a callable. 
+
+The ChangeField will accept both changed attributes and unchanged attributes of a field. This means
+that if a CharField has a modified ''max_length'', its ''null'' attribute may be re-specified in the ChangeField.
+The ChangeField will detect that the ''null'' attribute was specified but not changed and will silently ignore
+the re-specification. 
+
+Example::
+	# Adding a null constraint to the birthday field.
+	ChangeField('Author', 'date_of_birth', null=True)
+	
+	# Increasing the size of the author's name.
+	ChangeField('Author', 'name', max_length=100)
+	
+.. note::
+	The ChangeField only supports the null attribute at this time.
+
+
 DeleteField(model_name, field_name)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -580,10 +605,8 @@ appreciate any help or suggestions you may have. The following are some examples
 of features that we would like to add:
 
    1. Support for more mutation types, including:
-       a. ChangeField - to change properties on a model field such as
-          ``max_length``,
-       b. ChangeModel - to handle model constraints like ``unique_together``,
-       c. ChangeData - to handle data changes without a corresponding field
+       a. ChangeModel - to handle model constraints like ``unique_together``,
+       b. ChangeData - to handle data changes without a corresponding field
           definition change.
 
    2. Improving support for the MySQL database backend

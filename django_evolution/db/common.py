@@ -123,16 +123,19 @@ class BaseEvolutionOperations(object):
             
                 if not f.null:
                     # Only put this sql statement if the column cannot be null.
-                    output.append(self.set_field_not_null(model, f))
+                    output.append(self.set_field_null(model, f, f.null))
             else:
                 params = (qn(model._meta.db_table), qn(f.column), f.db_type(),' '.join([null_constraints, unique_constraints]))
                 output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
         return output
 
-    def set_field_not_null(self, model, f):
+    def set_field_null(self, model, f, null):
         qn = connection.ops.quote_name
-        params = (qn(model._meta.db_table), qn(f.column))
-        return 'ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;' % params
+        params = (qn(model._meta.db_table), qn(f.column),)
+        if null:
+           return 'ALTER TABLE %s ALTER COLUMN %s DROP NOT NULL;' % params
+        else:
+            return 'ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;' % params 
     
     def create_index(self, model, f):
         "Returns the CREATE INDEX SQL statements."
@@ -159,4 +162,27 @@ class BaseEvolutionOperations(object):
                 "%s;" % tablespace_sql
             )
         #### END duplicated code
+        return output
+        
+    def change_null(self, model, field_name, new_null_attr, initial=None):
+        qn = connection.ops.quote_name
+        opts = model._meta
+        f = opts.get_field(field_name)
+        output = []
+        if new_null_attr:
+            # Setting null to True
+            opts = model._meta
+            params = (qn(opts.db_table), qn(f.column),)
+            output.append(self.set_field_null(model, f, new_null_attr))
+        else:
+            if initial:
+                output = []
+                if callable(initial):
+                    params = (qn(opts.db_table), qn(f.column), initial(), qn(f.column))
+                    output.append('UPDATE %s SET %s = %s WHERE %s IS NULL;' % params)
+                else:
+                    params = (qn(opts.db_table), qn(f.column), qn(f.column))
+                    output.append(('UPDATE %s SET %s = %%s WHERE %s IS NULL;' % params, (initial,)))
+            output.append(self.set_field_null(model, f, new_null_attr))
+            
         return output

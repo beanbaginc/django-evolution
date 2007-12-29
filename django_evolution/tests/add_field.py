@@ -152,7 +152,7 @@ True
 ...     mutation.simulate('django_evolution', test_sig)
 Traceback (most recent call last):
 ...
-EvolutionException: Cannot use hinted evolution: AddField mutation for 'TestModel.added_field' in 'django_evolution' requires user-specified initial value.
+EvolutionException: Cannot use hinted evolution: AddField or ChangeField mutation for 'TestModel.added_field' in 'django_evolution' requires user-specified initial value.
 
 # Add nullable column with initial data
 >>> class AddNullColumnWithInitialDatabaseColumnModel(models.Model):

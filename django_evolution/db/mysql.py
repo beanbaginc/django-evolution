@@ -41,8 +41,11 @@ class EvolutionOperations(BaseEvolutionOperations):
         params = (qn(opts.db_table), qn(old_field.column), ' '.join(field_output))
         return ['ALTER TABLE %s CHANGE %s %s;' % params]
 
-    def set_field_not_null(self, model, f):
+    def set_field_null(self, model, f, null):
         qn = connection.ops.quote_name
         params = (qn(model._meta.db_table), qn(f.column),f.db_type())
-        return 'ALTER TABLE %s MODIFY COLUMN %s %s NOT NULL;' % params
+        if null:
+            return 'ALTER TABLE %s MODIFY COLUMN %s %s DEFAULT NULL;' % params
+        else:
+            return 'ALTER TABLE %s MODIFY COLUMN %s %s NOT NULL;' % params
 

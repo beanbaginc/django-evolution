@@ -364,7 +364,60 @@ class RenameField(BaseMutation):
             return evolver.rename_table(old_m2m_table, new_m2m_table)
         else:
             return evolver.rename_column(opts, old_field, new_field)
+            
+class ChangeField(BaseMutation):
+    def __init__(self, model_name, field_name, initial=None, **kwargs):
+        self.model_name = model_name
+        self.field_name = field_name
+        self.field_attrs = kwargs
+        self.initial = initial
+        
+    def __str__(self):
+        field_attr_params = ['%s=%s' % item for item in self.field_attrs.items()]
+        params = (self.model_name, self.field_name, self.initial,', '.join(field_attr_params))
+        return 'ChangeField("%s", "%s", initial=%s, %s)' % params
+        
+    def simulate(self, app_label, proj_sig):
+        app_sig = proj_sig[app_label]
+        model_sig = app_sig[self.model_name]
+        field_sig = model_sig['fields'][self.field_name]
 
+        # Catch for no-op changes.
+        for field_attr, attr_value in self.field_attrs.items():
+            field_sig[field_attr] = attr_value
+            
+        if field_sig['field_type'] != models.ManyToManyField and not self.field_attrs.get('null', ATTRIBUTE_DEFAULTS['null']):
+            if self.initial is None:
+                raise SimulationFailure("Cannot change column '%s' on '%s.%s' without a non-null initial value." % (
+                        self.field_name, app_label, self.model_name))
+        
+    def mutate(self, app_label, proj_sig):
+        app_sig = proj_sig[app_label]
+        model_sig = app_sig[self.model_name]        
+        old_field_sig = model_sig['fields'][self.field_name]
+        model = MockModel(proj_sig, app_label, self.model_name, model_sig)
+        
+        sql_statements = []
+        for field_attr, attr_value in self.field_attrs.items():
+            old_field_attr = old_field_sig.get(field_attr, ATTRIBUTE_DEFAULTS[field_attr])
+            # Avoid useless SQL commands if nothing has changed.
+            if not old_field_attr == attr_value:
+                try:
+                    evolver_func = getattr(evolver, 'change_%s' % field_attr)
+                    if field_attr == 'null':
+                        sql_statements.extend(evolver_func(model, self.field_name, attr_value, self.initial))
+                    else:
+                        sql_statements.extend(evolver_func(model, self.field_name, attr_value))
+                except AttributeError, ae:
+                    #raise ae
+                    raise NotImplementedError("ChangeField does not support modifying the '%s' attribute." % field_attr)
+                    #print dir(evolver)
+                    #print hasattr(evolver, 'change_null')
+                    #print getattr(evolver, 'change_null')
+        
+        
+        return sql_statements
+ 
 class DeleteModel(BaseMutation):
     def __init__(self, model_name):
         self.model_name = model_name

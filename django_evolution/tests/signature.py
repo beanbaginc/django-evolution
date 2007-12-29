@@ -130,9 +130,8 @@ False
 >>> d.is_empty()
 False
 
-# TODO: Eventually this will list the hinted ChangeFields
->>> print d.evolution()
-{}
+>>> print [str(e) for e in d.evolution()['django_evolution']]
+['ChangeField("TestModel", "age", initial=None, null=True)']
 
 # Since we can't check the evolutions, check the diff instead
 >>> print d
@@ -164,9 +163,9 @@ True
 False
 
 # TODO: Eventually this will list the hinted ChangeFields
->>> print d.evolution()
-{}
-
+>>> print [str(e) for e in d.evolution()['django_evolution']]
+['ChangeField("TestModel", "name", initial=None, max_length=30)']
+ 
 # Since we can't check the evolutions, check the diff instead
 >>> print d
 In model django_evolution.TestModel:
