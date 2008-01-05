@@ -25,10 +25,11 @@ tests = r"""
 # Changing the db_table of a many to many relationship
 # Adding an index
 # Removing an index
-# Adding a primary key constraint
-# Removing a Primary Key (Changing the primary key column)
+
 # Adding a unique constraint
 # Removing a unique constraint
+# Adding a primary key constraint
+# Removing a Primary Key (Changing the primary key column)
 # Changing more than one attribute at a time
 # Redundant attributes. (Some attribute have changed, while others haven't but are specified anyway.)
 
@@ -242,6 +243,7 @@ True
 >>> execute_test_sql(test_sql)
 %(NoOpChangeModel)s
 
+# Increasing the max_length of a character field
 >>> class IncreasingMaxLengthChangeModel(models.Model):
 ...     my_id = models.AutoField(primary_key=True)
 ...     alt_pk = models.IntegerField()
@@ -274,6 +276,7 @@ True
 >>> execute_test_sql(test_sql)
 %(IncreasingMaxLengthChangeModel)s
 
+# Decreasing the max_length of a character field
 >>> class DecreasingMaxLengthChangeModel(models.Model):
 ...     my_id = models.AutoField(primary_key=True)
 ...     alt_pk = models.IntegerField()
@@ -306,6 +309,7 @@ True
 >>> execute_test_sql(test_sql)
 %(DecreasingMaxLengthChangeModel)s
 
+# Renaming a column
 >>> class DBColumnChangeModel(models.Model):
 ...     my_id = models.AutoField(primary_key=True)
 ...     alt_pk = models.IntegerField()
@@ -338,6 +342,7 @@ True
 >>> execute_test_sql(test_sql)
 %(DBColumnChangeModel)s
 
+# Changing the db_table of a many to many relationship
 >>> class M2MDbTableChangeModel(models.Model):
 ...     my_id = models.AutoField(primary_key=True)
 ...     alt_pk = models.IntegerField()
@@ -370,6 +375,7 @@ True
 >>> execute_test_sql(test_sql, cleanup=['%(M2MDbTableChangeModel_cleanup)s'])
 %(M2MDbTableChangeModel)s
 
+# Adding an index
 >>> class AddDbIndexChangeModel(models.Model):
 ...     my_id = models.AutoField(primary_key=True)
 ...     alt_pk = models.IntegerField()
@@ -402,6 +408,7 @@ True
 >>> execute_test_sql(test_sql)
 %(AddDbIndexChangeModel)s
 
+# Removing an index
 >>> class RemoveDbIndexChangeModel(models.Model):
 ...     my_id = models.AutoField(primary_key=True)
 ...     alt_pk = models.IntegerField()
@@ -433,4 +440,77 @@ True
 
 >>> execute_test_sql(test_sql)
 %(RemoveDbIndexChangeModel)s
+
+# Adding a unique constraint
+>>> class AddUniqueChangeModel(models.Model):
+...     my_id = models.AutoField(primary_key=True)
+...     alt_pk = models.IntegerField()
+...     int_field = models.IntegerField(db_column='custom_db_column')
+...     int_field1 = models.IntegerField(db_index=True)
+...     int_field2 = models.IntegerField(db_index=False)
+...     int_field3 = models.IntegerField(unique=True)
+...     int_field4 = models.IntegerField(unique=True)
+...     char_field = models.CharField(max_length=20)
+...     char_field1 = models.CharField(max_length=25, null=True)
+...     char_field2 = models.CharField(max_length=30, null=False)
+...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+
+>>> new_sig = test_proj_sig(('TestModel', AddUniqueChangeModel), *anchors)
+>>> d = Diff(base_sig, new_sig)
+>>> print d
+%(AddUniqueChangeModelDiff)s
+
+>>> print [str(e) for e in d.evolution()['django_evolution']]
+['ChangeField("TestModel", "int_field4", initial=None, unique=True)']
+ 
+>>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+ 
+>>> execute_test_sql(test_sql)
+%(AddUniqueChangeModel)s
+
+# Remove a unique constraint
+>>> class RemoveUniqueChangeModel(models.Model):
+...     my_id = models.AutoField(primary_key=True)
+...     alt_pk = models.IntegerField()
+...     int_field = models.IntegerField(db_column='custom_db_column')
+...     int_field1 = models.IntegerField(db_index=True)
+...     int_field2 = models.IntegerField(db_index=False)
+...     int_field3 = models.IntegerField(unique=False)
+...     int_field4 = models.IntegerField(unique=False)
+...     char_field = models.CharField(max_length=20)
+...     char_field1 = models.CharField(max_length=25, null=True)
+...     char_field2 = models.CharField(max_length=30, null=False)
+...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+
+>>> new_sig = test_proj_sig(('TestModel', RemoveUniqueChangeModel), *anchors)
+>>> d = Diff(base_sig, new_sig)
+>>> print d
+%(RemoveUniqueChangeModelDiff)s
+
+>>> print [str(e) for e in d.evolution()['django_evolution']]
+['ChangeField("TestModel", "int_field3", initial=None, unique=False)']
+ 
+>>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+ 
+>>> execute_test_sql(test_sql)
+%(RemoveUniqueChangeModel)s
+
 """ % test_sql_mapping('change_field')
+
+
+
+

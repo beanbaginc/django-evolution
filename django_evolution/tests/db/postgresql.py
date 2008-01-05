@@ -168,6 +168,20 @@ change_field = {
             "        Property 'db_index' has changed",
         ]),
     "RemoveDbIndexChangeModel": 'DROP INDEX "django_evolution_changebasemodel_int_field1";',
+    "AddUniqueChangeModelDiff": 
+        '\n'.join([
+            "In model django_evolution.TestModel:",
+            "    In field 'int_field4':",
+            "        Property 'unique' has changed",
+        ]),
+    "AddUniqueChangeModel": 'ALTER TABLE django_evolution_changebasemodel ADD CONSTRAINT django_evolution_changebasemodel_int_field4_key UNIQUE(int_field4);',
+    "RemoveUniqueChangeModelDiff": 
+        '\n'.join([
+            "In model django_evolution.TestModel:",
+            "    In field 'int_field3':",
+            "        Property 'unique' has changed",
+        ]),
+    "RemoveUniqueChangeModel": 'ALTER TABLE django_evolution_changebasemodel DROP CONSTRAINT django_evolution_changebasemodel_int_field3_key;',
 }
 
 delete_model = {

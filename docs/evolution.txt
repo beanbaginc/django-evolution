@@ -517,7 +517,7 @@ Example::
 	ChangeField('Author', 'name', max_length=100)
 	
 .. note::
-	The ChangeField only supports the null, max_length, db_column, db_index and db_table (for many to many fields) attribute at this time.
+	The ChangeField only supports the null, max_length, unique, db_column, db_index and db_table (for many to many fields) attribute at this time.
 
 
 DeleteField(model_name, field_name)

@@ -309,6 +309,36 @@ change_field = {
                 "        Property 'db_index' has changed",
             ]),
         "RemoveDbIndexChangeModel": 'DROP INDEX "django_evolution_changebasemodel_int_field1";',
+        "AddUniqueChangeModelDiff": 
+            '\n'.join([
+                "In model django_evolution.TestModel:",
+                "    In field 'int_field4':",
+                "        Property 'unique' has changed",
+            ]),
+        "AddUniqueChangeModel": 
+            '\n'.join([
+                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL UNIQUE, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "django_evolution_changebasemodel";',
+                'DROP TABLE "django_evolution_changebasemodel";',
+                'CREATE TABLE "django_evolution_changebasemodel"("int_field4" integer NOT NULL UNIQUE, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+                'INSERT INTO "django_evolution_changebasemodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+                'DROP TABLE "TEMP_TABLE";',
+            ]),
+            "RemoveUniqueChangeModelDiff": 
+                '\n'.join([
+                    "In model django_evolution.TestModel:",
+                    "    In field 'int_field3':",
+                    "        Property 'unique' has changed",
+                ]),
+            "RemoveUniqueChangeModel": 
+                '\n'.join([
+                    'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+                    'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "django_evolution_changebasemodel";',
+                    'DROP TABLE "django_evolution_changebasemodel";',
+                    'CREATE TABLE "django_evolution_changebasemodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+                    'INSERT INTO "django_evolution_changebasemodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+                    'DROP TABLE "TEMP_TABLE";',
+                ]),
 }
 
 delete_model = {
