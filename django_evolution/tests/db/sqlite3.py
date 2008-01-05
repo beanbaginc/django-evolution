@@ -241,6 +241,74 @@ change_field = {
         ]),
     "NoOpChangeModelDiff": '<BLANKLINE>',
     "NoOpChangeModel": '',
+    "IncreasingMaxLengthChangeModelDiff": 
+        '\n'.join([
+            "In model django_evolution.TestModel:",
+            "    In field 'char_field':",
+            "        Property 'max_length' has changed",
+        ]),
+    "IncreasingMaxLengthChangeModel": 
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(45) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "django_evolution_changebasemodel";',
+            'DROP TABLE "django_evolution_changebasemodel";',
+            'CREATE TABLE "django_evolution_changebasemodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(45) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+            'INSERT INTO "django_evolution_changebasemodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ]),
+    "DecreasingMaxLengthChangeModelDiff": 
+        '\n'.join([
+            "In model django_evolution.TestModel:",
+            "    In field 'char_field':",
+            "        Property 'max_length' has changed",
+        ]),
+    "DecreasingMaxLengthChangeModel": 
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(1) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "django_evolution_changebasemodel";',
+            'DROP TABLE "django_evolution_changebasemodel";',
+            'CREATE TABLE "django_evolution_changebasemodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(1) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+            'INSERT INTO "django_evolution_changebasemodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ]),
+        "DBColumnChangeModelDiff": 
+            '\n'.join([
+                "In model django_evolution.TestModel:",
+                "    In field 'int_field':",
+                "        Property 'db_column' has changed",
+            ]),
+        "DBColumnChangeModel": 
+            '\n'.join([
+                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "customised_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "django_evolution_changebasemodel";',
+                'DROP TABLE "django_evolution_changebasemodel";',
+                'CREATE TABLE "django_evolution_changebasemodel"("int_field4" integer NOT NULL, "customised_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+                'CREATE INDEX "django_evolution_changebasemodel_int_field1" ON "django_evolution_changebasemodel" ("int_field1");',
+                'INSERT INTO "django_evolution_changebasemodel" ("int_field4", "customised_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "customised_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+                'DROP TABLE "TEMP_TABLE";',
+            ]),
+        "M2MDbTableChangeModelDiff": 
+            '\n'.join([
+                "In model django_evolution.TestModel:",
+                "    In field 'm2m_field1':",
+                "        Property 'db_table' has changed",
+            ]),
+        "M2MDbTableChangeModel": 'ALTER TABLE "django_evolution_changebasemodel" RENAME TO "custom_m2m_db_table_name";',
+        "M2MDbTableChangeModel_cleanup": 'DROP TABLE "custom_m2m_db_table_name";',
+        "AddDbIndexChangeModelDiff": 
+            '\n'.join([
+                "In model django_evolution.TestModel:",
+                "    In field 'int_field2':",
+                "        Property 'db_index' has changed",
+            ]),
+        "AddDbIndexChangeModel": 'CREATE INDEX "django_evolution_changebasemodel_int_field2" ON "django_evolution_changebasemodel" ("int_field2");',
+        "RemoveDbIndexChangeModelDiff": 
+            '\n'.join([
+                "In model django_evolution.TestModel:",
+                "    In field 'int_field1':",
+                "        Property 'db_index' has changed",
+            ]),
+        "RemoveDbIndexChangeModel": 'DROP INDEX "django_evolution_changebasemodel_int_field1";',
 }
 
 delete_model = {

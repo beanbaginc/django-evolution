@@ -173,10 +173,16 @@ class EvolutionOperations(BaseEvolutionOperations):
         return output
 
     def change_null(self, model, field_name, new_null_attr, initial=None):
+        return self.change_attribute(model, field_name, 'null', new_null_attr, initial)
+        
+    def change_max_length(self, model, field_name, new_max_length, initial=None):
+        return self.change_attribute(model, field_name, 'max_length', new_max_length, initial)
+        
+    def change_attribute(self, model, field_name, attr_name, new_attr_value, initial=None):
         output = []
         opts = model._meta
         table_name = opts.db_table
-        opts.get_field(field_name).null = new_null_attr
+        setattr(opts.get_field(field_name), attr_name, new_attr_value)
         fields = opts.fields
         
         output.extend(self.create_temp_table(fields))

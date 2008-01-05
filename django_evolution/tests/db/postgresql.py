@@ -125,6 +125,49 @@ change_field = {
     "SetNullChangeModel": 'ALTER TABLE "django_evolution_changebasemodel" ALTER COLUMN "char_field2" DROP NOT NULL;',
     "NoOpChangeModelDiff": '<BLANKLINE>',
     "NoOpChangeModel": '',
+    "IncreasingMaxLengthChangeModelDiff": 
+        '\n'.join([
+            "In model django_evolution.TestModel:",
+            "    In field 'char_field':",
+            "        Property 'max_length' has changed",
+        ]),
+    "IncreasingMaxLengthChangeModel": 'ALTER TABLE "django_evolution_changebasemodel" ALTER COLUMN "char_field" TYPE varchar(45) USING CAST("char_field" as varchar(45));',
+    "DecreasingMaxLengthChangeModelDiff": 
+        '\n'.join([
+            "In model django_evolution.TestModel:",
+            "    In field 'char_field':",
+            "        Property 'max_length' has changed",
+        ]),
+    "DecreasingMaxLengthChangeModel": 'ALTER TABLE "django_evolution_changebasemodel" ALTER COLUMN "char_field" TYPE varchar(1) USING CAST("char_field" as varchar(1));',
+    "DBColumnChangeModelDiff": 
+        '\n'.join([
+            "In model django_evolution.TestModel:",
+            "    In field 'int_field':",
+            "        Property 'db_column' has changed",
+        ]),
+    "DBColumnChangeModel": 'ALTER TABLE "django_evolution_changebasemodel" RENAME COLUMN "custom_db_column" TO "customised_db_column";',
+    "M2MDbTableChangeModelDiff": 
+        '\n'.join([
+            "In model django_evolution.TestModel:",
+            "    In field 'm2m_field1':",
+            "        Property 'db_table' has changed",
+        ]),
+    "M2MDbTableChangeModel": 'ALTER TABLE "django_evolution_changebasemodel" RENAME TO "custom_m2m_db_table_name";',
+    "M2MDbTableChangeModel_cleanup": 'DROP TABLE "custom_m2m_db_table_name" CASCADE;',
+    "AddDbIndexChangeModelDiff": 
+        '\n'.join([
+            "In model django_evolution.TestModel:",
+            "    In field 'int_field2':",
+            "        Property 'db_index' has changed",
+        ]),
+    "AddDbIndexChangeModel": 'CREATE INDEX "django_evolution_changebasemodel_int_field2" ON "django_evolution_changebasemodel" ("int_field2");',
+    "RemoveDbIndexChangeModelDiff": 
+        '\n'.join([
+            "In model django_evolution.TestModel:",
+            "    In field 'int_field1':",
+            "        Property 'db_index' has changed",
+        ]),
+    "RemoveDbIndexChangeModel": 'DROP INDEX "django_evolution_changebasemodel_int_field1";',
 }
 
 delete_model = {

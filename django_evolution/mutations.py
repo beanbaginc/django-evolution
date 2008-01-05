@@ -373,7 +373,13 @@ class ChangeField(BaseMutation):
         self.initial = initial
         
     def __str__(self):
-        field_attr_params = ['%s=%s' % item for item in self.field_attrs.items()]
+        field_attr_params = []
+        for attr_name, attr_value in self.field_attrs.items():
+            if str == type(attr_value):
+                str_attr_value = '"%s"' % attr_value
+            else:
+                str_attr_value = str(attr_value)
+            field_attr_params.append('%s=%s' % (attr_name, str_attr_value,))
         params = (self.model_name, self.field_name, self.initial,', '.join(field_attr_params))
         return 'ChangeField("%s", "%s", initial=%s, %s)' % params
         
@@ -385,11 +391,12 @@ class ChangeField(BaseMutation):
         # Catch for no-op changes.
         for field_attr, attr_value in self.field_attrs.items():
             field_sig[field_attr] = attr_value
-            
-        if field_sig['field_type'] != models.ManyToManyField and not self.field_attrs.get('null', ATTRIBUTE_DEFAULTS['null']):
-            if self.initial is None:
-                raise SimulationFailure("Cannot change column '%s' on '%s.%s' without a non-null initial value." % (
-                        self.field_name, app_label, self.model_name))
+        
+        if self.field_attrs.has_key('null'):
+            if field_sig['field_type'] != models.ManyToManyField and not self.field_attrs['null']:
+                if self.initial is None:
+                    raise SimulationFailure("Cannot change column '%s' on '%s.%s' without a non-null initial value." % (
+                            self.field_name, app_label, self.model_name))
         
     def mutate(self, app_label, proj_sig):
         app_sig = proj_sig[app_label]
@@ -411,10 +418,6 @@ class ChangeField(BaseMutation):
                 except AttributeError, ae:
                     #raise ae
                     raise NotImplementedError("ChangeField does not support modifying the '%s' attribute." % field_attr)
-                    #print dir(evolver)
-                    #print hasattr(evolver, 'change_null')
-                    #print getattr(evolver, 'change_null')
-        
         
         return sql_statements
  

@@ -1,5 +1,6 @@
 from django.core.management import color
 from django.db import connection, models
+import copy
 
 class BaseEvolutionOperations(object):
     def quote_sql_param(self, param):
@@ -155,7 +156,7 @@ class BaseEvolutionOperations(object):
                 tablespace_sql = ''
             output.append(
                 style.SQL_KEYWORD('CREATE %sINDEX' % unique) + ' ' + \
-                style.SQL_TABLE(qn('%s_%s' % (model._meta.db_table, f.column))) + ' ' + \
+                style.SQL_TABLE(qn(self.get_index_name(model, f))) + ' ' + \
                 style.SQL_KEYWORD('ON') + ' ' + \
                 style.SQL_TABLE(qn(model._meta.db_table)) + ' ' + \
                 "(%s)" % style.SQL_FIELD(qn(f.column)) + \
@@ -163,6 +164,13 @@ class BaseEvolutionOperations(object):
             )
         #### END duplicated code
         return output
+        
+    def drop_index(self, model, f):
+        qn = connection.ops.quote_name
+        return ['DROP INDEX %s;' % qn(self.get_index_name(model, f))]
+        
+    def get_index_name(self, model, f):
+        return '%s_%s' % (model._meta.db_table, f.column)
         
     def change_null(self, model, field_name, new_null_attr, initial=None):
         qn = connection.ops.quote_name
@@ -186,3 +194,29 @@ class BaseEvolutionOperations(object):
             output.append(self.set_field_null(model, f, new_null_attr))
             
         return output
+        
+    def change_max_length(self, model, field_name, new_max_length, initial=None):
+        qn = connection.ops.quote_name
+        opts = model._meta
+        f = opts.get_field(field_name)
+        f.max_length = new_max_length
+        params = (qn(opts.db_table), qn(f.column), f.db_type(), qn(f.column), f.db_type())
+        return ['ALTER TABLE %s ALTER COLUMN %s TYPE %s USING CAST(%s as %s);' % params]
+
+    def change_db_column(self, model, field_name, new_db_column, initial=None):
+        opts = model._meta
+        old_field = opts.get_field(field_name)
+        new_field = copy.copy(old_field)
+        new_field.column = new_db_column
+        return self.rename_column(opts, old_field, new_field)
+
+    def change_db_table(self, model, field_name, new_db_tablename, initial=None):
+        return self.rename_table(model._meta.db_table, new_db_tablename)
+        
+    def change_db_index(self, model, field_name, new_db_index, initial=None):
+        f = model._meta.get_field(field_name)
+        f.db_index = new_db_index
+        if new_db_index:
+            return self.create_index(model, f)
+        else:
+            return self.drop_index(model, f)
