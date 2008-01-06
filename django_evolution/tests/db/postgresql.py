@@ -174,14 +174,48 @@ change_field = {
             "    In field 'int_field4':",
             "        Property 'unique' has changed",
         ]),
-    "AddUniqueChangeModel": 'ALTER TABLE django_evolution_changebasemodel ADD CONSTRAINT django_evolution_changebasemodel_int_field4_key UNIQUE(int_field4);',
+    "AddUniqueChangeModel": 'ALTER TABLE "django_evolution_changebasemodel" ADD CONSTRAINT django_evolution_changebasemodel_int_field4_key UNIQUE("int_field4");',
     "RemoveUniqueChangeModelDiff": 
         '\n'.join([
             "In model django_evolution.TestModel:",
             "    In field 'int_field3':",
             "        Property 'unique' has changed",
         ]),
-    "RemoveUniqueChangeModel": 'ALTER TABLE django_evolution_changebasemodel DROP CONSTRAINT django_evolution_changebasemodel_int_field3_key;',
+    "RemoveUniqueChangeModel": 'ALTER TABLE "django_evolution_changebasemodel" DROP CONSTRAINT django_evolution_changebasemodel_int_field3_key;',
+    "MultiAttrChangeModelDiff": 
+        '\n'.join([
+            "In model django_evolution.TestModel:",
+            "    In field 'char_field2':",
+            "        Property 'null' has changed",
+            "    In field 'int_field':",
+            "        Property 'db_column' has changed",
+            "    In field 'char_field':",
+            "        Property 'max_length' has changed",
+        ]),
+    "MultiAttrChangeModel": 
+        '\n'.join([
+            'ALTER TABLE "django_evolution_changebasemodel" ALTER COLUMN "char_field2" DROP NOT NULL;',
+            'ALTER TABLE "django_evolution_changebasemodel" RENAME COLUMN "custom_db_column" TO "custom_db_column2";',
+            'ALTER TABLE "django_evolution_changebasemodel" ALTER COLUMN "char_field" TYPE varchar(35) USING CAST("char_field" as varchar(35));',
+        ]),
+    "MultiAttrSingleFieldChangeModelDiff": 
+        '\n'.join([
+            "In model django_evolution.TestModel:",
+            "    In field 'char_field2':",
+            "        Property 'max_length' has changed",
+            "        Property 'null' has changed",
+        ]),
+    "MultiAttrSingleFieldChangeModel": 
+        '\n'.join([
+            'ALTER TABLE "django_evolution_changebasemodel" ALTER COLUMN "char_field2" TYPE varchar(35) USING CAST("char_field2" as varchar(35));',
+            'ALTER TABLE "django_evolution_changebasemodel" ALTER COLUMN "char_field2" DROP NOT NULL;',
+        ]),
+    "RedundantAttrsChangeModel":
+        '\n'.join([
+            'ALTER TABLE "django_evolution_changebasemodel" ALTER COLUMN "char_field2" DROP NOT NULL;',
+            'ALTER TABLE "django_evolution_changebasemodel" RENAME COLUMN "custom_db_column" TO "custom_db_column3";',
+            'ALTER TABLE "django_evolution_changebasemodel" ALTER COLUMN "char_field" TYPE varchar(35) USING CAST("char_field" as varchar(35));',
+        ]),
 }
 
 delete_model = {

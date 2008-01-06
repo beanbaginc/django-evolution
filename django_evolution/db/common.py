@@ -227,13 +227,15 @@ class BaseEvolutionOperations(object):
         f = opts.get_field(field_name)
         constraint_name = '%s_%s_key' % (opts.db_table, f.column,)
         if new_unique_value:
-            params = (opts.db_table, constraint_name, f.column,)
+            params = (qn(opts.db_table), constraint_name, qn(f.column),)
             return ['ALTER TABLE %s ADD CONSTRAINT %s UNIQUE(%s);' % params]
         else:
-            params = (opts.db_table, constraint_name,)
+            params = (qn(opts.db_table), constraint_name,)
             return ['ALTER TABLE %s DROP CONSTRAINT %s;' % params]
             
-        # else:
-#            params = (opts.db_table, opts.db_table, f.column,)
-#            print 'ALTER TABLE %s DROP CONSTRAINT %s_%s_key;' % params
-            # return ['SELECT * FROM %s;' % opts.db_table]
+
+        
+        
+        
+        
+        

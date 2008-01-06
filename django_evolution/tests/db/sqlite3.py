@@ -324,21 +324,97 @@ change_field = {
                 'INSERT INTO "django_evolution_changebasemodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
                 'DROP TABLE "TEMP_TABLE";',
             ]),
-            "RemoveUniqueChangeModelDiff": 
-                '\n'.join([
-                    "In model django_evolution.TestModel:",
-                    "    In field 'int_field3':",
-                    "        Property 'unique' has changed",
-                ]),
-            "RemoveUniqueChangeModel": 
-                '\n'.join([
-                    'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
-                    'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "django_evolution_changebasemodel";',
-                    'DROP TABLE "django_evolution_changebasemodel";',
-                    'CREATE TABLE "django_evolution_changebasemodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
-                    'INSERT INTO "django_evolution_changebasemodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
-                    'DROP TABLE "TEMP_TABLE";',
-                ]),
+        "RemoveUniqueChangeModelDiff": 
+            '\n'.join([
+                "In model django_evolution.TestModel:",
+                "    In field 'int_field3':",
+                "        Property 'unique' has changed",
+            ]),
+        "RemoveUniqueChangeModel": 
+            '\n'.join([
+                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "django_evolution_changebasemodel";',
+                'DROP TABLE "django_evolution_changebasemodel";',
+                'CREATE TABLE "django_evolution_changebasemodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+                'INSERT INTO "django_evolution_changebasemodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+                'DROP TABLE "TEMP_TABLE";',
+            ]),
+        "MultiAttrChangeModelDiff": 
+            '\n'.join([
+                "In model django_evolution.TestModel:",
+                "    In field 'char_field2':",
+                "        Property 'null' has changed",
+                "    In field 'int_field':",
+                "        Property 'db_column' has changed",
+                "    In field 'char_field':",
+                "        Property 'max_length' has changed",
+            ]),
+        "MultiAttrChangeModel": 
+            '\n'.join([
+                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "django_evolution_changebasemodel";',
+                'DROP TABLE "django_evolution_changebasemodel";',
+                'CREATE TABLE "django_evolution_changebasemodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+                'INSERT INTO "django_evolution_changebasemodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+                'DROP TABLE "TEMP_TABLE";',
+                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column2" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "django_evolution_changebasemodel";',
+                'DROP TABLE "django_evolution_changebasemodel";',
+                'CREATE TABLE "django_evolution_changebasemodel"("int_field4" integer NOT NULL, "custom_db_column2" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+                'CREATE INDEX "django_evolution_changebasemodel_int_field1" ON "django_evolution_changebasemodel" ("int_field1");',
+                'INSERT INTO "django_evolution_changebasemodel" ("int_field4", "custom_db_column2", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column2", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+                'DROP TABLE "TEMP_TABLE";',
+                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column2" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(35) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column2", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "django_evolution_changebasemodel";',
+                'DROP TABLE "django_evolution_changebasemodel";',
+                'CREATE TABLE "django_evolution_changebasemodel"("int_field4" integer NOT NULL, "custom_db_column2" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(35) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+                'INSERT INTO "django_evolution_changebasemodel" ("int_field4", "custom_db_column2", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column2", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+                'DROP TABLE "TEMP_TABLE";',
+            ]),
+        "MultiAttrSingleFieldChangeModelDiff": 
+            '\n'.join([
+                "In model django_evolution.TestModel:",
+                "    In field 'char_field2':",
+                "        Property 'max_length' has changed",
+                "        Property 'null' has changed",
+            ]),
+        "MultiAttrSingleFieldChangeModel": 
+            '\n'.join([
+                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(35) NOT NULL);',
+                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "django_evolution_changebasemodel";',
+                'DROP TABLE "django_evolution_changebasemodel";',
+                'CREATE TABLE "django_evolution_changebasemodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(35) NOT NULL);',
+                'INSERT INTO "django_evolution_changebasemodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+                'DROP TABLE "TEMP_TABLE";',
+                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(35) NULL);',
+                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "django_evolution_changebasemodel";',
+                'DROP TABLE "django_evolution_changebasemodel";',
+                'CREATE TABLE "django_evolution_changebasemodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(35) NULL);',
+                'INSERT INTO "django_evolution_changebasemodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+                'DROP TABLE "TEMP_TABLE";',
+            ]),
+        "RedundantAttrsChangeModel":
+            '\n'.join([
+                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "django_evolution_changebasemodel";',
+                'DROP TABLE "django_evolution_changebasemodel";',
+                'CREATE TABLE "django_evolution_changebasemodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+                'INSERT INTO "django_evolution_changebasemodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+                'DROP TABLE "TEMP_TABLE";',
+                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column3" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "django_evolution_changebasemodel";',
+                'DROP TABLE "django_evolution_changebasemodel";',
+                'CREATE TABLE "django_evolution_changebasemodel"("int_field4" integer NOT NULL, "custom_db_column3" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+                'CREATE INDEX "django_evolution_changebasemodel_int_field1" ON "django_evolution_changebasemodel" ("int_field1");',
+                'INSERT INTO "django_evolution_changebasemodel" ("int_field4", "custom_db_column3", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column3", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+                'DROP TABLE "TEMP_TABLE";',
+                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column3" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(35) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column3", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "django_evolution_changebasemodel";',
+                'DROP TABLE "django_evolution_changebasemodel";',
+                'CREATE TABLE "django_evolution_changebasemodel"("int_field4" integer NOT NULL, "custom_db_column3" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(35) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+                'INSERT INTO "django_evolution_changebasemodel" ("int_field4", "custom_db_column3", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column3", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+                'DROP TABLE "TEMP_TABLE";',
+            ]),
 }
 
 delete_model = {

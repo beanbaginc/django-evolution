@@ -25,13 +25,19 @@ tests = r"""
 # Changing the db_table of a many to many relationship
 # Adding an index
 # Removing an index
-
 # Adding a unique constraint
 # Removing a unique constraint
+# Redundant attributes. (Some attribute have changed, while others haven't but are specified anyway.)
+# Changing more than one attribute at a time (on different fields)
+# Changing more than one attribute at a time (on one field)
+
+
+### This one is a bit dubious because changing the primary key of a model will mean
+### that all referenced foreign keys and M2M relationships need to be updated
 # Adding a primary key constraint
 # Removing a Primary Key (Changing the primary key column)
-# Changing more than one attribute at a time
-# Redundant attributes. (Some attribute have changed, while others haven't but are specified anyway.)
+
+
 
 # Options that apply to all fields:
 # DB related options
@@ -508,6 +514,109 @@ True
  
 >>> execute_test_sql(test_sql)
 %(RemoveUniqueChangeModel)s
+
+# Changing more than one attribute at a time (on different fields)
+>>> class MultiAttrChangeModel(models.Model):
+...     my_id = models.AutoField(primary_key=True)
+...     alt_pk = models.IntegerField()
+...     int_field = models.IntegerField(db_column='custom_db_column2')
+...     int_field1 = models.IntegerField(db_index=True)
+...     int_field2 = models.IntegerField(db_index=False)
+...     int_field3 = models.IntegerField(unique=True)
+...     int_field4 = models.IntegerField(unique=False)
+...     char_field = models.CharField(max_length=35)
+...     char_field1 = models.CharField(max_length=25, null=True)
+...     char_field2 = models.CharField(max_length=30, null=True)
+...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+
+>>> new_sig = test_proj_sig(('TestModel', MultiAttrChangeModel), *anchors)
+>>> d = Diff(base_sig, new_sig)
+>>> print d
+%(MultiAttrChangeModelDiff)s
+
+>>> print [str(e) for e in d.evolution()['django_evolution']]
+['ChangeField("TestModel", "char_field2", initial=None, null=True)', 'ChangeField("TestModel", "int_field", initial=None, db_column="custom_db_column2")', 'ChangeField("TestModel", "char_field", initial=None, max_length=35)']
+ 
+>>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+ 
+>>> execute_test_sql(test_sql)
+%(MultiAttrChangeModel)s
+
+# Changing more than one attribute at a time (on one fields)
+>>> class MultiAttrSingleFieldChangeModel(models.Model):
+...     my_id = models.AutoField(primary_key=True)
+...     alt_pk = models.IntegerField()
+...     int_field = models.IntegerField(db_column='custom_db_column')
+...     int_field1 = models.IntegerField(db_index=True)
+...     int_field2 = models.IntegerField(db_index=False)
+...     int_field3 = models.IntegerField(unique=True)
+...     int_field4 = models.IntegerField(unique=False)
+...     char_field = models.CharField(max_length=20)
+...     char_field1 = models.CharField(max_length=25, null=True)
+...     char_field2 = models.CharField(max_length=35, null=True)
+...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+
+>>> new_sig = test_proj_sig(('TestModel', MultiAttrSingleFieldChangeModel), *anchors)
+>>> d = Diff(base_sig, new_sig)
+>>> print d
+%(MultiAttrSingleFieldChangeModelDiff)s
+
+>>> print [str(e) for e in d.evolution()['django_evolution']]
+['ChangeField("TestModel", "char_field2", initial=None, max_length=35, null=True)']
+ 
+>>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+ 
+>>> execute_test_sql(test_sql)
+%(MultiAttrSingleFieldChangeModel)s
+
+# Redundant attributes. (Some attribute have changed, while others haven't but are specified anyway.)
+>>> class RedundantAttrsChangeModel(models.Model):
+...     my_id = models.AutoField(primary_key=True)
+...     alt_pk = models.IntegerField()
+...     int_field = models.IntegerField(db_column='custom_db_column3')
+...     int_field1 = models.IntegerField(db_index=True)
+...     int_field2 = models.IntegerField(db_index=False)
+...     int_field3 = models.IntegerField(unique=True)
+...     int_field4 = models.IntegerField(unique=False)
+...     char_field = models.CharField(max_length=35)
+...     char_field1 = models.CharField(max_length=25, null=True)
+...     char_field2 = models.CharField(max_length=30, null=True)
+...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+
+>>> new_sig = test_proj_sig(('TestModel', RedundantAttrsChangeModel), *anchors)
+>>> d = Diff(base_sig, new_sig)
+
+>>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
+>>> evolutions = [
+...     ChangeField("TestModel", "char_field2", initial=None, null=True, max_length=30), 
+...     ChangeField("TestModel", "int_field", initial=None, db_column="custom_db_column3", primary_key=False, unique=False, db_index=False), 
+...     ChangeField("TestModel", "char_field", initial=None, max_length=35),
+... ]
+
+>>> for mutation in evolutions:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+ 
+>>> execute_test_sql(test_sql)
+%(RedundantAttrsChangeModel)s
 
 """ % test_sql_mapping('change_field')
 
