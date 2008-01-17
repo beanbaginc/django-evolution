@@ -50,7 +50,35 @@ def evolution(app, created_models, verbosity=1):
         
     # Evolutions are checked over the entire project, so we only need to 
     # check once. We do this check when Django Evolutions itself is synchronized.
-    if app == django_evolution: 
+    if app == django_evolution:        
+        old_proj_sig = pickle.loads(str(latest_version.signature))
+        
+        # If any models have been added, a baseline must be set 
+        # for those new models
+        changed = False
+        for app_name, new_app_sig in proj_sig.items():
+            if app_name == '__version__':
+                # Ignore the __version__ tag
+                continue
+            old_app_sig = old_proj_sig.get(app_name, None)
+            if old_app_sig is None:
+                # App has been added
+                old_proj_sig[app_name] = proj_sig[app_name]
+                changed = True
+                continue
+            for model_name, new_model_sig in new_app_sig.items():
+                old_model_sig = old_app_sig.get(model_name, None)
+                if old_model_sig is None:
+                    # Model has been added
+                    old_proj_sig[app_name][model_name] = proj_sig[app_name][model_name]
+                    changed = True
+        
+        if changed:
+            if verbosity > 0:
+                print "Adding baseline version for new models"
+            latest_version = django_evolution.Version(signature=pickle.dumps(old_proj_sig))
+            latest_version.save()
+
         # TODO: Model introspection step goes here. 
         # # If the current database state doesn't match the last 
         # # saved signature (as reported by latest_version),
@@ -61,7 +89,7 @@ def evolution(app, created_models, verbosity=1):
         #     nudge = Version(signature=actual)
         #     nudge.save()
         #     latest_version = nudge
-        old_proj_sig = pickle.loads(str(latest_version.signature))
+        
         diff = Diff(old_proj_sig, proj_sig)
         if not diff.is_empty():
             print style.NOTICE('Project signature has changed - an evolution is required')
