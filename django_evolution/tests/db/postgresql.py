@@ -28,6 +28,12 @@ add_field = {
             'UPDATE "django_evolution_addbasemodel" SET "added_field" = 2007-12-13 16:42:00 WHERE "added_field" IS NULL;',
             'ALTER TABLE "django_evolution_addbasemodel" ALTER COLUMN "added_field" SET NOT NULL;',
         ]),
+    'AddColumnWithDefaultDatabaseColumnModel':
+        '\n'.join([
+            'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer ;',
+            'UPDATE "django_evolution_addbasemodel" SET "added_field" = 42 WHERE "added_field" IS NULL;',
+            'ALTER TABLE "django_evolution_addbasemodel" ALTER COLUMN "added_field" SET NOT NULL;',
+        ]),
     'NullDatabaseColumnModel': 
         'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NULL ;',
     'NonDefaultDatabaseColumnModel': 

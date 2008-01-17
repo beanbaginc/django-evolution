@@ -1,7 +1,8 @@
 from django.core.management.color import no_style
 from django.core.management.sql import sql_create, sql_delete, sql_indexes
-from django.db.backends.util import truncate_name
 from django.db import connection, transaction, settings, models
+from django.db.backends.util import truncate_name
+from django.db.models.loading import cache
 
 from django_evolution import signature
 from django_evolution.tests import models as evo_test
@@ -25,6 +26,9 @@ def test_proj_sig(*models, **kwargs):
     
     for name,model in models:
         proj_sig[app_label][name] = signature.create_model_sig(model)
+    
+        # Insert a fake entry into the model cache
+        cache.app_models[app_label][name.lower()] = model
         
     return proj_sig
     

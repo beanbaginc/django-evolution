@@ -227,6 +227,30 @@ True
 >>> execute_test_sql(test_sql) #AddDateDatabaseColumnModel
 %(AddDateDatabaseColumnModel)s
 
+# Add column with default value
+>>> class AddColumnWithDefaultDatabaseColumnModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     added_field = models.IntegerField(default=42)
+
+>>> new_sig = test_proj_sig(('TestModel',AddColumnWithDefaultDatabaseColumnModel), *anchors)
+>>> cache.app_models['django_evolution']['testmodel'] = AddColumnWithDefaultDatabaseColumnModel
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['django_evolution']]
+["AddField('TestModel', 'added_field', models.IntegerField, initial=42)"]
+
+>>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+
+>>> execute_test_sql(test_sql) #AddNullColumnWithInitialDatabaseColumnModel
+%(AddColumnWithDefaultDatabaseColumnModel)s
+
 # Null field
 >>> class NullDatabaseColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)

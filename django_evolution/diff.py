@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models.fields import NOT_PROVIDED
 from django.db.models.fields.related import *
 
 from django_evolution import EvolutionException
@@ -23,6 +24,20 @@ class NullFieldInitalCallback(object):
         raise EvolutionException("Cannot use hinted evolution: AddField or ChangeField mutation for '%s.%s' in '%s' requires user-specified initial value." % (
                                     self.model, self.field, self.app))
 
+def get_initial_value(app_label, model_name, field_name):
+    """Derive an initial value for a field. 
+    
+    If a default has been provided on the field definition, that value will 
+    be used. Otherwise, a placeholder callable will be used. This callable 
+    cannot actually be used in an evolution, but will indicate that user 
+    input is required.
+    """
+    model = models.get_model(app_label, model_name)
+    field = model._meta.get_field(field_name)
+    if field and field.default != NOT_PROVIDED:
+        return field.default
+    return NullFieldInitalCallback(app_label, model_name, field_name)
+    
 class Diff(object):
     """
     A diff between two model signatures.
@@ -159,7 +174,7 @@ class Diff(object):
                     add_params.append(('field_type', field_sig['field_type']))
                     
                     if field_sig['field_type'] != models.ManyToManyField and not field_sig.get('null', ATTRIBUTE_DEFAULTS['null']):
-                        add_params.append(('initial', NullFieldInitalCallback(app_label, model_name, field_name)))
+                        add_params.append(('initial', get_initial_value(app_label, model_name, field_name)))
                     if 'related_model' in field_sig:
                         add_params.append(('related_model', '%s' % field_sig['related_model']))
                     mutations.setdefault(app_label,[]).append(
@@ -175,6 +190,6 @@ class Diff(object):
                     if changed_attrs.has_key('null') and \
                         current_field_sig['field_type'] != models.ManyToManyField and \
                         not current_field_sig.get('null', ATTRIBUTE_DEFAULTS['null']):
-                        changed_attrs['initial'] = NullFieldInitalCallback(app_label, model_name, field_name)
+                        changed_attrs['initial'] = get_initial_value(app_label, model_name, field_name)
                     mutations.setdefault(app_label,[]).append(ChangeField(model_name, field_name, **changed_attrs))
         return mutations

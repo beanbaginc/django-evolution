@@ -479,6 +479,9 @@ literal value. If you use a callable, the value returned by the callable will
 be inserted directly into the SQL ``INSERT`` statement that populates the new 
 column, so it should be in a format appropriate for database insertion. 
 
+If your newly added field definition provides a default, the default will be
+used as the initial value.
+
 Example::
 
     # Add a nickname field, allowing NULL values.
