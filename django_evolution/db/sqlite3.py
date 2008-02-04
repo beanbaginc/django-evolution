@@ -64,8 +64,8 @@ class EvolutionOperations(BaseEvolutionOperations):
         qn = connection.ops.quote_name
     
         # At this point, initial can only be None if null=True, otherwise it is 
-        # a user callable or the default AddFieldInitalCallback which will shortly raise an exception.
-        if not initial:
+        # a user callable or the default AddFieldInitialCallback which will shortly raise an exception.
+        if initial is None:
             return []
 
         params = {

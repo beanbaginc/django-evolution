@@ -225,7 +225,7 @@ class AddField(BaseMutation):
         params = (self.model_name, self.field_name, self.field_type.__name__)
         str_output = ["'%s', '%s', models.%s" % params]
 
-        if self.initial:
+        if self.initial is not None:
             str_output.append('initial=%s' % repr(self.initial))
 
         for key,value in self.field_attrs.items():

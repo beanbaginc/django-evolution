@@ -11,7 +11,7 @@ try:
 except ImportError:
     from sets import Set as set #Python 2.3 Fallback
 
-class NullFieldInitalCallback(object):
+class NullFieldInitialCallback(object):
     def __init__(self, app, model, field):
         self.app = app
         self.model = model
@@ -36,7 +36,7 @@ def get_initial_value(app_label, model_name, field_name):
     field = model._meta.get_field(field_name)
     if field and field.default != NOT_PROVIDED:
         return field.default
-    return NullFieldInitalCallback(app_label, model_name, field_name)
+    return NullFieldInitialCallback(app_label, model_name, field_name)
     
 class Diff(object):
     """

@@ -34,6 +34,12 @@ add_field = {
             'UPDATE "django_evolution_addbasemodel" SET "added_field" = 42 WHERE "added_field" IS NULL;',
             'ALTER TABLE "django_evolution_addbasemodel" ALTER COLUMN "added_field" SET NOT NULL;',
         ]),
+    'AddColumnWithEmptyStringDefaultDatabaseColumnModel':
+        '\n'.join([
+            'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" varchar(20) ;',
+            'UPDATE "django_evolution_addbasemodel" SET "added_field" = \'\' WHERE "added_field" IS NULL;',
+            'ALTER TABLE "django_evolution_addbasemodel" ALTER COLUMN "added_field" SET NOT NULL;',
+        ]),
     'NullDatabaseColumnModel': 
         'ALTER TABLE "django_evolution_addbasemodel" ADD COLUMN "added_field" integer NULL ;',
     'NonDefaultDatabaseColumnModel': 

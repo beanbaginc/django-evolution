@@ -248,8 +248,33 @@ True
 >>> Diff(test_sig, new_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql) #AddNullColumnWithInitialDatabaseColumnModel
+>>> execute_test_sql(test_sql) #AddColumnWithDefaultDatabaseColumnModel
 %(AddColumnWithDefaultDatabaseColumnModel)s
+
+# Add column with an empty string as the default value
+>>> class AddColumnWithEmptyStringDefaultDatabaseColumnModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     added_field = models.CharField(max_length=20, default='')
+
+>>> new_sig = test_proj_sig(('TestModel',AddColumnWithEmptyStringDefaultDatabaseColumnModel), *anchors)
+>>> cache.app_models['django_evolution']['testmodel'] = AddColumnWithEmptyStringDefaultDatabaseColumnModel
+>>> d = Diff(base_sig, new_sig)
+>>> print [str(e) for e in d.evolution()['django_evolution']]
+["AddField('TestModel', 'added_field', models.CharField, initial='', max_length=20)"]
+
+>>> test_sig = copy.deepcopy(base_sig)
+>>> test_sql = []
+>>> for mutation in d.evolution()['django_evolution']:
+...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
+...     mutation.simulate('django_evolution', test_sig)
+
+>>> Diff(test_sig, new_sig).is_empty()
+True
+
+>>> execute_test_sql(test_sql) #AddColumnWithEmptyStringDefaultDatabaseColumnModel
+%(AddColumnWithEmptyStringDefaultDatabaseColumnModel)s
+
 
 # Null field
 >>> class NullDatabaseColumnModel(models.Model):

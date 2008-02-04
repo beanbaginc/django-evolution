@@ -110,8 +110,8 @@ class BaseEvolutionOperations(object):
                 unique_constraints = ''
 
             # At this point, initial can only be None if null=True, otherwise it is 
-            # a user callable or the default AddFieldInitalCallback which will shortly raise an exception.
-            if initial:
+            # a user callable or the default AddFieldInitialCallback which will shortly raise an exception.
+            if initial is not None:
                 params = (qn(model._meta.db_table), qn(f.column), f.db_type(), unique_constraints)
                 output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
             
@@ -183,7 +183,7 @@ class BaseEvolutionOperations(object):
             params = (qn(opts.db_table), qn(f.column),)
             output.append(self.set_field_null(model, f, new_null_attr))
         else:
-            if initial:
+            if initial is not None:
                 output = []
                 if callable(initial):
                     params = (qn(opts.db_table), qn(f.column), initial(), qn(f.column))
