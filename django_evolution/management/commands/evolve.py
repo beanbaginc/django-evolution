@@ -89,12 +89,12 @@ class Command(BaseCommand):
                     mutations = get_mutations(app, evolutions)
 
                 if mutations:
-                    sql.append('-- Evolve application %s' % app_label)
+                    app_sql = ['-- Evolve application %s' % app_label]
                     evolution_required = True
                     for mutation in mutations:
                         # Only compile SQL if we want to show it
                         if compile_sql or execute:
-                            sql.extend(mutation.mutate(app_label, database_sig))
+                            app_sql.extend(mutation.mutate(app_label, database_sig))
                             
                         # Now run the simulation, which will modify the signatures
                         try:
@@ -106,7 +106,7 @@ class Command(BaseCommand):
                     
                     if not execute:
                         if compile_sql:                            
-                            write_sql(sql)
+                            write_sql(app_sql)
                         else:
                             print '#----- Evolution for %s' % app_label
                             print 'from django_evolution.mutations import *'
@@ -117,7 +117,8 @@ class Command(BaseCommand):
                             print ',\n    '.join(unicode(m) for m in mutations)
                             print ']'
                             print '#----------------------'
-
+                            
+                    sql.extend(app_sql)
                 else:
                     if verbosity > 1:
                         print 'Application %s is up to date' % app_label
@@ -142,6 +143,7 @@ class Command(BaseCommand):
                             for app_label in diff.deleted:
                                 print '    ', app_label
                             print
+                    sql.extend(purge_sql)
                 else:
                     if verbosity > 1:
                         print 'No applications need to be purged.'
