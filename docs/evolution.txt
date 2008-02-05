@@ -87,7 +87,7 @@ to provide a hint::
 
     $ ./manage.py evolve --hint
     #----- Evolution for blogette
-    from django_evoluton.mutations import *
+    from django_evolution.mutations import *
     from django.db import models
 
     MUTATIONS = [
@@ -179,7 +179,7 @@ required; if we run ``evolve --hint`` we will get the exact change required::
 
     $ ./manage.py evolve --hint
     #----- Evolution for blogette
-    from django_evoluton.mutations import *
+    from django_evolution.mutations import *
     from django.db import models
 
     MUTATIONS = [
@@ -224,7 +224,7 @@ a stored evolution, so we can just run ``evolve``::
 
     $ ./manage.py evolve
     #----- Evolution for blogette
-    from django_evoluton.mutations import *
+    from django_evolution.mutations import *
     from django.db import models
 
     MUTATIONS = [
@@ -280,7 +280,7 @@ can trial the evolution::
 
     $ ./manage.py evolve
     #----- Evolution for blogette
-    from django_evoluton.mutations import *
+    from django_evolution.mutations import *
     from django.db import models
 
     MUTATIONS = [
@@ -322,7 +322,7 @@ applied::
 
     $ ./manage.py evolve
     #----- Evolution for blogette
-    from django_evoluton.mutations import *
+    from django_evolution.mutations import *
     from django.db import models
 
     MUTATIONS = [
