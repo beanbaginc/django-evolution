@@ -2,10 +2,9 @@ from django_evolution.tests.utils import test_sql_mapping
 
 tests = r"""
 >>> from django.db import models
->>> from django.db.models.loading import cache
 
 >>> from django_evolution.mutations import ChangeField
->>> from django_evolution.tests.utils import test_proj_sig, execute_test_sql
+>>> from django_evolution.tests.utils import test_proj_sig, execute_test_sql, register_models, deregister_models
 >>> from django_evolution.diff import Diff
 
 >>> import copy
@@ -79,13 +78,6 @@ tests = r"""
 >>> class ChangeAnchor1(models.Model):
 ...     value = models.IntegerField()
 
-# >>> class ChangeAnchor2(models.Model):
-# ...     value = models.IntegerField()
-# >>> class ChangeAnchor3(models.Model):
-# ...     value = models.IntegerField()
-# >>> class ChangeAnchor4(models.Model):
-# ...     value = models.IntegerField()
-
 >>> class ChangeBaseModel(models.Model):
 ...     my_id = models.AutoField(primary_key=True)
 ...     alt_pk = models.IntegerField()
@@ -98,20 +90,14 @@ tests = r"""
 ...     char_field1 = models.CharField(max_length=25, null=True)
 ...     char_field2 = models.CharField(max_length=30, null=False)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
-    
-# >>> class CustomChangeTableModel(models.Model):
-# ...     my_id = models.IntegerField(primary_key=True)
-# ...     value = models.IntegerField()
-# ...     alt_value = models.CharField(max_length=20)
-# ...     class Meta:
-# ...         db_table = 'custom_change_table_name'
 
 # Store the base signatures
 >>> anchors = [('ChangeAnchor1', ChangeAnchor1)]
->>> base_sig = test_proj_sig(('TestModel', ChangeBaseModel), *anchors)
+>>> test_model = ('TestModel', ChangeBaseModel)
 
-# Register the test models with the Django app cache
->>> cache.register_models('tests', ChangeBaseModel, ChangeAnchor1)
+>>> start = register_models(*anchors)
+>>> start.update(register_models(test_model))
+>>> start_sig = test_proj_sig(test_model, *anchors)
 
 # Setting a null constraint without an initial value
 >>> class SetNotNullChangeModel(models.Model):
@@ -127,61 +113,62 @@ tests = r"""
 ...     char_field2 = models.CharField(max_length=30, null=False)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel', SetNotNullChangeModel), *anchors)
->>> d = Diff(base_sig, new_sig)
+>>> end = register_models(('TestModel', SetNotNullChangeModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', SetNotNullChangeModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
 >>> print d
 %(SetNotNullChangeModelDiff)s
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> print [str(e) for e in d.evolution()['tests']]
 ['ChangeField("TestModel", "char_field1", initial=<<USER VALUE REQUIRED>>, null=False)']
 
 # Without an initial value
 >>> evolution = [ChangeField('TestModel', 'char_field1', null=False)]
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 Traceback (most recent call last):
 ...
-SimulationFailure: Cannot change column 'char_field1' on 'django_evolution.TestModel' without a non-null initial value.
+SimulationFailure: Cannot change column 'char_field1' on 'tests.TestModel' without a non-null initial value.
 
 # With a null initial value
 >>> evolution = [ChangeField('TestModel', 'char_field1', null=False, initial=None)]
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 Traceback (most recent call last):
 ...
-SimulationFailure: Cannot change column 'char_field1' on 'django_evolution.TestModel' without a non-null initial value.
+SimulationFailure: Cannot change column 'char_field1' on 'tests.TestModel' without a non-null initial value.
 
 # With a good initial value (constant)
 >>> evolution = [ChangeField('TestModel', 'char_field1', null=False, initial="abc's xyz")]
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(start, end, test_sql)
 %(SetNotNullChangeModelWithConstant)s
  
 # With a good initial value (callable)
 >>> evolution = [ChangeField('TestModel', 'char_field1', null=False, initial=ChangeSequenceFieldInitial('SetNotNullChangeModel'))]
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(start, end, test_sql)
 %(SetNotNullChangeModelWithCallable)s
 
 # Removing a null constraint
@@ -198,23 +185,24 @@ True
 ...     char_field2 = models.CharField(max_length=30, null=True)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel', SetNullChangeModel), *anchors)
->>> d = Diff(base_sig, new_sig)
+>>> end = register_models(('TestModel', SetNullChangeModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', SetNullChangeModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
 >>> print d
 %(SetNullChangeModelDiff)s
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> print [str(e) for e in d.evolution()['tests']]
 ['ChangeField("TestModel", "char_field2", initial=None, null=True)']
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(start, end, test_sql) # SetNullChangeModel
 %(SetNullChangeModel)s
 
 # Removing a null constraint
@@ -231,22 +219,23 @@ True
 ...     char_field2 = models.CharField(max_length=30, null=False)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel', NoOpChangeModel), *anchors)
->>> d = Diff(base_sig, new_sig)
+>>> end = register_models(('TestModel', NoOpChangeModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', NoOpChangeModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
 >>> print d
 %(NoOpChangeModelDiff)s
 
 >>> evolution = [ChangeField('TestModel', 'char_field1', null=True)]
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(start, end, test_sql) # NoOpChangeModel
 %(NoOpChangeModel)s
 
 # Increasing the max_length of a character field
@@ -263,23 +252,24 @@ True
 ...     char_field2 = models.CharField(max_length=30, null=False)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel', IncreasingMaxLengthChangeModel), *anchors)
->>> d = Diff(base_sig, new_sig)
+>>> end = register_models(('TestModel', IncreasingMaxLengthChangeModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', IncreasingMaxLengthChangeModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
 >>> print d
 %(IncreasingMaxLengthChangeModelDiff)s
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> print [str(e) for e in d.evolution()['tests']]
 ['ChangeField("TestModel", "char_field", initial=None, max_length=45)']
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(start, end, test_sql) #IncreasingMaxLengthChangeModel
 %(IncreasingMaxLengthChangeModel)s
 
 # Decreasing the max_length of a character field
@@ -296,23 +286,24 @@ True
 ...     char_field2 = models.CharField(max_length=30, null=False)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel', DecreasingMaxLengthChangeModel), *anchors)
->>> d = Diff(base_sig, new_sig)
+>>> end = register_models(('TestModel', DecreasingMaxLengthChangeModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', DecreasingMaxLengthChangeModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
 >>> print d
 %(DecreasingMaxLengthChangeModelDiff)s
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> print [str(e) for e in d.evolution()['tests']]
 ['ChangeField("TestModel", "char_field", initial=None, max_length=1)']
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(start, end, test_sql) # DecreasingMaxLengthChangeModel
 %(DecreasingMaxLengthChangeModel)s
 
 # Renaming a column
@@ -329,27 +320,28 @@ True
 ...     char_field2 = models.CharField(max_length=30, null=False)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel', DBColumnChangeModel), *anchors)
->>> d = Diff(base_sig, new_sig)
+>>> end = register_models(('TestModel', DBColumnChangeModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', DBColumnChangeModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
 >>> print d
 %(DBColumnChangeModelDiff)s
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> print [str(e) for e in d.evolution()['tests']]
 ['ChangeField("TestModel", "int_field", initial=None, db_column="customised_db_column")']
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(start, end, test_sql) #DBColumnChangeModel
 %(DBColumnChangeModel)s
 
 # Changing the db_table of a many to many relationship
->>> class M2MDbTableChangeModel(models.Model):
+>>> class M2MDBTableChangeModel(models.Model):
 ...     my_id = models.AutoField(primary_key=True)
 ...     alt_pk = models.IntegerField()
 ...     int_field = models.IntegerField(db_column='custom_db_column')
@@ -362,23 +354,25 @@ True
 ...     char_field2 = models.CharField(max_length=30, null=False)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='custom_m2m_db_table_name')
 
->>> new_sig = test_proj_sig(('TestModel', M2MDbTableChangeModel), *anchors)
->>> d = Diff(base_sig, new_sig)
+>>> end = register_models(('TestModel', M2MDBTableChangeModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', M2MDBTableChangeModel), *anchors)
+
+>>> d = Diff(start_sig, end_sig)
 >>> print d
 %(M2MDbTableChangeModelDiff)s
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> print [str(e) for e in d.evolution()['tests']]
 ['ChangeField("TestModel", "m2m_field1", initial=None, db_table="custom_m2m_db_table_name")']
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql, cleanup=['%(M2MDbTableChangeModel_cleanup)s'])
+>>> execute_test_sql(start, end, test_sql) # M2MDbTableChangeModel
 %(M2MDbTableChangeModel)s
 
 # Adding an index
@@ -395,23 +389,24 @@ True
 ...     char_field2 = models.CharField(max_length=30, null=False)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel', AddDbIndexChangeModel), *anchors)
->>> d = Diff(base_sig, new_sig)
+>>> end = register_models(('TestModel', AddDbIndexChangeModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', AddDbIndexChangeModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
 >>> print d
 %(AddDbIndexChangeModelDiff)s
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> print [str(e) for e in d.evolution()['tests']]
 ['ChangeField("TestModel", "int_field2", initial=None, db_index=True)']
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(start, end, test_sql) # AddDbIndexChangeModel
 %(AddDbIndexChangeModel)s
 
 # Removing an index
@@ -428,23 +423,24 @@ True
 ...     char_field2 = models.CharField(max_length=30, null=False)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel', RemoveDbIndexChangeModel), *anchors)
->>> d = Diff(base_sig, new_sig)
+>>> end = register_models(('TestModel', RemoveDbIndexChangeModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', RemoveDbIndexChangeModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
 >>> print d
 %(RemoveDbIndexChangeModelDiff)s
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> print [str(e) for e in d.evolution()['tests']]
 ['ChangeField("TestModel", "int_field1", initial=None, db_index=False)']
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(start, end, test_sql) # RemoveDbIndexChangeModel
 %(RemoveDbIndexChangeModel)s
 
 # Adding a unique constraint
@@ -461,24 +457,25 @@ True
 ...     char_field2 = models.CharField(max_length=30, null=False)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel', AddUniqueChangeModel), *anchors)
->>> d = Diff(base_sig, new_sig)
+>>> end = register_models(('TestModel', AddUniqueChangeModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', AddUniqueChangeModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
 >>> print d
 %(AddUniqueChangeModelDiff)s
 
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> print [str(e) for e in d.evolution()['tests']]
 ['ChangeField("TestModel", "int_field4", initial=None, unique=True)']
  
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
  
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(start, end, test_sql) # AddUniqueChangeModel
 %(AddUniqueChangeModel)s
 
 # Remove a unique constraint
@@ -495,24 +492,25 @@ True
 ...     char_field2 = models.CharField(max_length=30, null=False)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel', RemoveUniqueChangeModel), *anchors)
->>> d = Diff(base_sig, new_sig)
+>>> end = register_models(('TestModel', RemoveUniqueChangeModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', RemoveUniqueChangeModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
 >>> print d
 %(RemoveUniqueChangeModelDiff)s
 
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> print [str(e) for e in d.evolution()['tests']]
 ['ChangeField("TestModel", "int_field3", initial=None, unique=False)']
  
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
  
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(start, end, test_sql) #RemoveUniqueChangeModel
 %(RemoveUniqueChangeModel)s
 
 # Changing more than one attribute at a time (on different fields)
@@ -529,24 +527,25 @@ True
 ...     char_field2 = models.CharField(max_length=30, null=True)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel', MultiAttrChangeModel), *anchors)
->>> d = Diff(base_sig, new_sig)
+>>> end = register_models(('TestModel', MultiAttrChangeModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', MultiAttrChangeModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
 >>> print d
 %(MultiAttrChangeModelDiff)s
 
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> print [str(e) for e in d.evolution()['tests']]
 ['ChangeField("TestModel", "char_field2", initial=None, null=True)', 'ChangeField("TestModel", "int_field", initial=None, db_column="custom_db_column2")', 'ChangeField("TestModel", "char_field", initial=None, max_length=35)']
  
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
  
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(start, end, test_sql) #MultiAttrChangeModel
 %(MultiAttrChangeModel)s
 
 # Changing more than one attribute at a time (on one fields)
@@ -563,24 +562,25 @@ True
 ...     char_field2 = models.CharField(max_length=35, null=True)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel', MultiAttrSingleFieldChangeModel), *anchors)
->>> d = Diff(base_sig, new_sig)
+>>> end = register_models(('TestModel', MultiAttrSingleFieldChangeModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', MultiAttrSingleFieldChangeModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
 >>> print d
 %(MultiAttrSingleFieldChangeModelDiff)s
 
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> print [str(e) for e in d.evolution()['tests']]
 ['ChangeField("TestModel", "char_field2", initial=None, max_length=35, null=True)']
  
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
  
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(start, end, test_sql) # MultiAttrSingleFieldChangeModel
 %(MultiAttrSingleFieldChangeModel)s
 
 # Redundant attributes. (Some attribute have changed, while others haven't but are specified anyway.)
@@ -597,10 +597,11 @@ True
 ...     char_field2 = models.CharField(max_length=30, null=True)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel', RedundantAttrsChangeModel), *anchors)
->>> d = Diff(base_sig, new_sig)
+>>> end = register_models(('TestModel', RedundantAttrsChangeModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', RedundantAttrsChangeModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> evolutions = [
 ...     ChangeField("TestModel", "char_field2", initial=None, null=True, max_length=30), 
@@ -609,14 +610,17 @@ True
 ... ]
 
 >>> for mutation in evolutions:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
  
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(start, end, test_sql) # RedundantAttrsChangeModel
 %(RedundantAttrsChangeModel)s
+
+# Clean up after the applications that were installed
+>>> deregister_models()
 
 """ % test_sql_mapping('change_field')
 

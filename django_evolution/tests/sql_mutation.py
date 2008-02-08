@@ -5,10 +5,9 @@ tests = r"""
 >>> from django_evolution.mutations import SQLMutation
 
 >>> from django.db import models
->>> from django.db.models.loading import cache
 
 >>> from django_evolution.mutations import AddField
->>> from django_evolution.tests.utils import test_proj_sig, execute_test_sql
+>>> from django_evolution.tests.utils import test_proj_sig, execute_test_sql, register_models, deregister_models
 >>> from django_evolution.diff import Diff
 >>> from django_evolution import signature
 >>> from django_evolution import models as test_app
@@ -20,10 +19,8 @@ tests = r"""
 ...     int_field = models.IntegerField()
 
 # Store the base signatures
->>> base_sig = test_proj_sig(('TestModel',SQLBaseModel))
-
-# Register the test models with the Django app cache
->>> cache.register_models('tests', SQLBaseModel)
+>>> start = register_models(('TestModel', SQLBaseModel))
+>>> start_sig = test_proj_sig(('TestModel', SQLBaseModel))
 
 # Add 3 Fields resulting in new database columns.
 >>> class SQLMutationModel(models.Model):
@@ -32,25 +29,25 @@ tests = r"""
 ...     added_field1 = models.IntegerField(null=True)
 ...     added_field2 = models.IntegerField(null=True)
 ...     added_field3 = models.IntegerField(null=True)
-
->>> new_sig = test_proj_sig(('TestModel',SQLMutationModel))
->>> d = Diff(base_sig, new_sig)
+>>> end = register_models(('TestModel', SQLMutationModel))
+>>> end_sig = test_proj_sig(('TestModel',SQLMutationModel))
+>>> d = Diff(start_sig, end_sig)
 
 # Add the fields using SQLMutations
 >>> sequence = [
 ...    SQLMutation('first-two-fields', [
-...        'ALTER TABLE "django_evolution_sqlbasemodel" ADD COLUMN "added_field1" integer NULL;',
-...        'ALTER TABLE "django_evolution_sqlbasemodel" ADD COLUMN "added_field2" integer NULL;'
+...        'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field1" integer NULL;',
+...        'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field2" integer NULL;'
 ...    ]),
 ...    SQLMutation('third-field', [
-...        'ALTER TABLE "django_evolution_sqlbasemodel" ADD COLUMN "added_field3" integer NULL;',
+...        'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field3" integer NULL;',
 ...    ])]
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in sequence:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 Traceback (most recent call last):
 ...
 CannotSimulate: Cannot simulate SQLMutations
@@ -78,16 +75,19 @@ CannotSimulate: Cannot simulate SQLMutations
 
 >>> sequence = %(SQLMutationSequence)s
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in sequence:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql) #SQLMutationOutput
+>>> execute_test_sql(start, end, test_sql) #SQLMutationOutput
 %(SQLMutationOutput)s
+
+# Clean up after the applications that were installed
+>>> deregister_models()
 
 """ % test_sql_mapping('sql_mutation')

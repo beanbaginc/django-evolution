@@ -2,10 +2,9 @@ from django_evolution.tests.utils import test_sql_mapping
 
 tests = r"""
 >>> from django.db import models
->>> from django.db.models.loading import cache
 
 >>> from django_evolution.mutations import DeleteField
->>> from django_evolution.tests.utils import test_proj_sig, execute_test_sql
+>>> from django_evolution.tests.utils import test_proj_sig, execute_test_sql, register_models, deregister_models
 >>> from django_evolution.diff import Diff
 
 >>> import copy
@@ -53,12 +52,21 @@ tests = r"""
 ...         db_table = 'custom_table_name'
 
 # Store the base signatures
->>> anchors = [('DeleteAnchor1', DeleteAnchor1), ('DeleteAnchor2', DeleteAnchor2), ('DeleteAnchor3',DeleteAnchor3), ('DeleteAnchor4',DeleteAnchor4)]
->>> base_sig = test_proj_sig(('TestModel', DeleteBaseModel), *anchors)
->>> custom_table_sig = test_proj_sig(('TestModel', CustomTableModel))
+>>> anchors = (
+...     ('DeleteAnchor1', DeleteAnchor1), 
+...     ('DeleteAnchor2', DeleteAnchor2), 
+...     ('DeleteAnchor3', DeleteAnchor3), 
+...     ('DeleteAnchor4', DeleteAnchor4), 
+... )
 
-# Register the test models with the Django app cache
->>> cache.register_models('tests', CustomTableModel, DeleteBaseModel, DeleteAnchor1, DeleteAnchor2, DeleteAnchor3, DeleteAnchor4)
+>>> custom_model = ('CustomTableModel', CustomTableModel)
+>>> custom = register_models(custom_model)
+>>> custom_sig = test_proj_sig(custom_model)
+
+>>> test_model = ('TestModel', DeleteBaseModel)
+>>> start = register_models(*anchors)
+>>> start.update(register_models(test_model))
+>>> start_sig = test_proj_sig(test_model, *anchors)
 
 # Deleting a default named column
 >>> class DefaultNamedColumnModel(models.Model):
@@ -70,21 +78,22 @@ tests = r"""
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel', DefaultNamedColumnModel), *anchors)
->>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> end = register_models(('TestModel', DefaultNamedColumnModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', DefaultNamedColumnModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
+>>> print [str(e) for e in d.evolution()['tests']]
 ["DeleteField('TestModel', 'int_field')"]
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql) #DefaultNamedColumnModel
+>>> execute_test_sql(start, end, test_sql) #DefaultNamedColumnModel
 %(DefaultNamedColumnModel)s
 
 # Deleting a non-default named column
@@ -97,21 +106,22 @@ True
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel',NonDefaultNamedColumnModel), *anchors)
->>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> end = register_models(('TestModel', NonDefaultNamedColumnModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', NonDefaultNamedColumnModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
+>>> print [str(e) for e in d.evolution()['tests']]
 ["DeleteField('TestModel', 'int_field2')"]
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql) #NonDefaultNamedColumnModel
+>>> execute_test_sql(start, end, test_sql) #NonDefaultNamedColumnModel
 %(NonDefaultNamedColumnModel)s
 
 # Deleting a column with database constraints (unique)
@@ -126,21 +136,22 @@ True
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel',ConstrainedColumnModel), *anchors)
->>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> end = register_models(('TestModel', ConstrainedColumnModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', ConstrainedColumnModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
+>>> print [str(e) for e in d.evolution()['tests']]
 ["DeleteField('TestModel', 'int_field3')"]
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql) #ConstrainedColumnModel
+>>> execute_test_sql(start, end, test_sql) #ConstrainedColumnModel
 %(ConstrainedColumnModel)s
 
 # Deleting a default m2m
@@ -153,21 +164,22 @@ True
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel',DefaultM2MModel), *anchors)
->>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> end = register_models(('TestModel', DefaultM2MModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', DefaultM2MModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
+>>> print [str(e) for e in d.evolution()['tests']]
 ["DeleteField('TestModel', 'm2m_field1')"]
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql) #DefaultManyToManyModel
+>>> execute_test_sql(start, end, test_sql) #DefaultManyToManyModel
 %(DefaultManyToManyModel)s
 
 # Deleting a m2m stored in a non-default table
@@ -180,21 +192,22 @@ True
 ...     fk_field1 = models.ForeignKey(DeleteAnchor1)
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 
->>> new_sig = test_proj_sig(('TestModel',NonDefaultM2MModel), *anchors)
->>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> end = register_models(('TestModel', NonDefaultM2MModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', NonDefaultM2MModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
+>>> print [str(e) for e in d.evolution()['tests']]
 ["DeleteField('TestModel', 'm2m_field2')"]
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql) #NonDefaultManyToManyModel
+>>> execute_test_sql(start, end, test_sql) #NonDefaultManyToManyModel
 %(NonDefaultManyToManyModel)s
 
 # Delete a foreign key
@@ -207,21 +220,22 @@ True
 ...     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 ...     m2m_field2 = models.ManyToManyField(DeleteAnchor4, db_table='non-default_m2m_table')
 
->>> new_sig = test_proj_sig(('TestModel', DeleteForeignKeyModel), *anchors)
->>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> end = register_models(('TestModel', DeleteForeignKeyModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', DeleteForeignKeyModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
+>>> print [str(e) for e in d.evolution()['tests']]
 ["DeleteField('TestModel', 'fk_field1')"]
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql) #DeleteForeignKeyModel
+>>> execute_test_sql(start, end, test_sql) #DeleteForeignKeyModel
 %(DeleteForeignKeyModel)s
 
 # Deleting a column from a non-default table
@@ -230,22 +244,25 @@ True
 ...     class Meta:
 ...         db_table = 'custom_table_name'
 
->>> new_sig = test_proj_sig(('TestModel',DeleteColumnCustomTableModel), *anchors)
->>> d = Diff(custom_table_sig, new_sig)
->>> print [str(e) for e in d.evolution()['django_evolution']]
-["DeleteField('TestModel', 'value')"]
+>>> end = register_models(('CustomTableModel', DeleteColumnCustomTableModel))
+>>> end_sig = test_proj_sig(('CustomTableModel', DeleteColumnCustomTableModel))
+>>> d = Diff(custom_sig, end_sig)
+>>> print [str(e) for e in d.evolution()['tests']]
+["DeleteField('CustomTableModel', 'value')"]
 
->>> test_sig = copy.deepcopy(custom_table_sig)
+>>> test_sig = copy.deepcopy(custom_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql) #DeleteColumnCustomTableModel
+>>> execute_test_sql(custom, end, test_sql) #DeleteColumnCustomTableModel
 %(DeleteColumnCustomTableModel)s
 
+# Clean up after the applications that were installed
+>>> deregister_models()
 
 """ % test_sql_mapping('delete_field')

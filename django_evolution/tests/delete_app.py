@@ -5,10 +5,9 @@ tests = r"""
 >>> from pprint import PrettyPrinter
 
 >>> from django.db import models
->>> from django.db.models.loading import cache
 
 >>> from django_evolution.mutations import AddField, DeleteField, DeleteApplication
->>> from django_evolution.tests.utils import test_proj_sig, execute_test_sql
+>>> from django_evolution.tests.utils import test_proj_sig, execute_test_sql, register_models, deregister_models
 >>> from django_evolution.diff import Diff
 >>> from django_evolution import signature
 >>> from django_evolution import models as test_app
@@ -35,24 +34,27 @@ tests = r"""
 ...     class Meta:
 ...         db_table = 'app_delete_custom_table_name'
 
-# Store the base signatures
+# Store the base signatures, and populate the app cache
+
 >>> anchors = [('AppDeleteAnchor1', AppDeleteAnchor1), ('AppDeleteAnchor2',AppDeleteAnchor2)]
->>> base_sig = test_proj_sig(('TestModel', AppDeleteBaseModel), *anchors)
->>> custom_table_sig = test_proj_sig(('TestModel', AppDeleteCustomTableModel))
+>>> test_model = [('TestModel', AppDeleteBaseModel)]
+>>> custom_model = [('CustomTestModel', AppDeleteCustomTableModel)]
+>>> all_models = []
+>>> all_models.extend(anchors)
+>>> all_models.extend(test_model)
+>>> all_models.extend(custom_model)
+>>> start = register_models(*all_models)
+>>> start_sig = test_proj_sig(*all_models)
 
-# Register the test models with the Django app cache
->>> cache.register_models('tests', AppDeleteCustomTableModel, AppDeleteBaseModel, AppDeleteAnchor1, AppDeleteAnchor2)
+# Copy the base signature, and delete the tests app.
+>>> deleted_app_sig = copy.deepcopy(start_sig)
+>>> deleted_app_sig = deleted_app_sig.pop('tests')
 
->>> new_sig = test_proj_sig(('TestModel', AppDeleteBaseModel), *anchors)
->>> deleted_app_sig = new_sig.pop('django_evolution')
-
-# >>> pp.pprint(new_sig)
-
->>> d = Diff(base_sig, new_sig)
+>>> d = Diff(start_sig, deleted_app_sig)
 >>> print d.deleted
-{'django_evolution': ['AppDeleteAnchor1', 'TestModel', 'AppDeleteAnchor2']}
+{'tests': ['AppDeleteAnchor1', 'TestModel', 'AppDeleteAnchor2', 'CustomTestModel']}
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 
 >>> test_sql = []
 >>> delete_app = DeleteApplication()
@@ -60,12 +62,15 @@ tests = r"""
 ...     test_sql.append(delete_app.mutate(app_label, test_sig))
 ...     delete_app.simulate(app_label, test_sig)
 
->>> Diff(test_sig, new_sig).is_empty(ignore_apps=True)
+>>> Diff(test_sig, deleted_app_sig).is_empty(ignore_apps=True)
 True
 
 >>> for sql_list in test_sql:
 ...     for sql in sql_list:
 ...         print sql
 %(DeleteApplication)s
+
+# Clean up after the applications that were installed
+>>> deregister_models()
 
 """ % test_sql_mapping('delete_application')

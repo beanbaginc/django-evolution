@@ -2,10 +2,9 @@ from django_evolution.tests.utils import test_sql_mapping
 
 tests = r"""
 >>> from django.db import models
->>> from django.db.models.loading import cache
 
 >>> from django_evolution.mutations import DeleteModel
->>> from django_evolution.tests.utils import test_proj_sig, execute_test_sql
+>>> from django_evolution.tests.utils import test_proj_sig, execute_test_sql, register_models, deregister_models
 >>> from django_evolution.diff import Diff
 
 >>> import copy
@@ -28,7 +27,7 @@ tests = r"""
 ...     class Meta:
 ...         db_table = 'another_custom_table_name'
 
-# Model attrs
+# Store the base signature
 >>> base_models = (
 ...     ('DeleteModelAnchor', DeleteModelAnchor),
 ...     ('BasicModel', BasicModel),
@@ -37,88 +36,96 @@ tests = r"""
 ...     ('CustomTableWithM2MModel', CustomTableWithM2MModel),
 ... )
 
-# Store the base signature
->>> base_sig = test_proj_sig(*base_models)
-
-# Register the test models with the Django app cache
->>> cache.register_models('tests', DeleteModelAnchor, BasicModel,
-...     BasicWithM2MModel, CustomTableModel, CustomTableWithM2MModel)
-
+>>> start = register_models(*base_models)
+>>> start_sig = test_proj_sig(*base_models)
 
 # Delete a Model
->>> new_models = [m for m in base_models if m[0] != 'BasicModel']
->>> new_sig = test_proj_sig(*new_models)
->>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> end_sig = copy.deepcopy(start_sig)
+>>> _ = end_sig['tests'].pop('BasicModel')
+>>> end = copy.deepcopy(start)
+>>> _ = end.pop('basicmodel')
+
+>>> d = Diff(start_sig, end_sig)
+>>> print [str(e) for e in d.evolution()['tests']]
 ["DeleteModel('BasicModel')"]
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql) #BasicModel
+>>> execute_test_sql(start, end, test_sql) #BasicModel
 %(BasicModel)s
 
 # Delete a model with an m2m field
->>> new_models = [m for m in base_models if m[0] != 'BasicWithM2MModel']
->>> new_sig = test_proj_sig(*new_models)
->>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> end_sig = copy.deepcopy(start_sig)
+>>> _ = end_sig['tests'].pop('BasicWithM2MModel')
+>>> end = copy.deepcopy(start)
+>>> _ = end.pop('basicwithm2mmodel')
+
+>>> d = Diff(start_sig, end_sig)
+>>> print [str(e) for e in d.evolution()['tests']]
 ["DeleteModel('BasicWithM2MModel')"]
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql)
+>>> execute_test_sql(start, end, test_sql) # BasicWithM2MModels
 %(BasicWithM2MModel)s
 
 # Delete a model with a custom table name
->>> new_models = [m for m in base_models if m[0] != 'CustomTableModel']
->>> new_sig = test_proj_sig(*new_models)
->>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> end_sig = copy.deepcopy(start_sig)
+>>> _ = end_sig['tests'].pop('CustomTableModel')
+>>> end = copy.deepcopy(start)
+>>> _ = end.pop('customtablemodel')
+
+>>> d = Diff(start_sig, end_sig)
+>>> print [str(e) for e in d.evolution()['tests']]
 ["DeleteModel('CustomTableModel')"]
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql) #CustomTableModel
+>>> execute_test_sql(start, end, test_sql) #CustomTableModel
 %(CustomTableModel)s
 
 # Delete a model with a custom table name and an m2m field
->>> new_models = [m for m in base_models if m[0] != 'CustomTableWithM2MModel']
->>> new_sig = test_proj_sig(*new_models)
->>> d = Diff(base_sig, new_sig)
->>> print [str(e) for e in d.evolution()['django_evolution']]
+>>> end_sig = copy.deepcopy(start_sig)
+>>> _ = end_sig['tests'].pop('CustomTableWithM2MModel')
+
+>>> d = Diff(start_sig, end_sig)
+>>> print [str(e) for e in d.evolution()['tests']]
 ["DeleteModel('CustomTableWithM2MModel')"]
 
->>> test_sig = copy.deepcopy(base_sig)
+>>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
->>> for mutation in d.evolution()['django_evolution']:
-...     test_sql.extend(mutation.mutate('django_evolution', test_sig))
-...     mutation.simulate('django_evolution', test_sig)
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
 
->>> Diff(test_sig, new_sig).is_empty()
+>>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(test_sql) #CustomTableWithM2MModel
+>>> execute_test_sql(start, end, test_sql) #CustomTableWithM2MModel
 %(CustomTableWithM2MModel)s
+
+# Clean up after the applications that were installed
+>>> deregister_models()
 
 """ % test_sql_mapping('delete_model')

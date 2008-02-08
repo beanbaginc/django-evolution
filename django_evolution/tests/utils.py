@@ -1,3 +1,6 @@
+import copy
+
+from datetime import datetime
 from django.core.management.color import no_style
 from django.core.management.sql import sql_create, sql_delete, sql_indexes
 from django.db import connection, transaction, settings, models
@@ -8,28 +11,46 @@ from django_evolution import signature
 from django_evolution.tests import models as evo_test
 from django_evolution.utils import write_sql, execute_sql
 
+
 DEFAULT_TEST_ATTRIBUTE_VALUES = {
     models.CharField: 'TestCharField',
     models.IntegerField: '123',
     models.AutoField: None,
+    models.DateTimeField: datetime.now()
 }
 
+def register_models(*models):
+    app_cache = {}
+    for name, model in models:
+        if model._meta.module_name in cache.app_models['django_evolution']:
+            del cache.app_models['django_evolution'][model._meta.module_name]
+        
+            if model._meta.db_table.startswith("%s_%s" % (model._meta.app_label, 
+                                                          model._meta.module_name)):
+                model._meta.db_table = 'tests_%s' % name.lower()
+            
+            model._meta.app_label = 'tests'
+            model._meta.object_name = name
+            model._meta.module_name = name.lower()
+    
+            cache.app_models.setdefault('tests', {})[name.lower()] = model
+        
+        app_cache[name.lower()] = model
+        
+    return app_cache
+        
 def test_proj_sig(*models, **kwargs):
     "Generate a dummy project signature based around a single model"
-    app_label = kwargs.get('app_label','django_evolution')
     version = kwargs.get('version',1)
     proj_sig = {
-        app_label: {
-        }, 
+        'tests': {}, 
         '__version__': version,
     }
-    
+
+    # Compute the project siguature
     for name,model in models:
-        proj_sig[app_label][name] = signature.create_model_sig(model)
+        proj_sig['tests'][name] = signature.create_model_sig(model)
     
-        # Insert a fake entry into the model cache
-        cache.app_models[app_label][name.lower()] = model
-        
     return proj_sig
     
 def execute_transaction(sql, output=False):
@@ -51,10 +72,14 @@ def execute_transaction(sql, output=False):
         transaction.rollback()
         raise ex
 
-def execute_test_sql(sql, cleanup=None, debug=False):
+def execute_test_sql(start, end, sql, debug=False):
     """
-    Execute a test SQL sequence. This method also creates and destroys the models
-    that have been registered against the test module.
+    Execute a test SQL sequence. This method also creates and destroys the 
+    database tables required by the models registered against the test application.
+    
+    start and end are the start- and end-point states of the application cache.
+    
+    sql is the list of sql statements to execute.
     
     cleanup is a list of extra sql statements required to clean up. This is
     primarily for any extra m2m tables that were added during a test that won't 
@@ -63,22 +88,30 @@ def execute_test_sql(sql, cleanup=None, debug=False):
     debug is a helper flag. It displays the ALL the SQL that would be executed,
     (including setup and teardown SQL), and executes the Django-derived setup/teardown
     SQL.
-    """
-    style = no_style()
+    """    
+    # Set up the initial state of the app cache
+    cache.app_models['tests'] = copy.deepcopy(start)
+        
+    # Install the initial tables and indicies
+    style = no_style()    
     execute_transaction(sql_create(evo_test, style), output=debug)
     execute_transaction(sql_indexes(evo_test, style), output=debug)
     create_test_data(models.get_models(evo_test))
+            
+    # Set the app cache to the end state
+    cache.app_models['tests'] = copy.deepcopy(end)
     
+    # Execute the test sql
     if debug:
         write_sql(sql)
     else:
         execute_transaction(sql, output=True)
-    if cleanup:
-        if debug:
-            write_sql(cleanup)
-        else:
-            execute_transaction(cleanup, output=debug)
-    execute_transaction(sql_delete(evo_test, style), output=debug)
+    
+    # Cleanup the apps.
+    if debug:
+        print sql_delete(evo_test, style)
+    else:
+        execute_transaction(sql_delete(evo_test, style), output=debug)
     
 def create_test_data(app_models):
     deferred_models = []
@@ -135,3 +168,9 @@ def test_sql_mapping(test_field_name):
     engine = settings.DATABASE_ENGINE
     sql_for_engine = __import__('django_evolution.tests.db.%s' % (settings.DATABASE_ENGINE), {}, {}, [''])
     return getattr(sql_for_engine, test_field_name)
+
+
+def deregister_models():
+    "Clear the test section of the app cache"
+    del cache.app_models['tests']
+    
