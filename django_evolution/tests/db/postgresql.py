@@ -152,27 +152,27 @@ change_field = {
             "        Property 'db_column' has changed",
         ]),
     "DBColumnChangeModel": 'ALTER TABLE "tests_testmodel" RENAME COLUMN "custom_db_column" TO "customised_db_column";',
-    "M2MDbTableChangeModelDiff": 
+    "M2MDBTableChangeModelDiff": 
         '\n'.join([
             "In model tests.TestModel:",
             "    In field 'm2m_field1':",
             "        Property 'db_table' has changed",
         ]),
-    "M2MDbTableChangeModel": 'ALTER TABLE "change_field_non-default_m2m_table" RENAME TO "custom_m2m_db_table_name";',
-    "AddDbIndexChangeModelDiff": 
+    "M2MDBTableChangeModel": 'ALTER TABLE "change_field_non-default_m2m_table" RENAME TO "custom_m2m_db_table_name";',
+    "AddDBIndexChangeModelDiff": 
         '\n'.join([
             "In model tests.TestModel:",
             "    In field 'int_field2':",
             "        Property 'db_index' has changed",
         ]),
-    "AddDbIndexChangeModel": 'CREATE INDEX "tests_testmodel_int_field2" ON "tests_testmodel" ("int_field2");',
-    "RemoveDbIndexChangeModelDiff": 
+    "AddDBIndexChangeModel": 'CREATE INDEX "tests_testmodel_int_field2" ON "tests_testmodel" ("int_field2");',
+    "RemoveDBIndexChangeModelDiff": 
         '\n'.join([
             "In model tests.TestModel:",
             "    In field 'int_field1':",
             "        Property 'db_index' has changed",
         ]),
-    "RemoveDbIndexChangeModel": 'DROP INDEX "tests_testmodel_int_field1";',
+    "RemoveDBIndexChangeModel": 'DROP INDEX "tests_testmodel_int_field1";',
     "AddUniqueChangeModelDiff": 
         '\n'.join([
             "In model tests.TestModel:",

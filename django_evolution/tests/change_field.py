@@ -359,7 +359,7 @@ True
 
 >>> d = Diff(start_sig, end_sig)
 >>> print d
-%(M2MDbTableChangeModelDiff)s
+%(M2MDBTableChangeModelDiff)s
 >>> print [str(e) for e in d.evolution()['tests']]
 ['ChangeField("TestModel", "m2m_field1", initial=None, db_table="custom_m2m_db_table_name")']
 
@@ -372,11 +372,11 @@ True
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql) # M2MDbTableChangeModel
-%(M2MDbTableChangeModel)s
+>>> execute_test_sql(start, end, test_sql) # M2MDBTableChangeModel
+%(M2MDBTableChangeModel)s
 
 # Adding an index
->>> class AddDbIndexChangeModel(models.Model):
+>>> class AddDBIndexChangeModel(models.Model):
 ...     my_id = models.AutoField(primary_key=True)
 ...     alt_pk = models.IntegerField()
 ...     int_field = models.IntegerField(db_column='custom_db_column')
@@ -389,11 +389,11 @@ True
 ...     char_field2 = models.CharField(max_length=30, null=False)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
->>> end = register_models(('TestModel', AddDbIndexChangeModel), *anchors)
->>> end_sig = test_proj_sig(('TestModel', AddDbIndexChangeModel), *anchors)
+>>> end = register_models(('TestModel', AddDBIndexChangeModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', AddDBIndexChangeModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print d
-%(AddDbIndexChangeModelDiff)s
+%(AddDBIndexChangeModelDiff)s
 >>> print [str(e) for e in d.evolution()['tests']]
 ['ChangeField("TestModel", "int_field2", initial=None, db_index=True)']
 
@@ -406,11 +406,11 @@ True
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql) # AddDbIndexChangeModel
-%(AddDbIndexChangeModel)s
+>>> execute_test_sql(start, end, test_sql) # AddDBIndexChangeModel
+%(AddDBIndexChangeModel)s
 
 # Removing an index
->>> class RemoveDbIndexChangeModel(models.Model):
+>>> class RemoveDBIndexChangeModel(models.Model):
 ...     my_id = models.AutoField(primary_key=True)
 ...     alt_pk = models.IntegerField()
 ...     int_field = models.IntegerField(db_column='custom_db_column')
@@ -423,11 +423,11 @@ True
 ...     char_field2 = models.CharField(max_length=30, null=False)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
->>> end = register_models(('TestModel', RemoveDbIndexChangeModel), *anchors)
->>> end_sig = test_proj_sig(('TestModel', RemoveDbIndexChangeModel), *anchors)
+>>> end = register_models(('TestModel', RemoveDBIndexChangeModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', RemoveDBIndexChangeModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print d
-%(RemoveDbIndexChangeModelDiff)s
+%(RemoveDBIndexChangeModelDiff)s
 >>> print [str(e) for e in d.evolution()['tests']]
 ['ChangeField("TestModel", "int_field1", initial=None, db_index=False)']
 
@@ -440,8 +440,8 @@ True
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql) # RemoveDbIndexChangeModel
-%(RemoveDbIndexChangeModel)s
+>>> execute_test_sql(start, end, test_sql) # RemoveDBIndexChangeModel
+%(RemoveDBIndexChangeModel)s
 
 # Adding a unique constraint
 >>> class AddUniqueChangeModel(models.Model):
