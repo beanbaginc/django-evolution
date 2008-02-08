@@ -413,6 +413,8 @@ class ChangeField(BaseMutation):
                     evolver_func = getattr(evolver, 'change_%s' % field_attr)
                     if field_attr == 'null':
                         sql_statements.extend(evolver_func(model, self.field_name, attr_value, self.initial))
+                    elif field_attr == 'db_table':
+                        sql_statements.extend(evolver_func(old_field_attr, attr_value))
                     else:
                         sql_statements.extend(evolver_func(model, self.field_name, attr_value))
                 except AttributeError, ae:

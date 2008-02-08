@@ -210,8 +210,8 @@ class BaseEvolutionOperations(object):
         new_field.column = new_db_column
         return self.rename_column(opts, old_field, new_field)
 
-    def change_db_table(self, model, field_name, new_db_tablename, initial=None):
-        return self.rename_table(model._meta.db_table, new_db_tablename)
+    def change_db_table(self, old_db_tablename, new_db_tablename):
+        return self.rename_table(old_db_tablename, new_db_tablename)
         
     def change_db_index(self, model, field_name, new_db_index, initial=None):
         f = model._meta.get_field(field_name)
