@@ -123,8 +123,6 @@ changes are known to cause difficulty:
 
     * Addition of ForeignKey fields. A field will be added, but the foreign
       key constraints are not correctly constructed.
-    * Changes to the properties of a given field. Property changes are
-      identified as a change during ``syncdb``, but there isn't a
       mutation that can apply those changes to the database.
     * Deletion of primary keys (including adding a manual primary key as
       a replacement for an automatically installed primary key)
@@ -139,8 +137,9 @@ because the core developers both use PostgreSQL and SQLite on a daily basis.
 Support for MySQL is less complete. The following features are known to be
 buggy or broken under MySQL:
 
-    * Renaming of primary key fields and foreign key fields
-    
+    * Renaming of primary key fields and foreign key fields.
+    * Changing the properties of a field.
+        
 Improving MySQL support (as well as adding support for other database backends)
 is one big area where contributions would be most welcome. 
 
