@@ -14,6 +14,8 @@ tests = r"""
 >>> class Anchor3(models.Model):
 ...     value = models.IntegerField()
 
+>>> anchors = [('Anchor1', Anchor1),('Anchor2', Anchor2),('Anchor3', Anchor3)]
+
 >>> class SigModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
@@ -71,17 +73,19 @@ tests = r"""
 >>> class BaseModel(models.Model):
 ...     name = models.CharField(max_length=20)
 ...     age = models.IntegerField()
->>> start = register_models(('TestModel', BaseModel))
+...     ref = models.ForeignKey(Anchor1)
+>>> start = register_models(('TestModel', BaseModel), *anchors)
 
->>> start_sig = test_proj_sig(('TestModel', BaseModel))
+>>> start_sig = test_proj_sig(('TestModel', BaseModel), *anchors)
 
 # An identical model gives an empty Diff
 >>> class TestModel(models.Model):
 ...     name = models.CharField(max_length=20)
 ...     age = models.IntegerField()
+...     ref = models.ForeignKey(Anchor1)
 
->>> end = register_models(('TestModel', TestModel))
->>> test_sig = test_proj_sig(('TestModel',TestModel))
+>>> end = register_models(('TestModel', TestModel), *anchors)
+>>> test_sig = test_proj_sig(('TestModel',TestModel), *anchors)
 >>> d = Diff(start_sig, test_sig)
 >>> d.is_empty()
 True
@@ -92,10 +96,11 @@ True
 >>> class AddFieldModel(models.Model):
 ...     name = models.CharField(max_length=20)
 ...     age = models.IntegerField()
+...     ref = models.ForeignKey(Anchor1)
 ...     date_of_birth = models.DateField()
 
->>> end = register_models(('TestModel', AddFieldModel))
->>> test_sig = test_proj_sig(('TestModel',AddFieldModel))
+>>> end = register_models(('TestModel', AddFieldModel), *anchors)
+>>> test_sig = test_proj_sig(('TestModel',AddFieldModel), *anchors)
 >>> d = Diff(start_sig, test_sig)
 >>> d.is_empty()
 False
@@ -105,9 +110,10 @@ False
 # Deleting a field gives a non-empty diff
 >>> class DeleteFieldModel(models.Model):
 ...     name = models.CharField(max_length=20)
+...     ref = models.ForeignKey(Anchor1)
 
->>> end = register_models(('TestModel', DeleteFieldModel))
->>> test_sig = test_proj_sig(('TestModel',DeleteFieldModel))
+>>> end = register_models(('TestModel', DeleteFieldModel), *anchors)
+>>> test_sig = test_proj_sig(('TestModel',DeleteFieldModel), *anchors)
 >>> d = Diff(start_sig, test_sig)
 >>> d.is_empty()
 False
@@ -119,9 +125,10 @@ False
 >>> class RenameFieldModel(models.Model):
 ...     full_name = models.CharField(max_length=20)
 ...     age = models.IntegerField()
+...     ref = models.ForeignKey(Anchor1)
 
->>> end = register_models(('TestModel', RenameFieldModel))
->>> test_sig = test_proj_sig(('TestModel',RenameFieldModel))
+>>> end = register_models(('TestModel', RenameFieldModel), *anchors)
+>>> test_sig = test_proj_sig(('TestModel',RenameFieldModel), *anchors)
 >>> d = Diff(start_sig, test_sig)
 >>> d.is_empty()
 False
@@ -132,9 +139,10 @@ False
 >>> class AddPropertyModel(models.Model):
 ...     name = models.CharField(max_length=20)
 ...     age = models.IntegerField(null=True)
+...     ref = models.ForeignKey(Anchor1)
 
->>> end = register_models(('TestModel', AddPropertyModel))
->>> test_sig = test_proj_sig(('TestModel',AddPropertyModel))
+>>> end = register_models(('TestModel', AddPropertyModel), *anchors)
+>>> test_sig = test_proj_sig(('TestModel',AddPropertyModel), *anchors)
 >>> d = Diff(start_sig, test_sig)
 >>> d.is_empty()
 False
@@ -153,9 +161,10 @@ In model tests.TestModel:
 >>> class AddDefaultPropertyModel(models.Model):
 ...     name = models.CharField(max_length=20)
 ...     age = models.IntegerField(null=False)
+...     ref = models.ForeignKey(Anchor1)
 
->>> end = register_models(('TestModel', AddDefaultPropertyModel))
->>> test_sig = test_proj_sig(('TestModel',AddDefaultPropertyModel))
+>>> end = register_models(('TestModel', AddDefaultPropertyModel), *anchors)
+>>> test_sig = test_proj_sig(('TestModel',AddDefaultPropertyModel), *anchors)
 >>> d = Diff(start_sig, test_sig)
 >>> d.is_empty()
 True
@@ -166,9 +175,10 @@ True
 >>> class ChangePropertyModel(models.Model):
 ...     name = models.CharField(max_length=30)
 ...     age = models.IntegerField()
+...     ref = models.ForeignKey(Anchor1)
 
->>> end = register_models(('TestModel', ChangePropertyModel))
->>> test_sig = test_proj_sig(('TestModel',ChangePropertyModel))
+>>> end = register_models(('TestModel', ChangePropertyModel), *anchors)
+>>> test_sig = test_proj_sig(('TestModel',ChangePropertyModel), *anchors)
 >>> d = Diff(start_sig, test_sig)
 >>> d.is_empty()
 False
@@ -182,6 +192,21 @@ In model tests.TestModel:
     In field 'name':
         Property 'max_length' has changed
 
+# Changing the model that a ForeignKey references
+>>> class ChangeFKModel(models.Model):
+...     name = models.CharField(max_length=20)
+...     age = models.IntegerField()
+...     ref = models.ForeignKey(Anchor2)
+
+>>> end = register_models(('TestModel', ChangeFKModel), *anchors)
+>>> test_sig = test_proj_sig(('TestModel',ChangeFKModel), *anchors)
+>>> d = Diff(start_sig, test_sig)
+>>> d.is_empty()
+False
+
+>>> print [str(e) for e in d.evolution()['tests']] # Change Field - change property
+['ChangeField("TestModel", "ref", initial=None, max_length=30)']
+ 
 # Clean up after the applications that were installed
 >>> deregister_models()
 

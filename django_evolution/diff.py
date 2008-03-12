@@ -186,7 +186,10 @@ class Diff(object):
                     changed_attrs = {}
                     current_field_sig = self.current_sig[app_label][model_name]['fields'][field_name]
                     for prop in field_change:
-                        changed_attrs[prop] = current_field_sig.get(prop, ATTRIBUTE_DEFAULTS[prop])
+                        if prop == 'related_model':
+                            changed_attrs[prop] = current_field_sig[prop]
+                        else:
+                            changed_attrs[prop] = current_field_sig.get(prop, ATTRIBUTE_DEFAULTS[prop])
                     if changed_attrs.has_key('null') and \
                         current_field_sig['field_type'] != models.ManyToManyField and \
                         not current_field_sig.get('null', ATTRIBUTE_DEFAULTS['null']):
