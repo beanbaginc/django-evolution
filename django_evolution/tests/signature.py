@@ -205,7 +205,7 @@ In model tests.TestModel:
 False
 
 >>> print [str(e) for e in d.evolution()['tests']] # Change Field - change property
-['ChangeField("TestModel", "ref", initial=None, max_length=30)']
+['ChangeField("TestModel", "ref", initial=None, related_model="tests.Anchor2")']
  
 # Clean up after the applications that were installed
 >>> deregister_models()
