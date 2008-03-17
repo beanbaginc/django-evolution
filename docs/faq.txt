@@ -123,7 +123,6 @@ changes are known to cause difficulty:
 
     * Addition of ForeignKey fields. A field will be added, but the foreign
       key constraints are not correctly constructed.
-      mutation that can apply those changes to the database.
     * Deletion of primary keys (including adding a manual primary key as
       a replacement for an automatically installed primary key)
     * Deletion of fields referenced by other database constraints.
