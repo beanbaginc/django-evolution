@@ -25,11 +25,11 @@ class NullFieldInitialCallback(object):
                                     self.model, self.field, self.app))
 
 def get_initial_value(app_label, model_name, field_name):
-    """Derive an initial value for a field. 
-    
-    If a default has been provided on the field definition, that value will 
-    be used. Otherwise, a placeholder callable will be used. This callable 
-    cannot actually be used in an evolution, but will indicate that user 
+    """Derive an initial value for a field.
+
+    If a default has been provided on the field definition, that value will
+    be used. Otherwise, a placeholder callable will be used. This callable
+    cannot actually be used in an evolution, but will indicate that user
     input is required.
     """
     model = models.get_model(app_label, model_name)
@@ -37,13 +37,13 @@ def get_initial_value(app_label, model_name, field_name):
     if field and field.default != NOT_PROVIDED:
         return field.default
     return NullFieldInitialCallback(app_label, model_name, field_name)
-    
+
 class Diff(object):
     """
     A diff between two model signatures.
-    
+
     The resulting diff is contained in two attributes:
-    
+
     self.changed = {
         app_label: {
             'changed': {
@@ -53,8 +53,8 @@ class Diff(object):
                     'changed': {
                         field: [ list of modified property names ]
                     }
-                }            
-            'deleted': [ list of deleted model names ] 
+                }
+            'deleted': [ list of deleted model names ]
         }
     }
     self.deleted = {
@@ -64,15 +64,15 @@ class Diff(object):
     def __init__(self, original, current):
         self.original_sig = original
         self.current_sig = current
-        
+
         self.changed = {}
         self.deleted = {}
-        
+
         if self.original_sig.get('__version__', 1) != 1:
-            raise EvolutionException("Unknown version identifier in original signature: %s", 
+            raise EvolutionException("Unknown version identifier in original signature: %s",
                                         self.original_sig['__version__'])
         if self.current_sig.get('__version__', 1) != 1:
-            raise EvolutionException("Unknown version identifier in target signature: %s", 
+            raise EvolutionException("Unknown version identifier in target signature: %s",
                                         self.current_sig['__version__'])
 
         for app_name, old_app_sig in original.items():
@@ -88,8 +88,8 @@ class Diff(object):
                 new_model_sig = new_app_sig.get(model_name, None)
                 if new_model_sig is None:
                     # Model has been deleted
-                    self.changed.setdefault(app_name, 
-                        {}).setdefault('deleted', 
+                    self.changed.setdefault(app_name,
+                        {}).setdefault('deleted',
                         []).append(model_name)
                     continue
                 # Look for deleted or modified fields
@@ -97,8 +97,8 @@ class Diff(object):
                     new_field_data = new_model_sig['fields'].get(field_name,None)
                     if new_field_data is None:
                         # Field has been deleted
-                        self.changed.setdefault(app_name, 
-                            {}).setdefault('changed', 
+                        self.changed.setdefault(app_name,
+                            {}).setdefault('changed',
                             {}).setdefault(model_name,
                             {}).setdefault('deleted',
                             []).append(field_name)
@@ -106,14 +106,14 @@ class Diff(object):
                     properties = set(old_field_data.keys())
                     properties.update(new_field_data.keys())
                     for prop in properties:
-                        old_value = old_field_data.get(prop, 
+                        old_value = old_field_data.get(prop,
                             ATTRIBUTE_DEFAULTS.get(prop, None))
-                        new_value = new_field_data.get(prop, 
+                        new_value = new_field_data.get(prop,
                             ATTRIBUTE_DEFAULTS.get(prop, None))
                         if old_value != new_value:
                             # Field has been changed
-                            self.changed.setdefault(app_name, 
-                                {}).setdefault('changed', 
+                            self.changed.setdefault(app_name,
+                                {}).setdefault('changed',
                                 {}).setdefault(model_name,
                                 {}).setdefault('changed',
                                 {}).setdefault(field_name,[]).append(prop)
@@ -121,15 +121,15 @@ class Diff(object):
                 for field_name,new_field_data in new_model_sig['fields'].items():
                     old_field_data = old_model_sig['fields'].get(field_name,None)
                     if old_field_data is None:
-                        self.changed.setdefault(app_name, 
-                            {}).setdefault('changed', 
+                        self.changed.setdefault(app_name,
+                            {}).setdefault('changed',
                             {}).setdefault(model_name,
                             {}).setdefault('added',
                             []).append(field_name)
-                    
-    def is_empty(self, ignore_apps=True):        
+
+    def is_empty(self, ignore_apps=True):
         """Is this an empty diff? i.e., is the source and target the same?
-        
+
         Set 'ignore_apps=False' if you wish to ignore changes caused by
         deleted applications. This is used when you don't purge deleted
         applications during an evolve.
@@ -138,7 +138,7 @@ class Diff(object):
             return not self.changed
         else:
             return not self.deleted and not self.changed
-        
+
     def __str__(self):
         "Output an application signature diff in a human-readable format"
         lines = []
@@ -163,16 +163,14 @@ class Diff(object):
         "Generate an evolution that would neutralize the diff"
         mutations = {}
         for app_label, app_changes in self.changed.items():
-            for model_name in app_changes.get('deleted',{}):
-                mutations.setdefault(app_label,[]).append(DeleteModel(model_name))
             for model_name, change in app_changes.get('changed',{}).items():
                 for field_name in change.get('added',{}):
                     field_sig = self.current_sig[app_label][model_name]['fields'][field_name]
-                    add_params = [(key,field_sig[key]) 
-                                    for key in field_sig.keys() 
+                    add_params = [(key,field_sig[key])
+                                    for key in field_sig.keys()
                                     if key in ATTRIBUTE_DEFAULTS.keys()]
                     add_params.append(('field_type', field_sig['field_type']))
-                    
+
                     if field_sig['field_type'] != models.ManyToManyField and not field_sig.get('null', ATTRIBUTE_DEFAULTS['null']):
                         add_params.append(('initial', get_initial_value(app_label, model_name, field_name)))
                     if 'related_model' in field_sig:
@@ -195,4 +193,6 @@ class Diff(object):
                         not current_field_sig.get('null', ATTRIBUTE_DEFAULTS['null']):
                         changed_attrs['initial'] = get_initial_value(app_label, model_name, field_name)
                     mutations.setdefault(app_label,[]).append(ChangeField(model_name, field_name, **changed_attrs))
+            for model_name in app_changes.get('deleted',{}):
+                mutations.setdefault(app_label,[]).append(DeleteModel(model_name))
         return mutations

@@ -8,6 +8,7 @@ from delete_app import tests as delete_app_tests
 from rename_field import tests as rename_field_tests
 from change_field import tests as change_field_tests
 from sql_mutation import tests as sql_mutation_tests
+from ordering import tests as ordering_tests
 
 # Define doctests
 __test__ = {
@@ -19,4 +20,5 @@ __test__ = {
     'rename_field': rename_field_tests,
     'change_field': change_field_tests,
     'sql_mutation': sql_mutation_tests,
+    'ordering': ordering_tests
 }
