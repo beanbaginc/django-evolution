@@ -87,6 +87,7 @@ class EvolutionOperations(BaseEvolutionOperations):
             def __init__(self, table_name, field_list):
                 self.db_table = table_name
                 self.local_fields = field_list
+                self.fields = field_list # Required for Pre QS-RF support
                 self.db_tablespace = None
 
         class FakeModel(object):
