@@ -43,8 +43,9 @@ What version of Django does Django Evolution support?
 -----------------------------------------------------
 
 Django Evolution requires features that are only available in Django trunk; specifically,
-a Django trunk checkout of Revision 6400 or higher. You cannot use Django Evolution 
-with a 0.96 (or earlier) release of Django.
+a Django trunk checkout of a revision after the Queryset Refactor was merged (i.e.,
+Revision 7477 or higher). You cannot use Django Evolution with a 0.96 (or earlier) 
+release of Django, or with a trunk checkout before Revision 7477.
 
 Management
 ==========

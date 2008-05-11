@@ -86,7 +86,7 @@ class EvolutionOperations(BaseEvolutionOperations):
         class FakeMeta(object):
             def __init__(self, table_name, field_list):
                 self.db_table = table_name
-                self.fields = field_list
+                self.local_fields = field_list
                 self.db_tablespace = None
 
         class FakeModel(object):
