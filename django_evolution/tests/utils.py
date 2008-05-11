@@ -11,12 +11,14 @@ from django_evolution import signature
 from django_evolution.tests import models as evo_test
 from django_evolution.utils import write_sql, execute_sql
 
+from django.contrib.contenttypes import models as contenttypes
 
 DEFAULT_TEST_ATTRIBUTE_VALUES = {
     models.CharField: 'TestCharField',
     models.IntegerField: '123',
     models.AutoField: None,
-    models.DateTimeField: datetime.now()
+    models.DateTimeField: datetime.now(),
+    models.PositiveIntegerField: '42'
 }
 
 def register_models(*models):
@@ -48,8 +50,14 @@ def test_proj_sig(*models, **kwargs):
     }
 
     # Compute the project siguature
-    for name,model in models:
-        proj_sig['tests'][name] = signature.create_model_sig(model)
+    for full_name,model in models:
+        parts = full_name.split('.')
+        if len(parts) == 1:
+            name = parts[0]
+            app = 'tests'
+        else:
+            app,name = parts
+        proj_sig.setdefault(app,{})[name] = signature.create_model_sig(model)
     
     return proj_sig
     

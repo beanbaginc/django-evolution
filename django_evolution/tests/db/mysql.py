@@ -294,3 +294,8 @@ sql_mutation = {
             'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field3` integer NULL;',
         ]),
 }
+
+generics = {
+    'DeleteColumnModel': "ALTER TABLE `tests_testmodel` DROP COLUMN `char_field` CASCADE;"    
+}
+

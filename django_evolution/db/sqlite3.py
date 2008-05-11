@@ -10,10 +10,9 @@ class EvolutionOperations(BaseEvolutionOperations):
         qn = connection.ops.quote_name
         output = []
     
-        field_list = model._meta.fields[:]
-        for field in field_list:
-            if(f.name == field.name):
-                field_list.remove(field)
+        field_list = [field for field in model._meta.fields 
+                        if f.name != field.name # Remove the field to be deleted
+                        and field.db_type() is not None] # and any Generic fields
         table_name = model._meta.db_table
     
         output.extend(self.create_temp_table(field_list))
@@ -140,10 +139,11 @@ class EvolutionOperations(BaseEvolutionOperations):
         original_fields = opts.fields
         new_fields = []
         for f in original_fields:
-            if f.name == old_field.name:
-                new_fields.append(new_field)
-            else:
-                new_fields.append(f)
+            if f.db_type() is not None: # Ignore Generic Fields
+                if f.name == old_field.name:
+                    new_fields.append(new_field)
+                else:
+                    new_fields.append(f)
 
         table_name = opts.db_table
         output = []
@@ -159,7 +159,7 @@ class EvolutionOperations(BaseEvolutionOperations):
     def add_column(self, model, f, initial):
         output = []
         table_name = model._meta.db_table
-        original_fields = model._meta.fields
+        original_fields = [field for field in model._meta.fields if field.db_type() is not None]
         new_fields = original_fields
         new_fields.append(f)
     
@@ -186,7 +186,7 @@ class EvolutionOperations(BaseEvolutionOperations):
         opts = model._meta
         table_name = opts.db_table
         setattr(opts.get_field(field_name), attr_name, new_attr_value)
-        fields = opts.fields
+        fields = [f for f in opts.fields if f.db_type() is not None]
         
         output.extend(self.create_temp_table(fields))
         output.extend(self.copy_to_temp_table(table_name, fields))

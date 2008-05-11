@@ -5,6 +5,8 @@ tests = r"""
 >>> from django_evolution.diff import Diff
 >>> from django_evolution.tests.utils import test_proj_sig, register_models, deregister_models
 >>> from pprint import pprint
+>>> from django.contrib.contenttypes import generic
+>>> from django.contrib.contenttypes.models import ContentType
 
 # First, a model that has one of everything so we can validate all cases for a signature
 >>> class Anchor1(models.Model):
@@ -13,6 +15,10 @@ tests = r"""
 ...     value = models.IntegerField()
 >>> class Anchor3(models.Model):
 ...     value = models.IntegerField()
+...     # Host a generic key here, too
+...     content_type = models.ForeignKey(ContentType)
+...     object_id = models.PositiveIntegerField(db_index=True)
+...     content_object = generic.GenericForeignKey('content_type','object_id')
 
 >>> anchors = [('Anchor1', Anchor1),('Anchor2', Anchor2),('Anchor3', Anchor3)]
 
@@ -29,6 +35,12 @@ tests = r"""
 ...     ref5 = models.ManyToManyField(Anchor3)
 ...     ref6 = models.ManyToManyField(Anchor3, related_name='other_sigmodel')
 ...     ref7 = models.ManyToManyField('self')
+...     # Plus a generic foreign key - the Generic itself should be ignored
+...     content_type = models.ForeignKey(ContentType)
+...     object_id = models.PositiveIntegerField(db_index=True)
+...     content_object = generic.GenericForeignKey('content_type','object_id')
+...     # Plus a generic relation, which should be ignored
+...     generic = generic.GenericRelation(Anchor3)
 
 # Store the base signatures
 >>> base_cache = register_models(('Anchor1', Anchor1), ('Anchor2', Anchor2), ('Anchor3', Anchor3), ('TestModel', SigModel))
@@ -37,6 +49,8 @@ tests = r"""
 >>> pprint(signature.create_model_sig(SigModel))
 {'fields': {'char_field': {'field_type': <class 'django.db.models.fields.CharField'>,
                            'max_length': 20},
+            'content_type': {'field_type': <class 'django.db.models.fields.related.ForeignKey'>,
+                             'related_model': 'contenttypes.ContentType'},
             'dec_field': {'decimal_places': 4,
                           'field_type': <class 'django.db.models.fields.DecimalField'>,
                           'max_digits': 10},
@@ -49,6 +63,8 @@ tests = r"""
             'null_field': {'db_column': 'size_column',
                            'field_type': <class 'django.db.models.fields.IntegerField'>,
                            'null': True},
+            'object_id': {'db_index': True,
+                          'field_type': <class 'django.db.models.fields.PositiveIntegerField'>},
             'ref1': {'field_type': <class 'django.db.models.fields.related.ForeignKey'>,
                      'related_model': 'tests.Anchor1'},
             'ref2': {'field_type': <class 'django.db.models.fields.related.ForeignKey'>,

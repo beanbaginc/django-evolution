@@ -569,3 +569,17 @@ sql_mutation = {
             'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field3" integer NULL;',
         ]),
 }
+
+generics = {
+    'DeleteColumnModel': ""
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "content_type_id" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "object_id" integer unsigned NOT NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field", "content_type_id", "id", "object_id" FROM "tests_testmodel";',
+            'DROP TABLE "tests_testmodel";',
+            'CREATE TABLE "tests_testmodel"("int_field" integer NOT NULL, "content_type_id" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "object_id" integer unsigned NOT NULL);',
+            'CREATE INDEX "tests_testmodel_content_type_id" ON "tests_testmodel" ("content_type_id");',
+            'CREATE INDEX "tests_testmodel_object_id" ON "tests_testmodel" ("object_id");',
+            'INSERT INTO "tests_testmodel" ("int_field", "content_type_id", "id", "object_id") SELECT "int_field", "content_type_id", "id", "object_id" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ])
+}

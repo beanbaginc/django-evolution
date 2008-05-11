@@ -1,6 +1,7 @@
 from django.db.models import get_apps, get_models
 from django.db.models.fields.related import *
 from django.conf import global_settings
+from django.contrib.contenttypes import generic
 
 ATTRIBUTE_DEFAULTS = {
     # Common to all fields
@@ -55,7 +56,9 @@ def create_model_sig(model):
     }
 
     for field in model._meta.fields + model._meta.many_to_many:
-        model_sig['fields'][field.name] = create_field_sig(field)
+        # Special case - don't generate a signature for generic relations
+        if not isinstance(field, generic.GenericRelation):
+            model_sig['fields'][field.name] = create_field_sig(field)
     return model_sig
     
 def create_app_sig(app):
