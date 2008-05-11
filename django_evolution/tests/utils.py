@@ -109,17 +109,18 @@ def execute_test_sql(start, end, sql, debug=False):
     # Set the app cache to the end state
     cache.app_models['tests'] = copy.deepcopy(end)
     
-    # Execute the test sql
-    if debug:
-        write_sql(sql)
-    else:
-        execute_transaction(sql, output=True)
-    
-    # Cleanup the apps.
-    if debug:
-        print sql_delete(evo_test, style)
-    else:
-        execute_transaction(sql_delete(evo_test, style), output=debug)
+    try:
+        # Execute the test sql
+        if debug:
+            write_sql(sql)
+        else:
+            execute_transaction(sql, output=True)
+    finally:
+        # Cleanup the apps.
+        if debug:
+            print sql_delete(evo_test, style)
+        else:
+            execute_transaction(sql_delete(evo_test, style), output=debug)
     
 def create_test_data(app_models):
     deferred_models = []

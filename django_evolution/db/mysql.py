@@ -43,9 +43,41 @@ class EvolutionOperations(BaseEvolutionOperations):
 
     def set_field_null(self, model, f, null):
         qn = connection.ops.quote_name
-        params = (qn(model._meta.db_table), qn(f.column),f.db_type())
+        params = (qn(model._meta.db_table), qn(f.column), f.db_type())
         if null:
-            return 'ALTER TABLE %s MODIFY COLUMN %s %s DEFAULT NULL;' % params
+            return 'ALTER TABLE %s MODIFY %s %s DEFAULT NULL;' % params
         else:
-            return 'ALTER TABLE %s MODIFY COLUMN %s %s NOT NULL;' % params
+            return 'ALTER TABLE %s MODIFY %s %s NOT NULL;' % params
 
+    def change_max_length(self, model, field_name, new_max_length, initial=None):
+        qn = connection.ops.quote_name
+        opts = model._meta
+        f = opts.get_field(field_name)
+        f.max_length = new_max_length
+        params = (qn(opts.db_table), qn(f.column), f.db_type())
+        return ['ALTER TABLE %s MODIFY %s %s;' % params]
+
+    def drop_index(self, model, f):
+        qn = connection.ops.quote_name
+        params = (qn(self.get_index_name(model, f)), qn(model._meta.db_table))
+        return ['DROP INDEX %s ON %s;' % params]
+
+    def change_unique(self, model, field_name, new_unique_value, initial=None):
+        qn = connection.ops.quote_name
+        opts = model._meta
+        f = opts.get_field(field_name)
+        constraint_name = '%s' % (f.column,)
+        if new_unique_value:
+            params = (constraint_name, qn(opts.db_table), qn(f.column),)
+            return ['CREATE UNIQUE INDEX %s ON %s(%s);' % params]
+        else:
+            params = (constraint_name, qn(opts.db_table))
+            return ['DROP INDEX %s ON %s;' % params]
+
+    def rename_table(self, old_db_tablename, db_tablename):
+        if old_db_tablename == db_tablename:
+            return []
+        
+        qn = connection.ops.quote_name
+        params = (qn(old_db_tablename), qn(db_tablename))
+        return ['RENAME TABLE %s TO %s;' % params]

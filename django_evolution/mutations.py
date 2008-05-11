@@ -82,7 +82,7 @@ class MockMeta(object):
             try:
                 return self._many_to_many[name]
             except KeyError:
-        	raise FieldDoesNotExist('%s has no field named %r' % (self.object_name, name))
+                raise FieldDoesNotExist('%s has no field named %r' % (self.object_name, name))
 
     def get_field_by_name(self, name):
         return (self.get_field(name), None, True, None)

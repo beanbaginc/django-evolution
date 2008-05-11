@@ -448,9 +448,9 @@ is being executed as an unattended, automated script.
 Use ``--verbosity`` to specify the amount of notification and debug 
 information that the evolve command should print to the console.
 
-	* ``0`` means no input.
-	* ``1`` means normal input (default).
-	* ``2`` means verbose input.
+    * ``0`` means no input.
+    * ``1`` means normal input (default).
+    * ``2`` means verbose input.
 
 Built-in Mutations
 ------------------
@@ -513,14 +513,14 @@ The ChangeField will detect that the ''null'' attribute was specified but not ch
 the re-specification. 
 
 Example::
-	# Adding a null constraint to the birthday field.
-	ChangeField('Author', 'date_of_birth', null=True)
-	
-	# Increasing the size of the author's name.
-	ChangeField('Author', 'name', max_length=100)
-	
+    # Adding a null constraint to the birthday field.
+    ChangeField('Author', 'date_of_birth', null=True)
+    
+    # Increasing the size of the author's name.
+    ChangeField('Author', 'name', max_length=100)
+    
 .. note::
-	The ChangeField only supports the null, max_length, unique, db_column, db_index and db_table (for many to many fields) attribute at this time.
+    The ChangeField only supports the null, max_length, unique, db_column, db_index and db_table (for many to many fields) attribute at this time.
 
 
 DeleteField(model_name, field_name)

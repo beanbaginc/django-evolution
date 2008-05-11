@@ -115,20 +115,20 @@ change_field = {
             "        Property 'null' has changed",]),
     "SetNotNullChangeModelWithConstant":
         '\n'.join([
-            'UPDATE "tests_testmodel" SET "char_field1" = \'abc\\\'s xyz\' WHERE "char_field1" IS NULL;',
-            'ALTER TABLE "tests_testmodel" ALTER COLUMN "char_field1" SET NOT NULL;',
+            'UPDATE `tests_testmodel` SET `char_field1` = \'abc\\\'s xyz\' WHERE `char_field1` IS NULL;',
+            'ALTER TABLE `tests_testmodel` MODIFY `char_field1` varchar(25) NOT NULL;',
         ]),
     "SetNotNullChangeModelWithCallable":
             '\n'.join([
-                'UPDATE "tests_testmodel" SET "char_field1" = "char_field" WHERE "char_field1" IS NULL;',
-                'ALTER TABLE "tests_testmodel" ALTER COLUMN "char_field1" SET NOT NULL;',
+                'UPDATE `tests_testmodel` SET `char_field1` = `char_field` WHERE `char_field1` IS NULL;',
+                'ALTER TABLE `tests_testmodel` MODIFY `char_field1` varchar(25) NOT NULL;',
             ]),
     "SetNullChangeModelDiff":
         '\n'.join([
             "In model tests.TestModel:",
             "    In field 'char_field2':",
             "        Property 'null' has changed",]),
-    "SetNullChangeModel": 'ALTER TABLE "tests_testmodel" ALTER COLUMN "char_field2" DROP NOT NULL;',
+    "SetNullChangeModel": 'ALTER TABLE `tests_testmodel` MODIFY `char_field2` varchar(30) DEFAULT NULL;',
     "NoOpChangeModelDiff": '<BLANKLINE>',
     "NoOpChangeModel": '',
     "IncreasingMaxLengthChangeModelDiff": 
@@ -137,56 +137,56 @@ change_field = {
             "    In field 'char_field':",
             "        Property 'max_length' has changed",
         ]),
-    "IncreasingMaxLengthChangeModel": 'ALTER TABLE "tests_testmodel" ALTER COLUMN "char_field" TYPE varchar(45) USING CAST("char_field" as varchar(45));',
+    "IncreasingMaxLengthChangeModel": 'ALTER TABLE `tests_testmodel` MODIFY `char_field` varchar(45);',
     "DecreasingMaxLengthChangeModelDiff": 
         '\n'.join([
             "In model tests.TestModel:",
             "    In field 'char_field':",
             "        Property 'max_length' has changed",
         ]),
-    "DecreasingMaxLengthChangeModel": 'ALTER TABLE "tests_testmodel" ALTER COLUMN "char_field" TYPE varchar(1) USING CAST("char_field" as varchar(1));',
+    "DecreasingMaxLengthChangeModel": 'ALTER TABLE `tests_testmodel` MODIFY `char_field` varchar(15);',
     "DBColumnChangeModelDiff": 
         '\n'.join([
             "In model tests.TestModel:",
             "    In field 'int_field':",
             "        Property 'db_column' has changed",
         ]),
-    "DBColumnChangeModel": 'ALTER TABLE "tests_testmodel" RENAME COLUMN "custom_db_column" TO "customised_db_column";',
+    "DBColumnChangeModel": 'ALTER TABLE `tests_testmodel` CHANGE `custom_db_column` `customised_db_column` integer NOT NULL;',
     "M2MDBTableChangeModelDiff": 
         '\n'.join([
             "In model tests.TestModel:",
             "    In field 'm2m_field1':",
             "        Property 'db_table' has changed",
         ]),
-    "M2MDBTableChangeModel": 'ALTER TABLE "change_field_non-default_m2m_table" RENAME TO "custom_m2m_db_table_name";',
+    "M2MDBTableChangeModel": 'RENAME TABLE `change_field_non-default_m2m_table` TO `custom_m2m_db_table_name`;',
     "AddDBIndexChangeModelDiff": 
         '\n'.join([
             "In model tests.TestModel:",
             "    In field 'int_field2':",
             "        Property 'db_index' has changed",
         ]),
-    "AddDBIndexChangeModel": 'CREATE INDEX "tests_testmodel_int_field2" ON "tests_testmodel" ("int_field2");',
+    "AddDBIndexChangeModel": 'CREATE INDEX `tests_testmodel_int_field2` ON `tests_testmodel` (`int_field2`);',
     "RemoveDBIndexChangeModelDiff": 
         '\n'.join([
             "In model tests.TestModel:",
             "    In field 'int_field1':",
             "        Property 'db_index' has changed",
         ]),
-    "RemoveDBIndexChangeModel": 'DROP INDEX "tests_testmodel_int_field1";',
+    "RemoveDBIndexChangeModel": 'DROP INDEX `tests_testmodel_int_field1` ON `tests_testmodel`;',
     "AddUniqueChangeModelDiff": 
         '\n'.join([
             "In model tests.TestModel:",
             "    In field 'int_field4':",
             "        Property 'unique' has changed",
         ]),
-    "AddUniqueChangeModel": 'ALTER TABLE "tests_testmodel" ADD CONSTRAINT tests_testmodel_int_field4_key UNIQUE("int_field4");',
+    "AddUniqueChangeModel": 'CREATE UNIQUE INDEX int_field4 ON `tests_testmodel`(`int_field4`);',
     "RemoveUniqueChangeModelDiff": 
         '\n'.join([
             "In model tests.TestModel:",
             "    In field 'int_field3':",
             "        Property 'unique' has changed",
         ]),
-    "RemoveUniqueChangeModel": 'ALTER TABLE "tests_testmodel" DROP CONSTRAINT tests_testmodel_int_field3_key;',
+    "RemoveUniqueChangeModel": 'DROP INDEX int_field3 ON `tests_testmodel`;',
     "MultiAttrChangeModelDiff": 
         '\n'.join([
             "In model tests.TestModel:",
@@ -199,9 +199,9 @@ change_field = {
         ]),
     "MultiAttrChangeModel": 
         '\n'.join([
-            'ALTER TABLE "tests_testmodel" ALTER COLUMN "char_field2" DROP NOT NULL;',
-            'ALTER TABLE "tests_testmodel" RENAME COLUMN "custom_db_column" TO "custom_db_column2";',
-            'ALTER TABLE "tests_testmodel" ALTER COLUMN "char_field" TYPE varchar(35) USING CAST("char_field" as varchar(35));',
+            'ALTER TABLE `tests_testmodel` MODIFY `char_field2` varchar(30) DEFAULT NULL;',
+            'ALTER TABLE `tests_testmodel` CHANGE `custom_db_column` `custom_db_column2` integer NOT NULL;',
+            'ALTER TABLE `tests_testmodel` MODIFY `char_field` varchar(35);',
         ]),
     "MultiAttrSingleFieldChangeModelDiff": 
         '\n'.join([
@@ -212,14 +212,14 @@ change_field = {
         ]),
     "MultiAttrSingleFieldChangeModel": 
         '\n'.join([
-            'ALTER TABLE "tests_testmodel" ALTER COLUMN "char_field2" TYPE varchar(35) USING CAST("char_field2" as varchar(35));',
-            'ALTER TABLE "tests_testmodel" ALTER COLUMN "char_field2" DROP NOT NULL;',
+            'ALTER TABLE `tests_testmodel` MODIFY `char_field2` varchar(35);',
+            'ALTER TABLE `tests_testmodel` MODIFY `char_field2` varchar(35) DEFAULT NULL;',
         ]),
     "RedundantAttrsChangeModel":
         '\n'.join([
-            'ALTER TABLE "tests_testmodel" ALTER COLUMN "char_field2" DROP NOT NULL;',
-            'ALTER TABLE "tests_testmodel" RENAME COLUMN "custom_db_column" TO "custom_db_column3";',
-            'ALTER TABLE "tests_testmodel" ALTER COLUMN "char_field" TYPE varchar(35) USING CAST("char_field" as varchar(35));',
+            'ALTER TABLE `tests_testmodel` MODIFY `char_field2` varchar(30) DEFAULT NULL;',
+            'ALTER TABLE `tests_testmodel` CHANGE `custom_db_column` `custom_db_column3` integer NOT NULL;',
+            'ALTER TABLE `tests_testmodel` MODIFY `char_field` varchar(35);',
         ]),
 }
 

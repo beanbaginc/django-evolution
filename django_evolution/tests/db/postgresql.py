@@ -144,7 +144,7 @@ change_field = {
             "    In field 'char_field':",
             "        Property 'max_length' has changed",
         ]),
-    "DecreasingMaxLengthChangeModel": 'ALTER TABLE "tests_testmodel" ALTER COLUMN "char_field" TYPE varchar(1) USING CAST("char_field" as varchar(1));',
+    "DecreasingMaxLengthChangeModel": 'ALTER TABLE "tests_testmodel" ALTER COLUMN "char_field" TYPE varchar(15) USING CAST("char_field" as varchar(15));',
     "DBColumnChangeModelDiff": 
         '\n'.join([
             "In model tests.TestModel:",
