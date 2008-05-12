@@ -163,13 +163,75 @@ of model change have not yet been developed. As a result, there are some types
 of change that you can make to a model for which Django Evolution cannot 
 produce a corresponding SQL mutation. 
 
-The most common source of these changes is a change to the properties of a 
-field - for example, adding ``null=True``, or changing the ``max_length``
-for a ``CharField``. 
-
 We hope to eventually support these changes with a hinted mutation. However, 
 in the interim, the workaround is to manually define an SQL mutation
 and include it as a stored evolution in your project.
+
+My OneToOneField has changed as a result of the QuerySet Refactor merge! What should I do?
+------------------------------------------------------------------------------------------
+
+First - some background. `Django revision 7477`_ saw the merging of the 
+`Queryset Refactor branch`_ back into the Django trunk. This change introduced a 
+lot of behind-the-scenes improvements to the way queries are composed. 
+However, this also introduced some subtle `backwards-incompatible changes`_
+that can affect your database definitions. In turn, these changes have an
+effect on the way Django Evolution treats your database.
+
+For example, consider the case of the following model defining a user profile::
+    
+    class UserProfile(models.Model):
+        user = models.OneToOneField()
+        foobar = models.CharField(max_length=40)
+
+If you were to run syncdb on this model prior to Django revision 7477, 
+you would get a database definition that looks something like::
+
+	CREATE TABLE "test_app_userprofile" (
+	    "user_id" integer NOT NULL PRIMARY KEY REFERENCES "auth_user" ("id") DEFERRABLE INITIALLY DEFERRED,
+	    "foobar" varchar(40) NOT NULL
+	);
+
+However, if you were to run syncdb using a version of Django after
+revision 7477, you would get the following::
+
+	CREATE TABLE "test_app_userprofile" (
+	    "id" serial NOT NULL PRIMARY KEY,
+	    "user_id" integer NOT NULL UNIQUE REFERENCES "auth_user" ("id") DEFERRABLE INITIALLY DEFERRED,
+	    "foobar" varchar(40) NOT NULL
+	);
+
+The suggested response to this change is to add "primary_key=True" to your 
+OneToOneField defintion. While this will result in the same functionality at
+runtime, it will be identified by Django Evolution as a change in model 
+signature - even though no database change is required. 
+
+What is required is a way to ignore the change of signature. This can be
+achieved using an empty SQL mutation that provides a signature update 
+function. To update the previous example, put the following into your
+mutation sequence definition::
+
+	def qsrf_update(app_label, proj_sig):
+	    app_sig = proj_sig[app_label]  
+	    model_sig = app_sig['UserProfile']
+	    model_sig['fields']['user'] = {
+	         'primary_key': True
+	    }
+
+	SEQUENCE = [
+	    ...
+	    SQLMutation('qsrf-update', [], qsrf_update)
+	    ...
+	]
+
+This defines a signature update function called "qsrf_update()" that puts
+a "primary_key" definition into the signature for the OneToOneField. This
+function is used by an SQL mutation called 'qsrf-update' that contains
+no actual SQL statements. So, when this mutation is applied, the signature
+will be updated, but no changes will be made to the database. 
+
+.. _`Django revision 7477`: http://code.djangoproject.com/changeset/7477
+.. _`Queryset Refactor branch`: http://code.djangoproject.com/wiki/QuerysetRefactorBranch
+.. _`backwards-incompatible changes`: http://code.djangoproject.com/wiki/QuerysetRefactorBranch#Backwardsincompatiblechanges
 
 Design
 ======
