@@ -39,23 +39,29 @@ class EvolutionOperations(BaseEvolutionOperations):
             )
         
         params = (qn(opts.db_table), qn(old_field.column), ' '.join(field_output))
-        return ['ALTER TABLE %s CHANGE %s %s;' % params]
+        return ['ALTER TABLE %s CHANGE COLUMN %s %s;' % params]
 
     def set_field_null(self, model, f, null):
         qn = connection.ops.quote_name
         params = (qn(model._meta.db_table), qn(f.column), f.db_type())
         if null:
-            return 'ALTER TABLE %s MODIFY %s %s DEFAULT NULL;' % params
+            return 'ALTER TABLE %s MODIFY COLUMN %s %s DEFAULT NULL;' % params
         else:
-            return 'ALTER TABLE %s MODIFY %s %s NOT NULL;' % params
+            return 'ALTER TABLE %s MODIFY COLUMN %s %s NOT NULL;' % params
 
     def change_max_length(self, model, field_name, new_max_length, initial=None):
         qn = connection.ops.quote_name
         opts = model._meta
         f = opts.get_field(field_name)
         f.max_length = new_max_length
-        params = (qn(opts.db_table), qn(f.column), f.db_type())
-        return ['ALTER TABLE %s MODIFY %s %s;' % params]
+        params = {
+            'table': qn(opts.db_table),
+            'column': qn(f.column), 
+            'length': f.max_length, 
+            'type': f.db_type()
+        }
+        return ['UPDATE %(table)s SET %(column)s=LEFT(%(column)s,%(length)d);' % params,
+                'ALTER TABLE %(table)s MODIFY COLUMN %(column)s %(type)s;' % params]
 
     def drop_index(self, model, f):
         qn = connection.ops.quote_name

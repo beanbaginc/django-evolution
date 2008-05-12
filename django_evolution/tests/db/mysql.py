@@ -116,19 +116,19 @@ change_field = {
     "SetNotNullChangeModelWithConstant":
         '\n'.join([
             'UPDATE `tests_testmodel` SET `char_field1` = \'abc\\\'s xyz\' WHERE `char_field1` IS NULL;',
-            'ALTER TABLE `tests_testmodel` MODIFY `char_field1` varchar(25) NOT NULL;',
+            'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field1` varchar(25) NOT NULL;',
         ]),
     "SetNotNullChangeModelWithCallable":
             '\n'.join([
                 'UPDATE `tests_testmodel` SET `char_field1` = `char_field` WHERE `char_field1` IS NULL;',
-                'ALTER TABLE `tests_testmodel` MODIFY `char_field1` varchar(25) NOT NULL;',
+                'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field1` varchar(25) NOT NULL;',
             ]),
     "SetNullChangeModelDiff":
         '\n'.join([
             "In model tests.TestModel:",
             "    In field 'char_field2':",
             "        Property 'null' has changed",]),
-    "SetNullChangeModel": 'ALTER TABLE `tests_testmodel` MODIFY `char_field2` varchar(30) DEFAULT NULL;',
+    "SetNullChangeModel": 'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field2` varchar(30) DEFAULT NULL;',
     "NoOpChangeModelDiff": '<BLANKLINE>',
     "NoOpChangeModel": '',
     "IncreasingMaxLengthChangeModelDiff": 
@@ -137,21 +137,29 @@ change_field = {
             "    In field 'char_field':",
             "        Property 'max_length' has changed",
         ]),
-    "IncreasingMaxLengthChangeModel": 'ALTER TABLE `tests_testmodel` MODIFY `char_field` varchar(45);',
-    "DecreasingMaxLengthChangeModelDiff": 
+    'IncreasingMaxLengthChangeModel':
+            '\n'.join([
+                'UPDATE `tests_testmodel` SET `char_field`=LEFT(`char_field`,45);',
+                'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field` varchar(45);',
+            ]),
+    'DecreasingMaxLengthChangeModelDiff':
         '\n'.join([
             "In model tests.TestModel:",
             "    In field 'char_field':",
             "        Property 'max_length' has changed",
         ]),
-    "DecreasingMaxLengthChangeModel": 'ALTER TABLE `tests_testmodel` MODIFY `char_field` varchar(15);',
-    "DBColumnChangeModelDiff": 
+    'DecreasingMaxLengthChangeModel':  
+            '\n'.join([
+                'UPDATE `tests_testmodel` SET `char_field`=LEFT(`char_field`,1);',
+                'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field` varchar(1);',
+            ]),
+    'DBColumnChangeModelDiff':
         '\n'.join([
             "In model tests.TestModel:",
             "    In field 'int_field':",
             "        Property 'db_column' has changed",
         ]),
-    "DBColumnChangeModel": 'ALTER TABLE `tests_testmodel` CHANGE `custom_db_column` `customised_db_column` integer NOT NULL;',
+    "DBColumnChangeModel": 'ALTER TABLE `tests_testmodel` CHANGE COLUMN `custom_db_column` `customised_db_column` integer NOT NULL;',
     "M2MDBTableChangeModelDiff": 
         '\n'.join([
             "In model tests.TestModel:",
@@ -199,9 +207,10 @@ change_field = {
         ]),
     "MultiAttrChangeModel": 
         '\n'.join([
-            'ALTER TABLE `tests_testmodel` MODIFY `char_field2` varchar(30) DEFAULT NULL;',
-            'ALTER TABLE `tests_testmodel` CHANGE `custom_db_column` `custom_db_column2` integer NOT NULL;',
-            'ALTER TABLE `tests_testmodel` MODIFY `char_field` varchar(35);',
+            'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field2` varchar(30) DEFAULT NULL;',
+            'ALTER TABLE `tests_testmodel` CHANGE COLUMN `custom_db_column` `custom_db_column2` integer NOT NULL;',
+            'UPDATE `tests_testmodel` SET `char_field`=LEFT(`char_field`,35);',
+            'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field` varchar(35);',
         ]),
     "MultiAttrSingleFieldChangeModelDiff": 
         '\n'.join([
@@ -212,14 +221,16 @@ change_field = {
         ]),
     "MultiAttrSingleFieldChangeModel": 
         '\n'.join([
-            'ALTER TABLE `tests_testmodel` MODIFY `char_field2` varchar(35);',
-            'ALTER TABLE `tests_testmodel` MODIFY `char_field2` varchar(35) DEFAULT NULL;',
+            'UPDATE `tests_testmodel` SET `char_field2`=LEFT(`char_field2`,35);',
+            'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field2` varchar(35);',
+            'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field2` varchar(35) DEFAULT NULL;',
         ]),
     "RedundantAttrsChangeModel":
         '\n'.join([
-            'ALTER TABLE `tests_testmodel` MODIFY `char_field2` varchar(30) DEFAULT NULL;',
-            'ALTER TABLE `tests_testmodel` CHANGE `custom_db_column` `custom_db_column3` integer NOT NULL;',
-            'ALTER TABLE `tests_testmodel` MODIFY `char_field` varchar(35);',
+            'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field2` varchar(30) DEFAULT NULL;',
+            'ALTER TABLE `tests_testmodel` CHANGE COLUMN `custom_db_column` `custom_db_column3` integer NOT NULL;',
+            'UPDATE `tests_testmodel` SET `char_field`=LEFT(`char_field`,35);',
+            'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field` varchar(35);',
         ]),
 }
 
@@ -253,21 +264,21 @@ delete_application = {
 
 rename_field = {
     'RenameColumnModel': 
-        'ALTER TABLE `tests_testmodel` CHANGE `int_field` `renamed_field` integer NOT NULL;',
+        'ALTER TABLE `tests_testmodel` CHANGE COLUMN `int_field` `renamed_field` integer NOT NULL;',
     'RenameColumnWithTableNameModel': 
-        'ALTER TABLE `tests_testmodel` CHANGE `int_field` `renamed_field` integer NOT NULL;',
+        'ALTER TABLE `tests_testmodel` CHANGE COLUMN `int_field` `renamed_field` integer NOT NULL;',
     'RenamePrimaryKeyColumnModel': 
-        'ALTER TABLE `tests_testmodel` CHANGE `id` `my_pk_id`;',
+        'ALTER TABLE `tests_testmodel` CHANGE COLUMN `id` `my_pk_id`;',
     'RenameForeignKeyColumnModel': 
-        'ALTER TABLE `tests_testmodel` CHANGE `fk_field_id` `renamed_field_id` integer NOT NULL;',
+        'ALTER TABLE `tests_testmodel` CHANGE COLUMN `fk_field_id` `renamed_field_id` integer NOT NULL;',
     'RenameNonDefaultColumnNameModel': 
-        'ALTER TABLE `tests_testmodel` CHANGE `custom_db_col_name` `renamed_field` integer NOT NULL;',
+        'ALTER TABLE `tests_testmodel` CHANGE COLUMN `custom_db_col_name` `renamed_field` integer NOT NULL;',
     'RenameNonDefaultColumnNameToNonDefaultNameModel': 
-        'ALTER TABLE `tests_testmodel` CHANGE `custom_db_col_name` `non-default_column_name` integer NOT NULL;',
+        'ALTER TABLE `tests_testmodel` CHANGE COLUMN `custom_db_col_name` `non-default_column_name` integer NOT NULL;',
     'RenameNonDefaultColumnNameToNonDefaultNameAndTableModel': 
-        'ALTER TABLE `tests_testmodel` CHANGE `custom_db_col_name` `non-default_column_name2` integer NOT NULL;',
+        'ALTER TABLE `tests_testmodel` CHANGE COLUMN `custom_db_col_name` `non-default_column_name2` integer NOT NULL;',
     'RenameColumnCustomTableModel': 
-        'ALTER TABLE `custom_rename_table_name` CHANGE `value` `renamed_field` integer NOT NULL;',
+        'ALTER TABLE `custom_rename_table_name` CHANGE COLUMN `value` `renamed_field` integer NOT NULL;',
     'RenameManyToManyTableModel': 
         'ALTER TABLE `tests_testmodel_m2m_field` RENAME TO `tests_testmodel_renamed_field`;',
     'RenameManyToManyTableWithColumnNameModel': 

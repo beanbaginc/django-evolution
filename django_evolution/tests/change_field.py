@@ -281,7 +281,7 @@ True
 ...     int_field2 = models.IntegerField(db_index=False)
 ...     int_field3 = models.IntegerField(unique=True)
 ...     int_field4 = models.IntegerField(unique=False)
-...     char_field = models.CharField(max_length=15)
+...     char_field = models.CharField(max_length=1)
 ...     char_field1 = models.CharField(max_length=25, null=True)
 ...     char_field2 = models.CharField(max_length=30, null=False)
 ...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
@@ -292,7 +292,7 @@ True
 >>> print d
 %(DecreasingMaxLengthChangeModelDiff)s
 >>> print [str(e) for e in d.evolution()['tests']]
-['ChangeField("TestModel", "char_field", initial=None, max_length=15)']
+['ChangeField("TestModel", "char_field", initial=None, max_length=1)']
 
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
