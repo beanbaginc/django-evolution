@@ -149,7 +149,7 @@ False
 >>> d.is_empty()
 False
 >>> print [str(e) for e in d.evolution()['tests']] # Rename Field
-["AddField('TestModel', 'full_name', models.CharField, initial='', max_length=20)", "DeleteField('TestModel', 'name')"]
+["AddField('TestModel', 'full_name', models.CharField, initial=<<USER VALUE REQUIRED>>, max_length=20)", "DeleteField('TestModel', 'name')"]
 
 # Adding a property to a field which was not present in the original Model
 >>> class AddPropertyModel(models.Model):

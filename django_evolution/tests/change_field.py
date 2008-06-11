@@ -122,7 +122,7 @@ In model tests.TestModel:
         Property 'null' has changed
 
 >>> print [str(e) for e in d.evolution()['tests']] # SetNotNullChangeModel
-["ChangeField('TestModel', 'char_field1', initial='', null=False)"]
+["ChangeField('TestModel', 'char_field1', initial=<<USER VALUE REQUIRED>>, null=False)"]
 
 # Without an initial value
 >>> evolution = [ChangeField('TestModel', 'char_field1', null=False)]

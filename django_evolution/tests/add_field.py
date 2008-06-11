@@ -174,8 +174,8 @@ True
 >>> end = register_models(('TestModel',AddStringColumnModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',AddStringColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
->>> print [str(e) for e in d.evolution()['tests']] #AddStringColumnModel
-["AddField('TestModel', 'added_field', models.CharField, initial='', max_length=10)"]
+>>> print [str(e) for e in d.evolution()['tests']] # AddStringColumnModel
+["AddField('TestModel', 'added_field', models.CharField, initial=<<USER VALUE REQUIRED>>, max_length=10)"]
 
 >>> evolution = [AddField('TestModel', 'added_field', models.CharField, initial="abc's xyz", max_length=10)]
 >>> test_sig = copy.deepcopy(start_sig)
@@ -190,6 +190,18 @@ True
 >>> execute_test_sql(start, end, test_sql) #AddStringColumnModel
 %(AddStringColumnModel)s
 
+# Add a string field that allows empty strings as initial values
+>>> class AddBlankStringColumnModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     added_field = models.CharField(max_length=10, blank=True)
+
+>>> end = register_models(('TestModel',AddBlankStringColumnModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel',AddBlankStringColumnModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
+>>> print [str(e) for e in d.evolution()['tests']] # AddBlankStringColumnModel
+["AddField('TestModel', 'added_field', models.CharField, initial='', max_length=10)"]
+
 # Add a field that requires date-form initial data
 >>> class AddDateColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
@@ -199,7 +211,7 @@ True
 >>> end = register_models(('TestModel',AddDateColumnModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',AddDateColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
->>> print [str(e) for e in d.evolution()['tests']] #AddDateColumnModel
+>>> print [str(e) for e in d.evolution()['tests']] # AddDateColumnModel
 ["AddField('TestModel', 'added_field', models.DateTimeField, initial=<<USER VALUE REQUIRED>>)"]
 
 >>> new_date = datetime(2007,12,13,16,42,0)
