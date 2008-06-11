@@ -149,7 +149,7 @@ False
 >>> d.is_empty()
 False
 >>> print [str(e) for e in d.evolution()['tests']] # Rename Field
-["AddField('TestModel', 'full_name', models.CharField, initial=<<USER VALUE REQUIRED>>, max_length=20)", "DeleteField('TestModel', 'name')"]
+["AddField('TestModel', 'full_name', models.CharField, initial='', max_length=20)", "DeleteField('TestModel', 'name')"]
 
 # Adding a property to a field which was not present in the original Model
 >>> class AddPropertyModel(models.Model):
@@ -164,7 +164,7 @@ False
 False
 
 >>> print [str(e) for e in d.evolution()['tests']] # Change Field - add property
-['ChangeField("TestModel", "age", initial=None, null=True)']
+["ChangeField('TestModel', 'age', initial=None, null=True)"]
 
 # Since we can't check the evolutions, check the diff instead
 >>> print d
@@ -200,7 +200,7 @@ True
 False
 
 >>> print [str(e) for e in d.evolution()['tests']] # Change Field - change property
-['ChangeField("TestModel", "name", initial=None, max_length=30)']
+["ChangeField('TestModel', 'name', initial=None, max_length=30)"]
  
 # Since we can't check the evolutions, check the diff instead
 >>> print d
@@ -221,7 +221,7 @@ In model tests.TestModel:
 False
 
 >>> print [str(e) for e in d.evolution()['tests']] # Change Field - change property
-['ChangeField("TestModel", "ref", initial=None, related_model="tests.Anchor2")']
+["ChangeField('TestModel', 'ref', initial=None, related_model='tests.Anchor2')"]
  
 # Clean up after the applications that were installed
 >>> deregister_models()

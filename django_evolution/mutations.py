@@ -376,16 +376,21 @@ class ChangeField(BaseMutation):
         self.initial = initial
 
     def __str__(self):
-        field_attr_params = []
+        params = (self.model_name, self.field_name)
+        str_output = ["'%s', '%s'" % params]
+
+        str_output.append('initial=%s' % repr(self.initial))
+
         for attr_name, attr_value in self.field_attrs.items():
             if str == type(attr_value):
-                str_attr_value = '"%s"' % attr_value
+                str_attr_value = "'%s'" % attr_value
             else:
                 str_attr_value = str(attr_value)
-            field_attr_params.append('%s=%s' % (attr_name, str_attr_value,))
-        params = (self.model_name, self.field_name, self.initial,', '.join(field_attr_params))
-        return 'ChangeField("%s", "%s", initial=%s, %s)' % params
+            str_output.append('%s=%s' % (attr_name, str_attr_value,))
 
+        return 'ChangeField(' + ', '.join(str_output) + ')'
+        
+        
     def simulate(self, app_label, proj_sig):
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]

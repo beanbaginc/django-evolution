@@ -1,5 +1,5 @@
 add_field = {
-    'AddNonNullNonCallableDatabaseColumnModel':
+    'AddNonNullNonCallableColumnModel':
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" integer NOT NULL);',
             'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "added_field" FROM "tests_testmodel";',
@@ -9,7 +9,7 @@ add_field = {
             'INSERT INTO "tests_testmodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    'AddNonNullCallableDatabaseColumnModel':
+    'AddNonNullCallableColumnModel':
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" integer NOT NULL);',
             'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "added_field" FROM "tests_testmodel";',
@@ -19,7 +19,7 @@ add_field = {
             'INSERT INTO "tests_testmodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    'AddNullColumnWithInitialDatabaseColumnModel':
+    'AddNullColumnWithInitialColumnModel':
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" integer NULL);',
             'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "added_field" FROM "tests_testmodel";',
@@ -29,7 +29,7 @@ add_field = {
             'INSERT INTO "tests_testmodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    'AddStringDatabaseColumnModel':
+    'AddStringColumnModel':
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" varchar(10) NOT NULL);',
             'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "added_field" FROM "tests_testmodel";',
@@ -39,7 +39,7 @@ add_field = {
             'INSERT INTO "tests_testmodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    'AddDateDatabaseColumnModel':
+    'AddDateColumnModel':
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" datetime NOT NULL);',
             'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "added_field" FROM "tests_testmodel";',
@@ -49,7 +49,7 @@ add_field = {
             'INSERT INTO "tests_testmodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    'AddColumnWithDefaultDatabaseColumnModel':
+    'AddDefaultColumnModel':
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" integer NOT NULL);',
             'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "added_field" FROM "tests_testmodel";',
@@ -59,7 +59,7 @@ add_field = {
             'INSERT INTO "tests_testmodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    'AddColumnWithEmptyStringDefaultDatabaseColumnModel':
+    'AddEmptyStringDefaultColumnModel':
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" varchar(20) NOT NULL);',
             'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "added_field" FROM "tests_testmodel";',
@@ -69,7 +69,7 @@ add_field = {
             'INSERT INTO "tests_testmodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    'NullDatabaseColumnModel': 
+    'AddNullColumnModel': 
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" integer NULL);',
             'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "added_field" FROM "tests_testmodel";',
@@ -78,7 +78,7 @@ add_field = {
             'INSERT INTO "tests_testmodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    'NonDefaultDatabaseColumnModel': 
+    'NonDefaultColumnModel': 
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "non-default_column" integer NULL);',
             'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "non-default_column" FROM "tests_testmodel";',
@@ -87,7 +87,7 @@ add_field = {
             'INSERT INTO "tests_testmodel" ("int_field", "id", "char_field", "non-default_column") SELECT "int_field", "id", "char_field", "non-default_column" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    'AddDatabaseColumnCustomTableModel': 
+    'AddColumnCustomTableModel': 
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("id" integer NOT NULL PRIMARY KEY, "value" integer NOT NULL, "alt_value" varchar(20) NOT NULL, "added_field" integer NULL);',
             'INSERT INTO "TEMP_TABLE" SELECT "id", "value", "alt_value", "added_field" FROM "custom_table_name";',
@@ -96,7 +96,7 @@ add_field = {
             'INSERT INTO "custom_table_name" ("id", "value", "alt_value", "added_field") SELECT "id", "value", "alt_value", "added_field" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    'AddIndexedDatabaseColumnModel': 
+    'AddIndexedColumnModel': 
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "add_field" integer NULL);',
             'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "add_field" FROM "tests_testmodel";',
@@ -106,7 +106,7 @@ add_field = {
             'DROP TABLE "TEMP_TABLE";',
             'CREATE INDEX "tests_testmodel_add_field" ON "tests_testmodel" ("add_field");',
         ]),
-    'AddUniqueDatabaseColumnModel': 
+    'AddUniqueColumnModel': 
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" integer NULL UNIQUE);',
             'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "added_field" FROM "tests_testmodel";',
@@ -115,7 +115,7 @@ add_field = {
             'INSERT INTO "tests_testmodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    'ForeignKeyDatabaseColumnModel': 
+    'AddForeignKeyModel': 
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field_id" integer NULL);',
             'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "added_field_id" FROM "tests_testmodel";',
@@ -145,7 +145,7 @@ add_field = {
             ')',
             ';',
         ]),
-     'ManyToManySelf': 
+     'AddManyToManySelf': 
         '\n'.join([
             'CREATE TABLE "tests_testmodel_added_field" (',
             '    "id" integer NOT NULL PRIMARY KEY,',
@@ -213,11 +213,6 @@ delete_field = {
 }
 
 change_field = {
-    "SetNotNullChangeModelDiff":
-        '\n'.join([
-            "In model tests.TestModel:",
-            "    In field 'char_field1':",
-            "        Property 'null' has changed",]),
     "SetNotNullChangeModelWithConstant":
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NOT NULL, "char_field2" varchar(30) NOT NULL);',
@@ -238,11 +233,6 @@ change_field = {
             'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    "SetNullChangeModelDiff":
-        '\n'.join([
-            "In model tests.TestModel:",
-            "    In field 'char_field2':",
-            "        Property 'null' has changed",]),
     "SetNullChangeModel": 
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
@@ -252,14 +242,7 @@ change_field = {
             'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    "NoOpChangeModelDiff": '<BLANKLINE>',
     "NoOpChangeModel": '',
-    "IncreasingMaxLengthChangeModelDiff": 
-        '\n'.join([
-            "In model tests.TestModel:",
-            "    In field 'char_field':",
-            "        Property 'max_length' has changed",
-        ]),
     "IncreasingMaxLengthChangeModel": 
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(45) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
@@ -268,12 +251,6 @@ change_field = {
             'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(45) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
             'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
-        ]),
-    "DecreasingMaxLengthChangeModelDiff": 
-        '\n'.join([
-            "In model tests.TestModel:",
-            "    In field 'char_field':",
-            "        Property 'max_length' has changed",
         ]),
     "DecreasingMaxLengthChangeModel": 
         '\n'.join([
@@ -284,149 +261,96 @@ change_field = {
             'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-        "DBColumnChangeModelDiff": 
-            '\n'.join([
-                "In model tests.TestModel:",
-                "    In field 'int_field':",
-                "        Property 'db_column' has changed",
-            ]),
-        "DBColumnChangeModel": 
-            '\n'.join([
-                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "customised_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
-                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
-                'DROP TABLE "tests_testmodel";',
-                'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "customised_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
-                'CREATE INDEX "tests_testmodel_int_field1" ON "tests_testmodel" ("int_field1");',
-                'INSERT INTO "tests_testmodel" ("int_field4", "customised_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "customised_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
-                'DROP TABLE "TEMP_TABLE";',
-            ]),
-        "M2MDBTableChangeModelDiff": 
-            '\n'.join([
-                "In model tests.TestModel:",
-                "    In field 'm2m_field1':",
-                "        Property 'db_table' has changed",
-            ]),
-        "M2MDBTableChangeModel": 'ALTER TABLE "change_field_non-default_m2m_table" RENAME TO "custom_m2m_db_table_name";',
-        "AddDBIndexChangeModelDiff": 
-            '\n'.join([
-                "In model tests.TestModel:",
-                "    In field 'int_field2':",
-                "        Property 'db_index' has changed",
-            ]),
-        "AddDBIndexChangeModel": 'CREATE INDEX "tests_testmodel_int_field2" ON "tests_testmodel" ("int_field2");',
-        "RemoveDBIndexChangeModelDiff": 
-            '\n'.join([
-                "In model tests.TestModel:",
-                "    In field 'int_field1':",
-                "        Property 'db_index' has changed",
-            ]),
-        "RemoveDBIndexChangeModel": 'DROP INDEX "tests_testmodel_int_field1";',
-        "AddUniqueChangeModelDiff": 
-            '\n'.join([
-                "In model tests.TestModel:",
-                "    In field 'int_field4':",
-                "        Property 'unique' has changed",
-            ]),
-        "AddUniqueChangeModel": 
-            '\n'.join([
-                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL UNIQUE, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
-                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
-                'DROP TABLE "tests_testmodel";',
-                'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL UNIQUE, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
-                'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
-                'DROP TABLE "TEMP_TABLE";',
-            ]),
-        "RemoveUniqueChangeModelDiff": 
-            '\n'.join([
-                "In model tests.TestModel:",
-                "    In field 'int_field3':",
-                "        Property 'unique' has changed",
-            ]),
-        "RemoveUniqueChangeModel": 
-            '\n'.join([
-                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
-                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
-                'DROP TABLE "tests_testmodel";',
-                'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
-                'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
-                'DROP TABLE "TEMP_TABLE";',
-            ]),
-        "MultiAttrChangeModelDiff": 
-            '\n'.join([
-                "In model tests.TestModel:",
-                "    In field 'char_field2':",
-                "        Property 'null' has changed",
-                "    In field 'int_field':",
-                "        Property 'db_column' has changed",
-                "    In field 'char_field':",
-                "        Property 'max_length' has changed",
-            ]),
-        "MultiAttrChangeModel": 
-            '\n'.join([
-                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
-                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
-                'DROP TABLE "tests_testmodel";',
-                'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
-                'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
-                'DROP TABLE "TEMP_TABLE";',
-                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column2" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
-                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
-                'DROP TABLE "tests_testmodel";',
-                'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column2" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
-                'CREATE INDEX "tests_testmodel_int_field1" ON "tests_testmodel" ("int_field1");',
-                'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column2", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column2", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
-                'DROP TABLE "TEMP_TABLE";',
-                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column2" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(35) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
-                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column2", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
-                'DROP TABLE "tests_testmodel";',
-                'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column2" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(35) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
-                'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column2", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column2", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
-                'DROP TABLE "TEMP_TABLE";',
-            ]),
-        "MultiAttrSingleFieldChangeModelDiff": 
-            '\n'.join([
-                "In model tests.TestModel:",
-                "    In field 'char_field2':",
-                "        Property 'max_length' has changed",
-                "        Property 'null' has changed",
-            ]),
-        "MultiAttrSingleFieldChangeModel": 
-            '\n'.join([
-                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(35) NOT NULL);',
-                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
-                'DROP TABLE "tests_testmodel";',
-                'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(35) NOT NULL);',
-                'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
-                'DROP TABLE "TEMP_TABLE";',
-                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(35) NULL);',
-                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
-                'DROP TABLE "tests_testmodel";',
-                'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(35) NULL);',
-                'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
-                'DROP TABLE "TEMP_TABLE";',
-            ]),
-        "RedundantAttrsChangeModel":
-            '\n'.join([
-                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
-                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
-                'DROP TABLE "tests_testmodel";',
-                'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
-                'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
-                'DROP TABLE "TEMP_TABLE";',
-                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column3" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
-                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
-                'DROP TABLE "tests_testmodel";',
-                'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column3" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
-                'CREATE INDEX "tests_testmodel_int_field1" ON "tests_testmodel" ("int_field1");',
-                'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column3", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column3", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
-                'DROP TABLE "TEMP_TABLE";',
-                'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column3" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(35) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
-                'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column3", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
-                'DROP TABLE "tests_testmodel";',
-                'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column3" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(35) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
-                'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column3", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column3", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
-                'DROP TABLE "TEMP_TABLE";',
-            ]),
+    "DBColumnChangeModel": 
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "customised_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
+            'DROP TABLE "tests_testmodel";',
+            'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "customised_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+            'CREATE INDEX "tests_testmodel_int_field1" ON "tests_testmodel" ("int_field1");',
+            'INSERT INTO "tests_testmodel" ("int_field4", "customised_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "customised_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ]),
+    "M2MDBTableChangeModel": 'ALTER TABLE "change_field_non-default_m2m_table" RENAME TO "custom_m2m_db_table_name";',
+    "AddDBIndexChangeModel": 'CREATE INDEX "tests_testmodel_int_field2" ON "tests_testmodel" ("int_field2");',
+    "RemoveDBIndexChangeModel": 'DROP INDEX "tests_testmodel_int_field1";',
+    "AddUniqueChangeModel": 
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL UNIQUE, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
+            'DROP TABLE "tests_testmodel";',
+            'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL UNIQUE, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+            'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ]),
+    "RemoveUniqueChangeModel": 
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
+            'DROP TABLE "tests_testmodel";',
+            'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NOT NULL);',
+            'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ]),
+    "MultiAttrChangeModel": 
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
+            'DROP TABLE "tests_testmodel";',
+            'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+            'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column2" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
+            'DROP TABLE "tests_testmodel";',
+            'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column2" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+            'CREATE INDEX "tests_testmodel_int_field1" ON "tests_testmodel" ("int_field1");',
+            'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column2", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column2", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column2" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(35) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column2", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
+            'DROP TABLE "tests_testmodel";',
+            'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column2" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(35) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+            'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column2", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column2", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ]),
+    "MultiAttrSingleFieldChangeModel": 
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(35) NOT NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
+            'DROP TABLE "tests_testmodel";',
+            'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(35) NOT NULL);',
+            'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(35) NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
+            'DROP TABLE "tests_testmodel";',
+            'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(35) NULL);',
+            'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ]),
+    "RedundantAttrsChangeModel":
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
+            'DROP TABLE "tests_testmodel";',
+            'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+            'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column3" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
+            'DROP TABLE "tests_testmodel";',
+            'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column3" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+            'CREATE INDEX "tests_testmodel_int_field1" ON "tests_testmodel" ("int_field1");',
+            'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column3", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column3", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field4" integer NOT NULL, "custom_db_column3" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(35) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field4", "custom_db_column3", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "tests_testmodel";',
+            'DROP TABLE "tests_testmodel";',
+            'CREATE TABLE "tests_testmodel"("int_field4" integer NOT NULL, "custom_db_column3" integer NOT NULL, "int_field1" integer NOT NULL, "int_field2" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "alt_pk" integer NOT NULL, "char_field" varchar(35) NOT NULL, "my_id" integer NOT NULL PRIMARY KEY, "char_field1" varchar(25) NULL, "char_field2" varchar(30) NULL);',
+            'INSERT INTO "tests_testmodel" ("int_field4", "custom_db_column3", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2") SELECT "int_field4", "custom_db_column3", "int_field1", "int_field2", "int_field3", "alt_pk", "char_field", "my_id", "char_field1", "char_field2" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ]),
 }
 
 delete_model = {

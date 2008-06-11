@@ -1,5 +1,4 @@
 from django.db import models
-from django.db.models.fields import NOT_PROVIDED
 from django.db.models.fields.related import *
 
 from django_evolution import EvolutionException
@@ -27,15 +26,15 @@ class NullFieldInitialCallback(object):
 def get_initial_value(app_label, model_name, field_name):
     """Derive an initial value for a field.
 
-    If a default has been provided on the field definition, that value will
-    be used. Otherwise, a placeholder callable will be used. This callable
-    cannot actually be used in an evolution, but will indicate that user
-    input is required.
+    If a default has been provided on the field definition or the field allows
+    for an empty string, that value will be used. Otherwise, a placeholder
+    callable will be used. This callable cannot actually be used in an
+    evolution, but will indicate that user input is required.
     """
     model = models.get_model(app_label, model_name)
     field = model._meta.get_field(field_name)
-    if field and field.default != NOT_PROVIDED:
-        return field.default
+    if field and (field.has_default() or field.empty_strings_allowed):
+        return field.get_default()
     return NullFieldInitialCallback(app_label, model_name, field_name)
 
 class Diff(object):

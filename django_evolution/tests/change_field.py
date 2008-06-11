@@ -117,9 +117,12 @@ tests = r"""
 >>> end_sig = test_proj_sig(('TestModel', SetNotNullChangeModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print d
-%(SetNotNullChangeModelDiff)s
->>> print [str(e) for e in d.evolution()['tests']]
-['ChangeField("TestModel", "char_field1", initial=<<USER VALUE REQUIRED>>, null=False)']
+In model tests.TestModel:
+    In field 'char_field1':
+        Property 'null' has changed
+
+>>> print [str(e) for e in d.evolution()['tests']] # SetNotNullChangeModel
+["ChangeField('TestModel', 'char_field1', initial='', null=False)"]
 
 # Without an initial value
 >>> evolution = [ChangeField('TestModel', 'char_field1', null=False)]
@@ -189,9 +192,12 @@ True
 >>> end_sig = test_proj_sig(('TestModel', SetNullChangeModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print d
-%(SetNullChangeModelDiff)s
->>> print [str(e) for e in d.evolution()['tests']]
-['ChangeField("TestModel", "char_field2", initial=None, null=True)']
+In model tests.TestModel:
+    In field 'char_field2':
+        Property 'null' has changed
+    
+>>> print [str(e) for e in d.evolution()['tests']] # SetNullChangeModel
+["ChangeField('TestModel', 'char_field2', initial=None, null=True)"]
 
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
@@ -223,7 +229,7 @@ True
 >>> end_sig = test_proj_sig(('TestModel', NoOpChangeModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print d
-%(NoOpChangeModelDiff)s
+<BLANKLINE>
 
 >>> evolution = [ChangeField('TestModel', 'char_field1', null=True)]
 >>> test_sig = copy.deepcopy(start_sig)
@@ -256,9 +262,12 @@ True
 >>> end_sig = test_proj_sig(('TestModel', IncreasingMaxLengthChangeModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print d
-%(IncreasingMaxLengthChangeModelDiff)s
->>> print [str(e) for e in d.evolution()['tests']]
-['ChangeField("TestModel", "char_field", initial=None, max_length=45)']
+In model tests.TestModel:
+    In field 'char_field':
+        Property 'max_length' has changed
+
+>>> print [str(e) for e in d.evolution()['tests']] # IncreasingMaxLengthChangeModel
+["ChangeField('TestModel', 'char_field', initial=None, max_length=45)"]
 
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
@@ -269,7 +278,7 @@ True
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql) #IncreasingMaxLengthChangeModel
+>>> execute_test_sql(start, end, test_sql) # IncreasingMaxLengthChangeModel
 %(IncreasingMaxLengthChangeModel)s
 
 # Decreasing the max_length of a character field
@@ -290,9 +299,12 @@ True
 >>> end_sig = test_proj_sig(('TestModel', DecreasingMaxLengthChangeModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print d
-%(DecreasingMaxLengthChangeModelDiff)s
->>> print [str(e) for e in d.evolution()['tests']]
-['ChangeField("TestModel", "char_field", initial=None, max_length=1)']
+In model tests.TestModel:
+    In field 'char_field':
+        Property 'max_length' has changed
+
+>>> print [str(e) for e in d.evolution()['tests']] # DecreasingMaxLengthChangeModel
+["ChangeField('TestModel', 'char_field', initial=None, max_length=1)"]
 
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
@@ -324,9 +336,12 @@ True
 >>> end_sig = test_proj_sig(('TestModel', DBColumnChangeModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print d
-%(DBColumnChangeModelDiff)s
->>> print [str(e) for e in d.evolution()['tests']]
-['ChangeField("TestModel", "int_field", initial=None, db_column="customised_db_column")']
+In model tests.TestModel:
+    In field 'int_field':
+        Property 'db_column' has changed
+
+>>> print [str(e) for e in d.evolution()['tests']] # DBColumnChangeModel
+["ChangeField('TestModel', 'int_field', initial=None, db_column='customised_db_column')"]
 
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
@@ -337,7 +352,7 @@ True
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql) #DBColumnChangeModel
+>>> execute_test_sql(start, end, test_sql) # DBColumnChangeModel
 %(DBColumnChangeModel)s
 
 # Changing the db_table of a many to many relationship
@@ -359,9 +374,12 @@ True
 
 >>> d = Diff(start_sig, end_sig)
 >>> print d
-%(M2MDBTableChangeModelDiff)s
->>> print [str(e) for e in d.evolution()['tests']]
-['ChangeField("TestModel", "m2m_field1", initial=None, db_table="custom_m2m_db_table_name")']
+In model tests.TestModel:
+    In field 'm2m_field1':
+        Property 'db_table' has changed
+
+>>> print [str(e) for e in d.evolution()['tests']] # M2MDBTableChangeModel
+["ChangeField('TestModel', 'm2m_field1', initial=None, db_table='custom_m2m_db_table_name')"]
 
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
@@ -393,9 +411,12 @@ True
 >>> end_sig = test_proj_sig(('TestModel', AddDBIndexChangeModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print d
-%(AddDBIndexChangeModelDiff)s
->>> print [str(e) for e in d.evolution()['tests']]
-['ChangeField("TestModel", "int_field2", initial=None, db_index=True)']
+In model tests.TestModel:
+    In field 'int_field2':
+        Property 'db_index' has changed
+
+>>> print [str(e) for e in d.evolution()['tests']] # AddDBIndexChangeModel
+["ChangeField('TestModel', 'int_field2', initial=None, db_index=True)"]
 
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
@@ -427,9 +448,12 @@ True
 >>> end_sig = test_proj_sig(('TestModel', RemoveDBIndexChangeModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print d
-%(RemoveDBIndexChangeModelDiff)s
->>> print [str(e) for e in d.evolution()['tests']]
-['ChangeField("TestModel", "int_field1", initial=None, db_index=False)']
+In model tests.TestModel:
+    In field 'int_field1':
+        Property 'db_index' has changed
+
+>>> print [str(e) for e in d.evolution()['tests']] # RemoveDBIndexChangeModel
+["ChangeField('TestModel', 'int_field1', initial=None, db_index=False)"]
 
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
@@ -461,10 +485,12 @@ True
 >>> end_sig = test_proj_sig(('TestModel', AddUniqueChangeModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print d
-%(AddUniqueChangeModelDiff)s
+In model tests.TestModel:
+    In field 'int_field4':
+        Property 'unique' has changed
 
->>> print [str(e) for e in d.evolution()['tests']]
-['ChangeField("TestModel", "int_field4", initial=None, unique=True)']
+>>> print [str(e) for e in d.evolution()['tests']] # AddUniqueChangeModel
+["ChangeField('TestModel', 'int_field4', initial=None, unique=True)"]
  
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
@@ -496,10 +522,12 @@ True
 >>> end_sig = test_proj_sig(('TestModel', RemoveUniqueChangeModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print d
-%(RemoveUniqueChangeModelDiff)s
+In model tests.TestModel:
+    In field 'int_field3':
+        Property 'unique' has changed
 
->>> print [str(e) for e in d.evolution()['tests']]
-['ChangeField("TestModel", "int_field3", initial=None, unique=False)']
+>>> print [str(e) for e in d.evolution()['tests']] # RemoveUniqueChangeModel
+["ChangeField('TestModel', 'int_field3', initial=None, unique=False)"]
  
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
@@ -510,7 +538,7 @@ True
 >>> Diff(test_sig, end_sig).is_empty()
 True
  
->>> execute_test_sql(start, end, test_sql) #RemoveUniqueChangeModel
+>>> execute_test_sql(start, end, test_sql) # RemoveUniqueChangeModel
 %(RemoveUniqueChangeModel)s
 
 # Changing more than one attribute at a time (on different fields)
@@ -531,10 +559,16 @@ True
 >>> end_sig = test_proj_sig(('TestModel', MultiAttrChangeModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print d
-%(MultiAttrChangeModelDiff)s
+In model tests.TestModel:
+    In field 'char_field2':
+        Property 'null' has changed
+    In field 'int_field':
+        Property 'db_column' has changed
+    In field 'char_field':
+        Property 'max_length' has changed
 
->>> print [str(e) for e in d.evolution()['tests']]
-['ChangeField("TestModel", "char_field2", initial=None, null=True)', 'ChangeField("TestModel", "int_field", initial=None, db_column="custom_db_column2")', 'ChangeField("TestModel", "char_field", initial=None, max_length=35)']
+>>> print [str(e) for e in d.evolution()['tests']] # MultiAttrChangeModel
+["ChangeField('TestModel', 'char_field2', initial=None, null=True)", "ChangeField('TestModel', 'int_field', initial=None, db_column='custom_db_column2')", "ChangeField('TestModel', 'char_field', initial=None, max_length=35)"]
  
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
@@ -545,7 +579,7 @@ True
 >>> Diff(test_sig, end_sig).is_empty()
 True
  
->>> execute_test_sql(start, end, test_sql) #MultiAttrChangeModel
+>>> execute_test_sql(start, end, test_sql) # MultiAttrChangeModel
 %(MultiAttrChangeModel)s
 
 # Changing more than one attribute at a time (on one fields)
@@ -566,10 +600,13 @@ True
 >>> end_sig = test_proj_sig(('TestModel', MultiAttrSingleFieldChangeModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print d
-%(MultiAttrSingleFieldChangeModelDiff)s
+In model tests.TestModel:
+    In field 'char_field2':
+        Property 'max_length' has changed
+        Property 'null' has changed
 
->>> print [str(e) for e in d.evolution()['tests']]
-['ChangeField("TestModel", "char_field2", initial=None, max_length=35, null=True)']
+>>> print [str(e) for e in d.evolution()['tests']] # MultiAttrSingleFieldChangeModel
+["ChangeField('TestModel', 'char_field2', initial=None, max_length=35, null=True)"]
  
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []

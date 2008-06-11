@@ -1,59 +1,59 @@
 add_field = {
-    'AddNonNullNonCallableDatabaseColumnModel':
+    'AddNonNullNonCallableColumnModel':
         '\n'.join([
             'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field` integer ;',
             'UPDATE `tests_testmodel` SET `added_field` = 1 WHERE `added_field` IS NULL;',
             'ALTER TABLE `tests_testmodel` MODIFY COLUMN `added_field` integer NOT NULL;',
         ]),
-    'AddNonNullCallableDatabaseColumnModel':
+    'AddNonNullCallableColumnModel':
         '\n'.join([
             'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field` integer ;',
             'UPDATE `tests_testmodel` SET `added_field` = `int_field` WHERE `added_field` IS NULL;',
             'ALTER TABLE `tests_testmodel` MODIFY COLUMN `added_field` integer NOT NULL;',
         ]),
-    'AddNullColumnWithInitialDatabaseColumnModel':
+    'AddNullColumnWithInitialColumnModel':
         '\n'.join([
             'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field` integer ;',
             'UPDATE `tests_testmodel` SET `added_field` = 1 WHERE `added_field` IS NULL;',
         ]),
-    'AddStringDatabaseColumnModel':
+    'AddStringColumnModel':
         '\n'.join([
             'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field` varchar(10) ;',
             'UPDATE `tests_testmodel` SET `added_field` = \'abc\\\'s xyz\' WHERE `added_field` IS NULL;',
             'ALTER TABLE `tests_testmodel` MODIFY COLUMN `added_field` varchar(10) NOT NULL;',
         ]),
-    'AddDateDatabaseColumnModel':
+    'AddDateColumnModel':
         '\n'.join([
             'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field` datetime ;',
             'UPDATE `tests_testmodel` SET `added_field` = 2007-12-13 16:42:00 WHERE `added_field` IS NULL;',
             'ALTER TABLE `tests_testmodel` MODIFY COLUMN `added_field` datetime NOT NULL;',
         ]),    
-    'AddColumnWithDefaultDatabaseColumnModel':
+    'AddDefaultColumnModel':
         '\n'.join([
             'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field` integer ;',
             'UPDATE `tests_testmodel` SET `added_field` = 42 WHERE `added_field` IS NULL;',
             'ALTER TABLE `tests_testmodel` MODIFY COLUMN `added_field` integer NOT NULL;',
         ]),
-    'AddColumnWithEmptyStringDefaultDatabaseColumnModel':
+    'AddEmptyStringDefaultColumnModel':
         '\n'.join([
             'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field` varchar(20) ;',
             'UPDATE `tests_testmodel` SET `added_field` = \'\' WHERE `added_field` IS NULL;',
             'ALTER TABLE `tests_testmodel` MODIFY COLUMN `added_field` varchar(20) NOT NULL;',
         ]),
-    'NullDatabaseColumnModel': 
+    'AddNullColumnModel': 
         'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field` integer NULL ;',
-    'NonDefaultDatabaseColumnModel': 
+    'NonDefaultColumnModel': 
         'ALTER TABLE `tests_testmodel` ADD COLUMN `non-default_column` integer NULL ;',
-    'AddDatabaseColumnCustomTableModel':  
+    'AddColumnCustomTableModel':  
         'ALTER TABLE `custom_table_name` ADD COLUMN `added_field` integer NULL ;',
-    'AddIndexedDatabaseColumnModel': 
+    'AddIndexedColumnModel': 
         '\n'.join([
             'ALTER TABLE `tests_testmodel` ADD COLUMN `add_field` integer NULL ;',
             'CREATE INDEX `tests_testmodel_add_field` ON `tests_testmodel` (`add_field`);'
         ]),
-    'AddUniqueDatabaseColumnModel': 
+    'AddUniqueColumnModel': 
         'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field` integer NULL UNIQUE;',
-    'ForeignKeyDatabaseColumnModel': 
+    'AddForeignKeyModel': 
         '\n'.join([
             'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field_id` integer NULL REFERENCES `tests_addanchor1` (`id`) ;',
             'CREATE INDEX `tests_testmodel_added_field_id` ON `tests_testmodel` (`added_field_id`);'
@@ -78,7 +78,7 @@ add_field = {
             ')',
             ';'
         ]),
-     'ManyToManySelf': 
+     'AddManyToManySelf': 
         '\n'.join([
             'CREATE TABLE `tests_testmodel_added_field` (',
             '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
@@ -108,11 +108,6 @@ delete_field = {
 }
 
 change_field = {
-    "SetNotNullChangeModelDiff":
-        '\n'.join([
-            "In model tests.TestModel:",
-            "    In field 'char_field1':",
-            "        Property 'null' has changed",]),
     "SetNotNullChangeModelWithConstant":
         '\n'.join([
             'UPDATE `tests_testmodel` SET `char_field1` = \'abc\\\'s xyz\' WHERE `char_field1` IS NULL;',
@@ -123,101 +118,30 @@ change_field = {
                 'UPDATE `tests_testmodel` SET `char_field1` = `char_field` WHERE `char_field1` IS NULL;',
                 'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field1` varchar(25) NOT NULL;',
             ]),
-    "SetNullChangeModelDiff":
-        '\n'.join([
-            "In model tests.TestModel:",
-            "    In field 'char_field2':",
-            "        Property 'null' has changed",]),
     "SetNullChangeModel": 'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field2` varchar(30) DEFAULT NULL;',
-    "NoOpChangeModelDiff": '<BLANKLINE>',
     "NoOpChangeModel": '',
-    "IncreasingMaxLengthChangeModelDiff": 
-        '\n'.join([
-            "In model tests.TestModel:",
-            "    In field 'char_field':",
-            "        Property 'max_length' has changed",
-        ]),
     'IncreasingMaxLengthChangeModel':
             '\n'.join([
                 'UPDATE `tests_testmodel` SET `char_field`=LEFT(`char_field`,45);',
                 'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field` varchar(45);',
             ]),
-    'DecreasingMaxLengthChangeModelDiff':
-        '\n'.join([
-            "In model tests.TestModel:",
-            "    In field 'char_field':",
-            "        Property 'max_length' has changed",
-        ]),
     'DecreasingMaxLengthChangeModel':  
             '\n'.join([
                 'UPDATE `tests_testmodel` SET `char_field`=LEFT(`char_field`,1);',
                 'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field` varchar(1);',
             ]),
-    'DBColumnChangeModelDiff':
-        '\n'.join([
-            "In model tests.TestModel:",
-            "    In field 'int_field':",
-            "        Property 'db_column' has changed",
-        ]),
     "DBColumnChangeModel": 'ALTER TABLE `tests_testmodel` CHANGE COLUMN `custom_db_column` `customised_db_column` integer NOT NULL;',
-    "M2MDBTableChangeModelDiff": 
-        '\n'.join([
-            "In model tests.TestModel:",
-            "    In field 'm2m_field1':",
-            "        Property 'db_table' has changed",
-        ]),
     "M2MDBTableChangeModel": 'RENAME TABLE `change_field_non-default_m2m_table` TO `custom_m2m_db_table_name`;',
-    "AddDBIndexChangeModelDiff": 
-        '\n'.join([
-            "In model tests.TestModel:",
-            "    In field 'int_field2':",
-            "        Property 'db_index' has changed",
-        ]),
     "AddDBIndexChangeModel": 'CREATE INDEX `tests_testmodel_int_field2` ON `tests_testmodel` (`int_field2`);',
-    "RemoveDBIndexChangeModelDiff": 
-        '\n'.join([
-            "In model tests.TestModel:",
-            "    In field 'int_field1':",
-            "        Property 'db_index' has changed",
-        ]),
     "RemoveDBIndexChangeModel": 'DROP INDEX `tests_testmodel_int_field1` ON `tests_testmodel`;',
-    "AddUniqueChangeModelDiff": 
-        '\n'.join([
-            "In model tests.TestModel:",
-            "    In field 'int_field4':",
-            "        Property 'unique' has changed",
-        ]),
     "AddUniqueChangeModel": 'CREATE UNIQUE INDEX int_field4 ON `tests_testmodel`(`int_field4`);',
-    "RemoveUniqueChangeModelDiff": 
-        '\n'.join([
-            "In model tests.TestModel:",
-            "    In field 'int_field3':",
-            "        Property 'unique' has changed",
-        ]),
     "RemoveUniqueChangeModel": 'DROP INDEX int_field3 ON `tests_testmodel`;',
-    "MultiAttrChangeModelDiff": 
-        '\n'.join([
-            "In model tests.TestModel:",
-            "    In field 'char_field2':",
-            "        Property 'null' has changed",
-            "    In field 'int_field':",
-            "        Property 'db_column' has changed",
-            "    In field 'char_field':",
-            "        Property 'max_length' has changed",
-        ]),
     "MultiAttrChangeModel": 
         '\n'.join([
             'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field2` varchar(30) DEFAULT NULL;',
             'ALTER TABLE `tests_testmodel` CHANGE COLUMN `custom_db_column` `custom_db_column2` integer NOT NULL;',
             'UPDATE `tests_testmodel` SET `char_field`=LEFT(`char_field`,35);',
             'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field` varchar(35);',
-        ]),
-    "MultiAttrSingleFieldChangeModelDiff": 
-        '\n'.join([
-            "In model tests.TestModel:",
-            "    In field 'char_field2':",
-            "        Property 'max_length' has changed",
-            "        Property 'null' has changed",
         ]),
     "MultiAttrSingleFieldChangeModel": 
         '\n'.join([

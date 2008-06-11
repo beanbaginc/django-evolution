@@ -69,16 +69,26 @@ tests = r"""
 >>> start_sig = test_proj_sig(test_model, *anchors)
 
 # Add non-null field with non-callable initial value
->>> class AddNonNullNonCallableDatabaseColumnModel(models.Model):
+>>> class AddNonNullColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField()
 
->>> end = register_models(('TestModel', AddNonNullNonCallableDatabaseColumnModel), *anchors)
->>> end_sig = test_proj_sig(('TestModel',AddNonNullNonCallableDatabaseColumnModel), *anchors)
+>>> end = register_models(('TestModel', AddNonNullColumnModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel',AddNonNullColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
->>> print [str(e) for e in d.evolution()['tests']]
+>>> print [str(e) for e in d.evolution()['tests']] #AddNonNullColumnModel
 ["AddField('TestModel', 'added_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>)"]
+
+# Evolution won't run as-is
+>>> test_sig = copy.deepcopy(start_sig)
+>>> test_sql = []
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
+Traceback (most recent call last):
+...
+EvolutionException: Cannot use hinted evolution: AddField or ChangeField mutation for 'TestModel.added_field' in 'tests' requires user-specified initial value.
 
 # First try without an initial value. This will fail
 >>> evolution = [AddField('TestModel', 'added_field', models.IntegerField)]
@@ -113,23 +123,11 @@ SimulationFailure: Cannot create new column 'added_field' on 'tests.TestModel' w
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql) #AddNonNullNonCallableDatabaseColumnModel
-%(AddNonNullNonCallableDatabaseColumnModel)s
+>>> execute_test_sql(start, end, test_sql) #AddNonNullNonCallableColumnModel
+%(AddNonNullNonCallableColumnModel)s
 
-# Add non-null with callable initial value
->>> class AddNonNullCallableDatabaseColumnModel(models.Model):
-...     char_field = models.CharField(max_length=20)
-...     int_field = models.IntegerField()
-...     added_field = models.IntegerField()
-
->>> end = register_models(('TestModel', AddNonNullCallableDatabaseColumnModel), *anchors)
->>> end_sig = test_proj_sig(('TestModel',AddNonNullCallableDatabaseColumnModel), *anchors)
->>> d = Diff(start_sig, end_sig)
->>> print [str(e) for e in d.evolution()['tests']]
-["AddField('TestModel', 'added_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>)"]
-
-# Now try with a good initial value
->>> evolution = [AddField('TestModel', 'added_field', models.IntegerField, initial=AddSequenceFieldInitial('AddNonNullCallableDatabaseColumnModel'))]
+# Now try with a good callable initial value
+>>> evolution = [AddField('TestModel', 'added_field', models.IntegerField, initial=AddSequenceFieldInitial('AddNonNullCallableColumnModel'))]
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
@@ -139,40 +137,19 @@ True
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql) #AddNonNullCallableDatabaseColumnModel
-%(AddNonNullCallableDatabaseColumnModel)s
-
-# Add non-null with missing initial data
->>> class AddNonNullMissingInitialDataDatabaseColumnModel(models.Model):
-...     char_field = models.CharField(max_length=20)
-...     int_field = models.IntegerField()
-...     added_field = models.IntegerField()
-
->>> end = register_models(('TestModel',AddNonNullMissingInitialDataDatabaseColumnModel), *anchors)
->>> end_sig = test_proj_sig(('TestModel',AddNonNullMissingInitialDataDatabaseColumnModel), *anchors)
->>> d = Diff(start_sig, end_sig)
->>> print [str(e) for e in d.evolution()['tests']]
-["AddField('TestModel', 'added_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>)"]
-
->>> test_sig = copy.deepcopy(start_sig)
->>> test_sql = []
->>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
-Traceback (most recent call last):
-...
-EvolutionException: Cannot use hinted evolution: AddField or ChangeField mutation for 'TestModel.added_field' in 'tests' requires user-specified initial value.
+>>> execute_test_sql(start, end, test_sql) #AddNonNullCallableColumnModel
+%(AddNonNullCallableColumnModel)s
 
 # Add nullable column with initial data
->>> class AddNullColumnWithInitialDatabaseColumnModel(models.Model):
+>>> class AddNullColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField(null=True)
 
->>> end = register_models(('TestModel',AddNullColumnWithInitialDatabaseColumnModel), *anchors)
->>> end_sig = test_proj_sig(('TestModel',AddNullColumnWithInitialDatabaseColumnModel), *anchors)
+>>> end = register_models(('TestModel',AddNullColumnModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel',AddNullColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
->>> print [str(e) for e in d.evolution()['tests']]
+>>> print [str(e) for e in d.evolution()['tests']] #AddNullColumnModel
 ["AddField('TestModel', 'added_field', models.IntegerField, null=True)"]
 
 >>> evolution = [AddField('TestModel', 'added_field', models.IntegerField, initial=1, null=True)]
@@ -185,20 +162,20 @@ EvolutionException: Cannot use hinted evolution: AddField or ChangeField mutatio
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql) #AddNullColumnWithInitialDatabaseColumnModel
-%(AddNullColumnWithInitialDatabaseColumnModel)s
+>>> execute_test_sql(start, end, test_sql) #AddNullColumnWithInitialColumnModel
+%(AddNullColumnWithInitialColumnModel)s
 
 # Add a field that requires string-form initial data
->>> class AddStringDatabaseColumnModel(models.Model):
+>>> class AddStringColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 ...     added_field = models.CharField(max_length=10)
 
->>> end = register_models(('TestModel',AddStringDatabaseColumnModel), *anchors)
->>> end_sig = test_proj_sig(('TestModel',AddStringDatabaseColumnModel), *anchors)
+>>> end = register_models(('TestModel',AddStringColumnModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel',AddStringColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
->>> print [str(e) for e in d.evolution()['tests']]
-["AddField('TestModel', 'added_field', models.CharField, initial=<<USER VALUE REQUIRED>>, max_length=10)"]
+>>> print [str(e) for e in d.evolution()['tests']] #AddStringColumnModel
+["AddField('TestModel', 'added_field', models.CharField, initial='', max_length=10)"]
 
 >>> evolution = [AddField('TestModel', 'added_field', models.CharField, initial="abc's xyz", max_length=10)]
 >>> test_sig = copy.deepcopy(start_sig)
@@ -210,19 +187,19 @@ True
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql) #AddStringDatabaseColumnModel
-%(AddStringDatabaseColumnModel)s
+>>> execute_test_sql(start, end, test_sql) #AddStringColumnModel
+%(AddStringColumnModel)s
 
 # Add a field that requires date-form initial data
->>> class AddDateDatabaseColumnModel(models.Model):
+>>> class AddDateColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 ...     added_field = models.DateTimeField()
 
->>> end = register_models(('TestModel',AddDateDatabaseColumnModel), *anchors)
->>> end_sig = test_proj_sig(('TestModel',AddDateDatabaseColumnModel), *anchors)
+>>> end = register_models(('TestModel',AddDateColumnModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel',AddDateColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
->>> print [str(e) for e in d.evolution()['tests']]
+>>> print [str(e) for e in d.evolution()['tests']] #AddDateColumnModel
 ["AddField('TestModel', 'added_field', models.DateTimeField, initial=<<USER VALUE REQUIRED>>)"]
 
 >>> new_date = datetime(2007,12,13,16,42,0)
@@ -236,19 +213,19 @@ True
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql) #AddDateDatabaseColumnModel
-%(AddDateDatabaseColumnModel)s
+>>> execute_test_sql(start, end, test_sql) #AddDateColumnModel
+%(AddDateColumnModel)s
 
 # Add column with default value
->>> class AddColumnWithDefaultDatabaseColumnModel(models.Model):
+>>> class AddDefaultColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField(default=42)
 
->>> end = register_models(('TestModel',AddColumnWithDefaultDatabaseColumnModel), *anchors)
->>> end_sig = test_proj_sig(('TestModel',AddColumnWithDefaultDatabaseColumnModel), *anchors)
+>>> end = register_models(('TestModel',AddDefaultColumnModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel',AddDefaultColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
->>> print [str(e) for e in d.evolution()['tests']]
+>>> print [str(e) for e in d.evolution()['tests']] #AddDefaultColumnModel
 ["AddField('TestModel', 'added_field', models.IntegerField, initial=42)"]
 
 >>> test_sig = copy.deepcopy(start_sig)
@@ -260,20 +237,20 @@ True
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql) #AddColumnWithDefaultDatabaseColumnModel
-%(AddColumnWithDefaultDatabaseColumnModel)s
+>>> execute_test_sql(start, end, test_sql) #AddDefaultColumnModel
+%(AddDefaultColumnModel)s
 
 # Add column with an empty string as the default value
->>> class AddColumnWithEmptyStringDefaultDatabaseColumnModel(models.Model):
+>>> class AddEmptyStringDefaultColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 ...     added_field = models.CharField(max_length=20, default='')
 
->>> end = register_models(('TestModel',AddColumnWithEmptyStringDefaultDatabaseColumnModel), *anchors)
->>> end_sig = test_proj_sig(('TestModel',AddColumnWithEmptyStringDefaultDatabaseColumnModel), *anchors)
+>>> end = register_models(('TestModel',AddEmptyStringDefaultColumnModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel',AddEmptyStringDefaultColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
->>> print [str(e) for e in d.evolution()['tests']]
-["AddField('TestModel', 'added_field', models.CharField, initial='', max_length=20)"]
+>>> print [str(e) for e in d.evolution()['tests']] #AddEmptyStringDefaultColumnModel
+["AddField('TestModel', 'added_field', models.CharField, initial=u'', max_length=20)"]
 
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
@@ -284,20 +261,20 @@ True
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql) #AddColumnWithEmptyStringDefaultDatabaseColumnModel
-%(AddColumnWithEmptyStringDefaultDatabaseColumnModel)s
+>>> execute_test_sql(start, end, test_sql) #AddEmptyStringDefaultColumnModel
+%(AddEmptyStringDefaultColumnModel)s
 
 
 # Null field
->>> class NullDatabaseColumnModel(models.Model):
+>>> class AddNullColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField(null=True)
 
->>> end = register_models(('TestModel', NullDatabaseColumnModel), *anchors)
->>> end_sig = test_proj_sig(('TestModel', NullDatabaseColumnModel), *anchors)
+>>> end = register_models(('TestModel', AddNullColumnModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', AddNullColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
->>> print [str(e) for e in d.evolution()['tests']]
+>>> print [str(e) for e in d.evolution()['tests']] #AddNullColumnModel
 ["AddField('TestModel', 'added_field', models.IntegerField, null=True)"]
 
 >>> test_sig = copy.deepcopy(start_sig)
@@ -309,17 +286,17 @@ True
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql) #NullDatabaseColumnModel
-%(NullDatabaseColumnModel)s
+>>> execute_test_sql(start, end, test_sql) #AddNullColumnModel
+%(AddNullColumnModel)s
 
 # Field resulting in a new database column with a non-default name.
->>> class NonDefaultDatabaseColumnModel(models.Model):
+>>> class NonDefaultColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 ...     add_field = models.IntegerField(db_column='non-default_column', null=True)
 
->>> end = register_models(('TestModel',NonDefaultDatabaseColumnModel), *anchors)
->>> end_sig = test_proj_sig(('TestModel',NonDefaultDatabaseColumnModel), *anchors)
+>>> end = register_models(('TestModel',NonDefaultColumnModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel',NonDefaultColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'add_field', models.IntegerField, null=True, db_column='non-default_column')"]
@@ -333,19 +310,19 @@ True
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql) #NonDefaultDatabaseColumnModel
-%(NonDefaultDatabaseColumnModel)s
+>>> execute_test_sql(start, end, test_sql) #NonDefaultColumnModel
+%(NonDefaultColumnModel)s
 
 # Field resulting in a new database column in a table with a non-default name.
->>> class AddDatabaseColumnCustomTableModel(models.Model):
+>>> class AddColumnCustomTableModel(models.Model):
 ...     value = models.IntegerField()
 ...     alt_value = models.CharField(max_length=20)
 ...     added_field = models.IntegerField(null=True)
 ...     class Meta:
 ...         db_table = 'custom_table_name'
 
->>> end = register_models(('CustomTableModel',AddDatabaseColumnCustomTableModel))
->>> end_sig = test_proj_sig(('CustomTableModel',AddDatabaseColumnCustomTableModel))
+>>> end = register_models(('CustomTableModel',AddColumnCustomTableModel))
+>>> end_sig = test_proj_sig(('CustomTableModel',AddColumnCustomTableModel))
 >>> d = Diff(custom_table_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('CustomTableModel', 'added_field', models.IntegerField, null=True)"]
@@ -359,8 +336,8 @@ True
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(custom, end, test_sql) #AddDatabaseColumnCustomTableModel
-%(AddDatabaseColumnCustomTableModel)s
+>>> execute_test_sql(custom, end, test_sql) #AddColumnCustomTableModel
+%(AddColumnCustomTableModel)s
 
 # Add Primary key field.
 # Delete of old Primary Key is prohibited.
@@ -386,13 +363,13 @@ Traceback (most recent call last):
 SimulationFailure: Cannot delete a primary key.
 
 # Indexed field
->>> class AddIndexedDatabaseColumnModel(models.Model):
+>>> class AddIndexedColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 ...     add_field = models.IntegerField(db_index=True, null=True)
 
->>> end = register_models(('TestModel',AddIndexedDatabaseColumnModel), *anchors)
->>> end_sig = test_proj_sig(('TestModel',AddIndexedDatabaseColumnModel), *anchors)
+>>> end = register_models(('TestModel',AddIndexedColumnModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel',AddIndexedColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'add_field', models.IntegerField, null=True, db_index=True)"]
@@ -406,17 +383,17 @@ SimulationFailure: Cannot delete a primary key.
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql, debug=False) #AddIndexedDatabaseColumnModel
-%(AddIndexedDatabaseColumnModel)s
+>>> execute_test_sql(start, end, test_sql, debug=False) #AddIndexedColumnModel
+%(AddIndexedColumnModel)s
 
 # Unique field.
->>> class AddUniqueDatabaseColumnModel(models.Model):
+>>> class AddUniqueColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField(unique=True, null=True)
 
->>> end = register_models(('TestModel',AddUniqueDatabaseColumnModel), *anchors)
->>> end_sig = test_proj_sig(('TestModel',AddUniqueDatabaseColumnModel), *anchors)
+>>> end = register_models(('TestModel',AddUniqueColumnModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel',AddUniqueColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'added_field', models.IntegerField, unique=True, null=True)"]
@@ -430,17 +407,17 @@ True
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql) #AddUniqueDatabaseColumnModel
-%(AddUniqueDatabaseColumnModel)s
+>>> execute_test_sql(start, end, test_sql) #AddUniqueColumnModel
+%(AddUniqueColumnModel)s
 
 Foreign Key field.
->>> class ForeignKeyDatabaseColumnModel(models.Model):
+>>> class AddForeignKeyModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 ...     added_field = models.ForeignKey(AddAnchor1, null=True)
 
->>> end = register_models(('TestModel',ForeignKeyDatabaseColumnModel), *anchors)
->>> end_sig = test_proj_sig(('TestModel',ForeignKeyDatabaseColumnModel), *anchors)
+>>> end = register_models(('TestModel',AddForeignKeyModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel',AddForeignKeyModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'added_field', models.ForeignKey, null=True, related_model='tests.AddAnchor1')"]
@@ -454,8 +431,8 @@ Foreign Key field.
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql) #ForeignKeyDatabaseColumnModel
-%(ForeignKeyDatabaseColumnModel)s
+>>> execute_test_sql(start, end, test_sql) #AddForeignKeyModel
+%(AddForeignKeyModel)s
 
 # M2M field between models with default table names.
 >>> class AddM2MDatabaseTableModel(models.Model):
@@ -529,8 +506,8 @@ True
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql) #ManyToManySelf
-%(ManyToManySelf)s
+>>> execute_test_sql(start, end, test_sql) #AddManyToManySelf
+%(AddManyToManySelf)s
 
 # Clean up after the applications that were installed
 >>> deregister_models()
