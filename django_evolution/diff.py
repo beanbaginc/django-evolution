@@ -33,7 +33,7 @@ def get_initial_value(app_label, model_name, field_name):
     """
     model = models.get_model(app_label, model_name)
     field = model._meta.get_field(field_name)
-    if field and (field.has_default() or field.empty_strings_allowed):
+    if field and (field.has_default() or (field.empty_strings_allowed and field.blank)):
         return field.get_default()
     return NullFieldInitialCallback(app_label, model_name, field_name)
 
