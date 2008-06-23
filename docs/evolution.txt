@@ -228,7 +228,7 @@ a stored evolution, so we can just run ``evolve``::
     from django.db import models
 
     MUTATIONS = [
-         AddField(Author, 'location', models.CharField, max_length=100, null=True)
+         AddField('Author', 'location', models.CharField, max_length=100, null=True)
     ]
     #----------------------
     Trial evolution successful.
@@ -326,7 +326,7 @@ applied::
     from django.db import models
 
     MUTATIONS = [
-        AddField(Author, 'location', models.CharField, max_length=100, null=True),
+        AddField('Author', 'location', models.CharField, max_length=100, null=True),
         SQLMutation('add_summary')
     ]
     #----------------------
