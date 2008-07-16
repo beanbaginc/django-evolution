@@ -55,7 +55,7 @@ def create_model_sig(model):
         'fields': {},
     }
 
-    for field in model._meta.fields + model._meta.many_to_many:
+    for field in model._meta.local_fields + model._meta.local_many_to_many:
         # Special case - don't generate a signature for generic relations
         if not isinstance(field, generic.GenericRelation):
             model_sig['fields'][field.name] = create_field_sig(field)

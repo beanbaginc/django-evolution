@@ -10,7 +10,7 @@ from change_field import tests as change_field_tests
 from sql_mutation import tests as sql_mutation_tests
 from ordering import tests as ordering_tests
 from generics import tests as generics_tests
-
+from inheritance import tests as inheritance_tests
 # Define doctests
 __test__ = {
     'signature': signature_tests,
@@ -22,5 +22,6 @@ __test__ = {
     'change_field': change_field_tests,
     'sql_mutation': sql_mutation_tests,
     'ordering': ordering_tests,
-    'generics': generics_tests
+    'generics': generics_tests,
+    'inheritance': inheritance_tests
 }

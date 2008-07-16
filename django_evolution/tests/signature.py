@@ -42,8 +42,14 @@ tests = r"""
 ...     # Plus a generic relation, which should be ignored
 ...     generic = generic.GenericRelation(Anchor3)
 
+>>> class ParentModel(models.Model):
+...     parent_field = models.CharField(max_length=20)
+
+>>> class ChildModel(ParentModel):
+...     child_field = models.CharField(max_length=20)
+
 # Store the base signatures
->>> base_cache = register_models(('Anchor1', Anchor1), ('Anchor2', Anchor2), ('Anchor3', Anchor3), ('TestModel', SigModel))
+>>> base_cache = register_models(('Anchor1', Anchor1), ('Anchor2', Anchor2), ('Anchor3', Anchor3), ('TestModel', SigModel), ('ParentModel',ParentModel), ('ChildModel',ChildModel))
 
 # You can create a model signature for a model
 >>> pprint(signature.create_model_sig(SigModel))
@@ -84,6 +90,18 @@ tests = r"""
  'meta': {'db_table': 'tests_testmodel',
           'db_tablespace': '',
           'pk_column': 'id',
+          'unique_together': []}}
+
+>>> pprint(signature.create_model_sig(ChildModel))
+{'fields': {'child_field': {'field_type': <class 'django.db.models.fields.CharField'>,
+                            'max_length': 20},
+            'parentmodel_ptr': {'field_type': <class 'django.db.models.fields.related.OneToOneField'>,
+                                'primary_key': True,
+                                'related_model': 'tests.ParentModel',
+                                'unique': True}},
+ 'meta': {'db_table': 'tests_childmodel',
+          'db_tablespace': '',
+          'pk_column': 'parentmodel_ptr_id',
           'unique_together': []}}
 
 # Now, a useful test model we can use for evaluating diffs

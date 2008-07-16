@@ -10,7 +10,7 @@ class EvolutionOperations(BaseEvolutionOperations):
         qn = connection.ops.quote_name
         output = []
     
-        field_list = [field for field in model._meta.fields 
+        field_list = [field for field in model._meta.local_fields
                         if f.name != field.name # Remove the field to be deleted
                         and field.db_type() is not None] # and any Generic fields
         table_name = model._meta.db_table
@@ -137,7 +137,7 @@ class EvolutionOperations(BaseEvolutionOperations):
             # No Operation
             return []
 
-        original_fields = opts.fields
+        original_fields = opts.local_fields
         new_fields = []
         for f in original_fields:
             if f.db_type() is not None: # Ignore Generic Fields
@@ -160,7 +160,7 @@ class EvolutionOperations(BaseEvolutionOperations):
     def add_column(self, model, f, initial):
         output = []
         table_name = model._meta.db_table
-        original_fields = [field for field in model._meta.fields if field.db_type() is not None]
+        original_fields = [field for field in model._meta.local_fields if field.db_type() is not None]
         new_fields = original_fields
         new_fields.append(f)
     
@@ -187,7 +187,7 @@ class EvolutionOperations(BaseEvolutionOperations):
         opts = model._meta
         table_name = opts.db_table
         setattr(opts.get_field(field_name), attr_name, new_attr_value)
-        fields = [f for f in opts.fields if f.db_type() is not None]
+        fields = [f for f in opts.local_fields if f.db_type() is not None]
         
         output.extend(self.create_temp_table(fields))
         output.extend(self.copy_to_temp_table(table_name, fields))

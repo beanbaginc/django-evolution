@@ -234,3 +234,13 @@ generics = {
     'DeleteColumnModel': "ALTER TABLE `tests_testmodel` DROP COLUMN `char_field` CASCADE;"    
 }
 
+inheritance = {
+    'AddToChildModel': 
+        '\n'.join([
+            'ALTER TABLE `tests_childmodel` ADD COLUMN `added_field` integer ;',
+            'UPDATE `tests_childmodel` SET `added_field` = 42 WHERE `added_field` IS NULL;',
+            'ALTER TABLE `tests_childmodel` MODIFY COLUMN `added_field` integer NOT NULL;',
+        ]),
+    'DeleteFromChildModel': 
+        'ALTER TABLE `tests_childmodel` DROP COLUMN `int_field` CASCADE;',
+}

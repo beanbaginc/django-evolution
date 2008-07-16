@@ -495,7 +495,7 @@ sql_mutation = {
 }
 
 generics = {
-    'DeleteColumnModel': ""
+    'DeleteColumnModel': 
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "content_type_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY, "object_id" integer unsigned NOT NULL);',
             'INSERT INTO "TEMP_TABLE" SELECT "int_field", "content_type_id", "id", "object_id" FROM "tests_testmodel";',
@@ -505,5 +505,27 @@ generics = {
             'CREATE INDEX "tests_testmodel_object_id" ON "tests_testmodel" ("object_id");',
             'INSERT INTO "tests_testmodel" ("int_field", "content_type_id", "id", "object_id") SELECT "int_field", "content_type_id", "id", "object_id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
+        ])
+}
+
+inheritance = {
+    'AddToChildModel': 
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" integer NOT NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "added_field" FROM "tests_childmodel";',
+            'UPDATE "TEMP_TABLE" SET "added_field" = 42;',
+            'DROP TABLE "tests_childmodel";',
+            'CREATE TABLE "tests_childmodel"("int_field" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" integer NOT NULL);',
+            'INSERT INTO "tests_childmodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ]),
+    'DeleteFromChildModel': 
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("id" integer NOT NULL UNIQUE PRIMARY KEY, "char_field" varchar(20) NOT NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "id", "char_field" FROM "tests_childmodel";',
+            'DROP TABLE "tests_childmodel";',
+            'CREATE TABLE "tests_childmodel"("id" integer NOT NULL UNIQUE PRIMARY KEY, "char_field" varchar(20) NOT NULL);',
+            'INSERT INTO "tests_childmodel" ("id", "char_field") SELECT "id", "char_field" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";'
         ])
 }

@@ -93,8 +93,8 @@ class MockMeta(object):
     def get_many_to_many_fields(self):
         return self._many_to_many.values()
 
-    fields = property(fget=get_fields)
-    many_to_many = property(fget=get_many_to_many_fields)
+    local_fields = property(fget=get_fields)
+    local_many_to_many = property(fget=get_many_to_many_fields)
 
 class MockModel(object):
     """
