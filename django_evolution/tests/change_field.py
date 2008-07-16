@@ -660,7 +660,3 @@ True
 >>> deregister_models()
 
 """ % test_sql_mapping('change_field')
-
-
-
-

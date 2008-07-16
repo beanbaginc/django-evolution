@@ -426,8 +426,7 @@ class ChangeField(BaseMutation):
                     else:
                         sql_statements.extend(evolver_func(model, self.field_name, attr_value))
                 except AttributeError, ae:
-                    #raise ae
-                    raise NotImplementedError("ChangeField does not support modifying the '%s' attribute." % field_attr)
+                    raise NotImplementedError("ChangeField does not support modifying the '%s' attribute on '%s.%s'." % (field_attr, self.model_name, self.field_name))
 
         return sql_statements
 

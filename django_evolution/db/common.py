@@ -97,14 +97,14 @@ class BaseEvolutionOperations(object):
             related_table = related_model._meta.db_table
             related_pk_col = related_model._meta.pk.name
             constraints = ['%sNULL' % (not f.null and 'NOT ' or '')]
-            if f.unique and (not f.primary_key or connection.features.allows_unique_and_pk):
+            if f.unique:
                 constraints.append('UNIQUE')
             params = (qn(model._meta.db_table), qn(f.column), f.db_type(), ' '.join(constraints), 
                 qn(related_table), qn(related_pk_col), connection.ops.deferrable_sql())
             output = ['ALTER TABLE %s ADD COLUMN %s %s %s REFERENCES %s (%s) %s;' % params]
         else:
             null_constraints = '%sNULL' % (not f.null and 'NOT ' or '')
-            if f.unique and (not f.primary_key or connection.features.allows_unique_and_pk):
+            if f.unique:
                 unique_constraints = 'UNIQUE'
             else:
                 unique_constraints = ''

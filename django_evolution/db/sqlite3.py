@@ -118,7 +118,7 @@ class EvolutionOperations(BaseEvolutionOperations):
                 else:
                     params.append('NOT NULL')
                 if field.unique:
-                        params.append('UNIQUE')
+                    params.append('UNIQUE')
                 if field.primary_key:
                     params.append('PRIMARY KEY')
                 columns.append(' '.join(params))
@@ -180,7 +180,7 @@ class EvolutionOperations(BaseEvolutionOperations):
         return self.change_attribute(model, field_name, 'max_length', new_max_length, initial)
         
     def change_unique(self, model, field_name, new_unique_value, initial=None):
-        return self.change_attribute(model, field_name, 'unique', new_unique_value, initial)
+        return self.change_attribute(model, field_name, '_unique', new_unique_value, initial)
         
     def change_attribute(self, model, field_name, attr_name, new_attr_value, initial=None):
         output = []
