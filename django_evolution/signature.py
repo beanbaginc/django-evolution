@@ -20,14 +20,24 @@ ATTRIBUTE_DEFAULTS = {
     'db_table': None
 }
 
+# r7790 modified the unique attribute of the meta model to be
+# a property that combined an underlying _unique attribute with
+# the primary key attribute. We need the underlying property, 
+# but we don't want to affect old signatures (plus the
+# underscore is ugly :-).
+ATTRIBUTE_ALIASES = {
+    'unique': '_unique'
+}
+
 def create_field_sig(field):
     field_sig = {
         'field_type': field.__class__,
     }
         
     for attrib in ATTRIBUTE_DEFAULTS.keys():
-        if hasattr(field,attrib):
-            value = getattr(field,attrib)
+        alias = ATTRIBUTE_ALIASES.get(attrib, attrib)
+        if hasattr(field,alias):
+            value = getattr(field,alias)
             if isinstance(field, ForeignKey):
                 if attrib == 'db_index':
                     default = True

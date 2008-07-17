@@ -143,7 +143,7 @@ True
 >>> end_sig = test_proj_sig(('TestModel',RenamePrimaryKeyColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
-["AddField('TestModel', 'my_pk_id', models.AutoField, initial=<<USER VALUE REQUIRED>>, unique=True, primary_key=True)", "DeleteField('TestModel', 'id')"]
+["AddField('TestModel', 'my_pk_id', models.AutoField, initial=<<USER VALUE REQUIRED>>, primary_key=True)", "DeleteField('TestModel', 'id')"]
 
 >>> evolution = [RenameField('TestModel', 'id', 'my_pk_id')]
 >>> test_sig = copy.deepcopy(start_sig)
