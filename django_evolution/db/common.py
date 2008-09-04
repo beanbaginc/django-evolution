@@ -35,56 +35,7 @@ class BaseEvolutionOperations(object):
         opts = model._meta
         style = color.no_style()
     
-        #### Duplicated from django.core.management.sql - many_to_many_sql_for_model()
-        #### If the Django core is refactored to expose single m2m table creation, 
-        #### this method can be removed.
-        tablespace = f.db_tablespace or opts.db_tablespace
-        if tablespace and connection.features.supports_tablespaces and connection.features.autoindexes_primary_keys:
-            tablespace_sql = ' ' + connection.ops.tablespace_sql(tablespace, inline=True)
-        else:
-            tablespace_sql = ''
-        table_output = [style.SQL_KEYWORD('CREATE TABLE') + ' ' + \
-            style.SQL_TABLE(qn(f.m2m_db_table())) + ' (']
-        table_output.append('    %s %s %s%s,' % \
-            (style.SQL_FIELD(qn('id')),
-            style.SQL_COLTYPE(models.AutoField(primary_key=True).db_type()),
-            style.SQL_KEYWORD('NOT NULL PRIMARY KEY'),
-            tablespace_sql))
-        table_output.append('    %s %s %s %s (%s)%s,' % \
-            (style.SQL_FIELD(qn(f.m2m_column_name())),
-            style.SQL_COLTYPE(models.ForeignKey(model).db_type()),
-            style.SQL_KEYWORD('NOT NULL REFERENCES'),
-            style.SQL_TABLE(qn(opts.db_table)),
-            style.SQL_FIELD(qn(opts.pk.column)),
-            connection.ops.deferrable_sql()))
-        table_output.append('    %s %s %s %s (%s)%s,' % \
-            (style.SQL_FIELD(qn(f.m2m_reverse_name())),
-            style.SQL_COLTYPE(models.ForeignKey(f.rel.to).db_type()),
-            style.SQL_KEYWORD('NOT NULL REFERENCES'),
-            style.SQL_TABLE(qn(f.rel.to._meta.db_table)),
-            style.SQL_FIELD(qn(f.rel.to._meta.pk.column)),
-            connection.ops.deferrable_sql()))
-        table_output.append('    %s (%s, %s)%s' % \
-            (style.SQL_KEYWORD('UNIQUE'),
-            style.SQL_FIELD(qn(f.m2m_column_name())),
-            style.SQL_FIELD(qn(f.m2m_reverse_name())),
-            tablespace_sql))
-        table_output.append(')')
-        if opts.db_tablespace and connection.features.supports_tablespaces:
-            # f.db_tablespace is only for indices, so ignore its value here.
-            table_output.append(connection.ops.tablespace_sql(opts.db_tablespace))
-        table_output.append(';')
-        final_output.append('\n'.join(table_output))
-
-        # Add any extra SQL needed to support auto-incrementing PKs
-        autoinc_sql = connection.ops.autoinc_sql(f.m2m_db_table(), 'id')
-        if autoinc_sql:
-            for stmt in autoinc_sql:
-                final_output.append(stmt)
-
-        #### END duplicated code
-    
-        return final_output
+        return connection.creation.sql_for_many_to_many_field(model, f, style)
     
     def add_column(self, model, f, initial):
         qn = connection.ops.quote_name
@@ -144,26 +95,7 @@ class BaseEvolutionOperations(object):
         qn = connection.ops.quote_name
         style = color.no_style()
     
-        #### Duplicated from django.core.management.sql - sql_indexes_for_model()
-        #### If the Django core is refactored to expose single index creation, 
-        #### this method can be removed.
-        if f.db_index and not ((f.primary_key or f.unique) and connection.features.autoindexes_primary_keys):
-            unique = f.unique and 'UNIQUE ' or ''
-            tablespace = f.db_tablespace or model._meta.db_tablespace
-            if tablespace and connection.features.supports_tablespaces:
-                tablespace_sql = ' ' + connection.ops.tablespace_sql(tablespace)
-            else:
-                tablespace_sql = ''
-            output.append(
-                style.SQL_KEYWORD('CREATE %sINDEX' % unique) + ' ' + \
-                style.SQL_TABLE(qn(self.get_index_name(model, f))) + ' ' + \
-                style.SQL_KEYWORD('ON') + ' ' + \
-                style.SQL_TABLE(qn(model._meta.db_table)) + ' ' + \
-                "(%s)" % style.SQL_FIELD(qn(f.column)) + \
-                "%s;" % tablespace_sql
-            )
-        #### END duplicated code
-        return output
+        return connection.creation.sql_indexes_for_field(model, f, style)
         
     def drop_index(self, model, f):
         qn = connection.ops.quote_name
@@ -232,10 +164,3 @@ class BaseEvolutionOperations(object):
         else:
             params = (qn(opts.db_table), constraint_name,)
             return ['ALTER TABLE %s DROP CONSTRAINT %s;' % params]
-            
-
-        
-        
-        
-        
-        
