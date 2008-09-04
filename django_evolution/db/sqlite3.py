@@ -1,4 +1,4 @@
-from django.core.management import color, sql
+from django.core.management import color
 from django.db import connection, models
 
 from common import BaseEvolutionOperations
@@ -95,7 +95,7 @@ class EvolutionOperations(BaseEvolutionOperations):
                 self._meta = FakeMeta(table_name, field_list)
 
         style = color.no_style()
-        return sql.sql_indexes_for_model(FakeModel(table_name, field_list), style)
+        return connection.creation.sql_indexes_for_model(FakeModel(table_name, field_list), style)
     
     def create_table(self, table_name, field_list, temporary=False, create_index=True):
         qn = connection.ops.quote_name

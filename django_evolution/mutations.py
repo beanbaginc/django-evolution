@@ -51,6 +51,7 @@ class MockMeta(object):
         self.meta.update(model_sig['meta'])
         self._fields = {}
         self._many_to_many = {}
+        self.abstract = False
 
         for field_name,field_sig in model_sig['fields'].items():
             if not stub or field_sig.get('primary_key', False):
