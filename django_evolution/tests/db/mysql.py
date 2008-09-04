@@ -53,6 +53,8 @@ add_field = {
         ]),
     'AddUniqueColumnModel': 
         'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field` integer NULL UNIQUE;',
+    'AddUniqueIndexedModel': 
+        'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field` integer NULL UNIQUE;',
     'AddForeignKeyModel': 
         '\n'.join([
             'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field_id` integer NULL REFERENCES `tests_addanchor1` (`id`) ;',

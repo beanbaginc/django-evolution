@@ -422,6 +422,30 @@ True
 >>> execute_test_sql(start, end, test_sql) #AddUniqueColumnModel
 %(AddUniqueColumnModel)s
 
+# Unique indexed field.
+>>> class AddUniqueIndexedModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     added_field = models.IntegerField(unique=True, db_index=True, null=True)
+
+>>> end = register_models(('TestModel',AddUniqueIndexedModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel',AddUniqueIndexedModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
+>>> print [str(e) for e in d.evolution()['tests']]
+["AddField('TestModel', 'added_field', models.IntegerField, unique=True, null=True, db_index=True)"]
+
+>>> test_sig = copy.deepcopy(start_sig)
+>>> test_sql = []
+>>> for mutation in d.evolution()['tests']:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
+
+>>> Diff(test_sig, end_sig).is_empty()
+True
+
+>>> execute_test_sql(start, end, test_sql) #AddUniqueIndexedModel
+%(AddUniqueIndexedModel)s
+
 Foreign Key field.
 >>> class AddForeignKeyModel(models.Model):
 ...     char_field = models.CharField(max_length=20)

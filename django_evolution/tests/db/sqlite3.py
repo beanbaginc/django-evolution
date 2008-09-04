@@ -115,6 +115,15 @@ add_field = {
             'INSERT INTO "tests_testmodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
+    'AddUniqueIndexedModel': 
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" integer NULL UNIQUE);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field", "id", "char_field", "added_field" FROM "tests_testmodel";',
+            'DROP TABLE "tests_testmodel";',
+            'CREATE TABLE "tests_testmodel"("int_field" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" integer NULL UNIQUE);',
+            'INSERT INTO "tests_testmodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ]),
     'AddForeignKeyModel': 
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field_id" integer NULL);',
