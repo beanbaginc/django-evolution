@@ -23,10 +23,10 @@ class EvolutionOperations(BaseEvolutionOperations):
         field_output = [style.SQL_FIELD(qn(f.column)),
             style.SQL_COLTYPE(col_type)]
         field_output.append(style.SQL_KEYWORD('%sNULL' % (not f.null and 'NOT ' or '')))
-        if f.unique and (not f.primary_key or connection.features.allows_unique_and_pk):
-            field_output.append(style.SQL_KEYWORD('UNIQUE'))
         if f.primary_key:
             field_output.append(style.SQL_KEYWORD('PRIMARY KEY'))
+        if f.unique:
+            field_output.append(style.SQL_KEYWORD('UNIQUE'))
         if tablespace and connection.features.supports_tablespaces and (f.unique or f.primary_key) and connection.features.autoindexes_primary_keys:
             # We must specify the index tablespace inline, because we
             # won't be generating a CREATE INDEX statement for this field.

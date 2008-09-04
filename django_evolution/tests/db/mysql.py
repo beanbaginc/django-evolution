@@ -64,31 +64,37 @@ add_field = {
         '\n'.join([
             'CREATE TABLE `tests_testmodel_added_field` (',
             '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
-            '    `testmodel_id` integer NOT NULL REFERENCES `tests_testmodel` (`id`),',
-            '    `addanchor1_id` integer NOT NULL REFERENCES `tests_addanchor1` (`id`),',
+            '    `testmodel_id` integer NOT NULL,',
+            '    `addanchor1_id` integer NOT NULL,',
             '    UNIQUE (`testmodel_id`, `addanchor1_id`)',
             ')',
-            ';'
+            ';',
+            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT testmodel_id_refs_id_12ea61cd FOREIGN KEY (`testmodel_id`) REFERENCES `tests_testmodel` (`id`);',
+            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT addanchor1_id_refs_id_7efbb240 FOREIGN KEY (`addanchor1_id`) REFERENCES `tests_addanchor1` (`id`);'            
         ]),
      'AddManyToManyNonDefaultDatabaseTableModel': 
         '\n'.join([
             'CREATE TABLE `tests_testmodel_added_field` (',
             '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
-            '    `testmodel_id` integer NOT NULL REFERENCES `tests_testmodel` (`id`),',
-            '    `addanchor2_id` integer NOT NULL REFERENCES `custom_add_anchor_table` (`id`),',
+            '    `testmodel_id` integer NOT NULL,',
+            '    `addanchor2_id` integer NOT NULL,',
             '    UNIQUE (`testmodel_id`, `addanchor2_id`)',
             ')',
-            ';'
+            ';',
+            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT testmodel_id_refs_id_12ea61cd FOREIGN KEY (`testmodel_id`) REFERENCES `tests_testmodel` (`id`);',
+            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT addanchor2_id_refs_id_13c1da78 FOREIGN KEY (`addanchor2_id`) REFERENCES `custom_add_anchor_table` (`id`);'
         ]),
      'AddManyToManySelf': 
         '\n'.join([
             'CREATE TABLE `tests_testmodel_added_field` (',
             '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
-            '    `from_testmodel_id` integer NOT NULL REFERENCES `tests_testmodel` (`id`),',
-            '    `to_testmodel_id` integer NOT NULL REFERENCES `tests_testmodel` (`id`),',
+            '    `from_testmodel_id` integer NOT NULL,',
+            '    `to_testmodel_id` integer NOT NULL,',
             '    UNIQUE (`from_testmodel_id`, `to_testmodel_id`)',
             ')',
-            ';'
+            ';',
+            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT from_testmodel_id_refs_id_12ea61cd FOREIGN KEY (`from_testmodel_id`) REFERENCES `tests_testmodel` (`id`);',
+            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT to_testmodel_id_refs_id_12ea61cd FOREIGN KEY (`to_testmodel_id`) REFERENCES `tests_testmodel` (`id`);'
         ]),
 }
 
