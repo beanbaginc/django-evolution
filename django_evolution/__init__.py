@@ -10,3 +10,6 @@ class CannotSimulate(EvolutionException):
     
 class SimulationFailure(EvolutionException):
     pass
+
+class EvolutionNotImplementedError(EvolutionException, NotImplementedError):
+    pass

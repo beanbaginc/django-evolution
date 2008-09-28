@@ -12,7 +12,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db.models import get_apps, get_app, signals
 from django.db import connection, transaction
 
-from django_evolution import CannotSimulate, SimulationFailure
+from django_evolution import CannotSimulate, SimulationFailure, EvolutionException
 from django_evolution.diff import Diff
 from django_evolution.evolve import get_unapplied_evolutions, get_mutations
 from django_evolution.models import Version, Evolution
@@ -148,7 +148,7 @@ class Command(BaseCommand):
                     if verbosity > 1:
                         print 'No applications need to be purged.'
                                     
-        except Exception, e:
+        except EvolutionException, e:
             print self.style.ERROR(e)
             sys.exit(1)
             

@@ -7,7 +7,7 @@ from django.db import models
 from django.utils.functional import curry
 
 from django_evolution.signature import ATTRIBUTE_DEFAULTS, create_field_sig
-from django_evolution import CannotSimulate, SimulationFailure
+from django_evolution import CannotSimulate, SimulationFailure, EvolutionNotImplementedError
 from django_evolution.db import evolver
 
 FK_INTEGER_TYPES = ['AutoField', 'PositiveIntegerField', 'PositiveSmallIntegerField']
@@ -427,7 +427,7 @@ class ChangeField(BaseMutation):
                     else:
                         sql_statements.extend(evolver_func(model, self.field_name, attr_value))
                 except AttributeError, ae:
-                    raise NotImplementedError("ChangeField does not support modifying the '%s' attribute on '%s.%s'." % (field_attr, self.model_name, self.field_name))
+                    raise EvolutionNotImplementedError("ChangeField does not support modifying the '%s' attribute on '%s.%s'." % (field_attr, self.model_name, self.field_name))
 
         return sql_statements
 
