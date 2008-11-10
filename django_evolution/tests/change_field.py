@@ -656,6 +656,31 @@ True
 >>> execute_test_sql(start, end, test_sql) # RedundantAttrsChangeModel
 %(RedundantAttrsChangeModel)s
 
+# Change field type to another type with same internal_type
+>>> class MyIntegerField(models.IntegerField):
+...     def get_internal_type(self):
+...         return 'IntegerField'
+
+>>> class MinorFieldTypeChangeModel(models.Model):
+...     my_id = models.AutoField(primary_key=True)
+...     alt_pk = models.IntegerField()
+...     int_field = models.IntegerField(db_column='custom_db_column')
+...     int_field1 = models.IntegerField(db_index=True)
+...     int_field2 = models.IntegerField(db_index=False)
+...     int_field3 = models.IntegerField(unique=True)
+...     int_field4 = MyIntegerField(unique=False)
+...     char_field = models.CharField(max_length=20)
+...     char_field1 = models.CharField(max_length=25, null=True)
+...     char_field2 = models.CharField(max_length=30, null=False)
+...     m2m_field1 = models.ManyToManyField(ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+
+>>> end = register_models(('TestModel', MinorFieldTypeChangeModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', MinorFieldTypeChangeModel), *anchors)
+>>> d = Diff(start_sig, end_sig)
+
+>>> d.is_empty()
+True
+
 # Clean up after the applications that were installed
 >>> deregister_models()
 

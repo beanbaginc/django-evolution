@@ -110,6 +110,14 @@ class Diff(object):
                         new_value = new_field_data.get(prop,
                             ATTRIBUTE_DEFAULTS.get(prop, None))
                         if old_value != new_value:
+                            try:
+                                if (prop == 'field_type' and
+                                    (old_value().get_internal_type() ==
+                                     new_value().get_internal_type())):
+                                    continue
+                            except TypeError:
+                                pass
+
                             # Field has been changed
                             self.changed.setdefault(app_name,
                                 {}).setdefault('changed',
