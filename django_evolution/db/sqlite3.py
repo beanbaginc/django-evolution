@@ -90,6 +90,7 @@ class EvolutionOperations(BaseEvolutionOperations):
                 self.fields = field_list # Required for Pre QS-RF support
                 self.db_tablespace = None
                 self.managed = True
+                self.proxy = False
 
         class FakeModel(object):
             def __init__(self, table_name, field_list):
