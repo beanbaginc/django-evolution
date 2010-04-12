@@ -30,13 +30,13 @@ Installation
 How do I install Django Evolution?
 ----------------------------------
 
-There have not been any official releases of Django Evolution. If you want to 
+There have not been any official releases of Django Evolution. If you want to
 use Django Evolution, you will need to use a subversion checkout.
 
 Check out the Django Evolution sources, and put the checkout directory into
 your Python Path.
 
-Then add 'django_evolution' to the list of installed applications for the 
+Then add 'django_evolution' to the list of installed applications for the
 project in which you want to use Django Evolution.
 
 What version of Django does Django Evolution support?
@@ -52,18 +52,22 @@ Management
 Who is behind Django Evolution?
 -------------------------------
 
-Django Evolution was developed as a part time project by two guys based in
-Perth, Western Australia: `Ben Khoo`_ and `Russell Keith-Magee`_.
-Russell is also a core developer of Django itself.
+Django Evolution was originally developed as a part time project by
+two guys based in Perth, Western Australia: `Ben Khoo`_ and `Russell
+Keith-Magee`_. Russell is also a core developer of Django itself.
+
+Russell is now an emeritus contributor. the project is maintained by
+`Christian Hammond`_.
 
 .. _`Ben Khoo`: mailto:khoobks@westnet.com.au
 .. _`Russell Keith-Magee`: mailto:russell@keith-magee.com
+.. _`Christian Hammond`: mailto:chipx86@chipx86.com
 
 Where should I ask questions about Django Evolution?
 ----------------------------------------------------
 
 Django Evolution has a `Google Groups mailing list`_ for discussing
-the usage and development of the project. 
+the usage and development of the project.
 
 .. _`Google Groups mailing list`: http://groups.google.com/group/django-evolution
 
@@ -109,16 +113,16 @@ The following is a list of the model changes that we believe to be working:
       that a hinted evolution will provide.
 
 Primary development for Django Evolution has used the Psycopg1 interface to
-PostgreSQL. As a result, this is the most stable database interface. A 
+PostgreSQL. As a result, this is the most stable database interface. A
 Psycopg2 PostgreSQL backend also exists, and should work without difficulty.
-The SQLite backend is also fairly reliable. The MySQL backend works for most 
+The SQLite backend is also fairly reliable. The MySQL backend works for most
 mutations, with some exceptions (details below).
 
 What doesn't work?
 ------------------
 
 Django Evolution is a work in progress, and as a result, there are
-things that don't work, or don't work as expected. The following model 
+things that don't work, or don't work as expected. The following model
 changes are known to cause difficulty:
 
     * Addition of ForeignKey fields. A field will be added, but the foreign
@@ -137,9 +141,9 @@ Support for MySQL is less complete. The following features are known to be
 buggy or broken under MySQL:
 
     * Renaming of primary key fields and foreign key fields.
-        
+
 Improving MySQL support (as well as adding support for other database backends)
-is one big area where contributions would be most welcome. 
+is one big area where contributions would be most welcome.
 
 Usage
 =====
@@ -147,43 +151,43 @@ Usage
 How do I remove an entire application from my project?
 ------------------------------------------------------
 
-If you remove an application from the ``INSTALLED_APPS`` list, Django 
+If you remove an application from the ``INSTALLED_APPS`` list, Django
 Evolution will not attempt to remove the tables for this application.
 
 If you want to remove any tables associated with a deleted application,
-you must specify the ``--purge`` option to evolve. 
+you must specify the ``--purge`` option to evolve.
 
 Why does Django Evolution generate an error when hinting an evolution?
 ----------------------------------------------------------------------
 
-Django Evolution is a work in progress. The infrastructure necessary to 
+Django Evolution is a work in progress. The infrastructure necessary to
 identify model changes is in place and is (to the best of our knowledge)
 complete. However, the definitions required to handle every possible type
 of model change have not yet been developed. As a result, there are some types
-of change that you can make to a model for which Django Evolution cannot 
-produce a corresponding SQL mutation. 
+of change that you can make to a model for which Django Evolution cannot
+produce a corresponding SQL mutation.
 
-We hope to eventually support these changes with a hinted mutation. However, 
+We hope to eventually support these changes with a hinted mutation. However,
 in the interim, the workaround is to manually define an SQL mutation
 and include it as a stored evolution in your project.
 
 My OneToOneField has changed as a result of the QuerySet Refactor merge! What should I do?
 ------------------------------------------------------------------------------------------
 
-First - some background. `Django revision 7477`_ saw the merging of the 
-`Queryset Refactor branch`_ back into the Django trunk. This change introduced a 
-lot of behind-the-scenes improvements to the way queries are composed. 
+First - some background. `Django revision 7477`_ saw the merging of the
+`Queryset Refactor branch`_ back into the Django trunk. This change introduced a
+lot of behind-the-scenes improvements to the way queries are composed.
 However, this also introduced some subtle `backwards-incompatible changes`_
 that can affect your database definitions. In turn, these changes have an
 effect on the way Django Evolution treats your database.
 
 For example, consider the case of the following model defining a user profile::
-    
+
     class UserProfile(models.Model):
         user = models.OneToOneField()
         foobar = models.CharField(max_length=40)
 
-If you were to run syncdb on this model prior to Django revision 7477, 
+If you were to run syncdb on this model prior to Django revision 7477,
 you would get a database definition that looks something like::
 
 	CREATE TABLE "test_app_userprofile" (
@@ -200,18 +204,18 @@ revision 7477, you would get the following::
 	    "foobar" varchar(40) NOT NULL
 	);
 
-The suggested response to this change is to add "primary_key=True" to your 
+The suggested response to this change is to add "primary_key=True" to your
 OneToOneField defintion. While this will result in the same functionality at
-runtime, it will be identified by Django Evolution as a change in model 
-signature - even though no database change is required. 
+runtime, it will be identified by Django Evolution as a change in model
+signature - even though no database change is required.
 
 What is required is a way to ignore the change of signature. This can be
-achieved using an empty SQL mutation that provides a signature update 
+achieved using an empty SQL mutation that provides a signature update
 function. To update the previous example, put the following into your
 mutation sequence definition::
 
 	def qsrf_update(app_label, proj_sig):
-	    app_sig = proj_sig[app_label]  
+	    app_sig = proj_sig[app_label]
 	    model_sig = app_sig['UserProfile']
 	    model_sig['fields']['user'] = {
 	         'primary_key': True
@@ -227,7 +231,7 @@ This defines a signature update function called "qsrf_update()" that puts
 a "primary_key" definition into the signature for the OneToOneField. This
 function is used by an SQL mutation called 'qsrf-update' that contains
 no actual SQL statements. So, when this mutation is applied, the signature
-will be updated, but no changes will be made to the database. 
+will be updated, but no changes will be made to the database.
 
 .. _`Django revision 7477`: http://code.djangoproject.com/changeset/7477
 .. _`Queryset Refactor branch`: http://code.djangoproject.com/wiki/QuerysetRefactorBranch
@@ -332,7 +336,7 @@ How can I get started contributing code to Django Evolution?
 ------------------------------------------------------------
 
 Thanks for asking! If you're interested in contributing to Django Evolution,
-please send a private email to Ben or Russell. However, be advised that if you
+please send a private email to Christian. However, be advised that if you
 you want your request to be taken seriously, you need to have a track record
 of producing high quality patches.
 
