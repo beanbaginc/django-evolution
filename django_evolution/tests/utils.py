@@ -4,14 +4,12 @@ from datetime import datetime
 from django.core.management.color import no_style
 from django.core.management.sql import sql_create, sql_delete, sql_indexes
 from django.db import connection, transaction, settings, models
-from django.db.backends.util import truncate_name
 from django.db.models.loading import cache
 
 from django_evolution import signature
 from django_evolution.tests import models as evo_test
 from django_evolution.utils import write_sql, execute_sql
 
-from django.contrib.contenttypes import models as contenttypes
 
 DEFAULT_TEST_ATTRIBUTE_VALUES = {
     models.CharField: 'TestCharField',
@@ -182,4 +180,3 @@ def test_sql_mapping(test_field_name):
 def deregister_models():
     "Clear the test section of the app cache"
     del cache.app_models['tests']
-    

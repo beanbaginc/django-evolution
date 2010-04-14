@@ -24,16 +24,6 @@ class EvolutionOperations(BaseEvolutionOperations):
 
         return output
 
-    def create_mock_model(self, model, fields):
-        field_sig_dict = {}
-        for f in fields:
-            field_sig_dict[f.name] = create_field_sig(field)
-
-        proj_sig = create_project_sig()
-        model_sig = create_model_sig(model)
-        model_sig['fields'] = field_sig_dict
-        mock_model = MockModel(proj_sig, model.app_name, model.model_name, model_sig, stub=False)
-
     def copy_to_temp_table(self, source_table_name, field_list):
         qn = connection.ops.quote_name
         output = [self.create_temp_table(field_list)]

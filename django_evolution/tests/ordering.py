@@ -1,5 +1,3 @@
-from django_evolution.tests.utils import test_sql_mapping
-
 tests = r"""
 >>> from django.db import models
 

@@ -1,5 +1,5 @@
 from django.core.management import color
-from django.db import connection, models
+from django.db import connection
 import copy
 
 class BaseEvolutionOperations(object):

@@ -3,7 +3,6 @@ try:
 except ImportError:
     import pickle as pickle
 
-from django.dispatch import dispatcher
 from django.core.management.color import color_style
 from django.db.models import signals, get_apps
 
@@ -96,5 +95,5 @@ def evolution(app, created_models, verbosity=1, **kwargs):
             if verbosity > 1:
                 old_proj_sig = pickle.loads(str(latest_version.signature))
                 print diff
-                
+
 signals.post_syncdb.connect(evolution)

@@ -11,4 +11,3 @@ class EvolutionOperations(BaseEvolutionOperations):
         qn = connection.ops.quote_name
         params = (qn(opts.db_table), qn(old_field.column), qn(new_field.column))
         return ['ALTER TABLE %s RENAME COLUMN %s TO %s;' % params]
-    

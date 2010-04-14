@@ -1,5 +1,3 @@
-import unittest
-
 from signature import tests as signature_tests
 from add_field import tests as add_field_tests
 from delete_field import tests as delete_field_tests

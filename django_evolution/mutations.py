@@ -1,12 +1,11 @@
 import copy
 
-from django.contrib.contenttypes import generic
 from django.db.models.fields import *
 from django.db.models.fields.related import *
 from django.db import models
 from django.utils.functional import curry
 
-from django_evolution.signature import ATTRIBUTE_DEFAULTS, create_field_sig
+from django_evolution.signature import ATTRIBUTE_DEFAULTS
 from django_evolution import CannotSimulate, SimulationFailure, EvolutionNotImplementedError
 from django_evolution.db import evolver
 
