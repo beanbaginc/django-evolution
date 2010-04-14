@@ -1,0 +1,11 @@
+django_evolution/diff.py:*: 'from django.db.models.fields.related import *' used; unable to detect undefined names
+django_evolution/mutations.py:*: 'from django.db.models.fields import *' used; unable to detect undefined names
+django_evolution/mutations.py:*: 'from django.db.models.fields.related import *' used; unable to detect undefined names
+django_evolution/signature.py:*: 'from django.db.models.fields.related import *' used; unable to detect undefined names
+django_evolution/tests/db/mysql_old.py:*: 'from mysql import *' used; unable to detect undefined names
+django_evolution/tests/db/postgresql_psycopg2.py:*: 'from postgresql import *' used; unable to detect undefined names
+django_evolution/management/__init__.py:*: redefinition of unused 'pickle' from line *
+django_evolution/management/commands/evolve.py:*: redefinition of unused 'pickle' from line *
+django_evolution/db/mysql_old.py:*: 'from mysql import *' used; unable to detect undefined names
+django_evolution/db/postgresql_psycopg2.py:*: 'from postgresql import *' used; unable to detect undefined names
+
