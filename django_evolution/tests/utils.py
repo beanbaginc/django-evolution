@@ -43,16 +43,41 @@ def register_models(*models):
     for name, model in models:
         if model._meta.module_name in cache.app_models['django_evolution']:
             del cache.app_models['django_evolution'][model._meta.module_name]
-        
-            if model._meta.db_table.startswith("%s_%s" % (model._meta.app_label, 
+
+            orig_db_table = model._meta.db_table
+            orig_object_name = model._meta.object_name
+            orig_module_name = model._meta.module_name
+
+            if model._meta.db_table.startswith("%s_%s" % (model._meta.app_label,
                                                           model._meta.module_name)):
                 model._meta.db_table = 'tests_%s' % name.lower()
-            
+
             model._meta.app_label = 'tests'
             model._meta.object_name = name
             model._meta.module_name = name.lower()
 
             add_app_test_model(model)
+
+            for field in model._meta.local_many_to_many:
+                if field.rel.through:
+                    through = field.rel.through
+
+                    if through._meta.db_table.startswith('%s_' % orig_db_table):
+                        through._meta.app_label = 'tests'
+
+                        through._meta.db_table = \
+                            through._meta.db_table.replace(
+                                orig_db_table, 'tests_%s' % name.lower())
+                        through._meta.object_name = \
+                            through._meta.object_name.replace(orig_object_name,
+                                                              name)
+                        through._meta.module_name = \
+                            through._meta.module_name.replace(orig_module_name,
+                                                              name.lower())
+                    app_cache[through._meta.module_name] = through
+                    add_app_test_model(through)
+
+        app_cache[name.lower()] = model
 
     return app_cache
 
