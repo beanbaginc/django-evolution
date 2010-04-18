@@ -51,17 +51,11 @@ def register_models(*models):
             model._meta.app_label = 'tests'
             model._meta.object_name = name
             model._meta.module_name = name.lower()
-    
-            cache.app_models.setdefault('tests', {})[name.lower()] = model
-        
-        app_cache[name.lower()] = model
 
-    if hasattr(cache, '_get_models_cache'):
-        # On Django 1.2, we need to clear this cache when registering models.
-        cache._get_models_cache.clear()
+            add_app_test_model(model)
 
     return app_cache
-        
+
 def test_proj_sig(*models, **kwargs):
     "Generate a dummy project signature based around a single model"
     version = kwargs.get('version',1)
@@ -119,17 +113,17 @@ def execute_test_sql(start, end, sql, debug=False):
     SQL.
     """    
     # Set up the initial state of the app cache
-    cache.app_models['tests'] = copy.deepcopy(start)
-        
+    set_app_test_models(copy.deepcopy(start))
+
     # Install the initial tables and indicies
-    style = no_style()    
+    style = no_style()
     execute_transaction(sql_create(evo_test, style), output=debug)
     execute_transaction(sql_indexes(evo_test, style), output=debug)
     create_test_data(models.get_models(evo_test))
-            
+
     # Set the app cache to the end state
-    cache.app_models['tests'] = copy.deepcopy(end)
-    
+    set_app_test_models(copy.deepcopy(end))
+
     try:
         # Execute the test sql
         if debug:
@@ -203,7 +197,29 @@ def test_sql_mapping(test_field_name):
 def deregister_models():
     "Clear the test section of the app cache"
     del cache.app_models['tests']
+    clear_models_cache()
 
+
+def clear_models_cache():
+    """Clears the Django models cache.
+
+    This cache is used in Django >= 1.2 to quickly return results from
+    cache.get_models(). It needs to be cleared when modifying the model
+    registry.
+    """
     if hasattr(cache, '_get_models_cache'):
         # On Django 1.2, we need to clear this cache when unregistering models.
         cache._get_models_cache.clear()
+
+
+def set_app_test_models(models):
+    """Sets the list of models in the Django test models registry."""
+    cache.app_models['tests'] = models
+    clear_models_cache()
+
+
+def add_app_test_model(model):
+    """Adds a model to the Django test models registry."""
+    key = model._meta.object_name.lower()
+    cache.app_models.setdefault('tests', {})[key] = model
+    clear_models_cache()
