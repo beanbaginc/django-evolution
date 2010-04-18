@@ -55,7 +55,11 @@ def register_models(*models):
             cache.app_models.setdefault('tests', {})[name.lower()] = model
         
         app_cache[name.lower()] = model
-        
+
+    if hasattr(cache, '_get_models_cache'):
+        # On Django 1.2, we need to clear this cache when registering models.
+        cache._get_models_cache.clear()
+
     return app_cache
         
 def test_proj_sig(*models, **kwargs):
@@ -199,3 +203,7 @@ def test_sql_mapping(test_field_name):
 def deregister_models():
     "Clear the test section of the app cache"
     del cache.app_models['tests']
+
+    if hasattr(cache, '_get_models_cache'):
+        # On Django 1.2, we need to clear this cache when unregistering models.
+        cache._get_models_cache.clear()

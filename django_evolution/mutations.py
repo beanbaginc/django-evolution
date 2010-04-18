@@ -11,7 +11,7 @@ from django_evolution.db import evolver
 
 FK_INTEGER_TYPES = ['AutoField', 'PositiveIntegerField', 'PositiveSmallIntegerField']
 
-def create_field(proj_sig, field_name, field_type, field_attrs):
+def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
     """
     Create an instance of a field from a field signature. This is useful for
     accessing all the database property mechanisms built into fields.
@@ -28,6 +28,69 @@ def create_field(proj_sig, field_name, field_type, field_attrs):
         field_attrs['related_model'] = related_model
     else:
         field = field_type(name=field_name, **field_attrs)
+
+    if field_type == ManyToManyField and parent_model is not None:
+        # Starting in Django 1.2, a ManyToManyField must have a through
+        # model defined. This will be set internally to an auto-created
+        # model if one isn't specified. We have to fake that model.
+        through_model = field_attrs.get('through_model', None)
+        through_model_sig = None
+
+        if through_model:
+            through_app_name, through_model_name = through_model.split('.')
+            through_model_sig = proj_sig[through_app_name][through_model_name]
+        elif hasattr(field, '_get_m2m_attr'):
+            # Django >= 1.2
+            if field.rel.to == RECURSIVE_RELATIONSHIP_CONSTANT:
+                from_ = 'from_%s' % related_name.lower()
+                to = 'to_%s' % related_name.lower()
+            else:
+                from_ = parent_model._meta.object_name.lower()
+                to = field.rel.to._meta.object_name.lower()
+
+            # This corresponds to the signature in
+            # related.create_many_to_many_intermediary_model
+            through_app_name = parent_model.app_name
+            through_model_name = parent_model._meta.object_name
+            #through_model_name = '%s_%s' % (parent_model._meta.object_name,
+            #                                field.name)
+            through_model = '%s.%s' % (through_app_name, through_model_name)
+
+            through_model_sig = {
+                'meta': {
+                    'db_table': field._get_m2m_db_table(parent_model._meta),
+                    'managed': True,
+                    'auto_created': parent_model,
+                    'app_label': through_app_name,
+                    'unique_together': (from_, to),
+                    'pk_column': 'id',
+                },
+                'fields': {
+                    'id': {
+                        'field_type': AutoField,
+                        'primary_key': True,
+                    },
+                    from_: {
+                        'field_type': ForeignKey,
+                        'related_model': through_model,
+                    },
+                    to: {
+                        'field_type': ForeignKey,
+                        'related_model': related_model,
+                    },
+                }
+            }
+
+            proj_sig[through_app_name][through_model_name] = through_model_sig
+            field.auto_created = True
+
+        if through_model_sig:
+            through = MockModel(proj_sig, through_app_name, through_model_name,
+                                through_model_sig)
+            field.rel.through = through
+
+        field.m2m_db_table = curry(field._get_m2m_db_table, parent_model._meta)
+
     field.set_attributes_from_name(field_name)
 
     return field
@@ -56,7 +119,8 @@ class MockMeta(object):
         for field_name,field_sig in model_sig['fields'].items():
             if not stub or field_sig.get('primary_key', False):
                 field_type = field_sig.pop('field_type')
-                field = create_field(proj_sig, field_name, field_type, field_sig)
+                field = create_field(proj_sig, field_name, field_type,
+                                     field_sig, None)
 
                 if AutoField == type(field):
                     self.meta['has_auto_field'] = True
@@ -94,6 +158,7 @@ class MockMeta(object):
     def get_many_to_many_fields(self):
         return self._many_to_many.values()
 
+    fields = property(fget=get_fields)
     local_fields = property(fget=get_fields)
     local_many_to_many = property(fget=get_many_to_many_fields)
 
@@ -112,7 +177,7 @@ class MockModel(object):
         # For our purposes, we don't want to appear equal to "self".
         # Really, Django 1.2 should be checking if this is a string before
         # doing this comparison,
-        return (not isinstance(other, basestring) and
+        return (isinstance(other, MockModel) and
                 self.app_name == other.app_name and
                 self.model_name == other.model_name)
 
@@ -125,7 +190,10 @@ class MockRelated(object):
     def __init__(self, related_model, model, field):
         self.parent_model = related_model
         self.model = model
+        self.opts = model._meta
         self.field = field
+        self.name = '%s:%s' % (model.app_name, model.model_name)
+        self.var_name = model.model_name.lower()
 
 class BaseMutation:
     def __init__(self):
@@ -212,7 +280,8 @@ class DeleteField(BaseMutation):
         # Temporarily remove field_type from the field signature
         # so that we can create a field
         field_type = field_sig.pop('field_type')
-        field = create_field(proj_sig, self.field_name, field_type, field_sig)
+        field = create_field(proj_sig, self.field_name, field_type, field_sig,
+                             model)
         field_sig['field_type'] = field_type
 
         if field_type == models.ManyToManyField:
@@ -270,7 +339,8 @@ class AddField(BaseMutation):
         model_sig = app_sig[self.model_name]
 
         model = MockModel(proj_sig, app_label, self.model_name, model_sig)
-        field = create_field(proj_sig, self.field_name, self.field_type, self.field_attrs)
+        field = create_field(proj_sig, self.field_name, self.field_type,
+                             self.field_attrs, model)
 
         sql_statements = evolver.add_column(model, field, self.initial)
 
@@ -285,22 +355,8 @@ class AddField(BaseMutation):
 
         model = MockModel(proj_sig, app_label, self.model_name, model_sig)
 
-
-        field = create_field(proj_sig, self.field_name, self.field_type, self.field_attrs)
-        field.auto_created = True
-
-        field.m2m_db_table = curry(field._get_m2m_db_table, model._meta)
-
-        print '** %s'%  model._meta.db_table
-
-        print field.m2m_db_table()
-
-        try:
-            # Django >= 1.1
-            field.rel.through = \
-                create_many_to_many_intermediary_model(field, model)
-        except NameError:
-            pass
+        field = create_field(proj_sig, self.field_name, self.field_type,
+                             self.field_attrs, model)
 
         related_app_label, related_model_name = self.field_attrs['related_model'].split('.')
         related_sig = proj_sig[related_app_label][related_model_name]
@@ -382,8 +438,10 @@ class RenameField(BaseMutation):
             new_field_sig.pop('db_column', None)
 
         # Create the mock field instances.
-        old_field = create_field(proj_sig, self.old_field_name, field_type, old_field_sig)
-        new_field = create_field(proj_sig, self.new_field_name, field_type, new_field_sig)
+        old_field = create_field(proj_sig, self.old_field_name, field_type,
+                                 old_field_sig, None)
+        new_field = create_field(proj_sig, self.new_field_name, field_type,
+                                 new_field_sig, None)
 
         # Restore the field type to the signature
         old_field_sig['field_type'] = field_type
