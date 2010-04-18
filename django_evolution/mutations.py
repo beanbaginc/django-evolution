@@ -3,6 +3,7 @@ import copy
 from django.db.models.fields import *
 from django.db.models.fields.related import *
 from django.db import models
+from django.utils.datastructures import SortedDict
 from django.utils.functional import curry
 
 from django_evolution.signature import ATTRIBUTE_DEFAULTS
@@ -24,6 +25,7 @@ def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
         related_app_name, related_model_name = related_model.split('.')
         related_model_sig = proj_sig[related_app_name][related_model_name]
         to = MockModel(proj_sig, related_app_name, related_model_name, related_model_sig, stub=True)
+
         field = field_type(to, name=field_name, **field_attrs)
         field_attrs['related_model'] = related_model
     else:
@@ -41,47 +43,53 @@ def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
             through_model_sig = proj_sig[through_app_name][through_model_name]
         elif hasattr(field, '_get_m2m_attr'):
             # Django >= 1.2
-            if field.rel.to == RECURSIVE_RELATIONSHIP_CONSTANT:
-                from_ = 'from_%s' % related_name.lower()
-                to = 'to_%s' % related_name.lower()
+            to = field.rel.to._meta.object_name.lower()
+
+            if (field.rel.to == RECURSIVE_RELATIONSHIP_CONSTANT or
+                to == parent_model._meta.object_name.lower()):
+                from_ = 'from_%s' % to
+                to = 'to_%s' % to
             else:
                 from_ = parent_model._meta.object_name.lower()
-                to = field.rel.to._meta.object_name.lower()
 
             # This corresponds to the signature in
             # related.create_many_to_many_intermediary_model
             through_app_name = parent_model.app_name
-            through_model_name = parent_model._meta.object_name
-            #through_model_name = '%s_%s' % (parent_model._meta.object_name,
-            #                                field.name)
+            through_model_name = '%s_%s' % (parent_model._meta.object_name,
+                                            field.name)
             through_model = '%s.%s' % (through_app_name, through_model_name)
+
+            fields = SortedDict()
+            fields['id'] = {
+                'field_type': AutoField,
+                'primary_key': True,
+            }
+
+            fields[from_] = {
+                'field_type': ForeignKey,
+                'related_model': '%s.%s' % (parent_model.app_name,
+                                            parent_model._meta.object_name),
+                'related_name': '%s+' % through_model_name,
+            }
+
+            fields[to] = {
+                'field_type': ForeignKey,
+                'related_model': related_model,
+                'related_name': '%s+' % through_model_name,
+            }
 
             through_model_sig = {
                 'meta': {
                     'db_table': field._get_m2m_db_table(parent_model._meta),
                     'managed': True,
-                    'auto_created': parent_model,
+                    'auto_created': True,
                     'app_label': through_app_name,
-                    'unique_together': (from_, to),
+                    'unique_together': ((from_, to),),
                     'pk_column': 'id',
                 },
-                'fields': {
-                    'id': {
-                        'field_type': AutoField,
-                        'primary_key': True,
-                    },
-                    from_: {
-                        'field_type': ForeignKey,
-                        'related_model': through_model,
-                    },
-                    to: {
-                        'field_type': ForeignKey,
-                        'related_model': related_model,
-                    },
-                }
+                'fields': fields,
             }
 
-            proj_sig[through_app_name][through_model_name] = through_model_sig
             field.auto_created = True
 
         if through_model_sig:
@@ -90,6 +98,7 @@ def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
             field.rel.through = through
 
         field.m2m_db_table = curry(field._get_m2m_db_table, parent_model._meta)
+        field.set_attributes_from_rel()
 
     field.set_attributes_from_name(field_name)
 
@@ -103,24 +112,29 @@ class MockMeta(object):
     'stub' is provided, the constructed model will only be a stub -
     it will only have a primary key field.
     """
-    def __init__(self, proj_sig, app_name, model_name, model_sig, stub=False):
+    def __init__(self, proj_sig, app_name, model_name, model_sig):
         self.object_name = model_name
         self.app_label = app_name
         self.meta = {
             'order_with_respect_to': None,
-            'has_auto_field': None
+            'has_auto_field': None,
+            'db_tablespace': None,
         }
         self.meta.update(model_sig['meta'])
-        self._fields = {}
-        self._many_to_many = {}
+        self._fields = SortedDict()
+        self._many_to_many = SortedDict()
         self.abstract = False
         self.managed = True
+        self.proxy = False
+        self._model_sig = model_sig
+        self._proj_sig = proj_sig
 
-        for field_name,field_sig in model_sig['fields'].items():
+    def setup_fields(self, model, stub=False):
+        for field_name, field_sig in self._model_sig['fields'].items():
             if not stub or field_sig.get('primary_key', False):
                 field_type = field_sig.pop('field_type')
-                field = create_field(proj_sig, field_name, field_type,
-                                     field_sig, None)
+                field = create_field(self._proj_sig, field_name, field_type,
+                                     field_sig, model)
 
                 if AutoField == type(field):
                     self.meta['has_auto_field'] = True
@@ -171,7 +185,8 @@ class MockModel(object):
     def __init__(self, proj_sig, app_name, model_name, model_sig, stub=False):
         self.app_name = app_name
         self.model_name = model_name
-        self._meta = MockMeta(proj_sig, app_name, model_name, model_sig, stub)
+        self._meta = MockMeta(proj_sig, app_name, model_name, model_sig)
+        self._meta.setup_fields(self, stub)
 
     def __eq__(self, other):
         # For our purposes, we don't want to appear equal to "self".
@@ -180,6 +195,7 @@ class MockModel(object):
         return (isinstance(other, MockModel) and
                 self.app_name == other.app_name and
                 self.model_name == other.model_name)
+
 
 class MockRelated(object):
     """
@@ -446,14 +462,14 @@ class RenameField(BaseMutation):
         # Restore the field type to the signature
         old_field_sig['field_type'] = field_type
 
-        opts = MockMeta(proj_sig, app_label, self.model_name, model_sig)
+        model = MockModel(proj_sig, app_label, self.model_name, model_sig)
         if models.ManyToManyField == field_type:
-            old_m2m_table = old_field._get_m2m_db_table(opts)
-            new_m2m_table = new_field._get_m2m_db_table(opts)
+            old_m2m_table = old_field._get_m2m_db_table(model._meta)
+            new_m2m_table = new_field._get_m2m_db_table(model._meta)
 
-            return evolver.rename_table(old_m2m_table, new_m2m_table)
+            return evolver.rename_table(model, old_m2m_table, new_m2m_table)
         else:
-            return evolver.rename_column(opts, old_field, new_field)
+            return evolver.rename_column(model._meta, old_field, new_field)
 
 class ChangeField(BaseMutation):
     def __init__(self, model_name, field_name, initial=None, **kwargs):
@@ -509,7 +525,7 @@ class ChangeField(BaseMutation):
                     if field_attr == 'null':
                         sql_statements.extend(evolver_func(model, self.field_name, attr_value, self.initial))
                     elif field_attr == 'db_table':
-                        sql_statements.extend(evolver_func(old_field_attr, attr_value))
+                        sql_statements.extend(evolver_func(model, old_field_attr, attr_value))
                     else:
                         sql_statements.extend(evolver_func(model, self.field_name, attr_value))
                 except AttributeError, ae:

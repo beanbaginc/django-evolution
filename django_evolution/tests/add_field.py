@@ -526,8 +526,13 @@ True
 
 # M2M field between self
 # Need to find a better way to do this.
->>> end_sig = copy.deepcopy(start_sig)
->>> end_sig['tests']['TestModel']['fields']['added_field'] = {'field_type': models.ManyToManyField,'related_model': 'tests.TestModel'}
+>>> class AddM2MSelfDatabaseTableModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     added_field = models.ManyToManyField('AddM2MSelfDatabaseTableModel')
+
+>>> end = register_models(('TestModel', AddM2MSelfDatabaseTableModel), *anchors)
+>>> end_sig = test_proj_sig(('TestModel', AddM2MSelfDatabaseTableModel), *anchors)
 
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]

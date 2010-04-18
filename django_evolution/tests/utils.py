@@ -5,6 +5,7 @@ from django.core.management import sql
 from django.core.management.color import no_style
 from django.db import connection, transaction, settings, models
 from django.db.models.loading import cache
+from django.utils.datastructures import SortedDict
 from django.utils.functional import curry
 
 from django_evolution import signature
@@ -39,8 +40,9 @@ sql_delete = curry(wrap_sql_func, sql.sql_delete)
 
 
 def register_models(*models):
-    app_cache = {}
-    for name, model in models:
+    app_cache = SortedDict()
+
+    for name, model in reversed(models):
         if model._meta.module_name in cache.app_models['django_evolution']:
             del cache.app_models['django_evolution'][model._meta.module_name]
 
@@ -59,25 +61,50 @@ def register_models(*models):
             add_app_test_model(model)
 
             for field in model._meta.local_many_to_many:
-                if field.rel.through:
-                    through = field.rel.through
+                if not field.rel.through:
+                    continue
 
-                    if through._meta.db_table.startswith('%s_' % orig_db_table):
-                        through._meta.app_label = 'tests'
+                through = field.rel.through
 
+                if through._meta.db_table.startswith('%s_' % orig_db_table):
+                    through._meta.app_label = 'tests'
+
+                    # Transform the 'through' table information only
+                    # if we've transformed the parent db_table.
+                    if model._meta.db_table != orig_db_table:
+                        # Only prepend 'tests_' if not using a custom
+                        # db_table.
                         through._meta.db_table = \
                             through._meta.db_table.replace(
-                                orig_db_table, 'tests_%s' % name.lower())
-                        through._meta.object_name = \
-                            through._meta.object_name.replace(orig_object_name,
-                                                              name)
-                        through._meta.module_name = \
-                            through._meta.module_name.replace(orig_module_name,
-                                                              name.lower())
-                    app_cache[through._meta.module_name] = through
-                    add_app_test_model(through)
+                                orig_db_table,
+                                model._meta.db_table)
 
-        app_cache[name.lower()] = model
+                        through._meta.object_name = \
+                            through._meta.object_name.replace(
+                                orig_object_name,
+                                model._meta.object_name)
+
+                        through._meta.module_name = \
+                            through._meta.module_name.replace(
+                                orig_module_name,
+                                model._meta.module_name)
+
+                for field in through._meta.local_fields:
+                    if field.rel and field.rel.to:
+                        column = field.column
+
+                        if (column.startswith(orig_module_name) or
+                            column.startswith('to_%s' % orig_module_name) or
+                            column.startswith('from_%s' % orig_module_name)):
+
+                            field.column = column.replace(
+                                orig_module_name,
+                                model._meta.module_name)
+
+                app_cache[through._meta.module_name] = through
+                add_app_test_model(through)
+
+        app_cache[model._meta.module_name] = model
 
     return app_cache
 
@@ -85,7 +112,7 @@ def test_proj_sig(*models, **kwargs):
     "Generate a dummy project signature based around a single model"
     version = kwargs.get('version',1)
     proj_sig = {
-        'tests': {}, 
+        'tests': SortedDict(),
         '__version__': version,
     }
 
@@ -97,7 +124,7 @@ def test_proj_sig(*models, **kwargs):
             app = 'tests'
         else:
             app,name = parts
-        proj_sig.setdefault(app,{})[name] = signature.create_model_sig(model)
+        proj_sig.setdefault(app, SortedDict())[name] = signature.create_model_sig(model)
     
     return proj_sig
     
@@ -246,5 +273,5 @@ def set_app_test_models(models):
 def add_app_test_model(model):
     """Adds a model to the Django test models registry."""
     key = model._meta.object_name.lower()
-    cache.app_models.setdefault('tests', {})[key] = model
+    cache.app_models.setdefault('tests', SortedDict())[key] = model
     clear_models_cache()

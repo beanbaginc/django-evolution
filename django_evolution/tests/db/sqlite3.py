@@ -1,3 +1,8 @@
+from django.db.models.options import Options
+
+autocreate_through_tables = hasattr(Options({}), 'auto_created')
+
+
 add_field = {
     'AddNonNullNonCallableColumnModel':
         '\n'.join([
@@ -134,37 +139,75 @@ add_field = {
             'DROP TABLE "TEMP_TABLE";',
             'CREATE INDEX "tests_testmodel_added_field_id" ON "tests_testmodel" ("added_field_id");',
         ]),
-    'AddManyToManyDatabaseTableModel': 
-        '\n'.join([
-            'CREATE TABLE "tests_testmodel_added_field" (',
-            '    "id" integer NOT NULL PRIMARY KEY,',
-            '    "testmodel_id" integer NOT NULL REFERENCES "tests_testmodel" ("id"),',
-            '    "addanchor1_id" integer NOT NULL REFERENCES "tests_addanchor1" ("id"),',
-            '    UNIQUE ("testmodel_id", "addanchor1_id")',
-            ')',
-            ';',
-        ]),
-     'AddManyToManyNonDefaultDatabaseTableModel': 
-        '\n'.join([
-            'CREATE TABLE "tests_testmodel_added_field" (',
-            '    "id" integer NOT NULL PRIMARY KEY,',
-            '    "testmodel_id" integer NOT NULL REFERENCES "tests_testmodel" ("id"),',
-            '    "addanchor2_id" integer NOT NULL REFERENCES "custom_add_anchor_table" ("id"),',
-            '    UNIQUE ("testmodel_id", "addanchor2_id")',
-            ')',
-            ';',
-        ]),
-     'AddManyToManySelf': 
-        '\n'.join([
-            'CREATE TABLE "tests_testmodel_added_field" (',
-            '    "id" integer NOT NULL PRIMARY KEY,',
-            '    "from_testmodel_id" integer NOT NULL REFERENCES "tests_testmodel" ("id"),',
-            '    "to_testmodel_id" integer NOT NULL REFERENCES "tests_testmodel" ("id"),',
-            '    UNIQUE ("from_testmodel_id", "to_testmodel_id")',
-            ')',
-            ';',
-        ]),
 }
+
+
+if autocreate_through_tables:
+    add_field.update({
+        'AddManyToManyDatabaseTableModel': 
+            '\n'.join([
+                'CREATE TABLE "tests_testmodel_added_field" (',
+                '    "id" integer NOT NULL PRIMARY KEY,',
+                '    "testmodel_id" integer NOT NULL,',
+                '    "addanchor1_id" integer NOT NULL,',
+                '    UNIQUE ("testmodel_id", "addanchor1_id")',
+                ')',
+                ';',
+            ]),
+         'AddManyToManyNonDefaultDatabaseTableModel': 
+            '\n'.join([
+                'CREATE TABLE "tests_testmodel_added_field" (',
+                '    "id" integer NOT NULL PRIMARY KEY,',
+                '    "testmodel_id" integer NOT NULL,',
+                '    "addanchor2_id" integer NOT NULL,',
+                '    UNIQUE ("testmodel_id", "addanchor2_id")',
+                ')',
+                ';',
+            ]),
+         'AddManyToManySelf': 
+            '\n'.join([
+                'CREATE TABLE "tests_testmodel_added_field" (',
+                '    "id" integer NOT NULL PRIMARY KEY,',
+                '    "from_testmodel_id" integer NOT NULL,',
+                '    "to_testmodel_id" integer NOT NULL,',
+                '    UNIQUE ("from_testmodel_id", "to_testmodel_id")',
+                ')',
+                ';',
+            ]),
+    })
+else:
+    add_field.update({
+        'AddManyToManyDatabaseTableModel': 
+            '\n'.join([
+                'CREATE TABLE "tests_testmodel_added_field" (',
+                '    "id" integer NOT NULL PRIMARY KEY,',
+                '    "testmodel_id" integer NOT NULL REFERENCES "tests_testmodel" ("id"),',
+                '    "addanchor1_id" integer NOT NULL REFERENCES "tests_addanchor1" ("id"),',
+                '    UNIQUE ("testmodel_id", "addanchor1_id")',
+                ')',
+                ';',
+            ]),
+         'AddManyToManyNonDefaultDatabaseTableModel': 
+            '\n'.join([
+                'CREATE TABLE "tests_testmodel_added_field" (',
+                '    "id" integer NOT NULL PRIMARY KEY,',
+                '    "testmodel_id" integer NOT NULL REFERENCES "tests_testmodel" ("id"),',
+                '    "addanchor2_id" integer NOT NULL REFERENCES "custom_add_anchor_table" ("id"),',
+                '    UNIQUE ("testmodel_id", "addanchor2_id")',
+                ')',
+                ';',
+            ]),
+         'AddManyToManySelf': 
+            '\n'.join([
+                'CREATE TABLE "tests_testmodel_added_field" (',
+                '    "id" integer NOT NULL PRIMARY KEY,',
+                '    "from_testmodel_id" integer NOT NULL REFERENCES "tests_testmodel" ("id"),',
+                '    "to_testmodel_id" integer NOT NULL REFERENCES "tests_testmodel" ("id"),',
+                '    UNIQUE ("from_testmodel_id", "to_testmodel_id")',
+                ')',
+                ';',
+            ]),
+    })
 
 delete_field = {
     'DefaultNamedColumnModel': 
@@ -383,48 +426,48 @@ delete_application = {
     'DeleteApplication':
         '\n'.join([
             'DROP TABLE "tests_appdeleteanchor1";',
+            'DROP TABLE "app_delete_custom_add_anchor_table";',
             'DROP TABLE "tests_testmodel_anchor_m2m";',
             'DROP TABLE "tests_testmodel";',
-            'DROP TABLE "app_delete_custom_add_anchor_table";',
             'DROP TABLE "app_delete_custom_table_name";',
         ]),
 }
 
 rename_field = {
-    'RenameColumnModel': 
+    'RenameColumnModel':
         '\n'.join([
-            'CREATE TEMPORARY TABLE "TEMP_TABLE"("custom_db_col_name" integer NOT NULL, "char_field" varchar(20) NOT NULL, "renamed_field" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
-            'INSERT INTO "TEMP_TABLE" SELECT "custom_db_col_name", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "tests_testmodel";',
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("renamed_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "custom_db_col_name" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "tests_testmodel";',
             'DROP TABLE "tests_testmodel";',
-            'CREATE TABLE "tests_testmodel"("custom_db_col_name" integer NOT NULL, "char_field" varchar(20) NOT NULL, "renamed_field" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
+            'CREATE TABLE "tests_testmodel"("renamed_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "custom_db_col_name" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
             'CREATE INDEX "tests_testmodel_custom_db_col_name_indexed" ON "tests_testmodel" ("custom_db_col_name_indexed");',
             'CREATE INDEX "tests_testmodel_fk_field_id" ON "tests_testmodel" ("fk_field_id");',
-            'INSERT INTO "tests_testmodel" ("custom_db_col_name", "char_field", "renamed_field", "custom_db_col_name_indexed", "fk_field_id", "id") SELECT "custom_db_col_name", "char_field", "renamed_field", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "TEMP_TABLE";',
+            'INSERT INTO "tests_testmodel" ("renamed_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "id") SELECT "renamed_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    'RenameColumnWithTableNameModel': 
+    'RenameColumnWithTableNameModel':
         '\n'.join([
-            'CREATE TEMPORARY TABLE "TEMP_TABLE"("custom_db_col_name" integer NOT NULL, "char_field" varchar(20) NOT NULL, "renamed_field" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
-            'INSERT INTO "TEMP_TABLE" SELECT "custom_db_col_name", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "tests_testmodel";',
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("renamed_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "custom_db_col_name" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "tests_testmodel";',
             'DROP TABLE "tests_testmodel";',
-            'CREATE TABLE "tests_testmodel"("custom_db_col_name" integer NOT NULL, "char_field" varchar(20) NOT NULL, "renamed_field" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
+            'CREATE TABLE "tests_testmodel"("renamed_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "custom_db_col_name" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
             'CREATE INDEX "tests_testmodel_custom_db_col_name_indexed" ON "tests_testmodel" ("custom_db_col_name_indexed");',
             'CREATE INDEX "tests_testmodel_fk_field_id" ON "tests_testmodel" ("fk_field_id");',
-            'INSERT INTO "tests_testmodel" ("custom_db_col_name", "char_field", "renamed_field", "custom_db_col_name_indexed", "fk_field_id", "id") SELECT "custom_db_col_name", "char_field", "renamed_field", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "TEMP_TABLE";',
+            'INSERT INTO "tests_testmodel" ("renamed_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "id") SELECT "renamed_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    'RenamePrimaryKeyColumnModel': 
+    'RenamePrimaryKeyColumnModel':
         '\n'.join([
-            'CREATE TEMPORARY TABLE "TEMP_TABLE"("custom_db_col_name" integer NOT NULL, "char_field" varchar(20) NOT NULL, "int_field" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "my_pk_id" integer NOT NULL UNIQUE PRIMARY KEY);',
-            'INSERT INTO "TEMP_TABLE" SELECT "custom_db_col_name", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "tests_testmodel";',
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "custom_db_col_name" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "my_pk_id" integer NOT NULL UNIQUE PRIMARY KEY);',
+            'INSERT INTO "TEMP_TABLE" SELECT "int_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "tests_testmodel";',
             'DROP TABLE "tests_testmodel";',
-            'CREATE TABLE "tests_testmodel"("custom_db_col_name" integer NOT NULL, "char_field" varchar(20) NOT NULL, "int_field" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "my_pk_id" integer NOT NULL UNIQUE PRIMARY KEY);',
+            'CREATE TABLE "tests_testmodel"("int_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "custom_db_col_name" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "my_pk_id" integer NOT NULL UNIQUE PRIMARY KEY);',
             'CREATE INDEX "tests_testmodel_custom_db_col_name_indexed" ON "tests_testmodel" ("custom_db_col_name_indexed");',
             'CREATE INDEX "tests_testmodel_fk_field_id" ON "tests_testmodel" ("fk_field_id");',
-            'INSERT INTO "tests_testmodel" ("custom_db_col_name", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "my_pk_id") SELECT "custom_db_col_name", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "my_pk_id" FROM "TEMP_TABLE";',
+            'INSERT INTO "tests_testmodel" ("int_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "my_pk_id") SELECT "int_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "my_pk_id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
-        ]),        
-    'RenameForeignKeyColumnModel': 
+        ]),
+    'RenameForeignKeyColumnModel':
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "custom_db_col_name" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "renamed_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
             'INSERT INTO "TEMP_TABLE" SELECT "int_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "tests_testmodel";',
@@ -435,37 +478,37 @@ rename_field = {
             'INSERT INTO "tests_testmodel" ("int_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "renamed_field_id", "id") SELECT "int_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "renamed_field_id", "id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    'RenameNonDefaultColumnNameModel': 
+    'RenameNonDefaultColumnNameModel':
         '\n'.join([
-            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "renamed_field" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
-            'INSERT INTO "TEMP_TABLE" SELECT "int_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "tests_testmodel";',
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("renamed_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "int_field" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
+            'INSERT INTO "TEMP_TABLE" SELECT "custom_db_col_name", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "tests_testmodel";',
             'DROP TABLE "tests_testmodel";',
-            'CREATE TABLE "tests_testmodel"("int_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "renamed_field" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
+            'CREATE TABLE "tests_testmodel"("renamed_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "int_field" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
             'CREATE INDEX "tests_testmodel_custom_db_col_name_indexed" ON "tests_testmodel" ("custom_db_col_name_indexed");',
             'CREATE INDEX "tests_testmodel_fk_field_id" ON "tests_testmodel" ("fk_field_id");',
-            'INSERT INTO "tests_testmodel" ("int_field", "char_field", "renamed_field", "custom_db_col_name_indexed", "fk_field_id", "id") SELECT "int_field", "char_field", "renamed_field", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "TEMP_TABLE";',
+            'INSERT INTO "tests_testmodel" ("renamed_field", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id") SELECT "renamed_field", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    'RenameNonDefaultColumnNameToNonDefaultNameModel': 
+    'RenameNonDefaultColumnNameToNonDefaultNameModel':
         '\n'.join([
-            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "non-default_column_name" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
-            'INSERT INTO "TEMP_TABLE" SELECT "int_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "tests_testmodel";',
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("non-default_column_name" integer NOT NULL, "char_field" varchar(20) NOT NULL, "int_field" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
+            'INSERT INTO "TEMP_TABLE" SELECT "custom_db_col_name", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "tests_testmodel";',
             'DROP TABLE "tests_testmodel";',
-            'CREATE TABLE "tests_testmodel"("int_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "non-default_column_name" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
+            'CREATE TABLE "tests_testmodel"("non-default_column_name" integer NOT NULL, "char_field" varchar(20) NOT NULL, "int_field" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
             'CREATE INDEX "tests_testmodel_custom_db_col_name_indexed" ON "tests_testmodel" ("custom_db_col_name_indexed");',
             'CREATE INDEX "tests_testmodel_fk_field_id" ON "tests_testmodel" ("fk_field_id");',
-            'INSERT INTO "tests_testmodel" ("int_field", "char_field", "non-default_column_name", "custom_db_col_name_indexed", "fk_field_id", "id") SELECT "int_field", "char_field", "non-default_column_name", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "TEMP_TABLE";',
+            'INSERT INTO "tests_testmodel" ("non-default_column_name", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id") SELECT "non-default_column_name", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
-    'RenameNonDefaultColumnNameToNonDefaultNameAndTableModel': 
+    'RenameNonDefaultColumnNameToNonDefaultNameAndTableModel':
         '\n'.join([
-            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "non-default_column_name2" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
-            'INSERT INTO "TEMP_TABLE" SELECT "int_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "tests_testmodel";',
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("non-default_column_name2" integer NOT NULL, "char_field" varchar(20) NOT NULL, "int_field" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
+            'INSERT INTO "TEMP_TABLE" SELECT "custom_db_col_name", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "tests_testmodel";',
             'DROP TABLE "tests_testmodel";',
-            'CREATE TABLE "tests_testmodel"("int_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "non-default_column_name2" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
+            'CREATE TABLE "tests_testmodel"("non-default_column_name2" integer NOT NULL, "char_field" varchar(20) NOT NULL, "int_field" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
             'CREATE INDEX "tests_testmodel_custom_db_col_name_indexed" ON "tests_testmodel" ("custom_db_col_name_indexed");',
             'CREATE INDEX "tests_testmodel_fk_field_id" ON "tests_testmodel" ("fk_field_id");',
-            'INSERT INTO "tests_testmodel" ("int_field", "char_field", "non-default_column_name2", "custom_db_col_name_indexed", "fk_field_id", "id") SELECT "int_field", "char_field", "non-default_column_name2", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "TEMP_TABLE";',
+            'INSERT INTO "tests_testmodel" ("non-default_column_name2", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id") SELECT "non-default_column_name2", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
     'RenameColumnCustomTableModel': 
@@ -506,13 +549,13 @@ sql_mutation = {
 generics = {
     'DeleteColumnModel': 
         '\n'.join([
-            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NOT NULL, "content_type_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY, "object_id" integer unsigned NOT NULL);',
-            'INSERT INTO "TEMP_TABLE" SELECT "int_field", "content_type_id", "id", "object_id" FROM "tests_testmodel";',
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("object_id" integer unsigned NOT NULL, "int_field" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY, "content_type_id" integer NOT NULL);',
+            'INSERT INTO "TEMP_TABLE" SELECT "object_id", "int_field", "id", "content_type_id" FROM "tests_testmodel";',
             'DROP TABLE "tests_testmodel";',
-            'CREATE TABLE "tests_testmodel"("int_field" integer NOT NULL, "content_type_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY, "object_id" integer unsigned NOT NULL);',
-            'CREATE INDEX "tests_testmodel_content_type_id" ON "tests_testmodel" ("content_type_id");',
+            'CREATE TABLE "tests_testmodel"("object_id" integer unsigned NOT NULL, "int_field" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY, "content_type_id" integer NOT NULL);',
             'CREATE INDEX "tests_testmodel_object_id" ON "tests_testmodel" ("object_id");',
-            'INSERT INTO "tests_testmodel" ("int_field", "content_type_id", "id", "object_id") SELECT "int_field", "content_type_id", "id", "object_id" FROM "TEMP_TABLE";',
+            'CREATE INDEX "tests_testmodel_content_type_id" ON "tests_testmodel" ("content_type_id");',
+            'INSERT INTO "tests_testmodel" ("object_id", "int_field", "id", "content_type_id") SELECT "object_id", "int_field", "id", "content_type_id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ])
 }

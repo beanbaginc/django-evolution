@@ -52,7 +52,7 @@ tests = r"""
 
 >>> d = Diff(start_sig, deleted_app_sig)
 >>> print d.deleted
-{'tests': ['AppDeleteAnchor1', 'TestModel', 'AppDeleteAnchor2', 'CustomTestModel']}
+{'tests': ['AppDeleteAnchor1', 'AppDeleteAnchor2', 'TestModel', 'CustomTestModel']}
 
 >>> test_sig = copy.deepcopy(start_sig)
 

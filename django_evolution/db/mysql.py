@@ -80,7 +80,7 @@ class EvolutionOperations(BaseEvolutionOperations):
             params = (constraint_name, qn(opts.db_table))
             return ['DROP INDEX %s ON %s;' % params]
 
-    def rename_table(self, old_db_tablename, db_tablename):
+    def rename_table(self, model, old_db_tablename, db_tablename):
         if old_db_tablename == db_tablename:
             return []
         

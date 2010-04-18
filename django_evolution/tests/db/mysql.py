@@ -69,8 +69,8 @@ add_field = {
             '    UNIQUE (`testmodel_id`, `addanchor1_id`)',
             ')',
             ';',
-            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT testmodel_id_refs_id_12ea61cd FOREIGN KEY (`testmodel_id`) REFERENCES `tests_testmodel` (`id`);',
-            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT addanchor1_id_refs_id_7efbb240 FOREIGN KEY (`addanchor1_id`) REFERENCES `tests_addanchor1` (`id`);'            
+            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT `testmodel_id_refs_id_ed159e33` FOREIGN KEY (`testmodel_id`) REFERENCES `tests_testmodel` (`id`);',
+            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT `addanchor1_id_refs_id_7efbb240` FOREIGN KEY (`addanchor1_id`) REFERENCES `tests_addanchor1` (`id`);'            
         ]),
      'AddManyToManyNonDefaultDatabaseTableModel': 
         '\n'.join([
@@ -81,8 +81,8 @@ add_field = {
             '    UNIQUE (`testmodel_id`, `addanchor2_id`)',
             ')',
             ';',
-            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT testmodel_id_refs_id_12ea61cd FOREIGN KEY (`testmodel_id`) REFERENCES `tests_testmodel` (`id`);',
-            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT addanchor2_id_refs_id_13c1da78 FOREIGN KEY (`addanchor2_id`) REFERENCES `custom_add_anchor_table` (`id`);'
+            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT `testmodel_id_refs_id_ed159e33` FOREIGN KEY (`testmodel_id`) REFERENCES `tests_testmodel` (`id`);',
+            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT `addanchor2_id_refs_id_ec3e2588` FOREIGN KEY (`addanchor2_id`) REFERENCES `custom_add_anchor_table` (`id`);'
         ]),
      'AddManyToManySelf': 
         '\n'.join([
@@ -93,8 +93,8 @@ add_field = {
             '    UNIQUE (`from_testmodel_id`, `to_testmodel_id`)',
             ')',
             ';',
-            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT from_testmodel_id_refs_id_12ea61cd FOREIGN KEY (`from_testmodel_id`) REFERENCES `tests_testmodel` (`id`);',
-            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT to_testmodel_id_refs_id_12ea61cd FOREIGN KEY (`to_testmodel_id`) REFERENCES `tests_testmodel` (`id`);'
+            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT `from_testmodel_id_refs_id_ed159e33` FOREIGN KEY (`from_testmodel_id`) REFERENCES `tests_testmodel` (`id`);',
+            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT `to_testmodel_id_refs_id_ed159e33` FOREIGN KEY (`to_testmodel_id`) REFERENCES `tests_testmodel` (`id`);'
         ]),
 }
 
@@ -187,9 +187,9 @@ delete_application = {
     'DeleteApplication':
         '\n'.join([
             'DROP TABLE `tests_appdeleteanchor1`;',
+            'DROP TABLE `app_delete_custom_add_anchor_table`;',
             'DROP TABLE `tests_testmodel_anchor_m2m`;',
             'DROP TABLE `tests_testmodel`;',
-            'DROP TABLE `app_delete_custom_add_anchor_table`;',
             'DROP TABLE `app_delete_custom_table_name`;',
         ]),
 }
@@ -212,11 +212,11 @@ rename_field = {
     'RenameColumnCustomTableModel': 
         'ALTER TABLE `custom_rename_table_name` CHANGE COLUMN `value` `renamed_field` integer NOT NULL;',
     'RenameManyToManyTableModel': 
-        'ALTER TABLE `tests_testmodel_m2m_field` RENAME TO `tests_testmodel_renamed_field`;',
+        'RENAME TABLE `tests_testmodel_m2m_field` TO `tests_testmodel_renamed_field`;',
     'RenameManyToManyTableWithColumnNameModel': 
-        'ALTER TABLE `tests_testmodel_m2m_field` RENAME TO `tests_testmodel_renamed_field`;',
+        'RENAME TABLE `tests_testmodel_m2m_field` TO `tests_testmodel_renamed_field`;',
     'RenameNonDefaultManyToManyTableModel': 
-        'ALTER TABLE `non-default_db_table` RENAME TO `tests_testmodel_renamed_field`;',
+        'RENAME TABLE `non-default_db_table` TO `tests_testmodel_renamed_field`;',
 }
 
 

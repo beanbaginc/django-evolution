@@ -10,14 +10,48 @@ class BaseEvolutionOperations(object):
         else:
             return param
 
-    def rename_table(self, old_db_tablename, db_tablename):
+    def rename_table(self, model, old_db_tablename, db_tablename):
         if old_db_tablename == db_tablename:
             # No Operation
             return []
-    
+
+        style = color.no_style()
         qn = connection.ops.quote_name
+        creation = connection.creation
+
+        sql = []
+        refs = {}
+        models = []
+
+        for field in model._meta.local_many_to_many:
+            if (field.rel and
+                field.rel.through and
+                field.rel.through._meta.db_table == old_db_tablename):
+
+                through = field.rel.through
+
+                for m2m_field in through._meta.local_fields:
+                    if m2m_field.rel and m2m_field.rel.to == model:
+                        models.append(m2m_field.rel.to)
+                        refs.setdefault(m2m_field.rel.to, []).append(
+                            (through, m2m_field))
+
+        remove_refs = refs.copy()
+
+        for relto in models:
+            sql.extend(creation.sql_remove_table_constraints(relto, remove_refs,
+                                                             style))
         params = (qn(old_db_tablename), qn(db_tablename))
-        return ['ALTER TABLE %s RENAME TO %s;' % params]
+        sql.append('ALTER TABLE %s RENAME TO %s;' % params)
+
+        for relto in models:
+            for rel_class, f in refs[relto]:
+                if rel_class._meta.db_table == old_db_tablename:
+                    rel_class._meta.db_table = db_tablename
+
+            sql.extend(creation.sql_for_pending_references(relto, style, refs))
+
+        return sql
     
     def delete_column(self, model, f):
         qn = connection.ops.quote_name
@@ -28,12 +62,29 @@ class BaseEvolutionOperations(object):
     def delete_table(self, table_name):
         qn = connection.ops.quote_name
         return ['DROP TABLE %s;' % qn(table_name)]
-    
+
     def add_m2m_table(self, model, f):
         style = color.no_style()
-    
-        return connection.creation.sql_for_many_to_many_field(model, f, style)
-    
+        creation = connection.creation
+
+        if f.rel.through:
+            references = {}
+            pending_references = {}
+
+            sql, references = creation.sql_create_model(f.rel.through, style)
+
+            for refto, refs in references.items():
+                pending_references.setdefault(refto, []).extend(refs)
+                sql.extend(creation.sql_for_pending_references(
+                    refto, style, pending_references))
+
+            sql.extend(creation.sql_for_pending_references(
+                f.rel.through, style, pending_references))
+        else:
+            sql = creation.sql_for_many_to_many_field(model, f, style)
+
+        return sql
+
     def add_column(self, model, f, initial):
         qn = connection.ops.quote_name
     
@@ -139,8 +190,8 @@ class BaseEvolutionOperations(object):
         new_field.column = new_db_column
         return self.rename_column(opts, old_field, new_field)
 
-    def change_db_table(self, old_db_tablename, new_db_tablename):
-        return self.rename_table(old_db_tablename, new_db_tablename)
+    def change_db_table(self, model, old_db_tablename, new_db_tablename):
+        return self.rename_table(model, old_db_tablename, new_db_tablename)
         
     def change_db_index(self, model, field_name, new_db_index, initial=None):
         f = model._meta.get_field(field_name)

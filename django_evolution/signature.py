@@ -2,6 +2,8 @@ from django.db.models import get_apps, get_models
 from django.db.models.fields.related import *
 from django.conf import global_settings
 from django.contrib.contenttypes import generic
+from django.utils.datastructures import SortedDict
+
 
 ATTRIBUTE_DEFAULTS = {
     # Common to all fields
@@ -77,7 +79,7 @@ def create_app_sig(app):
     Only those attributes that are interesting from a schema-evolution
     perspective are included.
     """
-    app_sig = {}
+    app_sig = SortedDict()
     for model in get_models(app):
         app_sig[model._meta.object_name] = create_model_sig(model)
     return app_sig    

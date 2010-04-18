@@ -157,7 +157,7 @@ SimulationFailure: Cannot change column 'char_field1' on 'tests.TestModel' witho
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql)
+>>> execute_test_sql(start, end, test_sql) # SetNotNullChangedModelWithConstant
 %(SetNotNullChangeModelWithConstant)s
  
 # With a good initial value (callable)
