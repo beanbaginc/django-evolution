@@ -51,6 +51,7 @@ class MockMeta(object):
         self._fields = {}
         self._many_to_many = {}
         self.abstract = False
+        self.managed = True
 
         for field_name,field_sig in model_sig['fields'].items():
             if not stub or field_sig.get('primary_key', False):
@@ -108,7 +109,12 @@ class MockModel(object):
         self._meta = MockMeta(proj_sig, app_name, model_name, model_sig, stub)
 
     def __eq__(self, other):
-        return self.app_name == other.app_name and self.model_name == other.model_name
+        # For our purposes, we don't want to appear equal to "self".
+        # Really, Django 1.2 should be checking if this is a string before
+        # doing this comparison,
+        return (not isinstance(other, basestring) and
+                self.app_name == other.app_name and
+                self.model_name == other.model_name)
 
 class MockRelated(object):
     """
@@ -278,16 +284,39 @@ class AddField(BaseMutation):
         model_sig = app_sig[self.model_name]
 
         model = MockModel(proj_sig, app_label, self.model_name, model_sig)
+
+
         field = create_field(proj_sig, self.field_name, self.field_type, self.field_attrs)
+        field.auto_created = True
+
         field.m2m_db_table = curry(field._get_m2m_db_table, model._meta)
+
+        print '** %s'%  model._meta.db_table
+
+        print field.m2m_db_table()
+
+        try:
+            # Django >= 1.1
+            field.rel.through = \
+                create_many_to_many_intermediary_model(field, model)
+        except NameError:
+            pass
 
         related_app_label, related_model_name = self.field_attrs['related_model'].split('.')
         related_sig = proj_sig[related_app_label][related_model_name]
         related_model = MockModel(proj_sig, related_app_label, related_model_name, related_sig)
         related = MockRelated(related_model, model, field)
 
-        field.m2m_column_name = curry(field._get_m2m_column_name, related)
-        field.m2m_reverse_name = curry(field._get_m2m_reverse_name, related)
+        if hasattr(field, '_get_m2m_column_name'):
+            # Django < 1.2
+            field.m2m_column_name = curry(field._get_m2m_column_name, related)
+            field.m2m_reverse_name = curry(field._get_m2m_reverse_name, related)
+        else:
+            # Django >= 1.2
+            field.m2m_column_name = curry(field._get_m2m_attr,
+                                          related, 'column')
+            field.m2m_reverse_name = curry(field._get_m2m_reverse_attr,
+                                           related, 'column')
 
         sql_statements = evolver.add_m2m_table(model, field)
 

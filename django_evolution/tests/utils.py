@@ -1,10 +1,11 @@
 import copy
 
 from datetime import datetime
+from django.core.management import sql
 from django.core.management.color import no_style
-from django.core.management.sql import sql_create, sql_delete, sql_indexes
 from django.db import connection, transaction, settings, models
 from django.db.models.loading import cache
+from django.utils.functional import curry
 
 from django_evolution import signature
 from django_evolution.tests import models as evo_test
@@ -18,6 +19,24 @@ DEFAULT_TEST_ATTRIBUTE_VALUES = {
     models.DateTimeField: datetime.now(),
     models.PositiveIntegerField: '42'
 }
+
+
+def wrap_sql_func(func, evo_test, style):
+    try:
+        from django.db import connections
+
+        # Django >= 1.2
+        return func(evo_test, style, connections['default'])
+    except ImportError:
+        # Django < 1.2
+        return func(evo_test, style)
+
+
+# Wrap the sql.* functions to work with the multi-db support
+sql_create = curry(wrap_sql_func, sql.sql_create)
+sql_indexes = curry(wrap_sql_func, sql.sql_indexes)
+sql_delete = curry(wrap_sql_func, sql.sql_delete)
+
 
 def register_models(*models):
     app_cache = {}

@@ -30,9 +30,6 @@ class BaseEvolutionOperations(object):
         return ['DROP TABLE %s;' % qn(table_name)]
     
     def add_m2m_table(self, model, f):
-        final_output = []
-        qn = connection.ops.quote_name
-        opts = model._meta
         style = color.no_style()
     
         return connection.creation.sql_for_many_to_many_field(model, f, style)
