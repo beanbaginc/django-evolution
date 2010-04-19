@@ -150,7 +150,7 @@ class Command(BaseCommand):
                         print 'No applications need to be purged.'
 
         except EvolutionException, e:
-            print self.style.ERROR(e)
+            print self.style.ERROR(str(e))
             sys.exit(1)
 
         if simulated:
