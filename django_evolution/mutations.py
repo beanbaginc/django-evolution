@@ -283,8 +283,8 @@ class DeleteField(BaseMutation):
 
         # Simulate the deletion of the field.
         try:
-            field_sig = model_sig['fields'].pop(self.field_name)
-        except KeyError, ke:
+            model_sig['fields'].pop(self.field_name)
+        except KeyError:
             raise SimulationFailure('Cannot find the field named "%s".' % self.field_name)
 
     def mutate(self, app_label, proj_sig):
@@ -528,7 +528,7 @@ class ChangeField(BaseMutation):
                         sql_statements.extend(evolver_func(model, old_field_attr, attr_value))
                     else:
                         sql_statements.extend(evolver_func(model, self.field_name, attr_value))
-                except AttributeError, ae:
+                except AttributeError:
                     raise EvolutionNotImplementedError("ChangeField does not support modifying the '%s' attribute on '%s.%s'." % (field_attr, self.model_name, self.field_name))
 
         return sql_statements

@@ -146,8 +146,6 @@ class BaseEvolutionOperations(object):
 
     def create_index(self, model, f):
         "Returns the CREATE INDEX SQL statements."
-        output = []
-        qn = connection.ops.quote_name
         style = color.no_style()
 
         return connection.creation.sql_indexes_for_field(model, f, style)

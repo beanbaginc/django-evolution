@@ -154,7 +154,7 @@ def execute_transaction(sql, output=False):
 
         transaction.commit()
         transaction.leave_transaction_management()
-    except Exception, ex:
+    except Exception:
         transaction.rollback()
         raise
 
@@ -252,7 +252,6 @@ def create_test_data(app_models):
             model.save()
 
 def test_sql_mapping(test_field_name):
-    engine = settings.DATABASE_ENGINE
     sql_for_engine = __import__('django_evolution.tests.db.%s' % (settings.DATABASE_ENGINE), {}, {}, [''])
     return getattr(sql_for_engine, test_field_name)
 

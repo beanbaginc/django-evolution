@@ -47,7 +47,7 @@ def get_mutations(app, evolution_labels):
                 module_name = [evolution_module.__name__,label]
                 module = __import__('.'.join(module_name),{},{},[module_name]);
                 mutations.extend(module.MUTATIONS)
-            except ImportError, e:
+            except ImportError:
                 raise EvolutionException('Error: Failed to find an SQL or Python evolution named %s' % label)
 
     return mutations

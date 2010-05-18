@@ -7,7 +7,6 @@ TEMP_TABLE_NAME = 'TEMP_TABLE'
 
 class EvolutionOperations(BaseEvolutionOperations):
     def delete_column(self, model, f):
-        qn = connection.ops.quote_name
         output = []
 
         field_list = [field for field in model._meta.local_fields
@@ -26,7 +25,6 @@ class EvolutionOperations(BaseEvolutionOperations):
 
     def copy_to_temp_table(self, source_table_name, field_list):
         qn = connection.ops.quote_name
-        output = [self.create_temp_table(field_list)]
         columns = []
         for field in field_list:
             if not models.ManyToManyField == field.__class__:
