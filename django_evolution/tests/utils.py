@@ -4,6 +4,7 @@ from datetime import datetime
 from django.core.management import sql
 from django.core.management.color import no_style
 from django.db import connection, transaction, settings, models
+from django.db.backends.util import truncate_name
 from django.db.models.loading import cache
 from django.utils.datastructures import SortedDict
 from django.utils.functional import curry
@@ -42,6 +43,8 @@ sql_delete = curry(wrap_sql_func, sql.sql_delete)
 def register_models(*models):
     app_cache = SortedDict()
 
+    max_name_length = connection.ops.max_name_length()
+
     for name, model in reversed(models):
         if model._meta.module_name in cache.app_models['django_evolution']:
             del cache.app_models['django_evolution'][model._meta.module_name]
@@ -50,10 +53,15 @@ def register_models(*models):
             orig_object_name = model._meta.object_name
             orig_module_name = model._meta.module_name
 
-            if model._meta.db_table.startswith("%s_%s" % (model._meta.app_label,
-                                                          model._meta.module_name)):
+            generated_db_table = truncate_name(
+                '%s_%s' % (model._meta.app_label, model._meta.module_name),
+                max_name_length)
+
+            if orig_db_table.startswith(generated_db_table):
                 model._meta.db_table = 'tests_%s' % name.lower()
 
+            model._meta.db_table = truncate_name(model._meta.db_table,
+                                                 max_name_length)
             model._meta.app_label = 'tests'
             model._meta.object_name = name
             model._meta.module_name = name.lower()
@@ -66,18 +74,18 @@ def register_models(*models):
 
                 through = field.rel.through
 
-                if through._meta.db_table.startswith('%s_' % orig_db_table):
+                generated_db_table = truncate_name(
+                    '%s_%s' % (orig_db_table, field.name),
+                    max_name_length)
+
+                if through._meta.db_table == generated_db_table:
                     through._meta.app_label = 'tests'
 
                     # Transform the 'through' table information only
                     # if we've transformed the parent db_table.
                     if model._meta.db_table != orig_db_table:
-                        # Only prepend 'tests_' if not using a custom
-                        # db_table.
                         through._meta.db_table = \
-                            through._meta.db_table.replace(
-                                orig_db_table,
-                                model._meta.db_table)
+                            '%s_%s' % (model._meta.db_table, field.name)
 
                         through._meta.object_name = \
                             through._meta.object_name.replace(
@@ -88,6 +96,9 @@ def register_models(*models):
                             through._meta.module_name.replace(
                                 orig_module_name,
                                 model._meta.module_name)
+
+                through._meta.db_table = \
+                    truncate_name(through._meta.db_table, max_name_length)
 
                 for field in through._meta.local_fields:
                     if field.rel and field.rel.to:

@@ -1,6 +1,7 @@
 import django
 from django.core.management import color
 from django.db import connection
+from django.db.backends.util import truncate_name
 import copy
 
 
@@ -19,6 +20,7 @@ class BaseEvolutionOperations(object):
 
         style = color.no_style()
         qn = connection.ops.quote_name
+        max_name_length = connection.ops.max_name_length()
         creation = connection.creation
 
         sql = []
@@ -50,6 +52,9 @@ class BaseEvolutionOperations(object):
             for rel_class, f in refs[relto]:
                 if rel_class._meta.db_table == old_db_tablename:
                     rel_class._meta.db_table = db_tablename
+
+                rel_class._meta.db_table = \
+                    truncate_name(rel_class._meta.db_table, max_name_length)
 
             sql.extend(creation.sql_for_pending_references(relto, style, refs))
 
@@ -149,7 +154,10 @@ class BaseEvolutionOperations(object):
 
     def drop_index(self, model, f):
         qn = connection.ops.quote_name
-        return ['DROP INDEX %s;' % qn(self.get_index_name(model, f))]
+        index_name = self.get_index_name(model, f)
+        max_length = connection.ops.max_name_length()
+
+        return ['DROP INDEX %s;' % qn(truncate_name(index_name, max_length))]
 
     def get_index_name(self, model, f):
         if django.VERSION >= (1, 2):
@@ -212,7 +220,9 @@ class BaseEvolutionOperations(object):
         qn = connection.ops.quote_name
         opts = model._meta
         f = opts.get_field(field_name)
-        constraint_name = '%s_%s_key' % (opts.db_table, f.column,)
+        constraint_name = truncate_name('%s_%s_key' % (opts.db_table, f.column),
+                                        connection.ops.max_name_length())
+
         if new_unique_value:
             params = (qn(opts.db_table), constraint_name, qn(f.column),)
             return ['ALTER TABLE %s ADD CONSTRAINT %s UNIQUE(%s);' % params]

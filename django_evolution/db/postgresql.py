@@ -1,5 +1,6 @@
 from django.core.management import color
 from django.db import connection
+from django.db.backends.util import truncate_name
 
 from common import BaseEvolutionOperations
 
@@ -12,6 +13,7 @@ class EvolutionOperations(BaseEvolutionOperations):
 
         style = color.no_style()
         qn = connection.ops.quote_name
+        max_name_length = connection.ops.max_name_length()
         creation = connection.creation
         sql = []
         refs = {}
@@ -37,7 +39,9 @@ class EvolutionOperations(BaseEvolutionOperations):
                 sql.extend(creation.sql_remove_table_constraints(
                     relto, remove_refs, style))
 
-        params = (qn(opts.db_table), qn(old_field.column), qn(new_field.column))
+        params = (qn(opts.db_table),
+                  truncate_name(qn(old_field.column), max_name_length),
+                  truncate_name(qn(new_field.column), max_name_length))
         sql.append('ALTER TABLE %s RENAME COLUMN %s TO %s;' % params)
 
         if old_field.primary_key:
