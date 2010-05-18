@@ -52,3 +52,8 @@ class EvolutionOperations(BaseEvolutionOperations):
                     relto, style, refs))
 
         return sql
+
+    def get_index_name(self, model, f):
+        # By default, Django 1.2 will use a digest hash for the column name.
+        # The PostgreSQL support, however, uses the column name itself.
+        return '%s_%s' % (model._meta.db_table, f.column)

@@ -1,6 +1,8 @@
+import django
 from django.core.management import color
 from django.db import connection
 import copy
+
 
 class BaseEvolutionOperations(object):
     def quote_sql_param(self, param):
@@ -136,22 +138,27 @@ class BaseEvolutionOperations(object):
            return 'ALTER TABLE %s ALTER COLUMN %s DROP NOT NULL;' % params
         else:
             return 'ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;' % params 
-    
+
     def create_index(self, model, f):
         "Returns the CREATE INDEX SQL statements."
         output = []
         qn = connection.ops.quote_name
         style = color.no_style()
-    
+
         return connection.creation.sql_indexes_for_field(model, f, style)
-        
+
     def drop_index(self, model, f):
         qn = connection.ops.quote_name
         return ['DROP INDEX %s;' % qn(self.get_index_name(model, f))]
-        
+
     def get_index_name(self, model, f):
-        return '%s_%s' % (model._meta.db_table, f.column)
-        
+        if django.VERSION >= (1, 2):
+            colname = connection.creation._digest(f.column)
+        else:
+            colname = f.column
+
+        return '%s_%s' % (model._meta.db_table, colname)
+
     def change_null(self, model, field_name, new_null_attr, initial=None):
         qn = connection.ops.quote_name
         opts = model._meta

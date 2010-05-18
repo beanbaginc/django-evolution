@@ -145,7 +145,7 @@ def execute_transaction(sql, output=False):
         transaction.leave_transaction_management()
     except Exception, ex:
         transaction.rollback()
-        raise ex
+        raise
 
 def execute_test_sql(start, end, sql, debug=False):
     """

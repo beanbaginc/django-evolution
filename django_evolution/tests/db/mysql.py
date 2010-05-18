@@ -1,3 +1,18 @@
+from django.db import connection
+from django.db.models.options import Options
+
+# This is not a great check, but it's from the same version as auto-created
+# tables (Django 1.2), so we use it.
+digest_index_names = hasattr(Options({}), 'auto_created')
+
+
+def generate_index_name(table, column):
+    if digest_index_names:
+        column = connection.creation._digest(column)
+
+    return '%s_%s' % (table, column)
+
+
 add_field = {
     'AddNonNullNonCallableColumnModel':
         '\n'.join([
@@ -49,7 +64,8 @@ add_field = {
     'AddIndexedColumnModel': 
         '\n'.join([
             'ALTER TABLE `tests_testmodel` ADD COLUMN `add_field` integer NULL ;',
-            'CREATE INDEX `tests_testmodel_add_field` ON `tests_testmodel` (`add_field`);'
+            'CREATE INDEX `%s` ON `tests_testmodel` (`add_field`);'
+            % generate_index_name('tests_testmodel', 'add_field')
         ]),
     'AddUniqueColumnModel': 
         'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field` integer NULL UNIQUE;',
@@ -58,7 +74,8 @@ add_field = {
     'AddForeignKeyModel': 
         '\n'.join([
             'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field_id` integer NULL REFERENCES `tests_addanchor1` (`id`) ;',
-            'CREATE INDEX `tests_testmodel_added_field_id` ON `tests_testmodel` (`added_field_id`);'
+            'CREATE INDEX `%s` ON `tests_testmodel` (`added_field_id`);'
+            % generate_index_name('tests_testmodel', 'added_field_id')
         ]),
     'AddManyToManyDatabaseTableModel': 
         '\n'.join([
@@ -140,8 +157,10 @@ change_field = {
             ]),
     "DBColumnChangeModel": 'ALTER TABLE `tests_testmodel` CHANGE COLUMN `custom_db_column` `customised_db_column` integer NOT NULL;',
     "M2MDBTableChangeModel": 'RENAME TABLE `change_field_non-default_m2m_table` TO `custom_m2m_db_table_name`;',
-    "AddDBIndexChangeModel": 'CREATE INDEX `tests_testmodel_int_field2` ON `tests_testmodel` (`int_field2`);',
-    "RemoveDBIndexChangeModel": 'DROP INDEX `tests_testmodel_int_field1` ON `tests_testmodel`;',
+    "AddDBIndexChangeModel": 'CREATE INDEX `%s` ON `tests_testmodel` (`int_field2`);'
+        % generate_index_name('tests_testmodel', 'int_field2'),
+    "RemoveDBIndexChangeModel": 'DROP INDEX `%s` ON `tests_testmodel`;'
+        % generate_index_name('tests_testmodel', 'int_field1'),
     "AddUniqueChangeModel": 'CREATE UNIQUE INDEX int_field4 ON `tests_testmodel`(`int_field4`);',
     "RemoveUniqueChangeModel": 'DROP INDEX int_field3 ON `tests_testmodel`;',
     "MultiAttrChangeModel": 
