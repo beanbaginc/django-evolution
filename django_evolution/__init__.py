@@ -51,10 +51,10 @@ class EvolutionException(Exception):
 
     def __str__(self):
         return str(self.msg)
-        
+
 class CannotSimulate(EvolutionException):
     pass
-    
+
 class SimulationFailure(EvolutionException):
     pass
 

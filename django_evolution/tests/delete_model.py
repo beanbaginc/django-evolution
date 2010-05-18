@@ -8,7 +8,7 @@ tests = r"""
 >>> from django_evolution.diff import Diff
 
 >>> import copy
- 
+
 # Now, a useful test model we can use for evaluating diffs
 >>> class DeleteModelAnchor(models.Model):
 ...     value = models.IntegerField()

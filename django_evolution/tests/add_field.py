@@ -9,7 +9,7 @@ tests = r"""
 # Indexed field
 # Unique field.
 # Null field
-# 
+#
 # Foreign Key field.
 # M2M field between models with default table names.
 # M2M field between models with non-default table names.

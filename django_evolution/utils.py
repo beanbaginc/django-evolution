@@ -10,7 +10,7 @@ def write_sql(sql):
 
 def execute_sql(cursor, sql):
     """
-    Execute a list of SQL statements on the provided cursor, unrolling 
+    Execute a list of SQL statements on the provided cursor, unrolling
     parameters as required
     """
     for statement in sql:
@@ -19,4 +19,4 @@ def execute_sql(cursor, sql):
                 cursor.execute(*statement)
         else:
             if not statement.startswith('--'):
-                cursor.execute(statement)  
+                cursor.execute(statement)

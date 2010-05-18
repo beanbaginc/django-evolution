@@ -56,8 +56,8 @@ tests = r"""
 
 # Store the base signatures
 >>> anchors = [
-...     ('RenameAnchor1', RenameAnchor1), 
-...     ('RenameAnchor2', RenameAnchor2), 
+...     ('RenameAnchor1', RenameAnchor1),
+...     ('RenameAnchor2', RenameAnchor2),
 ...     ('RenameAnchor3',RenameAnchor3)
 ... ]
 >>> test_model = ('TestModel', RenameBaseModel)
@@ -158,7 +158,7 @@ True
 >>> execute_test_sql(start, end, test_sql) #RenamePrimaryKeyColumnModel
 %(RenamePrimaryKeyColumnModel)s
 
-# Rename a foreign key database column 
+# Rename a foreign key database column
 >>> class RenameForeignKeyColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
@@ -246,7 +246,7 @@ True
 
 >>> execute_test_sql(start, end, test_sql) #RenameNonDefaultColumnNameToNonDefaultNameModel
 %(RenameNonDefaultColumnNameToNonDefaultNameModel)s
- 
+
 # RenameField with a specified db column and db table is allowed (but one will be ignored)
 >>> class RenameNonDefaultColumnNameToNonDefaultNameAndTableModel(models.Model):
 ...     char_field = models.CharField(max_length=20)

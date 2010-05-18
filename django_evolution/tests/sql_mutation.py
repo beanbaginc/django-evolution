@@ -52,7 +52,7 @@ Traceback (most recent call last):
 ...
 CannotSimulate: Cannot simulate SQLMutations
 
-# Redefine the sequence with update functions. 
+# Redefine the sequence with update functions.
 >>> def update_first_two(app_label, proj_sig):
 ...     app_sig = proj_sig[app_label]
 ...     model_sig = app_sig['TestModel']

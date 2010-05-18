@@ -42,7 +42,7 @@ add_field = {
             'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field` datetime ;',
             'UPDATE `tests_testmodel` SET `added_field` = 2007-12-13 16:42:00 WHERE `added_field` IS NULL;',
             'ALTER TABLE `tests_testmodel` MODIFY COLUMN `added_field` datetime NOT NULL;',
-        ]),    
+        ]),
     'AddDefaultColumnModel':
         '\n'.join([
             'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field` integer ;',
@@ -55,29 +55,29 @@ add_field = {
             'UPDATE `tests_testmodel` SET `added_field` = \'\' WHERE `added_field` IS NULL;',
             'ALTER TABLE `tests_testmodel` MODIFY COLUMN `added_field` varchar(20) NOT NULL;',
         ]),
-    'AddNullColumnModel': 
+    'AddNullColumnModel':
         'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field` integer NULL ;',
-    'NonDefaultColumnModel': 
+    'NonDefaultColumnModel':
         'ALTER TABLE `tests_testmodel` ADD COLUMN `non-default_column` integer NULL ;',
-    'AddColumnCustomTableModel':  
+    'AddColumnCustomTableModel':
         'ALTER TABLE `custom_table_name` ADD COLUMN `added_field` integer NULL ;',
-    'AddIndexedColumnModel': 
+    'AddIndexedColumnModel':
         '\n'.join([
             'ALTER TABLE `tests_testmodel` ADD COLUMN `add_field` integer NULL ;',
             'CREATE INDEX `%s` ON `tests_testmodel` (`add_field`);'
             % generate_index_name('tests_testmodel', 'add_field')
         ]),
-    'AddUniqueColumnModel': 
+    'AddUniqueColumnModel':
         'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field` integer NULL UNIQUE;',
-    'AddUniqueIndexedModel': 
+    'AddUniqueIndexedModel':
         'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field` integer NULL UNIQUE;',
-    'AddForeignKeyModel': 
+    'AddForeignKeyModel':
         '\n'.join([
             'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field_id` integer NULL REFERENCES `tests_addanchor1` (`id`) ;',
             'CREATE INDEX `%s` ON `tests_testmodel` (`added_field_id`);'
             % generate_index_name('tests_testmodel', 'added_field_id')
         ]),
-    'AddManyToManyDatabaseTableModel': 
+    'AddManyToManyDatabaseTableModel':
         '\n'.join([
             'CREATE TABLE `tests_testmodel_added_field` (',
             '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
@@ -87,9 +87,9 @@ add_field = {
             ')',
             ';',
             'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT `testmodel_id_refs_id_ed159e33` FOREIGN KEY (`testmodel_id`) REFERENCES `tests_testmodel` (`id`);',
-            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT `addanchor1_id_refs_id_7efbb240` FOREIGN KEY (`addanchor1_id`) REFERENCES `tests_addanchor1` (`id`);'            
+            'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT `addanchor1_id_refs_id_7efbb240` FOREIGN KEY (`addanchor1_id`) REFERENCES `tests_addanchor1` (`id`);'
         ]),
-     'AddManyToManyNonDefaultDatabaseTableModel': 
+     'AddManyToManyNonDefaultDatabaseTableModel':
         '\n'.join([
             'CREATE TABLE `tests_testmodel_added_field` (',
             '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
@@ -101,7 +101,7 @@ add_field = {
             'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT `testmodel_id_refs_id_ed159e33` FOREIGN KEY (`testmodel_id`) REFERENCES `tests_testmodel` (`id`);',
             'ALTER TABLE `tests_testmodel_added_field` ADD CONSTRAINT `addanchor2_id_refs_id_ec3e2588` FOREIGN KEY (`addanchor2_id`) REFERENCES `custom_add_anchor_table` (`id`);'
         ]),
-     'AddManyToManySelf': 
+     'AddManyToManySelf':
         '\n'.join([
             'CREATE TABLE `tests_testmodel_added_field` (',
             '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
@@ -116,19 +116,19 @@ add_field = {
 }
 
 delete_field = {
-    'DefaultNamedColumnModel': 
+    'DefaultNamedColumnModel':
         'ALTER TABLE `tests_testmodel` DROP COLUMN `int_field` CASCADE;',
-    'NonDefaultNamedColumnModel': 
+    'NonDefaultNamedColumnModel':
         'ALTER TABLE `tests_testmodel` DROP COLUMN `non-default_db_column` CASCADE;',
-    'ConstrainedColumnModel': 
+    'ConstrainedColumnModel':
         'ALTER TABLE `tests_testmodel` DROP COLUMN `int_field3` CASCADE;',
-    'DefaultManyToManyModel': 
+    'DefaultManyToManyModel':
         'DROP TABLE `tests_testmodel_m2m_field1`;',
-    'NonDefaultManyToManyModel': 
+    'NonDefaultManyToManyModel':
         'DROP TABLE `non-default_m2m_table`;',
-    'DeleteForeignKeyModel': 
+    'DeleteForeignKeyModel':
         'ALTER TABLE `tests_testmodel` DROP COLUMN `fk_field1_id` CASCADE;',
-    'DeleteColumnCustomTableModel': 
+    'DeleteColumnCustomTableModel':
         'ALTER TABLE `custom_table_name` DROP COLUMN `value` CASCADE;',
 }
 
@@ -150,7 +150,7 @@ change_field = {
                 'UPDATE `tests_testmodel` SET `char_field`=LEFT(`char_field`,45);',
                 'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field` varchar(45);',
             ]),
-    'DecreasingMaxLengthChangeModel':  
+    'DecreasingMaxLengthChangeModel':
             '\n'.join([
                 'UPDATE `tests_testmodel` SET `char_field`=LEFT(`char_field`,1);',
                 'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field` varchar(1);',
@@ -163,14 +163,14 @@ change_field = {
         % generate_index_name('tests_testmodel', 'int_field1'),
     "AddUniqueChangeModel": 'CREATE UNIQUE INDEX int_field4 ON `tests_testmodel`(`int_field4`);',
     "RemoveUniqueChangeModel": 'DROP INDEX int_field3 ON `tests_testmodel`;',
-    "MultiAttrChangeModel": 
+    "MultiAttrChangeModel":
         '\n'.join([
             'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field2` varchar(30) DEFAULT NULL;',
             'ALTER TABLE `tests_testmodel` CHANGE COLUMN `custom_db_column` `custom_db_column2` integer NOT NULL;',
             'UPDATE `tests_testmodel` SET `char_field`=LEFT(`char_field`,35);',
             'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field` varchar(35);',
         ]),
-    "MultiAttrSingleFieldChangeModel": 
+    "MultiAttrSingleFieldChangeModel":
         '\n'.join([
             'UPDATE `tests_testmodel` SET `char_field2`=LEFT(`char_field2`,35);',
             'ALTER TABLE `tests_testmodel` MODIFY COLUMN `char_field2` varchar(35);',
@@ -186,16 +186,16 @@ change_field = {
 }
 
 delete_model = {
-    'BasicModel': 
+    'BasicModel':
         'DROP TABLE `tests_basicmodel`;',
-    'BasicWithM2MModel': 
+    'BasicWithM2MModel':
         '\n'.join([
             'DROP TABLE `tests_basicwithm2mmodel_m2m`;',
             'DROP TABLE `tests_basicwithm2mmodel`;'
         ]),
-    'CustomTableModel': 
+    'CustomTableModel':
         'DROP TABLE `custom_table_name`;',
-    'CustomTableWithM2MModel': 
+    'CustomTableWithM2MModel':
         '\n'.join([
             'DROP TABLE `another_custom_table_name_m2m`;',
             'DROP TABLE `another_custom_table_name`;'
@@ -214,27 +214,27 @@ delete_application = {
 }
 
 rename_field = {
-    'RenameColumnModel': 
+    'RenameColumnModel':
         'ALTER TABLE `tests_testmodel` CHANGE COLUMN `int_field` `renamed_field` integer NOT NULL;',
-    'RenameColumnWithTableNameModel': 
+    'RenameColumnWithTableNameModel':
         'ALTER TABLE `tests_testmodel` CHANGE COLUMN `int_field` `renamed_field` integer NOT NULL;',
-    'RenamePrimaryKeyColumnModel': 
+    'RenamePrimaryKeyColumnModel':
         'ALTER TABLE `tests_testmodel` CHANGE COLUMN `id` `my_pk_id`;',
-    'RenameForeignKeyColumnModel': 
+    'RenameForeignKeyColumnModel':
         'ALTER TABLE `tests_testmodel` CHANGE COLUMN `fk_field_id` `renamed_field_id` integer NOT NULL;',
-    'RenameNonDefaultColumnNameModel': 
+    'RenameNonDefaultColumnNameModel':
         'ALTER TABLE `tests_testmodel` CHANGE COLUMN `custom_db_col_name` `renamed_field` integer NOT NULL;',
-    'RenameNonDefaultColumnNameToNonDefaultNameModel': 
+    'RenameNonDefaultColumnNameToNonDefaultNameModel':
         'ALTER TABLE `tests_testmodel` CHANGE COLUMN `custom_db_col_name` `non-default_column_name` integer NOT NULL;',
-    'RenameNonDefaultColumnNameToNonDefaultNameAndTableModel': 
+    'RenameNonDefaultColumnNameToNonDefaultNameAndTableModel':
         'ALTER TABLE `tests_testmodel` CHANGE COLUMN `custom_db_col_name` `non-default_column_name2` integer NOT NULL;',
-    'RenameColumnCustomTableModel': 
+    'RenameColumnCustomTableModel':
         'ALTER TABLE `custom_rename_table_name` CHANGE COLUMN `value` `renamed_field` integer NOT NULL;',
-    'RenameManyToManyTableModel': 
+    'RenameManyToManyTableModel':
         'RENAME TABLE `tests_testmodel_m2m_field` TO `tests_testmodel_renamed_field`;',
-    'RenameManyToManyTableWithColumnNameModel': 
+    'RenameManyToManyTableWithColumnNameModel':
         'RENAME TABLE `tests_testmodel_m2m_field` TO `tests_testmodel_renamed_field`;',
-    'RenameNonDefaultManyToManyTableModel': 
+    'RenameNonDefaultManyToManyTableModel':
         'RENAME TABLE `non-default_db_table` TO `tests_testmodel_renamed_field`;',
 }
 
@@ -249,7 +249,7 @@ sql_mutation = {
 ...        'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field3` integer NULL;',
 ...    ], update_third)]
 """,
-    'SQLMutationOutput': 
+    'SQLMutationOutput':
         '\n'.join([
             'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field1` integer NULL;',
             'ALTER TABLE `tests_testmodel` ADD COLUMN `added_field2` integer NULL;',
@@ -258,16 +258,16 @@ sql_mutation = {
 }
 
 generics = {
-    'DeleteColumnModel': "ALTER TABLE `tests_testmodel` DROP COLUMN `char_field` CASCADE;"    
+    'DeleteColumnModel': "ALTER TABLE `tests_testmodel` DROP COLUMN `char_field` CASCADE;"
 }
 
 inheritance = {
-    'AddToChildModel': 
+    'AddToChildModel':
         '\n'.join([
             'ALTER TABLE `tests_childmodel` ADD COLUMN `added_field` integer ;',
             'UPDATE `tests_childmodel` SET `added_field` = 42 WHERE `added_field` IS NULL;',
             'ALTER TABLE `tests_childmodel` MODIFY COLUMN `added_field` integer NOT NULL;',
         ]),
-    'DeleteFromChildModel': 
+    'DeleteFromChildModel':
         'ALTER TABLE `tests_childmodel` DROP COLUMN `int_field` CASCADE;',
 }

@@ -59,11 +59,11 @@ class BaseEvolutionOperations(object):
             sql.extend(creation.sql_for_pending_references(relto, style, refs))
 
         return sql
-    
+
     def delete_column(self, model, f):
         qn = connection.ops.quote_name
         params = (qn(model._meta.db_table), qn(f.column))
-    
+
         return ['ALTER TABLE %s DROP COLUMN %s CASCADE;' % params]
 
     def delete_table(self, table_name):
@@ -94,7 +94,7 @@ class BaseEvolutionOperations(object):
 
     def add_column(self, model, f, initial):
         qn = connection.ops.quote_name
-    
+
         if f.rel:
             # it is a foreign key field
             # NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED
@@ -105,7 +105,7 @@ class BaseEvolutionOperations(object):
             constraints = ['%sNULL' % (not f.null and 'NOT ' or '')]
             if f.unique or f.primary_key:
                 constraints.append('UNIQUE')
-            params = (qn(model._meta.db_table), qn(f.column), f.db_type(), ' '.join(constraints), 
+            params = (qn(model._meta.db_table), qn(f.column), f.db_type(), ' '.join(constraints),
                 qn(related_table), qn(related_pk_col), connection.ops.deferrable_sql())
             output = ['ALTER TABLE %s ADD COLUMN %s %s %s REFERENCES %s (%s) %s;' % params]
         else:
@@ -115,19 +115,19 @@ class BaseEvolutionOperations(object):
             else:
                 unique_constraints = ''
 
-            # At this point, initial can only be None if null=True, otherwise it is 
+            # At this point, initial can only be None if null=True, otherwise it is
             # a user callable or the default AddFieldInitialCallback which will shortly raise an exception.
             if initial is not None:
                 params = (qn(model._meta.db_table), qn(f.column), f.db_type(), unique_constraints)
                 output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
-            
+
                 if callable(initial):
                     params = (qn(model._meta.db_table), qn(f.column), initial(), qn(f.column))
                     output.append('UPDATE %s SET %s = %s WHERE %s IS NULL;' % params)
                 else:
                     params = (qn(model._meta.db_table), qn(f.column), qn(f.column))
                     output.append(('UPDATE %s SET %s = %%s WHERE %s IS NULL;' % params, (initial,)))
-            
+
                 if not f.null:
                     # Only put this sql statement if the column cannot be null.
                     output.append(self.set_field_null(model, f, f.null))
@@ -142,7 +142,7 @@ class BaseEvolutionOperations(object):
         if null:
            return 'ALTER TABLE %s ALTER COLUMN %s DROP NOT NULL;' % params
         else:
-            return 'ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;' % params 
+            return 'ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;' % params
 
     def create_index(self, model, f):
         "Returns the CREATE INDEX SQL statements."
@@ -187,9 +187,9 @@ class BaseEvolutionOperations(object):
                     params = (qn(opts.db_table), qn(f.column), qn(f.column))
                     output.append(('UPDATE %s SET %s = %%s WHERE %s IS NULL;' % params, (initial,)))
             output.append(self.set_field_null(model, f, new_null_attr))
-            
+
         return output
-        
+
     def change_max_length(self, model, field_name, new_max_length, initial=None):
         qn = connection.ops.quote_name
         opts = model._meta
@@ -207,7 +207,7 @@ class BaseEvolutionOperations(object):
 
     def change_db_table(self, model, old_db_tablename, new_db_tablename):
         return self.rename_table(model, old_db_tablename, new_db_tablename)
-        
+
     def change_db_index(self, model, field_name, new_db_index, initial=None):
         f = model._meta.get_field(field_name)
         f.db_index = new_db_index
@@ -215,7 +215,7 @@ class BaseEvolutionOperations(object):
             return self.create_index(model, f)
         else:
             return self.drop_index(model, f)
-            
+
     def change_unique(self, model, field_name, new_unique_value, initial=None):
         qn = connection.ops.quote_name
         opts = model._meta

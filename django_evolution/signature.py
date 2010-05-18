@@ -24,7 +24,7 @@ ATTRIBUTE_DEFAULTS = {
 
 # r7790 modified the unique attribute of the meta model to be
 # a property that combined an underlying _unique attribute with
-# the primary key attribute. We need the underlying property, 
+# the primary key attribute. We need the underlying property,
 # but we don't want to affect old signatures (plus the
 # underscore is ugly :-).
 ATTRIBUTE_ALIASES = {
@@ -35,7 +35,7 @@ def create_field_sig(field):
     field_sig = {
         'field_type': field.__class__,
     }
-        
+
     for attrib in ATTRIBUTE_DEFAULTS.keys():
         alias = ATTRIBUTE_ALIASES.get(attrib, attrib)
         if hasattr(field,alias):
@@ -50,12 +50,12 @@ def create_field_sig(field):
             # only store non-default values
             if default != value:
                 field_sig[attrib] = value
-                
+
     rel = field_sig.pop('rel', None)
     if rel:
         field_sig['related_model'] = '.'.join([rel.to._meta.app_label, rel.to._meta.object_name])
     return field_sig
-    
+
 def create_model_sig(model):
     model_sig = {
         'meta': {
@@ -72,7 +72,7 @@ def create_model_sig(model):
         if not isinstance(field, generic.GenericRelation):
             model_sig['fields'][field.name] = create_field_sig(field)
     return model_sig
-    
+
 def create_app_sig(app):
     """
     Creates a dictionary representation of the models in a given app.
@@ -82,7 +82,7 @@ def create_app_sig(app):
     app_sig = SortedDict()
     for model in get_models(app):
         app_sig[model._meta.object_name] = create_model_sig(model)
-    return app_sig    
+    return app_sig
 
 def create_project_sig():
     """

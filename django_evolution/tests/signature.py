@@ -155,7 +155,7 @@ False
 ["DeleteField('TestModel', 'age')"]
 
 # Renaming a field is caught as 2 diffs
-# (For the moment - long term, this should hint as a Rename) 
+# (For the moment - long term, this should hint as a Rename)
 >>> class RenameFieldModel(models.Model):
 ...     full_name = models.CharField(max_length=20)
 ...     age = models.IntegerField()
@@ -219,7 +219,7 @@ False
 
 >>> print [str(e) for e in d.evolution()['tests']] # Change Field - change property
 ["ChangeField('TestModel', 'name', initial=None, max_length=30)"]
- 
+
 # Since we can't check the evolutions, check the diff instead
 >>> print d
 In model tests.TestModel:
@@ -240,7 +240,7 @@ False
 
 >>> print [str(e) for e in d.evolution()['tests']] # Change Field - change property
 ["ChangeField('TestModel', 'ref', initial=None, related_model='tests.Anchor2')"]
- 
+
 # Clean up after the applications that were installed
 >>> deregister_models()
 

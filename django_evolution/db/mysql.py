@@ -8,10 +8,10 @@ class EvolutionOperations(BaseEvolutionOperations):
         if old_field.column == f.column:
             # No Operation
             return []
-    
+
         qn = connection.ops.quote_name
         style = color.no_style()
-    
+
         ###
         col_type = f.db_type()
         tablespace = f.db_tablespace or opts.db_tablespace
@@ -37,7 +37,7 @@ class EvolutionOperations(BaseEvolutionOperations):
                 style.SQL_FIELD(qn(f.rel.to._meta.get_field(f.rel.field_name).column)) + ')' +
                 connection.ops.deferrable_sql()
             )
-        
+
         params = (qn(opts.db_table), qn(old_field.column), ' '.join(field_output))
         return ['ALTER TABLE %s CHANGE COLUMN %s %s;' % params]
 
@@ -56,8 +56,8 @@ class EvolutionOperations(BaseEvolutionOperations):
         f.max_length = new_max_length
         params = {
             'table': qn(opts.db_table),
-            'column': qn(f.column), 
-            'length': f.max_length, 
+            'column': qn(f.column),
+            'length': f.max_length,
             'type': f.db_type()
         }
         return ['UPDATE %(table)s SET %(column)s=LEFT(%(column)s,%(length)d);' % params,
@@ -83,7 +83,7 @@ class EvolutionOperations(BaseEvolutionOperations):
     def rename_table(self, model, old_db_tablename, db_tablename):
         if old_db_tablename == db_tablename:
             return []
-        
+
         qn = connection.ops.quote_name
         params = (qn(old_db_tablename), qn(db_tablename))
         return ['RENAME TABLE %s TO %s;' % params]

@@ -492,8 +492,8 @@ class ChangeField(BaseMutation):
             str_output.append('%s=%s' % (attr_name, str_attr_value,))
 
         return 'ChangeField(' + ', '.join(str_output) + ')'
-        
-        
+
+
     def simulate(self, app_label, proj_sig):
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]

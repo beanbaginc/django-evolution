@@ -136,9 +136,9 @@ def test_proj_sig(*models, **kwargs):
         else:
             app,name = parts
         proj_sig.setdefault(app, SortedDict())[name] = signature.create_model_sig(model)
-    
+
     return proj_sig
-    
+
 def execute_transaction(sql, output=False):
     "A transaction wrapper for executing a list of SQL statements"
     try:
@@ -146,12 +146,12 @@ def execute_transaction(sql, output=False):
         transaction.enter_transaction_management()
         transaction.managed(True)
         cursor = connection.cursor()
-        
+
         # Perform the SQL
         if output:
             write_sql(sql)
         execute_sql(cursor, sql)
-        
+
         transaction.commit()
         transaction.leave_transaction_management()
     except Exception, ex:
@@ -160,21 +160,21 @@ def execute_transaction(sql, output=False):
 
 def execute_test_sql(start, end, sql, debug=False):
     """
-    Execute a test SQL sequence. This method also creates and destroys the 
+    Execute a test SQL sequence. This method also creates and destroys the
     database tables required by the models registered against the test application.
-    
+
     start and end are the start- and end-point states of the application cache.
-    
+
     sql is the list of sql statements to execute.
-    
+
     cleanup is a list of extra sql statements required to clean up. This is
-    primarily for any extra m2m tables that were added during a test that won't 
+    primarily for any extra m2m tables that were added during a test that won't
     be cleaned up by Django's sql_delete() implementation.
-    
+
     debug is a helper flag. It displays the ALL the SQL that would be executed,
     (including setup and teardown SQL), and executes the Django-derived setup/teardown
     SQL.
-    """    
+    """
     # Set up the initial state of the app cache
     set_app_test_models(copy.deepcopy(start))
 
@@ -199,7 +199,7 @@ def execute_test_sql(start, end, sql, debug=False):
             print sql_delete(evo_test, style)
         else:
             execute_transaction(sql_delete(evo_test, style), output=debug)
-    
+
 def create_test_data(app_models):
     deferred_models = []
     deferred_fields = {}
@@ -232,11 +232,11 @@ def create_test_data(app_models):
 
         if not deferred:
             model(**params).save()
-    
+
     # Create all deferred models.
     if deferred_models:
         create_test_data(deferred_models)
-        
+
     # All models should be created (Not all deferred fields have been populated yet)
     # Populate deferred fields that we know about.
     # Here lies untested code!
@@ -246,11 +246,11 @@ def create_test_data(app_models):
                 related_model = field.rel.to
                 related_instance = related_model.objects.all()[0]
                 if type(field) == models.ForeignKey:
-                    setattr(model, field.name, related_instance) 
+                    setattr(model, field.name, related_instance)
                 else:
                     getattr(model, field.name).add(related_instance)
             model.save()
-    
+
 def test_sql_mapping(test_field_name):
     engine = settings.DATABASE_ENGINE
     sql_for_engine = __import__('django_evolution.tests.db.%s' % (settings.DATABASE_ENGINE), {}, {}, [''])

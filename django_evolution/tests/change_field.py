@@ -159,7 +159,7 @@ True
 
 >>> execute_test_sql(start, end, test_sql) # SetNotNullChangedModelWithConstant
 %(SetNotNullChangeModelWithConstant)s
- 
+
 # With a good initial value (callable)
 >>> evolution = [ChangeField('TestModel', 'char_field1', null=False, initial=ChangeSequenceFieldInitial('SetNotNullChangeModel'))]
 >>> test_sig = copy.deepcopy(start_sig)
@@ -195,7 +195,7 @@ True
 In model tests.TestModel:
     In field 'char_field2':
         Property 'null' has changed
-    
+
 >>> print [str(e) for e in d.evolution()['tests']] # SetNullChangeModel
 ["ChangeField('TestModel', 'char_field2', initial=None, null=True)"]
 
@@ -491,7 +491,7 @@ In model tests.TestModel:
 
 >>> print [str(e) for e in d.evolution()['tests']] # AddUniqueChangeModel
 ["ChangeField('TestModel', 'int_field4', initial=None, unique=True)"]
- 
+
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
@@ -500,7 +500,7 @@ In model tests.TestModel:
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
- 
+
 >>> execute_test_sql(start, end, test_sql) # AddUniqueChangeModel
 %(AddUniqueChangeModel)s
 
@@ -528,7 +528,7 @@ In model tests.TestModel:
 
 >>> print [str(e) for e in d.evolution()['tests']] # RemoveUniqueChangeModel
 ["ChangeField('TestModel', 'int_field3', initial=None, unique=False)"]
- 
+
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
@@ -537,7 +537,7 @@ In model tests.TestModel:
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
- 
+
 >>> execute_test_sql(start, end, test_sql) # RemoveUniqueChangeModel
 %(RemoveUniqueChangeModel)s
 
@@ -569,7 +569,7 @@ In model tests.TestModel:
 
 >>> print [str(e) for e in d.evolution()['tests']] # MultiAttrChangeModel
 ["ChangeField('TestModel', 'char_field2', initial=None, null=True)", "ChangeField('TestModel', 'int_field', initial=None, db_column='custom_db_column2')", "ChangeField('TestModel', 'char_field', initial=None, max_length=35)"]
- 
+
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
@@ -578,7 +578,7 @@ In model tests.TestModel:
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
- 
+
 >>> execute_test_sql(start, end, test_sql) # MultiAttrChangeModel
 %(MultiAttrChangeModel)s
 
@@ -607,7 +607,7 @@ In model tests.TestModel:
 
 >>> print [str(e) for e in d.evolution()['tests']] # MultiAttrSingleFieldChangeModel
 ["ChangeField('TestModel', 'char_field2', initial=None, max_length=35, null=True)"]
- 
+
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
@@ -616,7 +616,7 @@ In model tests.TestModel:
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
- 
+
 >>> execute_test_sql(start, end, test_sql) # MultiAttrSingleFieldChangeModel
 %(MultiAttrSingleFieldChangeModel)s
 
@@ -641,8 +641,8 @@ True
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> evolutions = [
-...     ChangeField("TestModel", "char_field2", initial=None, null=True, max_length=30), 
-...     ChangeField("TestModel", "int_field", initial=None, db_column="custom_db_column3", primary_key=False, unique=False, db_index=False), 
+...     ChangeField("TestModel", "char_field2", initial=None, null=True, max_length=30),
+...     ChangeField("TestModel", "int_field", initial=None, db_column="custom_db_column3", primary_key=False, unique=False, db_index=False),
 ...     ChangeField("TestModel", "char_field", initial=None, max_length=35),
 ... ]
 
@@ -652,7 +652,7 @@ True
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
- 
+
 >>> execute_test_sql(start, end, test_sql) # RedundantAttrsChangeModel
 %(RedundantAttrsChangeModel)s
 

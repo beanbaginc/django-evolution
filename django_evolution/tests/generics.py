@@ -10,7 +10,7 @@ tests = r"""
 >>> from django.contrib.contenttypes.models import ContentType
 
 >>> import copy
- 
+
 # Now, a useful test model we can use for evaluating diffs
 >>> class GenericAnchor(models.Model):
 ...     value = models.IntegerField()

@@ -8,7 +8,7 @@ tests = r"""
 >>> from django_evolution.diff import Diff
 
 >>> import copy
- 
+
 # All Fields
 # db index (ignored for now)
 # db tablespace (ignored for now)
@@ -53,10 +53,10 @@ tests = r"""
 
 # Store the base signatures
 >>> anchors = (
-...     ('DeleteAnchor1', DeleteAnchor1), 
-...     ('DeleteAnchor2', DeleteAnchor2), 
-...     ('DeleteAnchor3', DeleteAnchor3), 
-...     ('DeleteAnchor4', DeleteAnchor4), 
+...     ('DeleteAnchor1', DeleteAnchor1),
+...     ('DeleteAnchor2', DeleteAnchor2),
+...     ('DeleteAnchor3', DeleteAnchor3),
+...     ('DeleteAnchor4', DeleteAnchor4),
 ... )
 
 >>> custom_model = ('CustomTableModel', CustomTableModel)

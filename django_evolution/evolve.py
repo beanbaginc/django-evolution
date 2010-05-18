@@ -12,14 +12,14 @@ def get_evolution_sequence(app):
         return evolution_module.SEQUENCE
     except:
         return []
-    
+
 def get_unapplied_evolutions(app):
     "Obtain the list of unapplied evolutions for an application"
     sequence = get_evolution_sequence(app)
     app_label = app.__name__.split('.')[-2]
     applied = [evo.label for evo in Evolution.objects.filter(app_label=app_label)]
     return [seq for seq in sequence if seq not in applied]
-    
+
 def get_mutations(app, evolution_labels):
     """
     Obtain the list of mutations described by the named evolutions.
@@ -49,5 +49,5 @@ def get_mutations(app, evolution_labels):
                 mutations.extend(module.MUTATIONS)
             except ImportError, e:
                 raise EvolutionException('Error: Failed to find an SQL or Python evolution named %s' % label)
-            
+
     return mutations
