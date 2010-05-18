@@ -1,0 +1,8 @@
+recursive-include django_evolution *.py
+recursive-include docs *.txt
+recursive-include tests *.py *.exclude
+include AUTHORS
+include LICENSE
+include README
+include setup.py
+include ez_setup.py
