@@ -19,6 +19,7 @@ from django_evolution.mutations import DeleteApplication
 from django_evolution.signature import create_project_sig
 from django_evolution.utils import write_sql, execute_sql
 
+
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
         make_option('--noinput', action='store_false', dest='interactive', default=True,
@@ -29,11 +30,11 @@ class Command(BaseCommand):
             help='Generate evolutions to delete stale applications.'),
         make_option('--sql', action='store_true', dest='compile_sql', default=False,
             help='Compile a Django evolution script into SQL.'),
-        make_option('-x','--execute', action='store_true', dest='execute', default=False,
+        make_option('-x', '--execute', action='store_true', dest='execute', default=False,
             help='Apply the evolution to the database.'),
     )
     if '--verbosity' not in [opt.get_opt_string() for opt in BaseCommand.option_list]:
-        option_list += make_option('-v','--verbosity', action='store', dest='verbosity', default='1',
+        option_list += make_option('-v', '--verbosity', action='store', dest='verbosity', default='1',
             type='choice', choices=['0', '1', '2'],
             help='Verbosity level; 0=minimal output, 1=normal output, 2=all output'),
 
@@ -43,6 +44,9 @@ class Command(BaseCommand):
     requires_model_validation = False
 
     def handle(self, *app_labels, **options):
+        self.evolve(*app_labels, **options)
+
+    def evolve(self, *app_labels, **options):
         verbosity = int(options['verbosity'])
         interactive = options['interactive']
         execute = options['execute']
@@ -75,8 +79,7 @@ class Command(BaseCommand):
             database_sig = pickle.loads(str(latest_version.signature))
             diff = Diff(database_sig, current_proj_sig)
         except Evolution.DoesNotExist:
-            print self.style.ERROR("Can't evolve yet. Need to set an evolution baseline.")
-            sys.exit(1)
+            raise CommandError("Can't evolve yet. Need to set an evolution baseline.")
 
         try:
             for app in app_list:
@@ -84,7 +87,7 @@ class Command(BaseCommand):
                 if hint:
                     evolutions = []
                     hinted_evolution = diff.evolution()
-                    mutations = hinted_evolution.get(app_label,[])
+                    mutations = hinted_evolution.get(app_label, [])
                 else:
                     evolutions = get_unapplied_evolutions(app)
                     mutations = get_mutations(app, evolutions)
@@ -150,8 +153,7 @@ class Command(BaseCommand):
                         print 'No applications need to be purged.'
 
         except EvolutionException, e:
-            print self.style.ERROR(str(e))
-            sys.exit(1)
+            raise CommandError(str(e))
 
         if simulated:
             diff = Diff(database_sig, current_proj_sig)
@@ -166,7 +168,7 @@ class Command(BaseCommand):
                 print
                 print 'The following are the changes that could not be resolved:'
                 print diff
-                sys.exit(1)
+                raise CommandError('Your models contain changes that Django Evolution cannot resolve automatically.')
         else:
             print self.style.NOTICE('Evolution could not be simulated, possibly due to raw SQL mutations')
 
@@ -206,8 +208,7 @@ Type 'yes' to continue, or 'no' to cancel: """ % settings.DATABASE_NAME)
                         transaction.commit()
                     except Exception, ex:
                         transaction.rollback()
-                        print self.style.ERROR('Error applying evolution: %s' % str(ex))
-                        sys.exit(1)
+                        raise CommandError('Error applying evolution: %s' % str(ex))
                     transaction.leave_transaction_management()
 
                     if verbosity > 0:
