@@ -19,4 +19,9 @@ def execute_sql(cursor, sql):
                 cursor.execute(*statement)
         else:
             if not statement.startswith('--'):
-                cursor.execute(statement)
+                try:
+                    cursor.execute(statement)
+                except:
+                    print statement
+                    print sql
+                    raise Exception(statement)
