@@ -1,3 +1,13 @@
+version 0.6.0 (24-October-2010):
+    * Added support for Django 1.2's ability to use multiple databases.
+
+      This should use the existing routers used in your project. By default,
+      operations will happen on the 'default' database. This can be overridden
+      during evolution by passing --database=dbname to the evolve command.
+
+      Patch by Marc Bee and myself.
+
+
 version 0.5.1 (13-October-2010):
     * Made the evolve management command raise CommandError instead of
       sys.exit on failure. This makes it callable from third party software.

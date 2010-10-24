@@ -4,7 +4,7 @@
 #
 #   (Major, Minor, Micro, alpha/beta/rc/final, Release Number, Released)
 #
-VERSION = (0, 5, 2, 'alpha', 0, False)
+VERSION = (0, 6, 0, 'final', 0, True)
 
 
 def get_version_string():
@@ -52,20 +52,25 @@ class EvolutionException(Exception):
     def __str__(self):
         return str(self.msg)
 
+
 class CannotSimulate(EvolutionException):
     pass
+
 
 class SimulationFailure(EvolutionException):
     pass
 
+
 class EvolutionNotImplementedError(EvolutionException, NotImplementedError):
     pass
+
 
 try:
     from django.db import connections
     __is_multi_db = True
 except:
     __is_multi_db = False
+
 
 def is_multi_db():
     return __is_multi_db
