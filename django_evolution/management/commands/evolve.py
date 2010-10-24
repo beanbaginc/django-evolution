@@ -21,23 +21,35 @@ from django_evolution.utils import write_sql, execute_sql
 
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
-        make_option('--noinput', action='store_false', dest='interactive', default=True,
+        make_option(
+            '--noinput', action='store_false', dest='interactive', default=True,
             help='Tells Django to NOT prompt the user for input of any kind.'),
-        make_option('--hint', action='store_true', dest='hint', default=False,
+        make_option(
+            '--hint', action='store_true', dest='hint', default=False,
             help='Generate an evolution script that would update the app.'),
-        make_option('--purge', action='store_true', dest='purge', default=False,
+        make_option(
+            '--purge', action='store_true', dest='purge', default=False,
             help='Generate evolutions to delete stale applications.'),
-        make_option('--sql', action='store_true', dest='compile_sql', default=False,
+        make_option(
+            '--sql', action='store_true', dest='compile_sql',
+            default=False,
             help='Compile a Django evolution script into SQL.'),
-        make_option('-x', '--execute', action='store_true', dest='execute', default=False,
+        make_option(
+            '-x', '--execute', action='store_true', dest='execute',
+            default=False,
             help='Apply the evolution to the database.'),
-        make_option('--database', action='store', dest='database',
+        make_option(
+            '--database', action='store', dest='database',
             help='Nominates a database to synchronize.'),
     )
-    if '--verbosity' not in [opt.get_opt_string() for opt in BaseCommand.option_list]:
-        option_list += make_option('-v', '--verbosity', action='store', dest='verbosity', default='1',
+
+    if '--verbosity' not in [opt.get_opt_string()
+                             for opt in BaseCommand.option_list]:
+        option_list += make_option('-v', '--verbosity', action='store',
+                                   dest='verbosity', default='1',
             type='choice', choices=['0', '1', '2'],
-            help='Verbosity level; 0=minimal output, 1=normal output, 2=all output'),
+            help='Verbosity level; 0=minimal output, 1=normal output, '
+                 '2=all output'),
 
     help = 'Evolve the models in a Django project.'
     args = '<appname appname ...>'
@@ -68,11 +80,13 @@ class Command(BaseCommand):
         # Use the list of all apps, unless app labels are specified.
         if app_labels:
             if execute:
-                raise CommandError('Cannot specify an application name when executing evolutions.')
+                raise CommandError('Cannot specify an application name when '
+                                   'executing evolutions.')
             try:
                 app_list = [get_app(app_label) for app_label in app_labels]
             except (ImproperlyConfigured, ImportError), e:
-                raise CommandError("%s. Are you sure your INSTALLED_APPS setting is correct?" % e)
+                raise CommandError("%s. Are you sure your INSTALLED_APPS "
+                                   "setting is correct?" % e)
         else:
             app_list = get_apps()
 
@@ -94,7 +108,8 @@ class Command(BaseCommand):
             database_sig = pickle.loads(str(latest_version.signature))
             diff = Diff(database_sig, current_proj_sig)
         except Evolution.DoesNotExist:
-            raise CommandError("Can't evolve yet. Need to set an evolution baseline.")
+            raise CommandError("Can't evolve yet. Need to set an "
+                               "evolution baseline.")
 
         try:
             for app in app_list:
@@ -116,18 +131,24 @@ class Command(BaseCommand):
                 if mutations:
                     app_sql = ['-- Evolve application %s' % app_label]
                     evolution_required = True
+
                     for mutation in mutations:
                         # Only compile SQL if we want to show it
-                       if compile_sql or execute:
-                           app_sql.extend(mutation.mutate(app_label, database_sig, database))
+                        if compile_sql or execute:
+                            app_sql.extend(
+                                mutation.mutate(app_label, database_sig,
+                                                database))
 
-                       # Now run the simulation, which will modify the signatures
-                       try:
-                           mutation.simulate(app_label, database_sig, database)
-                       except CannotSimulate:
-                           simulated = False
-                    new_evolutions.extend(Evolution(app_label=app_label, label=label)
-                                            for label in evolutions)
+                        # Now run the simulation, which will modify the
+                        # signatures
+                        try:
+                            mutation.simulate(app_label, database_sig, database)
+                        except CannotSimulate:
+                            simulated = False
+
+                    new_evolutions.extend(
+                        Evolution(app_label=app_label, label=label)
+                        for label in evolutions)
 
                     if not execute:
                         if compile_sql:
@@ -154,21 +175,30 @@ class Command(BaseCommand):
                     evolution_required = True
                     delete_app = DeleteApplication()
                     purge_sql = []
+
                     for app_label in diff.deleted:
-                        if delete_app.is_mutable(app_label, database_sig, database):
+                        if delete_app.is_mutable(app_label, database_sig,
+                                                 database):
                             if compile_sql or execute:
-                                purge_sql.append('-- Purge application %s' % app_label)
-                                purge_sql.extend(delete_app.mutate(app_label, database_sig, database))
-                            delete_app.simulate(app_label, database_sig, database)
+                                purge_sql.append('-- Purge application %s'
+                                                 % app_label)
+                                purge_sql.extend(
+                                    delete_app.mutate(app_label, database_sig,
+                                                      database))
+                            delete_app.simulate(app_label, database_sig,
+                                                database)
 
                     if not execute:
                         if compile_sql:
                             write_sql(purge_sql, database)
                         else:
                             print 'The following application(s) can be purged:'
+
                             for app_label in diff.deleted:
                                 print '    ', app_label
+
                             print
+
                     sql.extend(purge_sql)
                 else:
                     if verbosity > 1:
@@ -179,20 +209,33 @@ class Command(BaseCommand):
 
         if simulated:
             diff = Diff(database_sig, current_proj_sig)
+
             if not diff.is_empty(not purge):
                 if hint:
-                    print self.style.ERROR('Your models contain changes that Django Evolution cannot resolve automatically.')
-                    print 'This is probably due to a currently unimplemented mutation type.'
-                    print 'You will need to manually construct a mutation to resolve the remaining changes.'
+                    print self.style.ERROR(
+                        'Your models contain changes that Django Evolution '
+                        'cannot resolve automatically.')
+                    print 'This is probably due to a currently unimplemented ' \
+                          'mutation type.'
+                    print 'You will need to manually construct a mutation ' \
+                          'to resolve the remaining changes.'
                 else:
-                    print self.style.ERROR('The stored evolutions do not completely resolve all model changes.')
-                    print 'Run `./manage.py evolve --hint` to see a suggestion for the changes required.'
+                    print self.style.ERROR(
+                        'The stored evolutions do not completely resolve '
+                        'all model changes.')
+                    print 'Run `./manage.py evolve --hint` to see a ' \
+                          'suggestion for the changes required.'
                 print
-                print 'The following are the changes that could not be resolved:'
+                print 'The following are the changes that could ' \
+                      'not be resolved:'
                 print diff
-                raise CommandError('Your models contain changes that Django Evolution cannot resolve automatically.')
+
+                raise CommandError('Your models contain changes that Django '
+                                   'Evolution cannot resolve automatically.')
         else:
-            print self.style.NOTICE('Evolution could not be simulated, possibly due to raw SQL mutations')
+            print self.style.NOTICE(
+                'Evolution could not be simulated, possibly due to raw '
+                'SQL mutations')
 
         if evolution_required:
             if execute:
@@ -239,7 +282,9 @@ Type 'yes' to continue, or 'no' to cancel: """ % database)
                         transaction.commit(**using_args)
                     except Exception, ex:
                         transaction.rollback(**using_args)
-                        raise CommandError('Error applying evolution: %s' % str(ex))
+                        raise CommandError('Error applying evolution: %s'
+                                           % str(ex))
+
                     transaction.leave_transaction_management(**using_args)
 
                     if verbosity > 0:
@@ -251,6 +296,5 @@ Type 'yes' to continue, or 'no' to cancel: """ % database)
                     if simulated:
                         print "Trial evolution successful."
                         print "Run './manage.py evolve %s--execute' to apply evolution." % (hint and '--hint ' or '')
-        else:
-            if verbosity > 0:
-                print 'No evolution required.'
+        elif verbosity > 0:
+            print 'No evolution required.'

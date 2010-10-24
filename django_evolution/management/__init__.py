@@ -34,7 +34,8 @@ def evolution(app, created_models, verbosity=1, **kwargs):
 
     try:
         if is_multi_db():
-            latest_version = django_evolution.Version.objects.using(db).latest('when')
+            latest_version = \
+                django_evolution.Version.objects.using(db).latest('when')
         else:
             latest_version = django_evolution.Version.objects.latest('when')
     except django_evolution.Version.DoesNotExist:
@@ -48,9 +49,12 @@ def evolution(app, created_models, verbosity=1, **kwargs):
         for a in get_apps():
             app_label = a.__name__.split('.')[-2]
             sequence = get_evolution_sequence(a)
+
             if sequence:
                 if verbosity > 0:
-                    print 'Evolutions in %s baseline:' % app_label,', '.join(sequence)
+                    print 'Evolutions in %s baseline:' % app_label, \
+                          ', '.join(sequence)
+
             for evo_label in sequence:
                 evolution = django_evolution.Evolution(app_label=app_label,
                                                        label=evo_label,
@@ -58,38 +62,48 @@ def evolution(app, created_models, verbosity=1, **kwargs):
                 evolution.save(**using_args)
 
     unapplied = get_unapplied_evolutions(app, db)
-    if unapplied:
-        print style.NOTICE('There are unapplied evolutions for %s.' % app.__name__.split('.')[-2])
 
-    # Evolutions are checked over the entire project, so we only need to
-    # check once. We do this check when Django Evolutions itself is synchronized.
+    if unapplied:
+        print style.NOTICE('There are unapplied evolutions for %s.'
+                           % app.__name__.split('.')[-2])
+
+    # Evolutions are checked over the entire project, so we only need to check
+    # once. We do this check when Django Evolutions itself is synchronized.
     if app == django_evolution:
         old_proj_sig = pickle.loads(str(latest_version.signature))
 
         # If any models have been added, a baseline must be set
         # for those new models
         changed = False
+
         for app_name, new_app_sig in proj_sig.items():
             if app_name == '__version__':
                 # Ignore the __version__ tag
                 continue
+
             old_app_sig = old_proj_sig.get(app_name, None)
+
             if old_app_sig is None:
                 # App has been added
                 old_proj_sig[app_name] = proj_sig[app_name]
                 changed = True
                 continue
+
             for model_name, new_model_sig in new_app_sig.items():
                 old_model_sig = old_app_sig.get(model_name, None)
+
                 if old_model_sig is None:
                     # Model has been added
-                    old_proj_sig[app_name][model_name] = proj_sig[app_name][model_name]
+                    old_proj_sig[app_name][model_name] = \
+                        proj_sig[app_name][model_name]
                     changed = True
 
         if changed:
             if verbosity > 0:
                 print "Adding baseline version for new models"
-            latest_version = django_evolution.Version(signature=pickle.dumps(old_proj_sig))
+
+            latest_version = \
+                django_evolution.Version(signature=pickle.dumps(old_proj_sig))
             latest_version.save(**using_args)
 
         # TODO: Model introspection step goes here.
@@ -104,8 +118,11 @@ def evolution(app, created_models, verbosity=1, **kwargs):
         #     latest_version = nudge
 
         diff = Diff(old_proj_sig, proj_sig)
+
         if not diff.is_empty():
-            print style.NOTICE('Project signature has changed - an evolution is required')
+            print style.NOTICE(
+                'Project signature has changed - an evolution is required')
+
             if verbosity > 1:
                 old_proj_sig = pickle.loads(str(latest_version.signature))
                 print diff

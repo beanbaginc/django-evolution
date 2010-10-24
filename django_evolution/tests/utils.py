@@ -37,7 +37,6 @@ sql_indexes = curry(wrap_sql_func, sql.sql_indexes)
 sql_delete = curry(wrap_sql_func, sql.sql_delete)
 
 
-
 def _register_models(app_label='tests', db_name='default', *models):
     app_cache = SortedDict()
 
@@ -127,8 +126,10 @@ def _register_models(app_label='tests', db_name='default', *models):
 
     return app_cache
 
+
 def register_models(*models):
     return _register_models('tests', 'default', *models)
+
 
 def register_models_multi(app_label, db_name, *models):
     return _register_models(app_label, db_name, *models)
@@ -145,20 +146,26 @@ def _test_proj_sig(app_label, *models, **kwargs):
     # Compute the project siguature
     for full_name, model in models:
         parts = full_name.split('.')
+
         if len(parts) == 1:
             name = parts[0]
             app = app_label
         else:
             app, name = parts
-        proj_sig.setdefault(app, SortedDict())[name] = signature.create_model_sig(model)
+
+        proj_sig.setdefault(app, SortedDict())[name] = \
+            signature.create_model_sig(model)
 
     return proj_sig
+
 
 def test_proj_sig(*models, **kwargs):
     return _test_proj_sig('tests', *models, **kwargs)
 
+
 def test_proj_sig_multi(app_label, *models, **kwargs):
     return _test_proj_sig(app_label, *models, **kwargs)
+
 
 def execute_transaction(sql, output=False, database='default'):
     "A transaction wrapper for executing a list of SQL statements"
@@ -191,10 +198,13 @@ def execute_transaction(sql, output=False, database='default'):
         transaction.rollback(**using_args)
         raise
 
-def execute_test_sql(start, end, sql, debug=False, app_label='tests', database='default'):
+
+def execute_test_sql(start, end, sql, debug=False, app_label='tests',
+                     database='default'):
     """
     Execute a test SQL sequence. This method also creates and destroys the
-    database tables required by the models registered against the test application.
+    database tables required by the models registered against the test
+    application.
 
     start and end are the start- and end-point states of the application cache.
 
@@ -205,16 +215,18 @@ def execute_test_sql(start, end, sql, debug=False, app_label='tests', database='
     be cleaned up by Django's sql_delete() implementation.
 
     debug is a helper flag. It displays the ALL the SQL that would be executed,
-    (including setup and teardown SQL), and executes the Django-derived setup/teardown
-    SQL.
+    (including setup and teardown SQL), and executes the Django-derived
+    setup/teardown SQL.
     """
     # Set up the initial state of the app cache
     set_app_test_models(copy.deepcopy(start), app_label=app_label)
 
     # Install the initial tables and indicies
     style = no_style()
-    execute_transaction(sql_create(evo_test, style, database), output=debug, database=database)
-    execute_transaction(sql_indexes(evo_test, style, database), output=debug, database=database)
+    execute_transaction(sql_create(evo_test, style, database),
+                        output=debug, database=database)
+    execute_transaction(sql_indexes(evo_test, style, database),
+                        output=debug, database=database)
     create_test_data(models.get_models(evo_test), database)
 
     # Set the app cache to the end state
@@ -231,7 +243,8 @@ def execute_test_sql(start, end, sql, debug=False, app_label='tests', database='
         if debug:
             print sql_delete(evo_test, style, database)
         else:
-            execute_transaction(sql_delete(evo_test, style, database), output=debug, database=database)
+            execute_transaction(sql_delete(evo_test, style, database),
+                                output=debug, database=database)
 
 def create_test_data(app_models, database):
     deferred_models = []
@@ -247,21 +260,29 @@ def create_test_data(app_models, database):
         deferred = False
         for field in model._meta.fields:
             if not deferred:
-                if type(field) == models.ForeignKey or type(field) == models.ManyToManyField:
+                if type(field) in (models.ForeignKey, models.ManyToManyField):
                     related_model = field.rel.to
 
-                    if related_model.objects.using(database).count():
-                        related_instance = \
-                            related_model.objects.using(database)[0]
+                    related_q = related_model.objects.all()
+
+                    if is_multi_db():
+                        related_q = related_q.using(database)
+
+                    if related_q.count():
+                        related_instance = related_q[0]
                     else:
                         if field.null == False:
-                            # Field cannot be null yet the related object hasn't been created yet
-                            # Defer the creation of this model
+                            # Field cannot be null yet the related object
+                            # hasn't been created yet Defer the creation of
+                            # this model
                             deferred = True
                             deferred_models.append(model)
                         else:
-                            # Field cannot be set yet but null is acceptable for the moment
-                            deferred_fields[type(model)] = deferred_fields.get(type(model), []).append(field)
+                            # Field cannot be set yet but null is acceptable
+                            # for the moment
+                            deferred_fields[type(model)] = \
+                                deferred_fields.get(type(model),
+                                                    []).append(field)
                             related_instance = None
 
                     if not deferred:
@@ -270,7 +291,8 @@ def create_test_data(app_models, database):
                         else:
                             params[field.name] = [related_instance]
                 else:
-                    params[field.name] = DEFAULT_TEST_ATTRIBUTE_VALUES[type(field)]
+                    params[field.name] = \
+                        DEFAULT_TEST_ATTRIBUTE_VALUES[type(field)]
 
         if not deferred:
             model(**params).save(**using_args)
@@ -279,9 +301,9 @@ def create_test_data(app_models, database):
     if deferred_models:
         create_test_data(deferred_models, database)
 
-    # All models should be created (Not all deferred fields have been populated yet)
-    # Populate deferred fields that we know about.
-    # Here lies untested code!
+    # All models should be created (Not all deferred fields have been populated
+    # yet) Populate deferred fields that we know about.  Here lies untested
+    # code!
     if deferred_fields:
         for model, field_list in deferred_fields.items():
             for field in field_list:
@@ -293,11 +315,14 @@ def create_test_data(app_models, database):
                 else:
                     getattr(model, field.name).add(related_instance,
                                                    **using_args)
+
             model.save(**using_args)
+
 
 def test_sql_mapping(test_field_name, db_name='default'):
     engine = settings.DATABASES[db_name]['ENGINE'].split('.')[-1]
-    sql_for_engine = __import__('django_evolution.tests.db.%s' % (engine), {}, {}, [''])
+    sql_for_engine = __import__('django_evolution.tests.db.%s' % (engine),
+                                {}, {}, [''])
     return getattr(sql_for_engine, test_field_name)
 
 

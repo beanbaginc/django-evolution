@@ -2,6 +2,7 @@ from datetime import datetime
 
 from django.db import models
 
+
 class Version(models.Model):
     signature = models.TextField()
     when = models.DateTimeField(default=datetime.now)
@@ -13,7 +14,9 @@ class Version(models.Model):
     def __unicode__(self):
         if not self.evolutions.count():
             return u'Hinted version, updated on %s' % self.when
+
         return u'Stored version, updated on %s' % self.when
+
 
 class Evolution(models.Model):
     version = models.ForeignKey(Version, related_name='evolutions')
@@ -22,6 +25,6 @@ class Evolution(models.Model):
 
     class Meta:
         db_table = 'django_evolution'
-        
+
     def __unicode__(self):
         return u"Evolution %s, applied to %s" % (self.label, self.app_label)

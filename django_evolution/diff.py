@@ -10,6 +10,7 @@ try:
 except ImportError:
     from sets import Set as set #Python 2.3 Fallback
 
+
 class NullFieldInitialCallback(object):
     def __init__(self, app, model, field):
         self.app = app
@@ -20,8 +21,11 @@ class NullFieldInitialCallback(object):
         return '<<USER VALUE REQUIRED>>'
 
     def __call__(self):
-        raise EvolutionException("Cannot use hinted evolution: AddField or ChangeField mutation for '%s.%s' in '%s' requires user-specified initial value." % (
-                                    self.model, self.field, self.app))
+        raise EvolutionException(
+            "Cannot use hinted evolution: AddField or ChangeField mutation "
+            "for '%s.%s' in '%s' requires user-specified initial value."
+            % (self.model, self.field, self.app))
+
 
 def get_initial_value(app_label, model_name, field_name):
     """Derive an initial value for a field.
@@ -33,9 +37,13 @@ def get_initial_value(app_label, model_name, field_name):
     """
     model = models.get_model(app_label, model_name)
     field = model._meta.get_field(field_name)
-    if field and (field.has_default() or (field.empty_strings_allowed and field.blank)):
+
+    if field and (field.has_default() or
+                  (field.empty_strings_allowed and field.blank)):
         return field.get_default()
+
     return NullFieldInitialCallback(app_label, model_name, field_name)
+
 
 class Diff(object):
     """
@@ -68,32 +76,44 @@ class Diff(object):
         self.deleted = {}
 
         if self.original_sig.get('__version__', 1) != 1:
-            raise EvolutionException("Unknown version identifier in original signature: %s",
-                                        self.original_sig['__version__'])
+            raise EvolutionException(
+                "Unknown version identifier in original signature: %s",
+                self.original_sig['__version__'])
+
         if self.current_sig.get('__version__', 1) != 1:
-            raise EvolutionException("Unknown version identifier in target signature: %s",
-                                        self.current_sig['__version__'])
+            raise EvolutionException(
+                "Unknown version identifier in target signature: %s",
+                self.current_sig['__version__'])
 
         for app_name, old_app_sig in original.items():
             if app_name == '__version__':
                 # Ignore the __version__ tag
                 continue
+
             new_app_sig = self.current_sig.get(app_name, None)
+
             if new_app_sig is None:
                 # App has been deleted
                 self.deleted[app_name] = old_app_sig.keys()
                 continue
+
             for model_name, old_model_sig in old_app_sig.items():
                 new_model_sig = new_app_sig.get(model_name, None)
+
                 if new_model_sig is None:
                     # Model has been deleted
                     self.changed.setdefault(app_name,
                         {}).setdefault('deleted',
                         []).append(model_name)
                     continue
+
+                old_fields = old_model_sig['fields']
+                new_fields = new_model_sig['fields']
+
                 # Look for deleted or modified fields
-                for field_name,old_field_data in old_model_sig['fields'].items():
-                    new_field_data = new_model_sig['fields'].get(field_name,None)
+                for field_name, old_field_data in old_fields.items():
+                    new_field_data = new_fields.get(field_name, None)
+
                     if new_field_data is None:
                         # Field has been deleted
                         self.changed.setdefault(app_name,
@@ -102,13 +122,16 @@ class Diff(object):
                             {}).setdefault('deleted',
                             []).append(field_name)
                         continue
+
                     properties = set(old_field_data.keys())
                     properties.update(new_field_data.keys())
+
                     for prop in properties:
                         old_value = old_field_data.get(prop,
                             ATTRIBUTE_DEFAULTS.get(prop, None))
                         new_value = new_field_data.get(prop,
                             ATTRIBUTE_DEFAULTS.get(prop, None))
+
                         if old_value != new_value:
                             try:
                                 if (prop == 'field_type' and
@@ -124,9 +147,13 @@ class Diff(object):
                                 {}).setdefault(model_name,
                                 {}).setdefault('changed',
                                 {}).setdefault(field_name,[]).append(prop)
+
                 # Look for added fields
-                for field_name,new_field_data in new_model_sig['fields'].items():
-                    old_field_data = old_model_sig['fields'].get(field_name,None)
+                new_fields = new_model_sig['fields']
+
+                for field_name, new_field_data in new_fields.items():
+                    old_field_data = old_fields.get(field_name, None)
+
                     if old_field_data is None:
                         self.changed.setdefault(app_name,
                             {}).setdefault('changed',
@@ -149,28 +176,38 @@ class Diff(object):
     def __str__(self):
         "Output an application signature diff in a human-readable format"
         lines = []
+
         for app_label in self.deleted:
             lines.append('The application %s has been deleted' % app_label)
+
         for app_label, app_changes in self.changed.items():
             for model_name in app_changes.get('deleted', {}):
-                lines.append('The model %s.%s has been deleted' % (app_label, model_name))
+                lines.append('The model %s.%s has been deleted'
+                             % (app_label, model_name))
+
             for model_name, change in app_changes.get('changed', {}).items():
                 lines.append('In model %s.%s:' % (app_label, model_name))
+
                 for field_name in change.get('added',[]):
                     lines.append("    Field '%s' has been added" % field_name)
+
                 for field_name in change.get('deleted',[]):
                     lines.append("    Field '%s' has been deleted" % field_name)
+
                 for field_name,field_change in change.get('changed',{}).items():
                     lines.append("    In field '%s':" % field_name)
+
                     for prop in field_change:
                         lines.append("        Property '%s' has changed" % prop)
+
         return '\n'.join(lines)
 
     def evolution(self):
         "Generate an evolution that would neutralize the diff"
         mutations = {}
+
         for app_label, app_changes in self.changed.items():
-            for model_name, change in app_changes.get('changed',{}).items():
+            for model_name, change in app_changes.get('changed', {}).items():
                 for field_name in change.get('added',{}):
                     field_sig = self.current_sig[app_label][model_name]['fields'][field_name]
                     add_params = [(key,field_sig[key])
@@ -178,28 +215,49 @@ class Diff(object):
                                     if key in ATTRIBUTE_DEFAULTS.keys()]
                     add_params.append(('field_type', field_sig['field_type']))
 
-                    if field_sig['field_type'] != models.ManyToManyField and not field_sig.get('null', ATTRIBUTE_DEFAULTS['null']):
-                        add_params.append(('initial', get_initial_value(app_label, model_name, field_name)))
+                    if (field_sig['field_type'] != models.ManyToManyField and
+                        not field_sig.get('null', ATTRIBUTE_DEFAULTS['null'])):
+                        add_params.append(
+                            ('initial',
+                             get_initial_value(app_label, model_name,
+                                               field_name)))
+
                     if 'related_model' in field_sig:
-                        add_params.append(('related_model', '%s' % field_sig['related_model']))
+                        add_params.append(('related_model',
+                                           '%s' % field_sig['related_model']))
+
                     mutations.setdefault(app_label,[]).append(
                         AddField(model_name, field_name, **dict(add_params)))
+
                 for field_name in change.get('deleted',[]):
                     mutations.setdefault(app_label,[]).append(
                         DeleteField(model_name, field_name))
+
                 for field_name,field_change in change.get('changed',{}).items():
                     changed_attrs = {}
                     current_field_sig = self.current_sig[app_label][model_name]['fields'][field_name]
+
                     for prop in field_change:
                         if prop == 'related_model':
                             changed_attrs[prop] = current_field_sig[prop]
                         else:
-                            changed_attrs[prop] = current_field_sig.get(prop, ATTRIBUTE_DEFAULTS[prop])
-                    if changed_attrs.has_key('null') and \
-                        current_field_sig['field_type'] != models.ManyToManyField and \
-                        not current_field_sig.get('null', ATTRIBUTE_DEFAULTS['null']):
-                        changed_attrs['initial'] = get_initial_value(app_label, model_name, field_name)
-                    mutations.setdefault(app_label,[]).append(ChangeField(model_name, field_name, **changed_attrs))
+                            changed_attrs[prop] = \
+                                current_field_sig.get(prop,
+                                                      ATTRIBUTE_DEFAULTS[prop])
+
+                    if (changed_attrs.has_key('null') and
+                        current_field_sig['field_type'] !=
+                            models.ManyToManyField and
+                        not current_field_sig.get('null',
+                                                  ATTRIBUTE_DEFAULTS['null'])):
+                        changed_attrs['initial'] = \
+                            get_initial_value(app_label, model_name, field_name)
+
+                    mutations.setdefault(app_label,[]).append(
+                        ChangeField(model_name, field_name, **changed_attrs))
+
             for model_name in app_changes.get('deleted',{}):
-                mutations.setdefault(app_label,[]).append(DeleteModel(model_name))
+                mutations.setdefault(app_label,[]).append(
+                    DeleteModel(model_name))
+
         return mutations
