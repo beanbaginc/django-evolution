@@ -81,7 +81,11 @@ class Command(BaseCommand):
         current_signature = pickle.dumps(current_proj_sig)
 
         try:
-            latest_version = Version.objects.using(database).latest('when')
+            if is_multi_db():
+                latest_version = Version.objects.using(database).latest('when')
+            else:
+                latest_version = Version.objects.latest('when')
+
             database_sig = pickle.loads(str(latest_version.signature))
             diff = Diff(database_sig, current_proj_sig)
         except Evolution.DoesNotExist:
@@ -100,7 +104,8 @@ class Command(BaseCommand):
 
                 mutations = [
                     mutation for mutation in temp_mutations
-                    if mutation.is_mutable(app_label, database_sig, database)
+                    if mutation.is_mutable(app_label, database_sig,
+                                           database)
                 ]
 
                 if mutations:
@@ -111,11 +116,11 @@ class Command(BaseCommand):
                        if compile_sql or execute:
                            app_sql.extend(mutation.mutate(app_label, database_sig, database))
 
-                           # Now run the simulation, which will modify the signatures
-                           try:
-                               mutation.simulate(app_label, database_sig, database)
-                           except CannotSimulate:
-                               simulated = False
+                       # Now run the simulation, which will modify the signatures
+                       try:
+                           mutation.simulate(app_label, database_sig, database)
+                       except CannotSimulate:
+                           simulated = False
                     new_evolutions.extend(Evolution(app_label=app_label, label=label)
                                             for label in evolutions)
 
@@ -238,7 +243,10 @@ Type 'yes' to continue, or 'no' to cancel: """ % database)
                         else:
                             transaction.rollback()
                         raise CommandError('Error applying evolution: %s' % str(ex))
-                    transaction.leave_transaction_management(using=database)
+                    if is_multi_db():
+                        transaction.leave_transaction_management(using=database)
+                    else:
+                        transaction.leave_transaction_management()
 
                     if verbosity > 0:
                         print 'Evolution successful.'
