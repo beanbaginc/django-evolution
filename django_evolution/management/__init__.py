@@ -27,6 +27,11 @@ def evolution(app, created_models, verbosity=1, **kwargs):
     proj_sig = create_project_sig(db)
     signature = pickle.dumps(proj_sig)
 
+    using_args = {}
+
+    if is_multi_db():
+        using_args['using'] = db
+
     try:
         if is_multi_db():
             latest_version = django_evolution.Version.objects.using(db).latest('when')
@@ -38,10 +43,7 @@ def evolution(app, created_models, verbosity=1, **kwargs):
             print "Installing baseline version"
 
         latest_version = django_evolution.Version(signature=signature)
-        if is_multi_db():
-            latest_version.save(using=db)
-        else:
-            latest_version.save()
+        latest_version.save(**using_args)
 
         for a in get_apps():
             app_label = a.__name__.split('.')[-2]
@@ -53,10 +55,7 @@ def evolution(app, created_models, verbosity=1, **kwargs):
                 evolution = django_evolution.Evolution(app_label=app_label,
                                                        label=evo_label,
                                                        version=latest_version)
-                if is_multi_db():
-                    evolution.save(using=db)
-                else:
-                    evolution.save()
+                evolution.save(**using_args)
 
     unapplied = get_unapplied_evolutions(app, db)
     if unapplied:
@@ -91,10 +90,7 @@ def evolution(app, created_models, verbosity=1, **kwargs):
             if verbosity > 0:
                 print "Adding baseline version for new models"
             latest_version = django_evolution.Version(signature=pickle.dumps(old_proj_sig))
-            if is_multi_db():
-                latest_version.save(using=db)
-            else:
-                latest_version.save()
+            latest_version.save(**using_args)
 
         # TODO: Model introspection step goes here.
         # # If the current database state doesn't match the last

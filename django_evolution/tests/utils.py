@@ -163,21 +163,19 @@ def test_proj_sig_multi(app_label, *models, **kwargs):
 def execute_transaction(sql, output=False, database='default'):
     "A transaction wrapper for executing a list of SQL statements"
     my_connection = connection
+    using_args = {}
 
     if is_multi_db():
         if not database:
             database = DEFAULT_DB_ALIAS
 
         my_connection = connections[database]
+        using_args['using'] = database
 
     try:
         # Begin Transaction
-        if is_multi_db():
-            transaction.enter_transaction_management(using=database)
-            transaction.managed(True, using=database)
-        else:
-            transaction.enter_transaction_management()
-            transaction.managed(True)
+        transaction.enter_transaction_management(**using_args)
+        transaction.managed(True, **using_args)
 
         cursor = my_connection.cursor()
 
@@ -187,18 +185,10 @@ def execute_transaction(sql, output=False, database='default'):
 
         execute_sql(cursor, sql)
 
-        if is_multi_db():
-            transaction.commit(using=database)
-            transaction.leave_transaction_management(using=database)
-        else:
-            transaction.commit()
-            transaction.leave_transaction_management()
+        transaction.commit(**using_args)
+        transaction.leave_transaction_management(**using_args)
     except Exception:
-        if is_multi_db():
-            transaction.rollback(using=database)
-        else:
-            transaction.rollback()
-
+        transaction.rollback(**using_args)
         raise
 
 def execute_test_sql(start, end, sql, debug=False, app_label='tests', database='default'):
@@ -246,6 +236,12 @@ def execute_test_sql(start, end, sql, debug=False, app_label='tests', database='
 def create_test_data(app_models, database):
     deferred_models = []
     deferred_fields = {}
+
+    using_args = {}
+
+    if is_multi_db():
+        using_args['using'] = database
+
     for model in app_models:
         params = {}
         deferred = False
@@ -277,7 +273,7 @@ def create_test_data(app_models, database):
                     params[field.name] = DEFAULT_TEST_ATTRIBUTE_VALUES[type(field)]
 
         if not deferred:
-            model(**params).save(using=database)
+            model(**params).save(**using_args)
 
     # Create all deferred models.
     if deferred_models:
@@ -296,8 +292,8 @@ def create_test_data(app_models, database):
                     setattr(model, field.name, related_instance)
                 else:
                     getattr(model, field.name).add(related_instance,
-                                                   using=database)
-            model.save(using=database)
+                                                   **using_args)
+            model.save(**using_args)
 
 def test_sql_mapping(test_field_name, db_name='default'):
     engine = settings.DATABASES[db_name]['ENGINE'].split('.')[-1]

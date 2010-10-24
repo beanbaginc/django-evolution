@@ -60,6 +60,11 @@ class Command(BaseCommand):
             from django.db.utils import DEFAULT_DB_ALIAS
             database = DEFAULT_DB_ALIAS
 
+        using_args = {}
+
+        if is_multi_db():
+            using_args['using'] = database
+
         # Use the list of all apps, unless app labels are specified.
         if app_labels:
             if execute:
@@ -205,48 +210,37 @@ Are you sure you want to execute the evolutions?
 Type 'yes' to continue, or 'no' to cancel: """ % database)
                 else:
                     confirm = 'yes'
+
                 if is_multi_db():
                     from django.db import connections
+
                 if confirm.lower() == 'yes':
                     # Begin Transaction
+                    transaction.enter_transaction_management(**using_args)
+                    transaction.managed(flag=True, **using_args)
+
                     if is_multi_db():
-                        transaction.enter_transaction_management(using=database)
-                        transaction.managed(flag=True, using=database)
                         cursor = connections[database].cursor()
                     else:
-                        transaction.enter_transaction_management()
-                        transaction.managed(flag=True)
                         cursor = connection.cursor()
+
                     try:
                         # Perform the SQL
                         execute_sql(cursor, sql)
 
                         # Now update the evolution table
                         version = Version(signature=current_signature)
-                        if is_multi_db():
-                            version.save(using=database)
-                        else:
-                            version.save()
+                        version.save(**using_args)
+
                         for evolution in new_evolutions:
                             evolution.version = version
-                            if is_multi_db():
-                                evolution.save(using=database)
-                            else:
-                                evolution.save()
-                        if is_multi_db():
-                            transaction.commit(using=database)
-                        else:
-                            transaction.commit()
+                            evolution.save(**using_args)
+
+                        transaction.commit(**using_args)
                     except Exception, ex:
-                        if is_multi_db():
-                            transaction.rollback(using=database)
-                        else:
-                            transaction.rollback()
+                        transaction.rollback(**using_args)
                         raise CommandError('Error applying evolution: %s' % str(ex))
-                    if is_multi_db():
-                        transaction.leave_transaction_management(using=database)
-                    else:
-                        transaction.leave_transaction_management()
+                    transaction.leave_transaction_management(**using_args)
 
                     if verbosity > 0:
                         print 'Evolution successful.'
