@@ -1,11 +1,16 @@
 import django
 from django.core.management import color
-from django.db import connection
+from django.db import connection as default_connection
 from django.db.backends.util import truncate_name
 import copy
 
 
 class BaseEvolutionOperations(object):
+    connection = None
+
+    def __init__(self, connection = default_connection):
+        self.connection = connection
+        
     def quote_sql_param(self, param):
         "Add protective quoting around an SQL string parameter"
         if isinstance(param, basestring):
@@ -19,9 +24,9 @@ class BaseEvolutionOperations(object):
             return []
 
         style = color.no_style()
-        qn = connection.ops.quote_name
-        max_name_length = connection.ops.max_name_length()
-        creation = connection.creation
+        qn = self.connection.ops.quote_name
+        max_name_length = self.connection.ops.max_name_length()
+        creation = self.connection.creation
 
         sql = []
         refs = {}
@@ -61,18 +66,18 @@ class BaseEvolutionOperations(object):
         return sql
 
     def delete_column(self, model, f):
-        qn = connection.ops.quote_name
+        qn = self.connection.ops.quote_name
         params = (qn(model._meta.db_table), qn(f.column))
 
         return ['ALTER TABLE %s DROP COLUMN %s CASCADE;' % params]
 
     def delete_table(self, table_name):
-        qn = connection.ops.quote_name
+        qn = self.connection.ops.quote_name
         return ['DROP TABLE %s;' % qn(table_name)]
 
     def add_m2m_table(self, model, f):
         style = color.no_style()
-        creation = connection.creation
+        creation = self.connection.creation
 
         if f.rel.through:
             references = {}
@@ -93,7 +98,7 @@ class BaseEvolutionOperations(object):
         return sql
 
     def add_column(self, model, f, initial):
-        qn = connection.ops.quote_name
+        qn = self.connection.ops.quote_name
 
         if f.rel:
             # it is a foreign key field
@@ -106,7 +111,7 @@ class BaseEvolutionOperations(object):
             if f.unique or f.primary_key:
                 constraints.append('UNIQUE')
             params = (qn(model._meta.db_table), qn(f.column), f.db_type(), ' '.join(constraints),
-                qn(related_table), qn(related_pk_col), connection.ops.deferrable_sql())
+                qn(related_table), qn(related_pk_col), self.connection.ops.deferrable_sql())
             output = ['ALTER TABLE %s ADD COLUMN %s %s %s REFERENCES %s (%s) %s;' % params]
         else:
             null_constraints = '%sNULL' % (not f.null and 'NOT ' or '')
@@ -137,7 +142,7 @@ class BaseEvolutionOperations(object):
         return output
 
     def set_field_null(self, model, f, null):
-        qn = connection.ops.quote_name
+        qn = self.connection.ops.quote_name
         params = (qn(model._meta.db_table), qn(f.column),)
         if null:
            return 'ALTER TABLE %s ALTER COLUMN %s DROP NOT NULL;' % params
@@ -148,25 +153,25 @@ class BaseEvolutionOperations(object):
         "Returns the CREATE INDEX SQL statements."
         style = color.no_style()
 
-        return connection.creation.sql_indexes_for_field(model, f, style)
+        return self.connection.creation.sql_indexes_for_field(model, f, style)
 
     def drop_index(self, model, f):
-        qn = connection.ops.quote_name
+        qn = self.connection.ops.quote_name
         index_name = self.get_index_name(model, f)
-        max_length = connection.ops.max_name_length()
+        max_length = self.connection.ops.max_name_length()
 
         return ['DROP INDEX %s;' % qn(truncate_name(index_name, max_length))]
 
     def get_index_name(self, model, f):
         if django.VERSION >= (1, 2):
-            colname = connection.creation._digest(f.column)
+            colname = self.connection.creation._digest(f.column)
         else:
             colname = f.column
 
         return '%s_%s' % (model._meta.db_table, colname)
 
     def change_null(self, model, field_name, new_null_attr, initial=None):
-        qn = connection.ops.quote_name
+        qn = self.connection.ops.quote_name
         opts = model._meta
         f = opts.get_field(field_name)
         output = []
@@ -189,7 +194,7 @@ class BaseEvolutionOperations(object):
         return output
 
     def change_max_length(self, model, field_name, new_max_length, initial=None):
-        qn = connection.ops.quote_name
+        qn = self.connection.ops.quote_name
         opts = model._meta
         f = opts.get_field(field_name)
         f.max_length = new_max_length
@@ -215,11 +220,11 @@ class BaseEvolutionOperations(object):
             return self.drop_index(model, f)
 
     def change_unique(self, model, field_name, new_unique_value, initial=None):
-        qn = connection.ops.quote_name
+        qn = self.connection.ops.quote_name
         opts = model._meta
         f = opts.get_field(field_name)
         constraint_name = truncate_name('%s_%s_key' % (opts.db_table, f.column),
-                                        connection.ops.max_name_length())
+                                        self.connection.ops.max_name_length())
 
         if new_unique_value:
             params = (qn(opts.db_table), constraint_name, qn(f.column),)

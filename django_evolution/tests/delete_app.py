@@ -68,6 +68,20 @@ True
 >>> for sql_list in test_sql:
 ...     for sql in sql_list:
 ...         print sql
+%(DeleteApplicationWithoutDatabase)s
+
+>>> test_sql = []
+>>> delete_app = DeleteApplication()
+>>> for app_label in d.deleted.keys():
+...     test_sql.append(delete_app.mutate(app_label, test_sig, 'default'))
+...     delete_app.simulate(app_label, test_sig)
+
+>>> Diff(test_sig, deleted_app_sig).is_empty(ignore_apps=True)
+True
+
+>>> for sql_list in test_sql:
+...     for sql in sql_list:
+...         print sql
 %(DeleteApplication)s
 
 # Clean up after the applications that were installed

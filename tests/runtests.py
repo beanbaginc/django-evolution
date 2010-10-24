@@ -7,15 +7,22 @@ import sys
 def run_tests(verbosity=1, interactive=False):
     from django.conf import settings
     from django.core import management
-    from django.db import connection
+    from django.db import connections
     from django.test.utils import setup_test_environment, \
                                   teardown_test_environment
 
     setup_test_environment()
     settings.DEBUG = False
 
-    old_db_name = settings.DATABASE_NAME
-    connection.creation.create_test_db(verbosity, autoclobber=not interactive)
+    old_db_names = []
+
+    for alias in connections:
+        connection = connections[alias]
+
+        old_db_names.append((connection, connection.settings_dict['NAME']))
+        connection.creation.create_test_db(verbosity,
+                                           autoclobber=not interactive)
+
     management.call_command('syncdb', verbosity=verbosity,
                             interactive=interactive)
 
@@ -31,7 +38,9 @@ def run_tests(verbosity=1, interactive=False):
 
     nose.run(argv=nose_argv)
 
-    connection.creation.destroy_test_db(old_db_name, verbosity=0)
+    for connection, name in old_db_names:
+        connection.creation.destroy_test_db(name, verbosity=0)
+
     teardown_test_environment()
 
 

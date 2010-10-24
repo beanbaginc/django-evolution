@@ -1,5 +1,3 @@
-import copy
-
 from datetime import datetime
 from django.core.management import sql
 from django.core.management.color import no_style
@@ -8,10 +6,14 @@ from django.db.backends.util import truncate_name
 from django.db.models.loading import cache
 from django.utils.datastructures import SortedDict
 from django.utils.functional import curry
-
-from django_evolution import signature
+from django_evolution import signature, is_multi_db
 from django_evolution.tests import models as evo_test
 from django_evolution.utils import write_sql, execute_sql
+import copy
+
+if is_multi_db():
+    from django.db import connections
+    from django.db.utils import DEFAULT_DB_ALIAS
 
 
 DEFAULT_TEST_ATTRIBUTE_VALUES = {
@@ -23,16 +25,11 @@ DEFAULT_TEST_ATTRIBUTE_VALUES = {
 }
 
 
-def wrap_sql_func(func, evo_test, style):
-    try:
-        from django.db import connections
-
-        # Django >= 1.2
-        return func(evo_test, style, connections['default'])
-    except ImportError:
-        # Django < 1.2
+def wrap_sql_func(func, evo_test, style, db_name=None):
+    if is_multi_db():
+        return func(evo_test, style, connections[db_name or DEFAULT_DB_ALIAS])
+    else:
         return func(evo_test, style)
-
 
 # Wrap the sql.* functions to work with the multi-db support
 sql_create = curry(wrap_sql_func, sql.sql_create)
@@ -40,10 +37,16 @@ sql_indexes = curry(wrap_sql_func, sql.sql_indexes)
 sql_delete = curry(wrap_sql_func, sql.sql_delete)
 
 
-def register_models(*models):
+
+def _register_models(app_label='tests', db_name='default', *models):
     app_cache = SortedDict()
 
-    max_name_length = connection.ops.max_name_length()
+    my_connection = connection
+
+    if is_multi_db():
+        my_connection = connections[db_name or DEFAULT_DB_ALIAS]
+
+    max_name_length = my_connection.ops.max_name_length()
 
     for name, model in reversed(models):
         if model._meta.module_name in cache.app_models['django_evolution']:
@@ -58,15 +61,15 @@ def register_models(*models):
                 max_name_length)
 
             if orig_db_table.startswith(generated_db_table):
-                model._meta.db_table = 'tests_%s' % name.lower()
+                model._meta.db_table = '%s_%s' % (app_label, name.lower())
 
             model._meta.db_table = truncate_name(model._meta.db_table,
                                                  max_name_length)
-            model._meta.app_label = 'tests'
+            model._meta.app_label = app_label
             model._meta.object_name = name
             model._meta.module_name = name.lower()
 
-            add_app_test_model(model)
+            add_app_test_model(model, app_label=app_label)
 
             for field in model._meta.local_many_to_many:
                 if not field.rel.through:
@@ -79,7 +82,7 @@ def register_models(*models):
                     max_name_length)
 
                 if through._meta.db_table == generated_db_table:
-                    through._meta.app_label = 'tests'
+                    through._meta.app_label = app_label
 
                     # Transform the 'through' table information only
                     # if we've transformed the parent db_table.
@@ -112,53 +115,93 @@ def register_models(*models):
                                 orig_module_name,
                                 model._meta.module_name)
 
+                if (through._meta.module_name in
+                    cache.app_models['django_evolution']):
+                    del cache.app_models['django_evolution'][
+                        through._meta.module_name]
+
                 app_cache[through._meta.module_name] = through
-                add_app_test_model(through)
+                add_app_test_model(through, app_label=app_label)
 
         app_cache[model._meta.module_name] = model
 
     return app_cache
 
-def test_proj_sig(*models, **kwargs):
+def register_models(*models):
+    return _register_models('tests', 'default', *models)
+
+def register_models_multi(app_label, db_name, *models):
+    return _register_models(app_label, db_name, *models)
+
+
+def _test_proj_sig(app_label, *models, **kwargs):
     "Generate a dummy project signature based around a single model"
-    version = kwargs.get('version',1)
+    version = kwargs.get('version', 1)
     proj_sig = {
-        'tests': SortedDict(),
+        app_label: SortedDict(),
         '__version__': version,
     }
 
     # Compute the project siguature
-    for full_name,model in models:
+    for full_name, model in models:
         parts = full_name.split('.')
         if len(parts) == 1:
             name = parts[0]
-            app = 'tests'
+            app = app_label
         else:
-            app,name = parts
+            app, name = parts
         proj_sig.setdefault(app, SortedDict())[name] = signature.create_model_sig(model)
 
     return proj_sig
 
-def execute_transaction(sql, output=False):
+def test_proj_sig(*models, **kwargs):
+    return _test_proj_sig('tests', *models, **kwargs)
+
+def test_proj_sig_multi(app_label, *models, **kwargs):
+    return _test_proj_sig(app_label, *models, **kwargs)
+
+def execute_transaction(sql, output=False, database='default'):
     "A transaction wrapper for executing a list of SQL statements"
+    my_connection = connection
+
+    if is_multi_db():
+        if not database:
+            database = DEFAULT_DB_ALIAS
+
+        my_connection = connections[database]
+
     try:
         # Begin Transaction
-        transaction.enter_transaction_management()
-        transaction.managed(True)
-        cursor = connection.cursor()
+        if is_multi_db():
+            transaction.enter_transaction_management(using=database)
+            transaction.managed(True, using=database)
+        else:
+            transaction.enter_transaction_management()
+            transaction.managed(True)
+
+        cursor = my_connection.cursor()
 
         # Perform the SQL
         if output:
-            write_sql(sql)
+            write_sql(sql, database)
+
         execute_sql(cursor, sql)
 
-        transaction.commit()
-        transaction.leave_transaction_management()
+        if is_multi_db():
+            transaction.commit(using=database)
+            transaction.leave_transaction_management(using=database)
+        else:
+            transaction.commit()
+            transaction.leave_transaction_management()
     except Exception:
-        transaction.rollback()
+        if is_multi_db():
+            transaction.rollback(using=database)
+        else:
+            transaction.rollback()
+
         raise
 
-def execute_test_sql(start, end, sql, debug=False):
+def execute_test_sql(start, end, sql, debug=False, app_label='tests', database='default'):
     """
     Execute a test SQL sequence. This method also creates and destroys the
     database tables required by the models registered against the test application.
@@ -176,31 +219,31 @@ def execute_test_sql(start, end, sql, debug=False):
     SQL.
     """
     # Set up the initial state of the app cache
-    set_app_test_models(copy.deepcopy(start))
+    set_app_test_models(copy.deepcopy(start), app_label=app_label)
 
     # Install the initial tables and indicies
     style = no_style()
-    execute_transaction(sql_create(evo_test, style), output=debug)
-    execute_transaction(sql_indexes(evo_test, style), output=debug)
-    create_test_data(models.get_models(evo_test))
+    execute_transaction(sql_create(evo_test, style, database), output=debug, database=database)
+    execute_transaction(sql_indexes(evo_test, style, database), output=debug, database=database)
+    create_test_data(models.get_models(evo_test), database)
 
     # Set the app cache to the end state
-    set_app_test_models(copy.deepcopy(end))
+    set_app_test_models(copy.deepcopy(end), app_label=app_label)
 
     try:
         # Execute the test sql
         if debug:
-            write_sql(sql)
+            write_sql(sql, database)
         else:
-            execute_transaction(sql, output=True)
+            execute_transaction(sql, output=True, database=database)
     finally:
         # Cleanup the apps.
         if debug:
-            print sql_delete(evo_test, style)
+            print sql_delete(evo_test, style, database)
         else:
-            execute_transaction(sql_delete(evo_test, style), output=debug)
+            execute_transaction(sql_delete(evo_test, style, database), output=debug, database=database)
 
-def create_test_data(app_models):
+def create_test_data(app_models, database):
     deferred_models = []
     deferred_fields = {}
     for model in app_models:
@@ -210,8 +253,10 @@ def create_test_data(app_models):
             if not deferred:
                 if type(field) == models.ForeignKey or type(field) == models.ManyToManyField:
                     related_model = field.rel.to
-                    if related_model.objects.count():
-                        related_instance = related_model.objects.all()[0]
+
+                    if related_model.objects.using(database).count():
+                        related_instance = \
+                            related_model.objects.using(database)[0]
                     else:
                         if field.null == False:
                             # Field cannot be null yet the related object hasn't been created yet
@@ -222,6 +267,7 @@ def create_test_data(app_models):
                             # Field cannot be set yet but null is acceptable for the moment
                             deferred_fields[type(model)] = deferred_fields.get(type(model), []).append(field)
                             related_instance = None
+
                     if not deferred:
                         if type(field) == models.ForeignKey:
                             params[field.name] = related_instance
@@ -231,11 +277,11 @@ def create_test_data(app_models):
                     params[field.name] = DEFAULT_TEST_ATTRIBUTE_VALUES[type(field)]
 
         if not deferred:
-            model(**params).save()
+            model(**params).save(using=database)
 
     # Create all deferred models.
     if deferred_models:
-        create_test_data(deferred_models)
+        create_test_data(deferred_models, database)
 
     # All models should be created (Not all deferred fields have been populated yet)
     # Populate deferred fields that we know about.
@@ -244,21 +290,24 @@ def create_test_data(app_models):
         for model, field_list in deferred_fields.items():
             for field in field_list:
                 related_model = field.rel.to
-                related_instance = related_model.objects.all()[0]
+                related_instance = related_model.objects.using(database)[0]
+
                 if type(field) == models.ForeignKey:
                     setattr(model, field.name, related_instance)
                 else:
-                    getattr(model, field.name).add(related_instance)
-            model.save()
+                    getattr(model, field.name).add(related_instance,
+                                                   using=database)
+            model.save(using=database)
 
-def test_sql_mapping(test_field_name):
-    sql_for_engine = __import__('django_evolution.tests.db.%s' % (settings.DATABASE_ENGINE), {}, {}, [''])
+def test_sql_mapping(test_field_name, db_name='default'):
+    engine = settings.DATABASES[db_name]['ENGINE'].split('.')[-1]
+    sql_for_engine = __import__('django_evolution.tests.db.%s' % (engine), {}, {}, [''])
     return getattr(sql_for_engine, test_field_name)
 
 
-def deregister_models():
+def deregister_models(app_label='tests'):
     "Clear the test section of the app cache"
-    del cache.app_models['tests']
+    del cache.app_models[app_label]
     clear_models_cache()
 
 
@@ -274,14 +323,14 @@ def clear_models_cache():
         cache._get_models_cache.clear()
 
 
-def set_app_test_models(models):
+def set_app_test_models(models, app_label):
     """Sets the list of models in the Django test models registry."""
-    cache.app_models['tests'] = models
+    cache.app_models[app_label] = models
     clear_models_cache()
 
 
-def add_app_test_model(model):
+def add_app_test_model(model, app_label):
     """Adds a model to the Django test models registry."""
     key = model._meta.object_name.lower()
-    cache.app_models.setdefault('tests', SortedDict())[key] = model
+    cache.app_models.setdefault(app_label, SortedDict())[key] = model
     clear_models_cache()

@@ -1,6 +1,6 @@
 import os
 
-from django_evolution import EvolutionException
+from django_evolution import EvolutionException, is_multi_db
 from django_evolution.models import Evolution
 from django_evolution.mutations import SQLMutation
 
@@ -13,14 +13,18 @@ def get_evolution_sequence(app):
     except:
         return []
 
-def get_unapplied_evolutions(app):
+def get_unapplied_evolutions(app, database):
     "Obtain the list of unapplied evolutions for an application"
     sequence = get_evolution_sequence(app)
     app_label = app.__name__.split('.')[-2]
-    applied = [evo.label for evo in Evolution.objects.filter(app_label=app_label)]
+    if is_multi_db():
+        evolutions = Evolution.objects.using(database).filter(app_label=app_label)
+    else:
+        evolutions = Evolution.objects.filter(app_label=app_label)
+    applied = [evo.label for evo in evolutions]
     return [seq for seq in sequence if seq not in applied]
 
-def get_mutations(app, evolution_labels):
+def get_mutations(app, evolution_labels, database):
     """
     Obtain the list of mutations described by the named evolutions.
     """
@@ -36,9 +40,17 @@ def get_mutations(app, evolution_labels):
     for label in evolution_labels:
         directory_name = os.path.dirname(evolution_module.__file__)
         sql_file_name = os.path.join(directory_name, label+'.sql')
+        sql_file_name_database = os.path.join(directory_name, "%s_%s.sql" % (database, label))
+        #keep this test for compatibility purpose
         if os.path.exists(sql_file_name):
             sql = []
             sql_file = open(sql_file_name)
+            for line in sql_file:
+                sql.append(line)
+            mutations.append(SQLMutation(label, sql))
+        elif os.path.exists(sql_file_name_database):
+            sql = []
+            sql_file = open(sql_file_name_database)
             for line in sql_file:
                 sql.append(line)
             mutations.append(SQLMutation(label, sql))

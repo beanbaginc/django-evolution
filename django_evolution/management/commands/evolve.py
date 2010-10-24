@@ -11,14 +11,13 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db.models import get_apps, get_app
 from django.db import connection, transaction
 
-from django_evolution import CannotSimulate, EvolutionException
+from django_evolution import CannotSimulate, EvolutionException, is_multi_db
 from django_evolution.diff import Diff
 from django_evolution.evolve import get_unapplied_evolutions, get_mutations
 from django_evolution.models import Version, Evolution
 from django_evolution.mutations import DeleteApplication
 from django_evolution.signature import create_project_sig
 from django_evolution.utils import write_sql, execute_sql
-
 
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
@@ -32,6 +31,8 @@ class Command(BaseCommand):
             help='Compile a Django evolution script into SQL.'),
         make_option('-x', '--execute', action='store_true', dest='execute', default=False,
             help='Apply the evolution to the database.'),
+        make_option('--database', action='store', dest='database',
+            help='Nominates a database to synchronize.'),
     )
     if '--verbosity' not in [opt.get_opt_string() for opt in BaseCommand.option_list]:
         option_list += make_option('-v', '--verbosity', action='store', dest='verbosity', default='1',
@@ -53,6 +54,7 @@ class Command(BaseCommand):
         compile_sql = options['compile_sql']
         hint = options['hint']
         purge = options['purge']
+        database = options['database']
 
         # Use the list of all apps, unless app labels are specified.
         if app_labels:
@@ -71,11 +73,11 @@ class Command(BaseCommand):
         sql = []
         new_evolutions = []
 
-        current_proj_sig = create_project_sig()
+        current_proj_sig = create_project_sig(database)
         current_signature = pickle.dumps(current_proj_sig)
 
         try:
-            latest_version = Version.objects.latest('when')
+            latest_version = Version.objects.using(database).latest('when')
             database_sig = pickle.loads(str(latest_version.signature))
             diff = Diff(database_sig, current_proj_sig)
         except Evolution.DoesNotExist:
@@ -87,30 +89,35 @@ class Command(BaseCommand):
                 if hint:
                     evolutions = []
                     hinted_evolution = diff.evolution()
-                    mutations = hinted_evolution.get(app_label, [])
+                    temp_mutations = hinted_evolution.get(app_label, [])
                 else:
-                    evolutions = get_unapplied_evolutions(app)
-                    mutations = get_mutations(app, evolutions)
+                    evolutions = get_unapplied_evolutions(app, database)
+                    temp_mutations = get_mutations(app, evolutions, database)
+
+                mutations = [
+                    mutation for mutation in temp_mutations
+                    if mutation.is_mutable(app_label, database_sig, database)
+                ]
 
                 if mutations:
                     app_sql = ['-- Evolve application %s' % app_label]
                     evolution_required = True
                     for mutation in mutations:
                         # Only compile SQL if we want to show it
-                        if compile_sql or execute:
-                            app_sql.extend(mutation.mutate(app_label, database_sig))
+                       if compile_sql or execute:
+                           app_sql.extend(mutation.mutate(app_label, database_sig, database))
 
-                        # Now run the simulation, which will modify the signatures
-                        try:
-                            mutation.simulate(app_label, database_sig)
-                        except CannotSimulate:
-                            simulated = False
+                           # Now run the simulation, which will modify the signatures
+                           try:
+                               mutation.simulate(app_label, database_sig, database)
+                           except CannotSimulate:
+                               simulated = False
                     new_evolutions.extend(Evolution(app_label=app_label, label=label)
                                             for label in evolutions)
 
                     if not execute:
                         if compile_sql:
-                            write_sql(app_sql)
+                            write_sql(app_sql, database)
                         else:
                             print '#----- Evolution for %s' % app_label
                             print 'from django_evolution.mutations import *'
@@ -134,14 +141,15 @@ class Command(BaseCommand):
                     delete_app = DeleteApplication()
                     purge_sql = []
                     for app_label in diff.deleted:
-                        if compile_sql or execute:
-                            purge_sql.append('-- Purge application %s' % app_label)
-                            purge_sql.extend(delete_app.mutate(app_label, database_sig))
-                        delete_app.simulate(app_label, database_sig)
+                        if delete_app.is_mutable(app_label, database_sig, database):
+                            if compile_sql or execute:
+                                purge_sql.append('-- Purge application %s' % app_label)
+                                purge_sql.extend(delete_app.mutate(app_label, database_sig, database))
+                            delete_app.simulate(app_label, database_sig, database)
 
                     if not execute:
                         if compile_sql:
-                            write_sql(purge_sql)
+                            write_sql(purge_sql, database)
                         else:
                             print 'The following application(s) can be purged:'
                             for app_label in diff.deleted:
@@ -185,31 +193,48 @@ prior to execution.
 
 Are you sure you want to execute the evolutions?
 
-Type 'yes' to continue, or 'no' to cancel: """ % settings.DATABASE_NAME)
+Type 'yes' to continue, or 'no' to cancel: """ % database)
                 else:
                     confirm = 'yes'
-
+                if is_multi_db():
+                    from django.db import connections
                 if confirm.lower() == 'yes':
                     # Begin Transaction
-                    transaction.enter_transaction_management()
-                    transaction.managed(True)
-                    cursor = connection.cursor()
+                    if is_multi_db():
+                        transaction.enter_transaction_management(using=database)
+                        transaction.managed(flag=True, using=database)
+                        cursor = connections[database].cursor()
+                    else:
+                        transaction.enter_transaction_management()
+                        transaction.managed(flag=True)
+                        cursor = connection.cursor()
                     try:
                         # Perform the SQL
                         execute_sql(cursor, sql)
 
                         # Now update the evolution table
                         version = Version(signature=current_signature)
-                        version.save()
+                        if is_multi_db():
+                            version.save(using=database)
+                        else:
+                            version.save()
                         for evolution in new_evolutions:
                             evolution.version = version
-                            evolution.save()
-
-                        transaction.commit()
+                            if is_multi_db():
+                                evolution.save(using=database)
+                            else:
+                                evolution.save()
+                        if is_multi_db():
+                            transaction.commit(using=database)
+                        else:
+                            transaction.commit()
                     except Exception, ex:
-                        transaction.rollback()
+                        if is_multi_db():
+                            transaction.rollback(using=database)
+                        else:
+                            transaction.rollback()
                         raise CommandError('Error applying evolution: %s' % str(ex))
-                    transaction.leave_transaction_management()
+                    transaction.leave_transaction_management(using=database)
 
                     if verbosity > 0:
                         print 'Evolution successful.'

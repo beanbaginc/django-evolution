@@ -9,6 +9,7 @@ from sql_mutation import tests as sql_mutation_tests
 from ordering import tests as ordering_tests
 from generics import tests as generics_tests
 from inheritance import tests as inheritance_tests
+from django_evolution import is_multi_db
 # Define doctests
 __test__ = {
     'signature': signature_tests,
@@ -23,3 +24,7 @@ __test__ = {
     'generics': generics_tests,
     'inheritance': inheritance_tests
 }
+
+if is_multi_db():
+    from multi_db import tests as multi_db_tests
+    __test__['multi_db'] = multi_db_tests

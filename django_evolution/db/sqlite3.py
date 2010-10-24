@@ -1,5 +1,5 @@
 from django.core.management import color
-from django.db import connection, models
+from django.db import models
 
 from common import BaseEvolutionOperations
 
@@ -25,7 +25,7 @@ class EvolutionOperations(BaseEvolutionOperations):
 
     def copy_to_temp_table(self, source_table_name, original_field_list,
                            new_field_list=None):
-        qn = connection.ops.quote_name
+        qn = self.connection.ops.quote_name
 
         source_columns = self.column_names(original_field_list)
 
@@ -39,7 +39,7 @@ class EvolutionOperations(BaseEvolutionOperations):
                  qn(source_table_name))]
 
     def copy_from_temp_table(self, dest_table_name, field_list):
-        qn = connection.ops.quote_name
+        qn = self.connection.ops.quote_name
         params = {
             'dest_table_name': qn(dest_table_name),
             'temp_table': qn(TEMP_TABLE_NAME),
@@ -49,7 +49,7 @@ class EvolutionOperations(BaseEvolutionOperations):
         return ['INSERT INTO %(dest_table_name)s (%(column_names)s) SELECT %(column_names)s FROM %(temp_table)s;' % params]
 
     def column_names(self, field_list):
-        qn = connection.ops.quote_name
+        qn = self.connection.ops.quote_name
         columns = []
 
         for field in field_list:
@@ -59,7 +59,7 @@ class EvolutionOperations(BaseEvolutionOperations):
         return ', '.join(columns)
 
     def insert_to_temp_table(self, field, initial):
-        qn = connection.ops.quote_name
+        qn = self.connection.ops.quote_name
 
         # At this point, initial can only be None if null=True, otherwise it is
         # a user callable or the default AddFieldInitialCallback which will shortly raise an exception.
@@ -96,10 +96,10 @@ class EvolutionOperations(BaseEvolutionOperations):
                 self._meta = FakeMeta(table_name, field_list)
 
         style = color.no_style()
-        return connection.creation.sql_indexes_for_model(FakeModel(table_name, field_list), style)
+        return self.connection.creation.sql_indexes_for_model(FakeModel(table_name, field_list), style)
 
     def create_table(self, table_name, field_list, temporary=False, create_index=True):
-        qn = connection.ops.quote_name
+        qn = self.connection.ops.quote_name
         output = []
 
         create = ['CREATE']

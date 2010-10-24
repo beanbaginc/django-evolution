@@ -3,6 +3,10 @@ from django.db.models.fields.related import *
 from django.conf import global_settings
 from django.contrib.contenttypes import generic
 from django.utils.datastructures import SortedDict
+from django_evolution import is_multi_db
+
+if is_multi_db():
+    from django.db import router
 
 
 ATTRIBUTE_DEFAULTS = {
@@ -73,7 +77,7 @@ def create_model_sig(model):
             model_sig['fields'][field.name] = create_field_sig(field)
     return model_sig
 
-def create_app_sig(app):
+def create_app_sig(app, database):
     """
     Creates a dictionary representation of the models in a given app.
     Only those attributes that are interesting from a schema-evolution
@@ -81,10 +85,12 @@ def create_app_sig(app):
     """
     app_sig = SortedDict()
     for model in get_models(app):
-        app_sig[model._meta.object_name] = create_model_sig(model)
+        # only include those who want to be syncdb
+        if not is_multi_db() or router.allow_syncdb(database, model):
+            app_sig[model._meta.object_name] = create_model_sig(model)
     return app_sig
 
-def create_project_sig():
+def create_project_sig(database):
     """
     Create a dictionary representation of the apps in a given project.
     """
@@ -92,5 +98,5 @@ def create_project_sig():
         '__version__': 1,
     }
     for app in get_apps():
-        proj_sig[app.__name__.split('.')[-2]] = create_app_sig(app)
+        proj_sig[app.__name__.split('.')[-2]] = create_app_sig(app, database)
     return proj_sig

@@ -6,7 +6,7 @@ except ImportError:
 from django.core.management.color import color_style
 from django.db.models import signals, get_apps
 
-from django_evolution import models as django_evolution
+from django_evolution import is_multi_db, models as django_evolution
 from django_evolution.evolve import get_evolution_sequence, get_unapplied_evolutions
 from django_evolution.signature import create_project_sig
 from django_evolution.diff import Diff
@@ -18,18 +18,30 @@ def evolution(app, created_models, verbosity=1, **kwargs):
     A hook into syncdb's post_syncdb signal, that is used to notify the user
     if a model evolution is necessary.
     """
-    proj_sig = create_project_sig()
+    default_db = None
+    if is_multi_db():
+        from django.db.utils import DEFAULT_DB_ALIAS
+        default_db = DEFAULT_DB_ALIAS
+
+    db = kwargs.get('db', default_db)
+    proj_sig = create_project_sig(db)
     signature = pickle.dumps(proj_sig)
 
     try:
-        latest_version = django_evolution.Version.objects.latest('when')
+        if is_multi_db():
+            latest_version = django_evolution.Version.objects.using(db).latest('when')
+        else:
+            latest_version = django_evolution.Version.objects.latest('when')
     except django_evolution.Version.DoesNotExist:
         # We need to create a baseline version.
         if verbosity > 0:
             print "Installing baseline version"
 
         latest_version = django_evolution.Version(signature=signature)
-        latest_version.save()
+        if is_multi_db():
+            latest_version.save(using=db)
+        else:
+            latest_version.save()
 
         for a in get_apps():
             app_label = a.__name__.split('.')[-2]
@@ -41,9 +53,12 @@ def evolution(app, created_models, verbosity=1, **kwargs):
                 evolution = django_evolution.Evolution(app_label=app_label,
                                                        label=evo_label,
                                                        version=latest_version)
-                evolution.save()
+                if is_multi_db():
+                    evolution.save(using=db)
+                else:
+                    evolution.save()
 
-    unapplied = get_unapplied_evolutions(app)
+    unapplied = get_unapplied_evolutions(app, db)
     if unapplied:
         print style.NOTICE('There are unapplied evolutions for %s.' % app.__name__.split('.')[-2])
 
@@ -76,7 +91,10 @@ def evolution(app, created_models, verbosity=1, **kwargs):
             if verbosity > 0:
                 print "Adding baseline version for new models"
             latest_version = django_evolution.Version(signature=pickle.dumps(old_proj_sig))
-            latest_version.save()
+            if is_multi_db():
+                latest_version.save(using=db)
+            else:
+                latest_version.save()
 
         # TODO: Model introspection step goes here.
         # # If the current database state doesn't match the last

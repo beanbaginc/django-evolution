@@ -1,10 +1,10 @@
-from django_evolution.db import evolver
+from django_evolution.db import EvolutionOperationsMulti
 
-def write_sql(sql):
+def write_sql(sql, database):
     "Output a list of SQL statements, unrolling parameters as required"
     for statement in sql:
         if isinstance(statement, tuple):
-            print unicode(statement[0] % tuple(evolver.quote_sql_param(s) for s in statement[1]))
+            print unicode(statement[0] % tuple(EvolutionOperationsMulti(database).get_evolver().quote_sql_param(s) for s in statement[1]))
         else:
             print unicode(statement)
 
