@@ -56,6 +56,10 @@ class Command(BaseCommand):
         purge = options['purge']
         database = options['database']
 
+        if not database and is_multi_db():
+            from django.db.utils import DEFAULT_DB_ALIAS
+            database = DEFAULT_DB_ALIAS
+
         # Use the list of all apps, unless app labels are specified.
         if app_labels:
             if execute:
