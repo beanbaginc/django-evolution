@@ -7,21 +7,32 @@ import sys
 def run_tests(verbosity=1, interactive=False):
     from django.conf import settings
     from django.core import management
-    from django.db import connections
     from django.test.utils import setup_test_environment, \
                                   teardown_test_environment
+
+    from django_evolution import is_multi_db
 
     setup_test_environment()
     settings.DEBUG = False
 
     old_db_names = []
 
-    for alias in connections:
-        connection = connections[alias]
+    if is_multi_db():
+        from django.db import connections
 
-        old_db_names.append((connection, connection.settings_dict['NAME']))
+        for alias in connections:
+            connection = connections[alias]
+
+            old_db_names.append((connection, connection.settings_dict['NAME']))
+            connection.creation.create_test_db(verbosity,
+                                               autoclobber=not interactive)
+    else:
+        from django.db import connection
+
+        old_db_names.append((connection, settings.DATABASE_NAME))
         connection.creation.create_test_db(verbosity,
                                            autoclobber=not interactive)
+
 
     management.call_command('syncdb', verbosity=verbosity,
                             interactive=interactive)

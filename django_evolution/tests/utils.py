@@ -320,9 +320,14 @@ def create_test_data(app_models, database):
 
 
 def test_sql_mapping(test_field_name, db_name='default'):
-    engine = settings.DATABASES[db_name]['ENGINE'].split('.')[-1]
+    if is_multi_db():
+        engine = settings.DATABASES[db_name]['ENGINE'].split('.')[-1]
+    else:
+        engine = settings.DATABASE_ENGINE
+
     sql_for_engine = __import__('django_evolution.tests.db.%s' % (engine),
                                 {}, {}, [''])
+
     return getattr(sql_for_engine, test_field_name)
 
 

@@ -1,5 +1,6 @@
 import os
 
+
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
@@ -19,6 +20,11 @@ DATABASES = {
         'NAME': 'django_evolution_test_multi.db',
     },
 }
+
+# For testing compatibility on Django 1.1.
+DATABASE_ENGINE = 'sqlite3'
+DATABASE_NAME = 'django_evolution_test.db'
+
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name

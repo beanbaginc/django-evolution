@@ -3,7 +3,7 @@
 from django.conf import settings
 from django.db import connection
 
-class EvolutionOperationsMulti():
+class EvolutionOperationsMulti(object):
     def __init__(self, db_name):
         try:
             from django.db import connections, router
