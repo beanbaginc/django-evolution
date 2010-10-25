@@ -1,3 +1,7 @@
+version 0.6.1 (25-October-2010):
+	* Fixed compatibility problems with both Django 1.1 and Python 2.4.
+
+
 version 0.6.0 (24-October-2010):
     * Added support for Django 1.2's ability to use multiple databases.
 
