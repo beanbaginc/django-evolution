@@ -1,14 +1,19 @@
 import os
 
 from django_evolution import EvolutionException, is_multi_db
+from django_evolution.builtin_evolutions import BUILTIN_SEQUENCES
 from django_evolution.models import Evolution
 from django_evolution.mutations import SQLMutation
 
 
 def get_evolution_sequence(app):
     "Obtain the full evolution sequence for an application"
+    app_name = '.'.join(app.__name__.split('.')[:-1])
+
+    if app_name in BUILTIN_SEQUENCES:
+        return BUILTIN_SEQUENCES[app_name]
+
     try:
-        app_name = '.'.join(app.__name__.split('.')[:-1])
         evolution_module = __import__(app_name + '.evolutions',{},{},[''])
         return evolution_module.SEQUENCE
     except:
@@ -38,7 +43,13 @@ def get_mutations(app, evolution_labels, database):
     # a python file or an sql file.
     try:
         app_name = '.'.join(app.__name__.split('.')[:-1])
-        evolution_module = __import__(app_name + '.evolutions', {}, {}, [''])
+
+        if app_name in BUILTIN_SEQUENCES:
+            module_name = 'django_evolution.builtin_evolutions'
+        else:
+            module_name = '%s.evolutions' % app_name
+
+        evolution_module = __import__(module_name, {}, {}, [''])
     except ImportError:
         return []
 
