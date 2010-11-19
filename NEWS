@@ -1,5 +1,15 @@
+version 0.6.2 (19-November-2010):
+    * Add compatibility with Django 1.3.
+
+      Django 1.3 introduced a change to the Session.expire_date field's
+      schema, setting db_index to True. This caused Django Evolution to
+      fail during evolution, with no way to provide an evolution file to
+      work around the problem. Django Evolution now handles this by providing
+      the evolution when running with Django 1.3 or higher.
+
+
 version 0.6.1 (25-October-2010):
-	* Fixed compatibility problems with both Django 1.1 and Python 2.4.
+    * Fixed compatibility problems with both Django 1.1 and Python 2.4.
 
 
 version 0.6.0 (24-October-2010):
