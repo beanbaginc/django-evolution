@@ -128,15 +128,28 @@ class BaseEvolutionOperations(object):
             # At this point, initial can only be None if null=True, otherwise it is
             # a user callable or the default AddFieldInitialCallback which will shortly raise an exception.
             if initial is not None:
-                params = (qn(model._meta.db_table), qn(f.column), f.db_type(), unique_constraints)
-                output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
-
                 if callable(initial):
-                    params = (qn(model._meta.db_table), qn(f.column), initial(), qn(f.column))
-                    output.append('UPDATE %s SET %s = %s WHERE %s IS NULL;' % params)
+                    params = (qn(model._meta.db_table), qn(f.column),
+                              f.db_type(connection=self.connection),
+                              unique_constraints)
+                    output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
+                    params = (qn(model._meta.db_table), qn(f.column),
+                              initial(), qn(f.column))
+                    output.append('UPDATE %s SET %s = %s WHERE %s IS NULL;'
+                                  % params)
                 else:
-                    params = (qn(model._meta.db_table), qn(f.column), qn(f.column))
-                    output.append(('UPDATE %s SET %s = %%s WHERE %s IS NULL;' % params, (initial,)))
+                    params = (qn(model._meta.db_table), qn(f.column),
+                              f.db_type(connection=self.connection),
+                              unique_constraints)
+                    output = [('ALTER TABLE %s ADD COLUMN %s %s %s DEFAULT %%s;'
+                               % params, (initial,))]
+
+                    # Django doesn't generate default columns, so now that we've
+                    # added one to get default values for existing tables, drop
+                    # that default.
+                    params = (qn(model._meta.db_table), qn(f.column))
+                    output.append('ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT;'
+                                  % params)
 
                 if not f.null:
                     # Only put this sql statement if the column cannot be null.

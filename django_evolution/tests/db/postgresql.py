@@ -6,8 +6,8 @@ autocreate_through_tables = hasattr(Options({}), 'auto_created')
 add_field = {
     'AddNonNullNonCallableColumnModel':
         '\n'.join([
-            'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" integer ;',
-            'UPDATE "tests_testmodel" SET "added_field" = 1 WHERE "added_field" IS NULL;',
+            'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" integer  DEFAULT 1;',
+            'ALTER TABLE "tests_testmodel" ALTER COLUMN "added_field" DROP DEFAULT;',
             'ALTER TABLE "tests_testmodel" ALTER COLUMN "added_field" SET NOT NULL;',
         ]),
     'AddNonNullCallableColumnModel':
@@ -18,31 +18,31 @@ add_field = {
         ]),
     'AddNullColumnWithInitialColumnModel':
         '\n'.join([
-            'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" integer ;',
-            'UPDATE "tests_testmodel" SET "added_field" = 1 WHERE "added_field" IS NULL;',
+            'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" integer  DEFAULT 1;',
+            'ALTER TABLE "tests_testmodel" ALTER COLUMN "added_field" DROP DEFAULT;',
         ]),
     'AddStringColumnModel':
         '\n'.join([
-            'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" varchar(10) ;',
-            'UPDATE "tests_testmodel" SET "added_field" = \'abc\\\'s xyz\' WHERE "added_field" IS NULL;',
+            'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" varchar(10)  DEFAULT \'abc\\\'s xyz\';',
+            'ALTER TABLE "tests_testmodel" ALTER COLUMN "added_field" DROP DEFAULT;',
             'ALTER TABLE "tests_testmodel" ALTER COLUMN "added_field" SET NOT NULL;',
         ]),
     'AddDateColumnModel':
         '\n'.join([
-            'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" timestamp with time zone ;',
-            'UPDATE "tests_testmodel" SET "added_field" = 2007-12-13 16:42:00 WHERE "added_field" IS NULL;',
+            'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" timestamp with time zone  DEFAULT 2007-12-13 16:42:00;',
+            'ALTER TABLE "tests_testmodel" ALTER COLUMN "added_field" DROP DEFAULT;',
             'ALTER TABLE "tests_testmodel" ALTER COLUMN "added_field" SET NOT NULL;',
         ]),
     'AddDefaultColumnModel':
         '\n'.join([
-            'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" integer ;',
-            'UPDATE "tests_testmodel" SET "added_field" = 42 WHERE "added_field" IS NULL;',
+            'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" integer  DEFAULT 42;',
+            'ALTER TABLE "tests_testmodel" ALTER COLUMN "added_field" DROP DEFAULT;',
             'ALTER TABLE "tests_testmodel" ALTER COLUMN "added_field" SET NOT NULL;',
         ]),
     'AddEmptyStringDefaultColumnModel':
         '\n'.join([
-            'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" varchar(20) ;',
-            'UPDATE "tests_testmodel" SET "added_field" = \'\' WHERE "added_field" IS NULL;',
+            'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" varchar(20)  DEFAULT \'\';',
+            'ALTER TABLE "tests_testmodel" ALTER COLUMN "added_field" DROP DEFAULT;',
             'ALTER TABLE "tests_testmodel" ALTER COLUMN "added_field" SET NOT NULL;',
         ]),
     'AddNullColumnModel':
@@ -316,8 +316,8 @@ generics = {
 inheritance = {
     'AddToChildModel':
         '\n'.join([
-            'ALTER TABLE "tests_childmodel" ADD COLUMN "added_field" integer ;',
-            'UPDATE "tests_childmodel" SET "added_field" = 42 WHERE "added_field" IS NULL;',
+            'ALTER TABLE "tests_childmodel" ADD COLUMN "added_field" integer  DEFAULT 42;',
+            'ALTER TABLE "tests_childmodel" ALTER COLUMN "added_field" DROP DEFAULT;',
             'ALTER TABLE "tests_childmodel" ALTER COLUMN "added_field" SET NOT NULL;',
         ]),
     'DeleteFromChildModel':
