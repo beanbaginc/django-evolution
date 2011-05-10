@@ -12,7 +12,7 @@ class EvolutionOperations(BaseEvolutionOperations):
         style = color.no_style()
 
         ###
-        col_type = f.db_type()
+        col_type = f.db_type(connection=self.connection)
         tablespace = f.db_tablespace or opts.db_tablespace
         if col_type is None:
             # Skip ManyToManyFields, because they're not represented as
@@ -42,7 +42,8 @@ class EvolutionOperations(BaseEvolutionOperations):
 
     def set_field_null(self, model, f, null):
         qn = self.connection.ops.quote_name
-        params = (qn(model._meta.db_table), qn(f.column), f.db_type())
+        params = (qn(model._meta.db_table), qn(f.column),
+                  f.db_type(connection=self.connection))
         if null:
             return 'ALTER TABLE %s MODIFY COLUMN %s %s DEFAULT NULL;' % params
         else:
@@ -57,7 +58,7 @@ class EvolutionOperations(BaseEvolutionOperations):
             'table': qn(opts.db_table),
             'column': qn(f.column),
             'length': f.max_length,
-            'type': f.db_type()
+            'type': f.db_type(connection=self.connection)
         }
         return ['UPDATE %(table)s SET %(column)s=LEFT(%(column)s,%(length)d);' % params,
                 'ALTER TABLE %(table)s MODIFY COLUMN %(column)s %(type)s;' % params]

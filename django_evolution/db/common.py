@@ -110,8 +110,13 @@ class BaseEvolutionOperations(object):
             constraints = ['%sNULL' % (not f.null and 'NOT ' or '')]
             if f.unique or f.primary_key:
                 constraints.append('UNIQUE')
-            params = (qn(model._meta.db_table), qn(f.column), f.db_type(), ' '.join(constraints),
-                qn(related_table), qn(related_pk_col), self.connection.ops.deferrable_sql())
+            params = (qn(model._meta.db_table),
+                      qn(f.column),
+                      f.db_type(connection=self.connection),
+                      ' '.join(constraints),
+                      qn(related_table),
+                      qn(related_pk_col),
+                      self.connection.ops.deferrable_sql())
             output = ['ALTER TABLE %s ADD COLUMN %s %s %s REFERENCES %s (%s) %s;' % params]
         else:
             null_constraints = '%sNULL' % (not f.null and 'NOT ' or '')
@@ -137,7 +142,10 @@ class BaseEvolutionOperations(object):
                     # Only put this sql statement if the column cannot be null.
                     output.append(self.set_field_null(model, f, f.null))
             else:
-                params = (qn(model._meta.db_table), qn(f.column), f.db_type(),' '.join([null_constraints, unique_constraints]))
+                params = (qn(model._meta.db_table),
+                qn(f.column),
+                          f.db_type(connection=self.connection),
+                          ' '.join([null_constraints, unique_constraints]))
                 output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
         return output
 
@@ -198,7 +206,9 @@ class BaseEvolutionOperations(object):
         opts = model._meta
         f = opts.get_field(field_name)
         f.max_length = new_max_length
-        params = (qn(opts.db_table), qn(f.column), f.db_type(), qn(f.column), f.db_type())
+        db_type = f.db_type(connection=self.connection)
+        params = (qn(opts.db_table), qn(f.column),
+                  db_type, qn(f.column), db_type)
         return ['ALTER TABLE %s ALTER COLUMN %s TYPE %s USING CAST(%s as %s);' % params]
 
     def change_db_column(self, model, field_name, new_db_column, initial=None):

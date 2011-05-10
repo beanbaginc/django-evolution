@@ -16,6 +16,7 @@ class EvolutionOperationsMulti(object):
             module_name = ['django_evolution.db',settings.DATABASE_ENGINE]
             module = __import__('.'.join(module_name),{},{},[''])
             self.evolver = module.EvolutionOperations()
+
     def get_evolver(self):
         return self.evolver
 

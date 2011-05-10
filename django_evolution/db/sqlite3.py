@@ -9,9 +9,13 @@ class EvolutionOperations(BaseEvolutionOperations):
     def delete_column(self, model, f):
         output = []
 
-        field_list = [field for field in model._meta.local_fields
-                        if f.name != field.name # Remove the field to be deleted
-                        and field.db_type() is not None] # and any Generic fields
+        field_list = [
+            field for field in model._meta.local_fields
+            # Remove the field to be deleted
+            if f.name != field.name
+            # and any Generic fields
+            and field.db_type(connection=self.connection) is not None
+        ]
         table_name = model._meta.db_table
 
         output.extend(self.create_temp_table(field_list))
@@ -112,7 +116,7 @@ class EvolutionOperations(BaseEvolutionOperations):
         for field in field_list:
             if not models.ManyToManyField == field.__class__:
                 column_name = qn(field.column)
-                column_type = field.db_type()
+                column_type = field.db_type(connection=self.connection)
                 params = [column_name, column_type]
 
                 # Always use null if this is a temporary table. It may be
@@ -148,7 +152,8 @@ class EvolutionOperations(BaseEvolutionOperations):
         original_fields = opts.local_fields
         new_fields = []
         for f in original_fields:
-            if f.db_type() is not None: # Ignore Generic Fields
+            # Ignore Generic Fields
+            if f.db_type(connection=self.connection) is not None:
                 if f.name == old_field.name:
                     new_fields.append(new_field)
                 else:
@@ -169,7 +174,11 @@ class EvolutionOperations(BaseEvolutionOperations):
     def add_column(self, model, f, initial):
         output = []
         table_name = model._meta.db_table
-        original_fields = [field for field in model._meta.local_fields if field.db_type() is not None]
+        original_fields = [
+            field
+            for field in model._meta.local_fields
+            if field.db_type(connection=self.connection) is not None
+        ]
         new_fields = list(original_fields)
         new_fields.append(f)
 
@@ -196,7 +205,11 @@ class EvolutionOperations(BaseEvolutionOperations):
         opts = model._meta
         table_name = opts.db_table
         setattr(opts.get_field(field_name), attr_name, new_attr_value)
-        fields = [f for f in opts.local_fields if f.db_type() is not None]
+        fields = [
+            f
+            for f in opts.local_fields
+            if f.db_type(connection=self.connection) is not None
+        ]
 
         output.extend(self.create_temp_table(fields))
         output.extend(self.copy_to_temp_table(table_name, fields))

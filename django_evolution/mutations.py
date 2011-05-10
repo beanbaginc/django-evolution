@@ -227,14 +227,14 @@ class BaseMutation:
     def __init__(self):
         pass
 
-    def mutate(self, app_label, proj_sig, target_database = None):
+    def mutate(self, app_label, proj_sig, target_database=None):
         """
         Performs the mutation on the database. Database changes will occur
         after this function is invoked.
         """
         raise NotImplementedError()
 
-    def simulate(self, app_label, proj_sig, target_database = None):
+    def simulate(self, app_label, proj_sig, target_database=None):
         """
         Performs a simulation of the mutation to be performed. The purpose of
         the simulate function is to ensure that after all mutations have occured
@@ -257,11 +257,11 @@ class MonoBaseMutation(BaseMutation):
         BaseMutation.__init__(self)
         self.model_name = model_name
 
-    def evolver(self, model):
-        db_name = None
-
-        if is_multi_db():
+    def evolver(self, model, database=None):
+        if is_multi_db() and database is None:
             db_name = router.db_for_write(model)
+        else:
+            db_name = database or 'default'
 
         return EvolutionOperationsMulti(db_name).get_evolver()
 
@@ -356,7 +356,7 @@ class DeleteField(MonoBaseMutation):
                              model)
         field_sig['field_type'] = field_type
 
-        evolver = self.evolver(model)
+        evolver = self.evolver(model, database)
 
         if field_type == models.ManyToManyField:
             sql_statements = \
@@ -413,11 +413,11 @@ class AddField(MonoBaseMutation):
 
     def mutate(self, app_label, proj_sig, database=None):
         if self.field_type == models.ManyToManyField:
-            return self.add_m2m_table(app_label, proj_sig)
+            return self.add_m2m_table(app_label, proj_sig, database)
         else:
-            return self.add_column(app_label, proj_sig)
+            return self.add_column(app_label, proj_sig, database)
 
-    def add_column(self, app_label, proj_sig):
+    def add_column(self, app_label, proj_sig, database):
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
 
@@ -425,7 +425,7 @@ class AddField(MonoBaseMutation):
         field = create_field(proj_sig, self.field_name, self.field_type,
                              self.field_attrs, model)
 
-        evolver = self.evolver(model)
+        evolver = self.evolver(model, database)
 
         sql_statements = evolver.add_column(model, field, self.initial)
 
@@ -434,7 +434,7 @@ class AddField(MonoBaseMutation):
 
         return sql_statements
 
-    def add_m2m_table(self, app_label, proj_sig):
+    def add_m2m_table(self, app_label, proj_sig, database):
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
 
@@ -461,7 +461,8 @@ class AddField(MonoBaseMutation):
             field.m2m_reverse_name = curry(field._get_m2m_reverse_attr,
                                            related, 'column')
 
-        sql_statements = self.evolver(model).add_m2m_table(model, field)
+        evolver = self.evolver(model, database)
+        sql_statements = evolver.add_m2m_table(model, field)
 
         return sql_statements
 
@@ -541,15 +542,15 @@ class RenameField(MonoBaseMutation):
 
         model = MockModel(proj_sig, app_label, self.model_name, model_sig)
 
+        evolver = self.evolver(model, database)
+
         if models.ManyToManyField == field_type:
             old_m2m_table = old_field._get_m2m_db_table(model._meta)
             new_m2m_table = new_field._get_m2m_db_table(model._meta)
 
-            return self.evolver(model).rename_table(model, old_m2m_table,
-                                                    new_m2m_table)
+            return evolver.rename_table(model, old_m2m_table, new_m2m_table)
         else:
-            return self.evolver(model).rename_column(model._meta, old_field,
-                                                     new_field)
+            return evolver.rename_column(model._meta, old_field, new_field)
 
 
 class ChangeField(MonoBaseMutation):
@@ -608,7 +609,7 @@ class ChangeField(MonoBaseMutation):
             # Avoid useless SQL commands if nothing has changed.
             if not old_field_attr == attr_value:
                 try:
-                    evolver_func = getattr(self.evolver(model),
+                    evolver_func = getattr(self.evolver(model, database),
                                            'change_%s' % field_attr)
                     if field_attr == 'null':
                         sql_statements.extend(
@@ -648,16 +649,17 @@ class DeleteModel(MonoBaseMutation):
 
         sql_statements = []
         model = MockModel(proj_sig, app_label, self.model_name, model_sig)
+        evolver = self.evolver(model, database)
 
         # Remove any many to many tables.
         for field_name, field_sig in model_sig['fields'].items():
             if field_sig['field_type'] == models.ManyToManyField:
                 field = model._meta.get_field(field_name)
                 m2m_table = field._get_m2m_db_table(model._meta)
-                sql_statements += self.evolver(model).delete_table(m2m_table)
+                sql_statements += evolver.delete_table(m2m_table)
 
         # Remove the table itself.
-        sql_statements += self.evolver(model).delete_table(model._meta.db_table)
+        sql_statements += evolver.delete_table(model._meta.db_table)
 
         return sql_statements
 
