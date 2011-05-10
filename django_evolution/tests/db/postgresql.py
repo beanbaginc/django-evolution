@@ -236,6 +236,7 @@ delete_application = {
             'DROP TABLE "tests_testmodel";',
             'DROP TABLE "app_delete_custom_table_name";',
         ]),
+    'DeleteApplicationWithoutDatabase': "",
 }
 
 rename_field = {
