@@ -124,6 +124,12 @@ def _register_models(app_label='tests', db_name='default', *models):
 
         app_cache[model._meta.module_name] = model
 
+    if evo_test not in cache.app_store:
+        cache.app_store[evo_test] = len(cache.app_store)
+
+        if hasattr(cache, 'app_labels'):
+            cache.app_labels[app_label] = evo_test
+
     return app_cache
 
 
