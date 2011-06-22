@@ -4,7 +4,7 @@ except ImportError:
     import pickle as pickle
 
 from django.core.management.color import color_style
-from django.db.models import signals, get_apps
+from django.db.models import signals, get_apps, get_app
 
 from django_evolution import is_multi_db, models as django_evolution
 from django_evolution.evolve import get_evolution_sequence, get_unapplied_evolutions
@@ -12,6 +12,23 @@ from django_evolution.signature import create_project_sig
 from django_evolution.diff import Diff
 
 style = color_style()
+
+
+def install_baseline(app, latest_version, using_args, verbosity):
+    app_label = app.__name__.split('.')[-2]
+    sequence = get_evolution_sequence(app)
+
+    if sequence:
+        if verbosity > 0:
+            print 'Evolutions in %s baseline:' % app_label, \
+                  ', '.join(sequence)
+
+    for evo_label in sequence:
+        evolution = django_evolution.Evolution(app_label=app_label,
+                                               label=evo_label,
+                                               version=latest_version)
+        evolution.save(**using_args)
+
 
 def evolution(app, created_models, verbosity=1, **kwargs):
     """
@@ -47,19 +64,7 @@ def evolution(app, created_models, verbosity=1, **kwargs):
         latest_version.save(**using_args)
 
         for a in get_apps():
-            app_label = a.__name__.split('.')[-2]
-            sequence = get_evolution_sequence(a)
-
-            if sequence:
-                if verbosity > 0:
-                    print 'Evolutions in %s baseline:' % app_label, \
-                          ', '.join(sequence)
-
-            for evo_label in sequence:
-                evolution = django_evolution.Evolution(app_label=app_label,
-                                                       label=evo_label,
-                                                       version=latest_version)
-                evolution.save(**using_args)
+            install_baseline(a, latest_version, using_args, verbosity)
 
     unapplied = get_unapplied_evolutions(app, db)
 
@@ -86,6 +91,8 @@ def evolution(app, created_models, verbosity=1, **kwargs):
             if old_app_sig is None:
                 # App has been added
                 old_proj_sig[app_name] = proj_sig[app_name]
+                install_baseline(get_app(app_name), latest_version, using_args,
+                                 verbosity)
                 changed = True
                 continue
 
