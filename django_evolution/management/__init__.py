@@ -77,9 +77,10 @@ def evolution(app, created_models, verbosity=1, **kwargs):
     if app == django_evolution:
         old_proj_sig = pickle.loads(str(latest_version.signature))
 
-        # If any models have been added, a baseline must be set
+        # If any models or apps have been added, a baseline must be set
         # for those new models
         changed = False
+        new_apps = []
 
         for app_name, new_app_sig in proj_sig.items():
             if app_name == '__version__':
@@ -91,19 +92,17 @@ def evolution(app, created_models, verbosity=1, **kwargs):
             if old_app_sig is None:
                 # App has been added
                 old_proj_sig[app_name] = proj_sig[app_name]
-                install_baseline(get_app(app_name), latest_version, using_args,
-                                 verbosity)
+                new_apps.append(app_name)
                 changed = True
-                continue
+            else:
+                for model_name, new_model_sig in new_app_sig.items():
+                    old_model_sig = old_app_sig.get(model_name, None)
 
-            for model_name, new_model_sig in new_app_sig.items():
-                old_model_sig = old_app_sig.get(model_name, None)
-
-                if old_model_sig is None:
-                    # Model has been added
-                    old_proj_sig[app_name][model_name] = \
-                        proj_sig[app_name][model_name]
-                    changed = True
+                    if old_model_sig is None:
+                        # Model has been added
+                        old_proj_sig[app_name][model_name] = \
+                            proj_sig[app_name][model_name]
+                        changed = True
 
         if changed:
             if verbosity > 0:
@@ -112,6 +111,10 @@ def evolution(app, created_models, verbosity=1, **kwargs):
             latest_version = \
                 django_evolution.Version(signature=pickle.dumps(old_proj_sig))
             latest_version.save(**using_args)
+
+            for app_name in new_apps:
+                install_baseline(get_app(app_name), latest_version, using_args,
+                                 verbosity)
 
         # TODO: Model introspection step goes here.
         # # If the current database state doesn't match the last
