@@ -2,7 +2,8 @@ from django.contrib.sessions.models import Session
 
 
 BUILTIN_SEQUENCES = {
-    'django.contrib.sessions': []
+    'django.contrib.auth': [],
+    'django.contrib.sessions': [],
 }
 
 
@@ -12,3 +13,9 @@ BUILTIN_SEQUENCES = {
 if Session._meta.get_field_by_name('expire_date')[0].db_index:
     BUILTIN_SEQUENCES['django.contrib.sessions'].append(
         'session_expire_date_db_index')
+
+# Starting in Django 1.4 alpha, the Message model was deleted.
+try:
+    from django.contrib.auth.models import Message
+except ImportError:
+    BUILTIN_SEQUENCES['django.contrib.auth'].append('auth_delete_message')
