@@ -377,8 +377,16 @@ class AddField(MonoBaseMutation):
         self.initial = initial
 
     def __str__(self):
-        params = (self.model_name, self.field_name, self.field_type.__name__)
-        str_output = ["'%s', '%s', models.%s" % params]
+        if self.field_type.__module__.startswith('django.db.models'):
+            field_prefix = 'models.'
+        else:
+            field_prefix = ''
+
+        str_output = ["'%(model_name)s', '%(field_name)s', %(field_type)s" % {
+            'model_name': self.model_name,
+            'field_name': self.field_name,
+            'field_type': field_prefix + self.field_type.__name__
+        }]
 
         if self.initial is not None:
             str_output.append('initial=%s' % repr(self.initial))

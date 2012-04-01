@@ -15,7 +15,7 @@ from django_evolution import CannotSimulate, EvolutionException, is_multi_db
 from django_evolution.diff import Diff
 from django_evolution.evolve import get_unapplied_evolutions, get_mutations
 from django_evolution.models import Version, Evolution
-from django_evolution.mutations import DeleteApplication
+from django_evolution.mutations import AddField, DeleteApplication
 from django_evolution.signature import create_project_sig
 from django_evolution.utils import write_sql, execute_sql
 
@@ -154,15 +154,7 @@ class Command(BaseCommand):
                         if compile_sql:
                             write_sql(app_sql, database)
                         else:
-                            print '#----- Evolution for %s' % app_label
-                            print 'from django_evolution.mutations import *'
-                            print 'from django.db import models'
-                            print
-                            print 'MUTATIONS = ['
-                            print '   ',
-                            print ',\n    '.join(unicode(m) for m in mutations)
-                            print ']'
-                            print '#----------------------'
+                            print self.generate_hint(app, app_label, mutations)
 
                     sql.extend(app_sql)
                 else:
@@ -298,3 +290,49 @@ Type 'yes' to continue, or 'no' to cancel: """ % database)
                         print "Run './manage.py evolve %s--execute' to apply evolution." % (hint and '--hint ' or '')
         elif verbosity > 0:
             print 'No evolution required.'
+
+    def generate_hint(self, app, app_label, mutations):
+        imports = set()
+        project_imports = set()
+        mutation_types = set()
+
+        app_prefix = app.__name__.split('.')[0]
+
+        for m in mutations:
+            mutation_types.add(m.__class__.__name__)
+
+            if isinstance(m, AddField):
+                field_module = m.field_type.__module__
+
+                if field_module.startswith('django.db.models'):
+                    imports.add('from django.db import models')
+                else:
+                    import_str = 'from %s import %s' % \
+                                 (field_module, m.field_type.__name__)
+
+                    if field_module.startswith(app_prefix):
+                        project_imports.add(import_str)
+                    else:
+                        imports.add(import_str)
+
+        lines = [
+            '#----- Evolution for %s' % app_label,
+            'from django_evolution.mutations import %s' %
+                ', '.join(sorted(mutation_types)),
+        ]
+
+        lines += sorted(imports)
+
+        if project_imports:
+            lines += [''] + sorted(project_imports)
+
+        lines += [
+            '',
+            '',
+            'MUTATIONS = [',
+            '    ' + ',\n    '.join(unicode(m) for m in mutations),
+            ']',
+            '#----------------------',
+        ]
+
+        return '\n'.join(lines)
