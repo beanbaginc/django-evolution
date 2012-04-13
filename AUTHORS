@@ -3,6 +3,7 @@ The PRIMARY AUTHORS of Django Evolution are:
 
 Ben Khoo <khoobks@westnet.com.au>
 Russell Keith-Magee <russell@keith-magee.com>
+Christian Hammond <chipx86@chipx86.com>
 
 And here is an inevitably incomplete list of MUCH-APPRECIATED CONTRIBUTORS --
 people who have submitted patches, reported bugs, and generally made 
@@ -10,7 +11,6 @@ Django Evolution that much better:
 
     Chris Beaven (SmileyChris) <smileychris@gmail.com>
     Eric Florenzano (floguy) <floguy@gmail.com>
-    Christian Hammond <chipx86@chipx86.com>
     Jacob Kaplan-Moss <jacob.kaplanmoss@gmail.com>
     Yann Malet <yann.malet@gmail.com>
     Carl J Meyer <carl.j.meyer@gmail.com>
