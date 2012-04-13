@@ -113,8 +113,10 @@ def evolution(app, created_models, verbosity=1, **kwargs):
             latest_version.save(**using_args)
 
             for app_name in new_apps:
-                install_baseline(get_app(app_name), latest_version, using_args,
-                                 verbosity)
+                app = get_app(app_name, True)
+
+                if app:
+                    install_baseline(app, latest_version, using_args, verbosity)
 
         # TODO: Model introspection step goes here.
         # # If the current database state doesn't match the last
