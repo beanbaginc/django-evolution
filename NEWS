@@ -1,3 +1,16 @@
+version 0.6.8 (8-February-2013):
+	* Added two new management commands: list-evolutions and wipe-evolution.
+
+	  list-evolutions lists all applied evolutions. It can take one or more
+	  app labels, and will restrict the output to those apps.
+
+	  wipe-evolution will wipe one or more evolutions from the database. This
+	  should only be used if absolutely necessary, and can cause problems. It
+	  is useful if there's some previously applied evolutions getting in the
+	  way, which can happen if a person is uncareful with downgrading and
+	  upgrading again.
+
+
 version 0.6.7 (12-April-2012):
 	* Don't fail when an app doesn't contain any models.
 
