@@ -1,3 +1,17 @@
+version 0.6.9 (13-March-2013):
+	* Django Evolution no longer applies upgrades that match the current state.
+
+	  When upgrading an old database, where a new model has been introduced
+	  and evolutions were added on that model, Django Evolution would try to
+	  apply the mutations after creating that baseline, resulting in
+	  confusing errors.
+
+	  Now we only apply mutations for parts of the database that differ
+	  between the last stored signature and the new signature. It should
+	  fix a number of problems people have hit when upgrading extremely
+	  old databases.
+
+
 version 0.6.8 (8-February-2013):
 	* Added two new management commands: list-evolutions and wipe-evolution.
 
