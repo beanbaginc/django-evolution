@@ -1,9 +1,11 @@
 import os
+import pickle
 
 from django_evolution import EvolutionException, is_multi_db
 from django_evolution.builtin_evolutions import BUILTIN_SEQUENCES
-from django_evolution.models import Evolution
+from django_evolution.models import Evolution, Version
 from django_evolution.mutations import SQLMutation
+from django_evolution.signature import create_project_sig
 
 
 def get_evolution_sequence(app):
@@ -89,5 +91,50 @@ def get_mutations(app, evolution_labels, database):
                 raise EvolutionException(
                     'Error: Failed to find an SQL or Python evolution named %s'
                     % label)
+
+    if is_multi_db():
+        latest_version = Version.objects.using(database).latest('when')
+    else:
+        latest_version = Version.objects.latest('when')
+
+    app_label = app.__name__.split('.')[-2]
+    old_proj_sig = pickle.loads(str(latest_version.signature))
+    proj_sig = create_project_sig(database)
+
+    if app_label in old_proj_sig and app_label in proj_sig:
+        # We want to go through now and make sure we're only applying
+        # evolutions for models where the signature is different between
+        # what's stored and what's current.
+        #
+        # The reason for this is that we may have just installed a baseline,
+        # which would have the up-to-date signature, and we might be trying
+        # to apply evolutions on top of that (which would already be applied).
+        # These would generate errors. So, try hard to prevent that.
+        old_app_sig = old_proj_sig[app_label]
+        app_sig = proj_sig[app_label]
+
+        changed_models = set()
+
+        # Find the list of models in the latest signature of this app
+        # that aren't in the old signature.
+        for model_name, model_sig in app_sig.iteritems():
+            if (model_name not in old_app_sig or
+                old_app_sig[model_name] != model_sig):
+                changed_models.add(model_name)
+
+        # Now do the same for models in the old signature, in case the
+        # model has been deleted.
+        for model_name, model_sig in old_app_sig.iteritems():
+            if model_name not in app_sig:
+                changed_models.add(model_name)
+
+        # We should now have a full list of which models changed. Filter
+        # the list of mutations appropriately.
+        mutations = [
+            mutation
+            for mutation in mutations
+            if (not hasattr(mutation, 'model_name') or
+                mutation.model_name in changed_models)
+        ]
 
     return mutations
