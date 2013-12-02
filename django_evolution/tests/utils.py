@@ -33,6 +33,9 @@ DEFAULT_TEST_ATTRIBUTE_VALUES = {
 # tables (Django 1.2), so we use it.
 digest_index_names = hasattr(Options({}), 'auto_created')
 
+# Index names changed in Django 1.5, with the introduction of index_together.
+supports_index_together = hasattr(Options({}), 'index_together')
+
 
 digest = connection.creation._digest
 
@@ -382,7 +385,12 @@ def add_app_test_model(model, app_label):
 
 def generate_index_name(table, col_name, field_name=None):
     if digest_index_names:
-        column = digest(col_name)
+        if supports_index_together:
+            value = [field_name or col_name]
+        else:
+            value = col_name
+
+        column = digest(value)
     else:
         column = col_name
 

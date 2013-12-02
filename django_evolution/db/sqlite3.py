@@ -94,6 +94,8 @@ class EvolutionOperations(BaseEvolutionOperations):
                 self.db_tablespace = None
                 self.managed = True
                 self.proxy = False
+                self.swapped = False
+                self.index_together = []
 
         class FakeModel(object):
             def __init__(self, table_name, field_list):

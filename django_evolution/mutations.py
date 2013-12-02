@@ -128,6 +128,7 @@ class MockMeta(object):
             'order_with_respect_to': None,
             'has_auto_field': None,
             'db_tablespace': None,
+            'swapped': False,
         }
         self.meta.update(model_sig['meta'])
         self._fields = SortedDict()
@@ -389,7 +390,12 @@ class AddField(MonoBaseMutation):
         }]
 
         if self.initial is not None:
-            str_output.append('initial=%s' % repr(self.initial))
+            if isinstance(self.initial, basestring):
+                value = unicode(self.initial)
+            else:
+                value = self.initial
+
+            str_output.append('initial=%s' % repr(value))
 
         for key,value in self.field_attrs.items():
             str_output.append("%s=%s" % (key,repr(value)))

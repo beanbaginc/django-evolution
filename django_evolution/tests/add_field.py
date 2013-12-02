@@ -200,7 +200,7 @@ True
 >>> end_sig = test_proj_sig(('TestModel',AddBlankStringColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']] # AddBlankStringColumnModel
-["AddField('TestModel', 'added_field', models.CharField, initial='', max_length=10)"]
+["AddField('TestModel', 'added_field', models.CharField, initial=u'', max_length=10)"]
 
 # Add a field that requires date-form initial data
 >>> class AddDateColumnModel(models.Model):

@@ -192,7 +192,9 @@ class BaseEvolutionOperations(object):
         return ['DROP INDEX %s;' % qn(truncate_name(index_name, max_length))]
 
     def get_index_name(self, model, f):
-        if django.VERSION >= (1, 2):
+        if django.VERSION >= (1, 5):
+            colname = self.connection.creation._digest([f.name])
+        elif django.VERSION >= (1, 2):
             colname = self.connection.creation._digest(f.column)
         else:
             colname = f.column

@@ -58,8 +58,8 @@ def create_field_sig(field):
     rel = field_sig.pop('rel', None)
 
     if rel:
-        field_sig['related_model'] = '.'.join([rel.to._meta.app_label,
-                                               rel.to._meta.object_name])
+        field_sig['related_model'] = str('.'.join([rel.to._meta.app_label,
+                                                   rel.to._meta.object_name]))
 
     return field_sig
 
@@ -69,7 +69,7 @@ def create_model_sig(model):
             'unique_together': model._meta.unique_together,
             'db_tablespace': model._meta.db_tablespace,
             'db_table': model._meta.db_table,
-            'pk_column': model._meta.pk.column,
+            'pk_column': str(model._meta.pk.column),
         },
         'fields': {},
     }
@@ -77,7 +77,7 @@ def create_model_sig(model):
     for field in model._meta.local_fields + model._meta.local_many_to_many:
         # Special case - don't generate a signature for generic relations
         if not isinstance(field, generic.GenericRelation):
-            model_sig['fields'][field.name] = create_field_sig(field)
+            model_sig['fields'][str(field.name)] = create_field_sig(field)
 
     return model_sig
 
