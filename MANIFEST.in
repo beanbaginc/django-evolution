@@ -4,5 +4,6 @@ recursive-include tests *.py *.exclude
 include AUTHORS
 include LICENSE
 include README
+include NEWS
 include setup.py
 include ez_setup.py
