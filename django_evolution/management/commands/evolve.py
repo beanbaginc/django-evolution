@@ -287,7 +287,10 @@ Type 'yes' to continue, or 'no' to cancel: """ % database)
                 if verbosity > 0:
                     if simulated:
                         print "Trial evolution successful."
-                        print "Run './manage.py evolve %s--execute' to apply evolution." % (hint and '--hint ' or '')
+
+                        if not hint:
+                            print ("Run './manage.py evolve --execute' to "
+                                   "apply evolution.")
         elif verbosity > 0:
             print 'No evolution required.'
 
