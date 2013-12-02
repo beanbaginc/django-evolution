@@ -67,6 +67,16 @@ add_field = {
             'INSERT INTO "tests_testmodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
+    'AddMismatchInitialBoolColumnModel':
+        '\n'.join([
+            'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NULL, "id" integer NULL UNIQUE PRIMARY KEY, "char_field" varchar(20) NULL, "added_field" bool NULL);',
+            'INSERT INTO "TEMP_TABLE" ("int_field", "id", "char_field") SELECT "int_field", "id", "char_field" FROM "tests_testmodel";',
+            'UPDATE "TEMP_TABLE" SET "added_field" = 0;',
+            'DROP TABLE "tests_testmodel";',
+            'CREATE TABLE "tests_testmodel"("int_field" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY, "char_field" varchar(20) NOT NULL, "added_field" bool NOT NULL);',
+            'INSERT INTO "tests_testmodel" ("int_field", "id", "char_field", "added_field") SELECT "int_field", "id", "char_field", "added_field" FROM "TEMP_TABLE";',
+            'DROP TABLE "TEMP_TABLE";',
+        ]),
     'AddEmptyStringDefaultColumnModel':
         '\n'.join([
             'CREATE TEMPORARY TABLE "TEMP_TABLE"("int_field" integer NULL, "id" integer NULL UNIQUE PRIMARY KEY, "char_field" varchar(20) NULL, "added_field" varchar(20) NULL);',

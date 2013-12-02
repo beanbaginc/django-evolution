@@ -41,6 +41,12 @@ add_field = {
             'ALTER TABLE "tests_testmodel" ALTER COLUMN "added_field" DROP DEFAULT;',
             'ALTER TABLE "tests_testmodel" ALTER COLUMN "added_field" SET NOT NULL;',
         ]),
+    'AddMismatchInitialBoolColumnModel':
+        '\n'.join([
+            'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" boolean  DEFAULT False;',
+            'ALTER TABLE "tests_testmodel" ALTER COLUMN "added_field" DROP DEFAULT;',
+            'ALTER TABLE "tests_testmodel" ALTER COLUMN "added_field" SET NOT NULL;',
+        ]),
     'AddEmptyStringDefaultColumnModel':
         '\n'.join([
             'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" varchar(20)  DEFAULT \'\';',

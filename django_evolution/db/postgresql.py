@@ -35,3 +35,9 @@ class EvolutionOperations(BaseEvolutionOperations):
         # By default, Django 1.2 will use a digest hash for the column name.
         # The PostgreSQL support, however, uses the column name itself.
         return '%s_%s' % (model._meta.db_table, f.column)
+
+    def normalize_bool(self, value):
+        if value:
+            return True
+        else:
+            return False

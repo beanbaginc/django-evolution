@@ -252,6 +252,33 @@ True
 >>> execute_test_sql(start, end, test_sql) #AddDefaultColumnModel
 %(AddDefaultColumnModel)s
 
+# Add a BooleanField with an initial value different from the model definition.
+>>> class AddMismatchInitialBoolColumnModel(models.Model):
+...     char_field = models.CharField(max_length=20)
+...     int_field = models.IntegerField()
+...     added_field = models.BooleanField(default=True)
+
+>>> end = register_models(('TestModel', AddMismatchInitialBoolColumnModel),
+...                        *anchors)
+>>> end_sig = test_proj_sig(('TestModel', AddMismatchInitialBoolColumnModel),
+...                          *anchors)
+>>> d = Diff(start_sig, end_sig)
+>>> print [str(e) for e in d.evolution()['tests']] #AddDefaultColumnModel
+["AddField('TestModel', 'added_field', models.BooleanField, initial=True)"]
+
+>>> test_sig = copy.deepcopy(start_sig)
+>>> test_sql = []
+>>> for mutation in [AddField('TestModel', 'added_field',
+...                           models.BooleanField, initial=False)]:
+...     test_sql.extend(mutation.mutate('tests', test_sig))
+...     mutation.simulate('tests', test_sig)
+
+>>> Diff(test_sig, end_sig).is_empty()
+True
+
+>>> execute_test_sql(start, end, test_sql) #AddMismatchInitialBoolColumnModel
+%(AddMismatchInitialBoolColumnModel)s
+
 # Add column with an empty string as the default value
 >>> class AddEmptyStringDefaultColumnModel(models.Model):
 ...     char_field = models.CharField(max_length=20)

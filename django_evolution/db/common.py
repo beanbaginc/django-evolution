@@ -314,3 +314,15 @@ class BaseEvolutionOperations(object):
                     relto, style, refs))
 
         return sql
+
+    def normalize_value(self, value):
+        if isinstance(value, bool):
+            return self.normalize_bool(value)
+
+        return value
+
+    def normalize_bool(self, value):
+        if value:
+            return 1
+        else:
+            return 0
