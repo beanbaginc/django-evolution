@@ -31,7 +31,7 @@ setup(
     author_email='khoobks@westnet.com.au',
     maintainer='Christian Hammond',
     maintainer_email='chipx86@chipx86.com',
-    packages=find_packages(),
+    packages=find_packages(exclude=['tests']),
     install_requires=[
         'Django>=1.1.1',
     ],
