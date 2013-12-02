@@ -7,9 +7,11 @@ from django.core.management.color import color_style
 from django.db.models import signals, get_apps, get_app
 
 from django_evolution import is_multi_db, models as django_evolution
-from django_evolution.evolve import get_evolution_sequence, get_unapplied_evolutions
-from django_evolution.signature import create_project_sig
 from django_evolution.diff import Diff
+from django_evolution.evolve import (get_evolution_sequence,
+                                     get_unapplied_evolutions)
+from django_evolution.signature import create_project_sig
+
 
 style = color_style()
 
@@ -116,7 +118,8 @@ def evolution(app, created_models, verbosity=1, **kwargs):
                 app = get_app(app_name, True)
 
                 if app:
-                    install_baseline(app, latest_version, using_args, verbosity)
+                    install_baseline(app, latest_version, using_args,
+                                     verbosity)
 
         # TODO: Model introspection step goes here.
         # # If the current database state doesn't match the last
@@ -138,5 +141,6 @@ def evolution(app, created_models, verbosity=1, **kwargs):
             if verbosity > 1:
                 old_proj_sig = pickle.loads(str(latest_version.signature))
                 print diff
+
 
 signals.post_syncdb.connect(evolution)

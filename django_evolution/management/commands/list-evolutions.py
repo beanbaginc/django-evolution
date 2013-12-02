@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from django.db.models import get_apps, get_app
+from django.db.models import get_apps
 
 from django_evolution.models import Evolution
 
@@ -20,4 +20,3 @@ class Command(BaseCommand):
                     print '    %s' % evolution.label
 
                 print
-

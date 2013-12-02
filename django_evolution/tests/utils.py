@@ -268,10 +268,10 @@ def execute_test_sql(start, end, sql, debug=False, app_label='tests',
             execute_transaction(sql_delete(evo_test, style, database),
                                 output=debug, database=database)
 
+
 def create_test_data(app_models, database):
     deferred_models = []
     deferred_fields = {}
-
     using_args = {}
 
     if is_multi_db():
@@ -280,11 +280,11 @@ def create_test_data(app_models, database):
     for model in app_models:
         params = {}
         deferred = False
+
         for field in model._meta.fields:
             if not deferred:
                 if type(field) in (models.ForeignKey, models.ManyToManyField):
                     related_model = field.rel.to
-
                     related_q = related_model.objects.all()
 
                     if is_multi_db():
@@ -292,23 +292,22 @@ def create_test_data(app_models, database):
 
                     if related_q.count():
                         related_instance = related_q[0]
+                    elif field.null is False:
+                        # Field cannot be null yet the related object
+                        # hasn't been created yet Defer the creation of
+                        # this model
+                        deferred = True
+                        deferred_models.append(model)
                     else:
-                        if field.null == False:
-                            # Field cannot be null yet the related object
-                            # hasn't been created yet Defer the creation of
-                            # this model
-                            deferred = True
-                            deferred_models.append(model)
-                        else:
-                            # Field cannot be set yet but null is acceptable
-                            # for the moment
-                            deferred_fields[type(model)] = \
-                                deferred_fields.get(type(model),
-                                                    []).append(field)
-                            related_instance = None
+                        # Field cannot be set yet but null is acceptable
+                        # for the moment
+                        deferred_fields[type(model)] = \
+                            deferred_fields.get(type(model),
+                                                []).append(field)
+                        related_instance = None
 
                     if not deferred:
-                        if type(field) == models.ForeignKey:
+                        if type(field) is models.ForeignKey:
                             params[field.name] = related_instance
                         else:
                             params[field.name] = [related_instance]

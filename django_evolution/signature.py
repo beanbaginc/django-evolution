@@ -1,8 +1,9 @@
 from django.db.models import get_apps, get_models
-from django.db.models.fields.related import *
+from django.db.models.fields.related import ForeignKey
 from django.conf import global_settings
 from django.contrib.contenttypes import generic
 from django.utils.datastructures import SortedDict
+
 from django_evolution import is_multi_db
 
 if is_multi_db():
@@ -12,16 +13,16 @@ if is_multi_db():
 ATTRIBUTE_DEFAULTS = {
     # Common to all fields
     'primary_key': False,
-    'max_length' : None,
-    'unique' : False,
-    'null' : False,
-    'db_index' : False,
-    'db_column' : None,
-    'db_tablespace' : global_settings.DEFAULT_TABLESPACE,
+    'max_length': None,
+    'unique': False,
+    'null': False,
+    'db_index': False,
+    'db_column': None,
+    'db_tablespace': global_settings.DEFAULT_TABLESPACE,
     'rel': None,
     # Decimal Field
-    'max_digits' : None,
-    'decimal_places' : None,
+    'max_digits': None,
+    'decimal_places': None,
     # ManyToManyField
     'db_table': None
 }
@@ -35,6 +36,7 @@ ATTRIBUTE_ALIASES = {
     'unique': '_unique'
 }
 
+
 def create_field_sig(field):
     field_sig = {
         'field_type': field.__class__,
@@ -42,8 +44,10 @@ def create_field_sig(field):
 
     for attrib in ATTRIBUTE_DEFAULTS.keys():
         alias = ATTRIBUTE_ALIASES.get(attrib, attrib)
-        if hasattr(field,alias):
-            value = getattr(field,alias)
+
+        if hasattr(field, alias):
+            value = getattr(field, alias)
+
             if isinstance(field, ForeignKey):
                 if attrib == 'db_index':
                     default = True
@@ -51,6 +55,7 @@ def create_field_sig(field):
                     default = ATTRIBUTE_DEFAULTS[attrib]
             else:
                 default = ATTRIBUTE_DEFAULTS[attrib]
+
             # only store non-default values
             if default != value:
                 field_sig[attrib] = value
@@ -62,6 +67,7 @@ def create_field_sig(field):
                                                    rel.to._meta.object_name]))
 
     return field_sig
+
 
 def create_model_sig(model):
     model_sig = {
@@ -81,6 +87,7 @@ def create_model_sig(model):
 
     return model_sig
 
+
 def create_app_sig(app, database):
     """
     Creates a dictionary representation of the models in a given app.
@@ -95,6 +102,7 @@ def create_app_sig(app, database):
             app_sig[model._meta.object_name] = create_model_sig(model)
 
     return app_sig
+
 
 def create_project_sig(database):
     """

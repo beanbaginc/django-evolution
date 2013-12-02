@@ -1,14 +1,9 @@
 from django.db import models
-from django.db.models.fields.related import *
 
 from django_evolution import EvolutionException
-from django_evolution.mutations import DeleteField, AddField, DeleteModel, ChangeField
+from django_evolution.mutations import (DeleteField, AddField, DeleteModel,
+                                        ChangeField)
 from django_evolution.signature import ATTRIBUTE_DEFAULTS
-
-try:
-    set
-except ImportError:
-    from sets import Set as set #Python 2.3 Fallback
 
 
 class NullFieldInitialCallback(object):
@@ -127,9 +122,12 @@ class Diff(object):
                     properties.update(new_field_data.keys())
 
                     for prop in properties:
-                        old_value = old_field_data.get(prop,
+                        old_value = old_field_data.get(
+                            prop,
                             ATTRIBUTE_DEFAULTS.get(prop, None))
-                        new_value = new_field_data.get(prop,
+
+                        new_value = new_field_data.get(
+                            prop,
                             ATTRIBUTE_DEFAULTS.get(prop, None))
 
                         if old_value != new_value:
@@ -146,7 +144,7 @@ class Diff(object):
                                 {}).setdefault('changed',
                                 {}).setdefault(model_name,
                                 {}).setdefault('changed',
-                                {}).setdefault(field_name,[]).append(prop)
+                                {}).setdefault(field_name, []).append(prop)
 
                 # Look for added fields
                 new_fields = new_model_sig['fields']
@@ -185,20 +183,26 @@ class Diff(object):
                 lines.append('The model %s.%s has been deleted'
                              % (app_label, model_name))
 
-            for model_name, change in app_changes.get('changed', {}).items():
+            app_changed = app_changes.get('changed', {})
+
+            for model_name, change in app_changed.iteritems():
                 lines.append('In model %s.%s:' % (app_label, model_name))
 
-                for field_name in change.get('added',[]):
+                for field_name in change.get('added', []):
                     lines.append("    Field '%s' has been added" % field_name)
 
-                for field_name in change.get('deleted',[]):
-                    lines.append("    Field '%s' has been deleted" % field_name)
+                for field_name in change.get('deleted', []):
+                    lines.append("    Field '%s' has been deleted"
+                                 % field_name)
 
-                for field_name,field_change in change.get('changed',{}).items():
+                changed = change.get('changed', {})
+
+                for field_name, field_change in changed.iteritems():
                     lines.append("    In field '%s':" % field_name)
 
                     for prop in field_change:
-                        lines.append("        Property '%s' has changed" % prop)
+                        lines.append("        Property '%s' has changed"
+                                     % prop)
 
         return '\n'.join(lines)
 
@@ -208,14 +212,20 @@ class Diff(object):
 
         for app_label, app_changes in self.changed.items():
             for model_name, change in app_changes.get('changed', {}).items():
-                for field_name in change.get('added',{}):
-                    field_sig = self.current_sig[app_label][model_name]['fields'][field_name]
-                    add_params = [(key,field_sig[key])
-                                    for key in field_sig.keys()
-                                    if key in ATTRIBUTE_DEFAULTS.keys()]
-                    add_params.append(('field_type', field_sig['field_type']))
+                model_sig = self.current_sig[app_label][model_name]
 
-                    if (field_sig['field_type'] != models.ManyToManyField and
+                for field_name in change.get('added', {}):
+                    field_sig = model_sig['fields'][field_name]
+                    field_type = field_sig['field_type']
+
+                    add_params = [
+                        (key, field_sig[key])
+                        for key in field_sig.keys()
+                        if key in ATTRIBUTE_DEFAULTS.keys()
+                    ]
+                    add_params.append(('field_type', field_type))
+
+                    if (field_type is not models.ManyToManyField and
                         not field_sig.get('null', ATTRIBUTE_DEFAULTS['null'])):
                         add_params.append(
                             ('initial',
@@ -226,16 +236,18 @@ class Diff(object):
                         add_params.append(('related_model',
                                            '%s' % field_sig['related_model']))
 
-                    mutations.setdefault(app_label,[]).append(
+                    mutations.setdefault(app_label, []).append(
                         AddField(model_name, field_name, **dict(add_params)))
 
-                for field_name in change.get('deleted',[]):
-                    mutations.setdefault(app_label,[]).append(
+                for field_name in change.get('deleted', []):
+                    mutations.setdefault(app_label, []).append(
                         DeleteField(model_name, field_name))
 
-                for field_name,field_change in change.get('changed',{}).items():
+                changed = change.get('changed', {})
+
+                for field_name, field_change in changed.iteritems():
                     changed_attrs = {}
-                    current_field_sig = self.current_sig[app_label][model_name]['fields'][field_name]
+                    current_field_sig = model_sig['fields'][field_name]
 
                     for prop in field_change:
                         if prop == 'related_model':
@@ -245,19 +257,20 @@ class Diff(object):
                                 current_field_sig.get(prop,
                                                       ATTRIBUTE_DEFAULTS[prop])
 
-                    if (changed_attrs.has_key('null') and
+                    if ('null' in changed_attrs and
                         current_field_sig['field_type'] !=
                             models.ManyToManyField and
                         not current_field_sig.get('null',
                                                   ATTRIBUTE_DEFAULTS['null'])):
                         changed_attrs['initial'] = \
-                            get_initial_value(app_label, model_name, field_name)
+                            get_initial_value(app_label, model_name,
+                                              field_name)
 
-                    mutations.setdefault(app_label,[]).append(
+                    mutations.setdefault(app_label, []).append(
                         ChangeField(model_name, field_name, **changed_attrs))
 
-            for model_name in app_changes.get('deleted',{}):
-                mutations.setdefault(app_label,[]).append(
+            for model_name in app_changes.get('deleted', {}):
+                mutations.setdefault(app_label, []).append(
                     DeleteModel(model_name))
 
         return mutations

@@ -1,11 +1,9 @@
 from optparse import make_option
-import sys
 try:
     import cPickle as pickle
 except ImportError:
     import pickle as pickle
 
-from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import BaseCommand, CommandError
 from django.db.models import get_apps, get_app
@@ -19,10 +17,12 @@ from django_evolution.mutations import AddField, DeleteApplication
 from django_evolution.signature import create_project_sig
 from django_evolution.utils import write_sql, execute_sql
 
+
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
         make_option(
-            '--noinput', action='store_false', dest='interactive', default=True,
+            '--noinput', action='store_false', dest='interactive',
+            default=True,
             help='Tells Django to NOT prompt the user for input of any kind.'),
         make_option(
             '--hint', action='store_true', dest='hint', default=False,
@@ -45,8 +45,9 @@ class Command(BaseCommand):
 
     if '--verbosity' not in [opt.get_opt_string()
                              for opt in BaseCommand.option_list]:
-        option_list += make_option('-v', '--verbosity', action='store',
-                                   dest='verbosity', default='1',
+        option_list += make_option(
+            '-v', '--verbosity', action='store',
+            dest='verbosity', default='1',
             type='choice', choices=['0', '1', '2'],
             help='Verbosity level; 0=minimal output, 1=normal output, '
                  '2=all output'),
@@ -142,7 +143,8 @@ class Command(BaseCommand):
                         # Now run the simulation, which will modify the
                         # signatures
                         try:
-                            mutation.simulate(app_label, database_sig, database)
+                            mutation.simulate(app_label, database_sig,
+                                              database)
                         except CannotSimulate:
                             simulated = False
 
@@ -207,19 +209,20 @@ class Command(BaseCommand):
                     print self.style.ERROR(
                         'Your models contain changes that Django Evolution '
                         'cannot resolve automatically.')
-                    print 'This is probably due to a currently unimplemented ' \
-                          'mutation type.'
-                    print 'You will need to manually construct a mutation ' \
-                          'to resolve the remaining changes.'
+                    print ('This is probably due to a currently unimplemented '
+                           'mutation type.')
+                    print ('You will need to manually construct a mutation '
+                           'to resolve the remaining changes.')
                 else:
                     print self.style.ERROR(
                         'The stored evolutions do not completely resolve '
                         'all model changes.')
-                    print 'Run `./manage.py evolve --hint` to see a ' \
-                          'suggestion for the changes required.'
+                    print ('Run `./manage.py evolve --hint` to see a '
+                           'suggestion for the changes required.')
+
                 print
-                print 'The following are the changes that could ' \
-                      'not be resolved:'
+                print ('The following are the changes that could '
+                       'not be resolved:')
                 print diff
 
                 raise CommandError('Your models contain changes that Django '
@@ -320,8 +323,8 @@ Type 'yes' to continue, or 'no' to cancel: """ % database)
 
         lines = [
             '#----- Evolution for %s' % app_label,
-            'from django_evolution.mutations import %s' %
-                ', '.join(sorted(mutation_types)),
+            'from django_evolution.mutations import %s'
+            % ', '.join(sorted(mutation_types)),
         ]
 
         lines += sorted(imports)

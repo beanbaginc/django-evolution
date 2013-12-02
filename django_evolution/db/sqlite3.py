@@ -1,9 +1,11 @@
 from django.core.management import color
 from django.db import models
 
-from common import BaseEvolutionOperations
+from django_evolution.db.common import BaseEvolutionOperations
+
 
 TEMP_TABLE_NAME = 'TEMP_TABLE'
+
 
 class EvolutionOperations(BaseEvolutionOperations):
     def delete_column(self, model, f):
@@ -38,19 +40,24 @@ class EvolutionOperations(BaseEvolutionOperations):
         else:
             temp_columns = source_columns
 
-        return ['INSERT INTO %s (%s) SELECT %s FROM %s;' %
-                (qn(TEMP_TABLE_NAME), temp_columns, source_columns,
-                 qn(source_table_name))]
+        return [
+            'INSERT INTO %s (%s) SELECT %s FROM %s;' %
+            (qn(TEMP_TABLE_NAME), temp_columns, source_columns,
+             qn(source_table_name))
+        ]
 
     def copy_from_temp_table(self, dest_table_name, field_list):
         qn = self.connection.ops.quote_name
-        params = {
-            'dest_table_name': qn(dest_table_name),
-            'temp_table': qn(TEMP_TABLE_NAME),
-            'column_names': self.column_names(field_list),
-        }
 
-        return ['INSERT INTO %(dest_table_name)s (%(column_names)s) SELECT %(column_names)s FROM %(temp_table)s;' % params]
+        return [
+            'INSERT INTO %(dest_table_name)s (%(column_names)s)'
+            ' SELECT %(column_names)s FROM %(temp_table)s;'
+            % {
+                'dest_table_name': qn(dest_table_name),
+                'temp_table': qn(TEMP_TABLE_NAME),
+                'column_names': self.column_names(field_list),
+            }
+        ]
 
     def column_names(self, field_list):
         qn = self.connection.ops.quote_name
@@ -63,24 +70,25 @@ class EvolutionOperations(BaseEvolutionOperations):
         return ', '.join(columns)
 
     def insert_to_temp_table(self, field, initial):
-        qn = self.connection.ops.quote_name
-
         # At this point, initial can only be None if null=True, otherwise it is
-        # a user callable or the default AddFieldInitialCallback which will shortly raise an exception.
+        # a user callable or the default AddFieldInitialCallback which will
+        # shortly raise an exception.
         if initial is None:
             return []
 
-        params = {
+        qn = self.connection.ops.quote_name
+
+        update_sql = 'UPDATE %(table_name)s SET %(column_name)s = %%s;' % {
             'table_name': qn(TEMP_TABLE_NAME),
             'column_name': qn(field.column),
         }
 
         if callable(initial):
-            params['value'] = initial()
-            return ["UPDATE %(table_name)s SET %(column_name)s = %(value)s;" % params]
+            sql = update_sql % initial()
         else:
-            return [("UPDATE %(table_name)s SET %(column_name)s = %%s;" % params, (initial,))]
+            sql = (update_sql, (initial,))
 
+        return [sql]
 
     def create_temp_table(self, field_list):
         return self.create_table(TEMP_TABLE_NAME, field_list, True, False)
@@ -90,7 +98,7 @@ class EvolutionOperations(BaseEvolutionOperations):
             def __init__(self, table_name, field_list):
                 self.db_table = table_name
                 self.local_fields = field_list
-                self.fields = field_list # Required for Pre QS-RF support
+                self.fields = field_list  # Required for Pre QS-RF support
                 self.db_tablespace = None
                 self.managed = True
                 self.proxy = False
@@ -102,9 +110,12 @@ class EvolutionOperations(BaseEvolutionOperations):
                 self._meta = FakeMeta(table_name, field_list)
 
         style = color.no_style()
-        return self.connection.creation.sql_indexes_for_model(FakeModel(table_name, field_list), style)
 
-    def create_table(self, table_name, field_list, temporary=False, create_index=True):
+        return self.connection.creation.sql_indexes_for_model(
+            FakeModel(table_name, field_list), style)
+
+    def create_table(self, table_name, field_list, temporary=False,
+                     create_index=True):
         qn = self.connection.ops.quote_name
         output = []
 
@@ -142,7 +153,8 @@ class EvolutionOperations(BaseEvolutionOperations):
         output = [''.join(output)]
 
         if create_index:
-            output.extend(self.create_indexes_for_table(table_name, field_list))
+            output.extend(
+                self.create_indexes_for_table(table_name, field_list))
 
         return output
 
@@ -188,21 +200,27 @@ class EvolutionOperations(BaseEvolutionOperations):
         output.extend(self.copy_to_temp_table(table_name, original_fields))
         output.extend(self.insert_to_temp_table(f, initial))
         output.extend(self.delete_table(table_name))
-        output.extend(self.create_table(table_name, new_fields, create_index=False))
+        output.extend(self.create_table(table_name, new_fields,
+                                        create_index=False))
         output.extend(self.copy_from_temp_table(table_name, new_fields))
         output.extend(self.delete_table(TEMP_TABLE_NAME))
         return output
 
     def change_null(self, model, field_name, new_null_attr, initial=None):
-        return self.change_attribute(model, field_name, 'null', new_null_attr, initial)
+        return self.change_attribute(model, field_name, 'null',
+                                     new_null_attr, initial)
 
-    def change_max_length(self, model, field_name, new_max_length, initial=None):
-        return self.change_attribute(model, field_name, 'max_length', new_max_length, initial)
+    def change_max_length(self, model, field_name, new_max_length,
+                          initial=None):
+        return self.change_attribute(model, field_name, 'max_length',
+                                     new_max_length, initial)
 
     def change_unique(self, model, field_name, new_unique_value, initial=None):
-        return self.change_attribute(model, field_name, '_unique', new_unique_value, initial)
+        return self.change_attribute(model, field_name, '_unique',
+                                     new_unique_value, initial)
 
-    def change_attribute(self, model, field_name, attr_name, new_attr_value, initial=None):
+    def change_attribute(self, model, field_name, attr_name, new_attr_value,
+                         initial=None):
         output = []
         opts = model._meta
         table_name = opts.db_table
@@ -215,9 +233,11 @@ class EvolutionOperations(BaseEvolutionOperations):
 
         output.extend(self.create_temp_table(fields))
         output.extend(self.copy_to_temp_table(table_name, fields))
-        output.extend(self.insert_to_temp_table(opts.get_field(field_name), initial))
+        output.extend(self.insert_to_temp_table(opts.get_field(field_name),
+                                                initial))
         output.extend(self.delete_table(table_name))
-        output.extend(self.create_table(table_name, fields, create_index=False))
+        output.extend(self.create_table(table_name, fields,
+                                        create_index=False))
         output.extend(self.copy_from_temp_table(table_name, fields))
         output.extend(self.delete_table(TEMP_TABLE_NAME))
         return output

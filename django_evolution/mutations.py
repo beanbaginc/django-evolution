@@ -1,14 +1,17 @@
 import copy
 
-from django.db.models.fields import *
-from django.db.models.fields.related import *
+from django.db.models.fields import AutoField, FieldDoesNotExist
+from django.db.models.fields.related import (ForeignKey, ManyToManyField,
+                                             RECURSIVE_RELATIONSHIP_CONSTANT)
 from django.db import models
 from django.utils.datastructures import SortedDict
 from django.utils.functional import curry
 
 from django_evolution.signature import ATTRIBUTE_DEFAULTS
-from django_evolution import CannotSimulate, SimulationFailure, EvolutionNotImplementedError, is_multi_db
+from django_evolution import (CannotSimulate, SimulationFailure,
+                              EvolutionNotImplementedError, is_multi_db)
 from django_evolution.db import EvolutionOperationsMulti
+
 
 FK_INTEGER_TYPES = [
     'AutoField', 'PositiveIntegerField', 'PositiveSmallIntegerField'
@@ -238,9 +241,9 @@ class BaseMutation:
     def simulate(self, app_label, proj_sig, target_database=None):
         """
         Performs a simulation of the mutation to be performed. The purpose of
-        the simulate function is to ensure that after all mutations have occured
-        the database will emerge in a state consistent with the currently loaded
-        models file.
+        the simulate function is to ensure that after all mutations have
+        occured the database will emerge in a state consistent with the
+        currently loaded models file.
         """
         raise NotImplementedError()
 
@@ -254,7 +257,7 @@ class BaseMutation:
 class MonoBaseMutation(BaseMutation):
     # introducting model_name at this stage will prevent subclasses to be
     # cross databases
-    def __init__(self, model_name = None):
+    def __init__(self, model_name=None):
         BaseMutation.__init__(self)
         self.model_name = model_name
 
@@ -333,7 +336,7 @@ class DeleteField(MonoBaseMutation):
 
         model_sig['meta']['unique_together'] = tuple(unique_together_list)
 
-        if model_sig['fields'][self.field_name].get('primary_key',False):
+        if model_sig['fields'][self.field_name].get('primary_key', False):
             raise SimulationFailure('Cannot delete a primary key.')
 
         # Simulate the deletion of the field.
@@ -397,8 +400,8 @@ class AddField(MonoBaseMutation):
 
             str_output.append('initial=%s' % repr(value))
 
-        for key,value in self.field_attrs.items():
-            str_output.append("%s=%s" % (key,repr(value)))
+        for key, value in self.field_attrs.iteritems():
+            str_output.append("%s=%s" % (key, repr(value)))
 
         return 'AddField(' + ', '.join(str_output) + ')'
 
@@ -466,8 +469,10 @@ class AddField(MonoBaseMutation):
 
         if hasattr(field, '_get_m2m_column_name'):
             # Django < 1.2
-            field.m2m_column_name = curry(field._get_m2m_column_name, related)
-            field.m2m_reverse_name = curry(field._get_m2m_reverse_name, related)
+            field.m2m_column_name = \
+                curry(field._get_m2m_column_name, related)
+            field.m2m_reverse_name = \
+                curry(field._get_m2m_reverse_name, related)
         else:
             # Django >= 1.2
             field.m2m_column_name = curry(field._get_m2m_attr,
@@ -511,7 +516,7 @@ class RenameField(MonoBaseMutation):
             if self.db_table:
                 field_sig['db_table'] = self.db_table
             else:
-                field_sig.pop('db_table',None)
+                field_sig.pop('db_table', None)
         elif self.db_column:
             field_sig['db_column'] = self.db_column
         else:
@@ -628,7 +633,7 @@ class ChangeField(MonoBaseMutation):
                     if field_attr == 'null':
                         sql_statements.extend(
                             evolver_func(model, self.field_name, attr_value,
-                            self.initial))
+                                         self.initial))
                     elif field_attr == 'db_table':
                         sql_statements.extend(
                             evolver_func(model, old_field_attr, attr_value))

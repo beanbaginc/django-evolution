@@ -1,5 +1,6 @@
 from django_evolution.db import EvolutionOperationsMulti
 
+
 def write_sql(sql, database):
     "Output a list of SQL statements, unrolling parameters as required"
     evolver = EvolutionOperationsMulti(database).get_evolver()

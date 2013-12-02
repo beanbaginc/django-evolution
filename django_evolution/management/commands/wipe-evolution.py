@@ -1,7 +1,7 @@
 from optparse import make_option
 
 from django.core.management.base import BaseCommand, CommandError
-from django.db.models import get_apps, get_app, Q
+from django.db.models import Q
 
 from django_evolution.models import Evolution
 
@@ -14,7 +14,8 @@ class Command(BaseCommand):
     """
     option_list = BaseCommand.option_list + (
         make_option(
-            '--noinput', action='store_false', dest='interactive', default=True,
+            '--noinput', action='store_false', dest='interactive',
+            default=True,
             help='Tells Django to NOT prompt the user for input of any kind.'),
         make_option(
             '--app-label', action='store', dest='app_label',

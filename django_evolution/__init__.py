@@ -46,7 +46,7 @@ __version__ = get_package_version()
 
 
 class EvolutionException(Exception):
-    def __init__(self,msg):
+    def __init__(self, msg):
         self.msg = msg
 
     def __str__(self):

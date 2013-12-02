@@ -1,5 +1,4 @@
 from django.core.management import color
-from django.db.backends.util import truncate_name
 
 from django_evolution.db.common import BaseEvolutionOperations
 
@@ -101,7 +100,8 @@ class EvolutionOperations(BaseEvolutionOperations):
         else:
             return 'ALTER TABLE %s MODIFY COLUMN %s %s NOT NULL;' % params
 
-    def change_max_length(self, model, field_name, new_max_length, initial=None):
+    def change_max_length(self, model, field_name, new_max_length,
+                          initial=None):
         qn = self.connection.ops.quote_name
         opts = model._meta
         f = opts.get_field(field_name)
@@ -112,8 +112,13 @@ class EvolutionOperations(BaseEvolutionOperations):
             'length': f.max_length,
             'type': f.db_type(connection=self.connection)
         }
-        return ['UPDATE %(table)s SET %(column)s=LEFT(%(column)s,%(length)d);' % params,
-                'ALTER TABLE %(table)s MODIFY COLUMN %(column)s %(type)s;' % params]
+        return [
+            'UPDATE %(table)s SET %(column)s=LEFT(%(column)s,%(length)d);'
+            % params,
+
+            'ALTER TABLE %(table)s MODIFY COLUMN %(column)s %(type)s;'
+            % params
+        ]
 
     def drop_index(self, model, f):
         qn = self.connection.ops.quote_name

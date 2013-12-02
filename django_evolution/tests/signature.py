@@ -3,16 +3,20 @@ tests = r"""
 >>> from django.db import models
 >>> from django_evolution import signature
 >>> from django_evolution.diff import Diff
->>> from django_evolution.tests.utils import test_proj_sig, register_models, deregister_models
+>>> from django_evolution.tests.utils import (test_proj_sig, register_models,
+...                                           deregister_models)
 >>> from pprint import pprint
 >>> from django.contrib.contenttypes import generic
 >>> from django.contrib.contenttypes.models import ContentType
 
-# First, a model that has one of everything so we can validate all cases for a signature
+# First, a model that has one of everything so we can validate all cases
+# for a signature
 >>> class Anchor1(models.Model):
 ...     value = models.IntegerField()
+
 >>> class Anchor2(models.Model):
 ...     value = models.IntegerField()
+
 >>> class Anchor3(models.Model):
 ...     value = models.IntegerField()
 ...     # Host a generic key here, too
@@ -49,7 +53,10 @@ tests = r"""
 ...     child_field = models.CharField(max_length=20)
 
 # Store the base signatures
->>> base_cache = register_models(('Anchor1', Anchor1), ('Anchor2', Anchor2), ('Anchor3', Anchor3), ('TestModel', SigModel), ('ParentModel',ParentModel), ('ChildModel',ChildModel))
+>>> base_cache = register_models(
+...     ('Anchor1', Anchor1), ('Anchor2', Anchor2), ('Anchor3', Anchor3),
+...     ('TestModel', SigModel), ('ParentModel', ParentModel),
+...     ('ChildModel', ChildModel))
 
 # You can create a model signature for a model
 >>> pprint(signature.create_model_sig(SigModel))

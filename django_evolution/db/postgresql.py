@@ -1,7 +1,6 @@
-from django.core.management import color
 from django.db.backends.util import truncate_name
 
-from common import BaseEvolutionOperations
+from django_evolution.db.common import BaseEvolutionOperations
 
 
 class EvolutionOperations(BaseEvolutionOperations):
@@ -10,10 +9,8 @@ class EvolutionOperations(BaseEvolutionOperations):
             # No Operation
             return []
 
-        style = color.no_style()
         qn = self.connection.ops.quote_name
         max_name_length = self.connection.ops.max_name_length()
-        creation = self.connection.creation
         sql = []
         refs = {}
         models = []

@@ -16,7 +16,7 @@ def get_evolution_sequence(app):
         return BUILTIN_SEQUENCES[app_name]
 
     try:
-        evolution_module = __import__(app_name + '.evolutions',{},{},[''])
+        evolution_module = __import__(app_name + '.evolutions', {}, {}, [''])
         return evolution_module.SEQUENCE
     except:
         return []
@@ -70,11 +70,9 @@ def get_mutations(app, evolution_labels, database):
 
         for filename in filenames:
             if os.path.exists(filename):
-                sql = []
-                sql_file = open(filename)
-
-                for line in sql_file:
-                    sql.append(line)
+                sql_file = open(filename, 'r')
+                sql = sql_file.readlines()
+                sql_file.close()
 
                 mutations.append(SQLMutation(label, sql))
 
@@ -85,7 +83,7 @@ def get_mutations(app, evolution_labels, database):
             try:
                 module_name = [evolution_module.__name__, label]
                 module = __import__('.'.join(module_name),
-                                    {}, {}, [module_name]);
+                                    {}, {}, [module_name])
                 mutations.extend(module.MUTATIONS)
             except ImportError:
                 raise EvolutionException(

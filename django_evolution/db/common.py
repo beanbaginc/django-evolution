@@ -1,20 +1,21 @@
+import copy
+
 import django
 from django.core.management import color
 from django.db import connection as default_connection
 from django.db.backends.util import truncate_name
-import copy
 
 
 class BaseEvolutionOperations(object):
     connection = None
 
-    def __init__(self, connection = default_connection):
+    def __init__(self, connection=default_connection):
         self.connection = connection
-        
+
     def quote_sql_param(self, param):
         "Add protective quoting around an SQL string parameter"
         if isinstance(param, basestring):
-            return u"'%s'" % unicode(param).replace(u"'",ur"\'")
+            return u"'%s'" % unicode(param).replace(u"'", ur"\'")
         else:
             return param
 
@@ -30,7 +31,6 @@ class BaseEvolutionOperations(object):
             return []
 
         style = color.no_style()
-        qn = self.connection.ops.quote_name
         max_name_length = self.connection.ops.max_name_length()
         creation = self.connection.creation
 
@@ -54,8 +54,9 @@ class BaseEvolutionOperations(object):
         remove_refs = refs.copy()
 
         for relto in models:
-            sql.extend(creation.sql_remove_table_constraints(relto, remove_refs,
-                                                             style))
+            sql.extend(creation.sql_remove_table_constraints(
+                relto, remove_refs, style))
+
         sql.extend(self.get_rename_table_sql(
             model, old_db_tablename, db_tablename))
 
@@ -110,14 +111,20 @@ class BaseEvolutionOperations(object):
 
         if f.rel:
             # it is a foreign key field
-            # NOT NULL REFERENCES "django_evolution_addbasemodel" ("id") DEFERRABLE INITIALLY DEFERRED
-            # ALTER TABLE <tablename> ADD COLUMN <column name> NULL REFERENCES <tablename1> ("<colname>") DEFERRABLE INITIALLY DEFERRED
+            # NOT NULL REFERENCES "django_evolution_addbasemodel"
+            # ("id") DEFERRABLE INITIALLY DEFERRED
+
+            # ALTER TABLE <tablename> ADD COLUMN <column name> NULL
+            # REFERENCES <tablename1> ("<colname>") DEFERRABLE INITIALLY
+            # DEFERRED
             related_model = f.rel.to
             related_table = related_model._meta.db_table
             related_pk_col = related_model._meta.pk.name
             constraints = ['%sNULL' % (not f.null and 'NOT ' or '')]
+
             if f.unique or f.primary_key:
                 constraints.append('UNIQUE')
+
             params = (qn(model._meta.db_table),
                       qn(f.column),
                       f.db_type(connection=self.connection),
@@ -125,16 +132,21 @@ class BaseEvolutionOperations(object):
                       qn(related_table),
                       qn(related_pk_col),
                       self.connection.ops.deferrable_sql())
-            output = ['ALTER TABLE %s ADD COLUMN %s %s %s REFERENCES %s (%s) %s;' % params]
+            output = [
+                'ALTER TABLE %s ADD COLUMN %s %s %s REFERENCES %s (%s) %s;'
+                % params
+            ]
         else:
             null_constraints = '%sNULL' % (not f.null and 'NOT ' or '')
+
             if f.unique or f.primary_key:
                 unique_constraints = 'UNIQUE'
             else:
                 unique_constraints = ''
 
-            # At this point, initial can only be None if null=True, otherwise it is
-            # a user callable or the default AddFieldInitialCallback which will shortly raise an exception.
+            # At this point, initial can only be None if null=True,
+            # otherwise it is a user callable or the default
+            # AddFieldInitialCallback which will shortly raise an exception.
             if initial is not None:
                 if callable(initial):
                     params = (qn(model._meta.db_table), qn(f.column),
@@ -149,30 +161,35 @@ class BaseEvolutionOperations(object):
                     params = (qn(model._meta.db_table), qn(f.column),
                               f.db_type(connection=self.connection),
                               unique_constraints)
-                    output = [('ALTER TABLE %s ADD COLUMN %s %s %s DEFAULT %%s;'
-                               % params, (initial,))]
+                    output = [
+                        ('ALTER TABLE %s ADD COLUMN %s %s %s DEFAULT %%s;'
+                         % params,
+                         (initial,))
+                    ]
 
-                    # Django doesn't generate default columns, so now that we've
-                    # added one to get default values for existing tables, drop
-                    # that default.
+                    # Django doesn't generate default columns, so now that
+                    # we've added one to get default values for existing
+                    # tables, drop that default.
                     params = (qn(model._meta.db_table), qn(f.column))
-                    output.append('ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT;'
-                                  % params)
+                    output.append(
+                        'ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT;'
+                        % params)
 
                 if not f.null:
                     # Only put this sql statement if the column cannot be null.
                     output.append(self.set_field_null(model, f, f.null))
             else:
-                params = (qn(model._meta.db_table),
-                qn(f.column),
+                params = (qn(model._meta.db_table), qn(f.column),
                           f.db_type(connection=self.connection),
                           ' '.join([null_constraints, unique_constraints]))
                 output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
+
         return output
 
     def set_field_null(self, model, f, null):
         qn = self.connection.ops.quote_name
         params = (qn(model._meta.db_table), qn(f.column),)
+
         if null:
             return 'ALTER TABLE %s ALTER COLUMN %s DROP NOT NULL;' % params
         else:
@@ -206,25 +223,37 @@ class BaseEvolutionOperations(object):
         opts = model._meta
         f = opts.get_field(field_name)
         output = []
+
         if new_null_attr:
             # Setting null to True
             opts = model._meta
-            params = (qn(opts.db_table), qn(f.column),)
             output.append(self.set_field_null(model, f, new_null_attr))
         else:
             if initial is not None:
                 output = []
+
+                sql_prefix = (
+                    'UPDATE %(table_name)s SET %(column_name)s = %%s'
+                    ' WHERE %(column_name)s IS NULL;'
+                    % {
+                        'table_name': qn(opts.db_table),
+                        'column_name': qn(f.column),
+                    }
+                )
+
                 if callable(initial):
-                    params = (qn(opts.db_table), qn(f.column), initial(), qn(f.column))
-                    output.append('UPDATE %s SET %s = %s WHERE %s IS NULL;' % params)
+                    sql = sql_prefix % initial()
                 else:
-                    params = (qn(opts.db_table), qn(f.column), qn(f.column))
-                    output.append(('UPDATE %s SET %s = %%s WHERE %s IS NULL;' % params, (initial,)))
+                    sql = (sql_prefix, (initial,))
+
+                output.append(sql)
+
             output.append(self.set_field_null(model, f, new_null_attr))
 
         return output
 
-    def change_max_length(self, model, field_name, new_max_length, initial=None):
+    def change_max_length(self, model, field_name, new_max_length,
+                          initial=None):
         qn = self.connection.ops.quote_name
         opts = model._meta
         f = opts.get_field(field_name)
@@ -232,13 +261,16 @@ class BaseEvolutionOperations(object):
         db_type = f.db_type(connection=self.connection)
         params = (qn(opts.db_table), qn(f.column),
                   db_type, qn(f.column), db_type)
-        return ['ALTER TABLE %s ALTER COLUMN %s TYPE %s USING CAST(%s as %s);' % params]
+
+        return ['ALTER TABLE %s ALTER COLUMN %s TYPE %s USING CAST(%s as %s);'
+                % params]
 
     def change_db_column(self, model, field_name, new_db_column, initial=None):
         opts = model._meta
         old_field = opts.get_field(field_name)
         new_field = copy.copy(old_field)
         new_field.column = new_db_column
+
         return self.rename_column(opts, old_field, new_field)
 
     def change_db_table(self, model, old_db_tablename, new_db_tablename):
@@ -247,6 +279,7 @@ class BaseEvolutionOperations(object):
     def change_db_index(self, model, field_name, new_db_index, initial=None):
         f = model._meta.get_field(field_name)
         f.db_index = new_db_index
+
         if new_db_index:
             return self.create_index(model, f)
         else:
@@ -256,8 +289,9 @@ class BaseEvolutionOperations(object):
         qn = self.connection.ops.quote_name
         opts = model._meta
         f = opts.get_field(field_name)
-        constraint_name = truncate_name('%s_%s_key' % (opts.db_table, f.column),
-                                        self.connection.ops.max_name_length())
+        constraint_name = truncate_name(
+            '%s_%s_key' % (opts.db_table, f.column),
+            self.connection.ops.max_name_length())
 
         if new_unique_value:
             params = (qn(opts.db_table), constraint_name, qn(f.column),)
