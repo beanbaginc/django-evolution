@@ -18,6 +18,12 @@ class BaseEvolutionOperations(object):
         else:
             return param
 
+    def get_rename_table_sql(self, model, old_db_tablename, db_tablename):
+        qn = self.connection.ops.quote_name
+
+        return ['ALTER TABLE %s RENAME TO %s;'
+                % (qn(old_db_tablename), qn(db_tablename))]
+
     def rename_table(self, model, old_db_tablename, db_tablename):
         if old_db_tablename == db_tablename:
             # No Operation
@@ -50,8 +56,8 @@ class BaseEvolutionOperations(object):
         for relto in models:
             sql.extend(creation.sql_remove_table_constraints(relto, remove_refs,
                                                              style))
-        params = (qn(old_db_tablename), qn(db_tablename))
-        sql.append('ALTER TABLE %s RENAME TO %s;' % params)
+        sql.extend(self.get_rename_table_sql(
+            model, old_db_tablename, db_tablename))
 
         for relto in models:
             for rel_class, f in refs[relto]:
@@ -67,9 +73,9 @@ class BaseEvolutionOperations(object):
 
     def delete_column(self, model, f):
         qn = self.connection.ops.quote_name
-        params = (qn(model._meta.db_table), qn(f.column))
 
-        return ['ALTER TABLE %s DROP COLUMN %s CASCADE;' % params]
+        return ['ALTER TABLE %s DROP COLUMN %s CASCADE;'
+                % (qn(model._meta.db_table), qn(f.column))]
 
     def delete_table(self, table_name):
         qn = self.connection.ops.quote_name
@@ -85,7 +91,9 @@ class BaseEvolutionOperations(object):
 
             sql, references = creation.sql_create_model(f.rel.through, style)
 
-            for refto, refs in references.items():
+            # Sort the list, in order to create consistency in the order of
+            # ALTER TABLEs. This is primarily needed for unit tests.
+            for refto, refs in sorted(references.items()):
                 pending_references.setdefault(refto, []).extend(refs)
                 sql.extend(creation.sql_for_pending_references(
                     refto, style, pending_references))
@@ -166,7 +174,7 @@ class BaseEvolutionOperations(object):
         qn = self.connection.ops.quote_name
         params = (qn(model._meta.db_table), qn(f.column),)
         if null:
-           return 'ALTER TABLE %s ALTER COLUMN %s DROP NOT NULL;' % params
+            return 'ALTER TABLE %s ALTER COLUMN %s DROP NOT NULL;' % params
         else:
             return 'ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;' % params
 
@@ -255,3 +263,52 @@ class BaseEvolutionOperations(object):
         else:
             params = (qn(opts.db_table), constraint_name,)
             return ['ALTER TABLE %s DROP CONSTRAINT %s;' % params]
+
+    def remove_field_constraints(self, field, opts, models, refs):
+        sql = []
+
+        if field.primary_key:
+            creation = self.connection.creation
+            style = color.no_style()
+
+            for f in opts.local_many_to_many:
+                if f.rel and f.rel.through:
+                    through = f.rel.through
+
+                    for m2m_f in through._meta.local_fields:
+                        if (m2m_f.rel and
+                            m2m_f.rel.to._meta.db_table == opts.db_table and
+                            m2m_f.rel.field_name == field.column):
+
+                            models.append(m2m_f.rel.to)
+                            refs.setdefault(m2m_f.rel.to, []).append(
+                                (through, m2m_f))
+
+            remove_refs = refs.copy()
+            style = color.no_style()
+
+            for relto in models:
+                sql.extend(creation.sql_remove_table_constraints(
+                    relto, remove_refs, style))
+
+        return sql
+
+    def add_primary_key_field_constraints(self, old_field, new_field, models,
+                                          refs):
+        sql = []
+
+        if old_field.primary_key:
+            creation = self.connection.creation
+            style = color.no_style()
+
+            for relto in models:
+                for rel_class, f in refs[relto]:
+                    f.rel.field_name = new_field.column
+
+                del relto._meta._fields[old_field.name]
+                relto._meta._fields[new_field.name] = new_field
+
+                sql.extend(creation.sql_for_pending_references(
+                    relto, style, refs))
+
+        return sql

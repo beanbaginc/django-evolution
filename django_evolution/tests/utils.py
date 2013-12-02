@@ -1,15 +1,19 @@
+import copy
+import logging
 from datetime import datetime
+
 from django.core.management import sql
 from django.core.management.color import no_style
 from django.db import connection, transaction, settings, models
 from django.db.backends.util import truncate_name
 from django.db.models.loading import cache
+from django.db.models.options import Options
 from django.utils.datastructures import SortedDict
 from django.utils.functional import curry
+
 from django_evolution import signature, is_multi_db
 from django_evolution.tests import models as evo_test
 from django_evolution.utils import write_sql, execute_sql
-import copy
 
 if is_multi_db():
     from django.db import connections
@@ -23,6 +27,14 @@ DEFAULT_TEST_ATTRIBUTE_VALUES = {
     models.DateTimeField: datetime.now(),
     models.PositiveIntegerField: '42'
 }
+
+
+# This is not a great check, but it's from the same version as auto-created
+# tables (Django 1.2), so we use it.
+digest_index_names = hasattr(Options({}), 'auto_created')
+
+
+digest = connection.creation._digest
 
 
 def wrap_sql_func(func, evo_test, style, db_name=None):
@@ -366,3 +378,16 @@ def add_app_test_model(model, app_label):
     key = model._meta.object_name.lower()
     cache.app_models.setdefault(app_label, SortedDict())[key] = model
     clear_models_cache()
+
+
+def generate_index_name(table, col_name, field_name=None):
+    if digest_index_names:
+        column = digest(col_name)
+    else:
+        column = col_name
+
+    return '%s_%s' % (table, column)
+
+
+def generate_constraint_name(r_col, col, r_table, table):
+    return '%s_refs_%s_%s' % (r_col, col, digest(r_table, table))

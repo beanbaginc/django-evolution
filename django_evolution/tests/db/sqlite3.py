@@ -1,19 +1,9 @@
-from django.db import connection
 from django.db.models.options import Options
+
+from django_evolution.tests.utils import generate_index_name
 
 
 autocreate_through_tables = hasattr(Options({}), 'auto_created')
-
-# This is not a great check, but it's from the same version as auto-created
-# tables (Django 1.2), so we use it.
-digest_index_names = hasattr(Options({}), 'auto_created')
-
-
-def generate_index_name(table, column):
-    if digest_index_names:
-        column = connection.creation._digest(column)
-
-    return '%s_%s' % (table, column)
 
 
 add_field = {
@@ -152,7 +142,8 @@ add_field = {
             'INSERT INTO "tests_testmodel" ("int_field", "id", "char_field", "added_field_id") SELECT "int_field", "id", "char_field", "added_field_id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
             'CREATE INDEX "%s" ON "tests_testmodel" ("added_field_id");'
-            % generate_index_name('tests_testmodel', 'added_field_id'),
+            % generate_index_name('tests_testmodel', 'added_field_id',
+                                  'added_field'),
         ]),
 }
 
@@ -232,7 +223,8 @@ delete_field = {
             'DROP TABLE "tests_testmodel";',
             'CREATE TABLE "tests_testmodel"("non-default_db_column" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "fk_field1_id" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL UNIQUE PRIMARY KEY);',
             'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field1_id");'
-            % generate_index_name('tests_testmodel', 'fk_field1_id'),
+            % generate_index_name('tests_testmodel', 'fk_field1_id',
+                                  'fk_field1'),
             'INSERT INTO "tests_testmodel" ("non-default_db_column", "int_field3", "fk_field1_id", "char_field", "my_id") SELECT "non-default_db_column", "int_field3", "fk_field1_id", "char_field", "my_id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
@@ -243,7 +235,8 @@ delete_field = {
             'DROP TABLE "tests_testmodel";',
             'CREATE TABLE "tests_testmodel"("int_field" integer NOT NULL, "int_field3" integer NOT NULL UNIQUE, "fk_field1_id" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL UNIQUE PRIMARY KEY);',
             'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field1_id");'
-            % generate_index_name('tests_testmodel', 'fk_field1_id'),
+            % generate_index_name('tests_testmodel', 'fk_field1_id',
+                                  'fk_field1'),
             'INSERT INTO "tests_testmodel" ("int_field", "int_field3", "fk_field1_id", "char_field", "my_id") SELECT "int_field", "int_field3", "fk_field1_id", "char_field", "my_id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
@@ -254,7 +247,8 @@ delete_field = {
             'DROP TABLE "tests_testmodel";',
             'CREATE TABLE "tests_testmodel"("int_field" integer NOT NULL, "non-default_db_column" integer NOT NULL, "fk_field1_id" integer NOT NULL, "char_field" varchar(20) NOT NULL, "my_id" integer NOT NULL UNIQUE PRIMARY KEY);',
             'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field1_id");'
-            % generate_index_name('tests_testmodel', 'fk_field1_id'),
+            % generate_index_name('tests_testmodel', 'fk_field1_id',
+                                  'fk_field1'),
             'INSERT INTO "tests_testmodel" ("int_field", "non-default_db_column", "fk_field1_id", "char_field", "my_id") SELECT "int_field", "non-default_db_column", "fk_field1_id", "char_field", "my_id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
@@ -611,9 +605,10 @@ rename_field = {
             'DROP TABLE "tests_testmodel";',
             'CREATE TABLE "tests_testmodel"("renamed_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "custom_db_col_name" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
             'CREATE INDEX "%s" ON "tests_testmodel" ("custom_db_col_name_indexed");'
-            % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed'),
+            % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed',
+                                  'int_field_named_indexed'),
             'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
-            % generate_index_name('tests_testmodel', 'fk_field_id'),
+            % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
             'INSERT INTO "tests_testmodel" ("renamed_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "id") SELECT "renamed_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
@@ -624,9 +619,10 @@ rename_field = {
             'DROP TABLE "tests_testmodel";',
             'CREATE TABLE "tests_testmodel"("renamed_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "custom_db_col_name" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
             'CREATE INDEX "%s" ON "tests_testmodel" ("custom_db_col_name_indexed");'
-            % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed'),
+            % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed',
+                                  'int_field_named_indexed'),
             'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
-            % generate_index_name('tests_testmodel', 'fk_field_id'),
+            % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
             'INSERT INTO "tests_testmodel" ("renamed_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "id") SELECT "renamed_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
@@ -637,9 +633,10 @@ rename_field = {
             'DROP TABLE "tests_testmodel";',
             'CREATE TABLE "tests_testmodel"("int_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "custom_db_col_name" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "my_pk_id" integer NOT NULL UNIQUE PRIMARY KEY);',
             'CREATE INDEX "%s" ON "tests_testmodel" ("custom_db_col_name_indexed");'
-            % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed'),
+            % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed',
+                                  'int_field_named_indexed'),
             'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
-            % generate_index_name('tests_testmodel', 'fk_field_id'),
+            % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
             'INSERT INTO "tests_testmodel" ("int_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "my_pk_id") SELECT "int_field", "char_field", "custom_db_col_name", "custom_db_col_name_indexed", "fk_field_id", "my_pk_id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
@@ -663,9 +660,10 @@ rename_field = {
             'DROP TABLE "tests_testmodel";',
             'CREATE TABLE "tests_testmodel"("renamed_field" integer NOT NULL, "char_field" varchar(20) NOT NULL, "int_field" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
             'CREATE INDEX "%s" ON "tests_testmodel" ("custom_db_col_name_indexed");'
-            % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed'),
+            % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed',
+                                  'int_field_named_indexed'),
             'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
-            % generate_index_name('tests_testmodel', 'fk_field_id'),
+            % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
             'INSERT INTO "tests_testmodel" ("renamed_field", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id") SELECT "renamed_field", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
@@ -676,9 +674,10 @@ rename_field = {
             'DROP TABLE "tests_testmodel";',
             'CREATE TABLE "tests_testmodel"("non-default_column_name" integer NOT NULL, "char_field" varchar(20) NOT NULL, "int_field" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
             'CREATE INDEX "%s" ON "tests_testmodel" ("custom_db_col_name_indexed");'
-            % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed'),
+            % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed',
+                                  'int_field_named_indexed'),
             'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
-            % generate_index_name('tests_testmodel', 'fk_field_id'),
+            % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
             'INSERT INTO "tests_testmodel" ("non-default_column_name", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id") SELECT "non-default_column_name", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
@@ -689,9 +688,10 @@ rename_field = {
             'DROP TABLE "tests_testmodel";',
             'CREATE TABLE "tests_testmodel"("non-default_column_name2" integer NOT NULL, "char_field" varchar(20) NOT NULL, "int_field" integer NOT NULL, "custom_db_col_name_indexed" integer NOT NULL, "fk_field_id" integer NOT NULL, "id" integer NOT NULL UNIQUE PRIMARY KEY);',
             'CREATE INDEX "%s" ON "tests_testmodel" ("custom_db_col_name_indexed");'
-            % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed'),
+            % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed',
+                                  'int_field_named_indexed'),
             'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
-            % generate_index_name('tests_testmodel', 'fk_field_id'),
+            % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
             'INSERT INTO "tests_testmodel" ("non-default_column_name2", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id") SELECT "non-default_column_name2", "char_field", "int_field", "custom_db_col_name_indexed", "fk_field_id", "id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ]),
@@ -740,7 +740,8 @@ generics = {
             'CREATE INDEX "%s" ON "tests_testmodel" ("object_id");'
             % generate_index_name('tests_testmodel', 'object_id'),
             'CREATE INDEX "%s" ON "tests_testmodel" ("content_type_id");'
-            % generate_index_name('tests_testmodel', 'content_type_id'),
+            % generate_index_name('tests_testmodel', 'content_type_id',
+                                  'content_type'),
             'INSERT INTO "tests_testmodel" ("object_id", "int_field", "id", "content_type_id") SELECT "object_id", "int_field", "id", "content_type_id" FROM "TEMP_TABLE";',
             'DROP TABLE "TEMP_TABLE";',
         ])

@@ -1,44 +1,96 @@
 from django.core.management import color
+from django.db.backends.util import truncate_name
 
-from common import BaseEvolutionOperations
+from django_evolution.db.common import BaseEvolutionOperations
+
 
 class EvolutionOperations(BaseEvolutionOperations):
-    def rename_column(self, opts, old_field, f):
-        if old_field.column == f.column:
+    def delete_column(self, model, f):
+        sql = []
+
+        if f.rel:
+            creation = self.connection.creation
+            style = color.no_style()
+
+            sql.extend(creation.sql_remove_table_constraints(
+                f.rel.to,
+                {f.rel.to: [(model, f)]},
+                style))
+
+        return sql + super(EvolutionOperations, self).delete_column(model, f)
+
+    def rename_column(self, opts, old_field, new_field):
+        if old_field.column == new_field.column:
             # No Operation
             return []
 
-        qn = self.connection.ops.quote_name
-        style = color.no_style()
+        col_type = new_field.db_type(connection=self.connection)
 
-        ###
-        col_type = f.db_type(connection=self.connection)
-        tablespace = f.db_tablespace or opts.db_tablespace
         if col_type is None:
             # Skip ManyToManyFields, because they're not represented as
             # database columns in this table.
             return []
+
+        sql = []
+        models = []
+        refs = {}
+
+        sql.extend(self.remove_field_constraints(
+            old_field, opts, models, refs))
+        sql.extend(self.get_rename_column_sql(opts, old_field, new_field))
+        sql.extend(self.add_primary_key_field_constraints(
+            old_field, new_field, models, refs))
+
+        return sql
+
+    def get_rename_column_sql(self, opts, old_field, new_field):
+        qn = self.connection.ops.quote_name
+        style = color.no_style()
+        col_type = new_field.db_type(connection=self.connection)
+        tablespace = new_field.db_tablespace or opts.db_tablespace
+
         # Make the definition (e.g. 'foo VARCHAR(30)') for this field.
-        field_output = [style.SQL_FIELD(qn(f.column)),
-            style.SQL_COLTYPE(col_type)]
-        field_output.append(style.SQL_KEYWORD('%sNULL' % (not f.null and 'NOT ' or '')))
-        if f.primary_key:
+        field_output = [
+            style.SQL_FIELD(qn(new_field.column)),
+            style.SQL_COLTYPE(col_type),
+            style.SQL_KEYWORD('%sNULL' %
+                              (not new_field.null and 'NOT ' or '')),
+        ]
+
+        if new_field.primary_key:
             field_output.append(style.SQL_KEYWORD('PRIMARY KEY'))
-        if f.unique:
+
+        if new_field.unique:
             field_output.append(style.SQL_KEYWORD('UNIQUE'))
-        if tablespace and self.connection.features.supports_tablespaces and (f.unique or f.primary_key) and self.connection.features.autoindexes_primary_keys:
+
+        if (tablespace and
+            self.connection.features.supports_tablespaces and
+            self.connection.features.autoindexes_primary_keys and
+            (new_field.unique or new_field.primary_key)):
             # We must specify the index tablespace inline, because we
             # won't be generating a CREATE INDEX statement for this field.
-            field_output.append(self.connection.ops.tablespace_sql(tablespace, inline=True))
-        if f.rel:
-            field_output.append(style.SQL_KEYWORD('REFERENCES') + ' ' + \
-                style.SQL_TABLE(qn(f.rel.to._meta.db_table)) + ' (' + \
-                style.SQL_FIELD(qn(f.rel.to._meta.get_field(f.rel.field_name).column)) + ')' +
+            field_output.append(self.connection.ops.tablespace_sql(
+                tablespace, inline=True))
+
+        if new_field.rel:
+            field_output.append(
+                style.SQL_KEYWORD('REFERENCES') + ' ' +
+                style.SQL_TABLE(qn(new_field.rel.to._meta.db_table)) + ' (' +
+                style.SQL_FIELD(qn(new_field.rel.to._meta.get_field(
+                    new_field.rel.field_name).column)) + ')' +
                 self.connection.ops.deferrable_sql()
             )
 
-        params = (qn(opts.db_table), qn(old_field.column), ' '.join(field_output))
-        return ['ALTER TABLE %s CHANGE COLUMN %s %s;' % params]
+        pre_rename_sql = ''
+
+        if old_field.primary_key:
+            pre_rename_sql = 'DROP PRIMARY KEY, '
+
+        return ['ALTER TABLE %s %sCHANGE COLUMN %s %s;'
+                % (qn(opts.db_table),
+                   pre_rename_sql,
+                   qn(old_field.column),
+                   ' '.join(field_output))]
 
     def set_field_null(self, model, f, null):
         qn = self.connection.ops.quote_name
@@ -80,10 +132,8 @@ class EvolutionOperations(BaseEvolutionOperations):
             params = (constraint_name, qn(opts.db_table))
             return ['DROP INDEX %s ON %s;' % params]
 
-    def rename_table(self, model, old_db_tablename, db_tablename):
-        if old_db_tablename == db_tablename:
-            return []
-
+    def get_rename_table_sql(self, model, old_db_tablename, db_tablename):
         qn = self.connection.ops.quote_name
-        params = (qn(old_db_tablename), qn(db_tablename))
-        return ['RENAME TABLE %s TO %s;' % params]
+
+        return ['RENAME TABLE %s TO %s;'
+                % (qn(old_db_tablename), qn(db_tablename))]
