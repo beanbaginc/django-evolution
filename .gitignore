@@ -1,0 +1,8 @@
+.*.swp
+*.pyc
+
+.coverage
+.swp
+django_evolution.egg-info/
+django_evolution_test.db
+tests/test_db_settings.py
