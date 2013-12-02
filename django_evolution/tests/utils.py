@@ -215,7 +215,8 @@ def execute_transaction(sql, output=False, database='default'):
 
         transaction.commit(**using_args)
         transaction.leave_transaction_management(**using_args)
-    except Exception:
+    except Exception, e:
+        logging.error('Error executing SQL %s: %s' % (sql, e))
         transaction.rollback(**using_args)
         raise
 
