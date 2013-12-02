@@ -1,4 +1,5 @@
 import os
+import sys
 
 
 DEBUG = True
@@ -11,15 +12,38 @@ ADMINS = (
 MANAGERS = ADMINS
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': 'django_evolution_test.db',
-    },
+    'default': {},
     'db_multi': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': 'django_evolution_test_multi.db',
     },
 }
+
+TEST_DATABASES = {
+    'sqlite3': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': 'django_evolution_test.db',
+    },
+}
+
+try:
+    from test_db_settings import TEST_DATABASES as NEW_TEST_DATABASES
+
+    TEST_DATABASES.update(NEW_TEST_DATABASES)
+except ImportError:
+    sys.stderr.write('*** Missing test_db_settings.py This is needed for '
+                     'non-sqlite unit tests.\n')
+
+db_choice = os.getenv('DJANGO_EVOLUTION_TEST_DB', 'sqlite3')
+
+if db_choice in TEST_DATABASES:
+    DATABASES['default'] = TEST_DATABASES[db_choice]
+else:
+    sys.stderr.write('*** Requested database type "%s" is not a valid '
+                     'choice.\n'
+                     % db_choice)
+    sys.exit(1)
+
 
 # For testing compatibility on Django 1.1.
 DATABASE_ENGINE = 'sqlite3'

@@ -1,0 +1,40 @@
+# Fill these in with your MySQL server information
+mysql_host = ''
+mysql_username = ''
+mysql_password = ''
+
+# Fill these in with your PostgreSQL server information
+postgres_host = ''
+postgres_username = ''
+postgres_password = ''
+
+
+TEST_DATABASES = {
+    'mysql_myisam': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'test',
+        'HOST': mysql_host,
+        'USER': mysql_username,
+        'PASSWORD': mysql_password,
+        'OPTIONS': {
+            'init_command': 'SET storage_engine=MYISAM',
+        },
+    },
+    'mysql_innodb': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'test',
+        'HOST': mysql_host,
+        'USER': mysql_username,
+        'PASSWORD': mysql_password,
+        'OPTIONS': {
+            'init_command': 'SET storage_engine=INNODB',
+        },
+    },
+    'postgres': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'test',
+        'HOST': postgres_host,
+        'USER': postgres_username,
+        'PASSWORD': postgres_password,
+    },
+}

@@ -59,4 +59,8 @@ if __name__ == "__main__":
     os.chdir(os.path.join(os.path.dirname(__file__), ".."))
     sys.path.insert(0, os.getcwd())
     os.environ['DJANGO_SETTINGS_MODULE'] = "tests.settings"
+
+    if len(sys.argv) > 1:
+        os.environ['DJANGO_EVOLUTION_TEST_DB'] = sys.argv[1]
+
     run_tests()
