@@ -25,11 +25,15 @@ def execute_sql(cursor, sql):
 
     for statement in sql:
         if isinstance(statement, tuple):
-            if not statement[0].startswith('--'):
+            statement = (statement[0].strip(), statement[1])
+
+            if statement[0] and not statement[0].startswith('--'):
                 cursor.execute(statement[0], tuple(
                     evolver.normalize_value(s)
                     for s in statement[1]
                 ))
         else:
-            if not statement.startswith('--'):
+            statement = statement.strip()
+
+            if statement and not statement.startswith('--'):
                 cursor.execute(statement)
