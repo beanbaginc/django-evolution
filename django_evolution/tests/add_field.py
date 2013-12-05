@@ -18,11 +18,11 @@ tests = r"""
 
 >>> from django.db import models
 
+>>> from django_evolution import models as test_app
+>>> from django_evolution import signature
 >>> from django_evolution.mutations import AddField, DeleteField
 >>> from django_evolution.tests.utils import test_proj_sig, execute_test_sql, register_models, deregister_models
 >>> from django_evolution.diff import Diff
->>> from django_evolution import signature
->>> from django_evolution import models as test_app
 
 >>> import copy
 
@@ -59,6 +59,8 @@ tests = r"""
 ...     ('AddAnchor2', AddAnchor2)
 ... )
 
+>>> database_sig = signature.create_database_sig('default')
+
 >>> custom_model = ('CustomTableModel', CustomTableModel)
 >>> custom = register_models(custom_model)
 >>> custom_table_sig = test_proj_sig(custom_model)
@@ -84,8 +86,8 @@ tests = r"""
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 Traceback (most recent call last):
 ...
 EvolutionException: Cannot use hinted evolution: AddField or ChangeField mutation for 'TestModel.added_field' in 'tests' requires user-specified initial value.
@@ -95,8 +97,8 @@ EvolutionException: Cannot use hinted evolution: AddField or ChangeField mutatio
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 Traceback (most recent call last):
 ...
 SimulationFailure: Cannot create new column 'added_field' on 'tests.TestModel' without a non-null initial value.
@@ -106,8 +108,8 @@ SimulationFailure: Cannot create new column 'added_field' on 'tests.TestModel' w
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 Traceback (most recent call last):
 ...
 SimulationFailure: Cannot create new column 'added_field' on 'tests.TestModel' without a non-null initial value.
@@ -117,8 +119,8 @@ SimulationFailure: Cannot create new column 'added_field' on 'tests.TestModel' w
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -131,8 +133,8 @@ True
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -156,8 +158,8 @@ True
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -181,8 +183,8 @@ True
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -219,8 +221,8 @@ True
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -243,8 +245,8 @@ True
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -270,8 +272,8 @@ True
 >>> test_sql = []
 >>> for mutation in [AddField('TestModel', 'added_field',
 ...                           models.BooleanField, initial=False)]:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -294,8 +296,8 @@ True
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -319,8 +321,8 @@ True
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -343,8 +345,8 @@ True
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -369,8 +371,8 @@ True
 >>> test_sig = copy.deepcopy(custom_table_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -395,8 +397,8 @@ True
 >>> test_sql = []
 
 >>> for mutation in [AddField('TestModel', 'my_primary_key', models.AutoField, initial=AddSequenceFieldInitial('AddPrimaryKeyModel'), primary_key=True), DeleteField('TestModel', 'id')]:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 Traceback (most recent call last):
 ...
 SimulationFailure: Cannot delete a primary key.
@@ -416,8 +418,8 @@ SimulationFailure: Cannot delete a primary key.
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -440,8 +442,8 @@ True
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -464,8 +466,8 @@ True
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -488,8 +490,8 @@ Foreign Key field.
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -515,8 +517,8 @@ True
 >>> test_sig = copy.deepcopy(anchor_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -542,8 +544,8 @@ True
 >>> test_sig = copy.deepcopy(anchor_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -568,8 +570,8 @@ True
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True

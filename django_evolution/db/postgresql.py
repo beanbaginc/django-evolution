@@ -33,6 +33,39 @@ class EvolutionOperations(BaseEvolutionOperations):
         # The PostgreSQL support, however, uses the column name itself.
         return '%s_%s' % (model._meta.db_table, f.column)
 
+    def get_indexes_for_table(self, table_name):
+        cursor = self.connection.cursor()
+        qn = self.connection.ops.quote_name
+        indexes = {}
+
+        cursor.execute(
+            "SELECT i.relname as index_name, a.attname as column_name,"
+            "       ix.indisunique"
+            "  FROM pg_catalog.pg_class t, pg_catalog.pg_class i,"
+            "       pg_catalog.pg_index ix, pg_catalog.pg_attribute a"
+            " WHERE t.oid = ix.indrelid AND"
+            "       i.oid = ix.indexrelid AND"
+            "       a.attrelid = t.oid AND"
+            "       a.attnum = ANY(ix.indkey) AND"
+            "       t.relkind = 'r' AND"
+            "       t.relname = %s"
+            " ORDER BY i.relname, a.attnum;",
+            [table_name])
+
+        for row in cursor.fetchall():
+            index_name = row[0]
+            col_name = row[1]
+
+            if index_name not in indexes:
+                indexes[index_name] = {
+                    'unique': row[2],
+                    'columns': []
+                }
+
+            indexes[index_name]['columns'].append(col_name)
+
+        return indexes
+
     def normalize_bool(self, value):
         if value:
             return True

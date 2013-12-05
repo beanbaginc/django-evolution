@@ -1,3 +1,4 @@
+from django.db import connections
 from django.db.models import get_apps, get_models
 from django.db.models.fields.related import ForeignKey
 from django.conf import global_settings
@@ -5,6 +6,7 @@ from django.contrib.contenttypes import generic
 from django.utils.datastructures import SortedDict
 
 from django_evolution import is_multi_db
+from django_evolution.db import EvolutionOperationsMulti
 
 if is_multi_db():
     from django.db import router
@@ -116,3 +118,30 @@ def create_project_sig(database):
         proj_sig[app.__name__.split('.')[-2]] = create_app_sig(app, database)
 
     return proj_sig
+
+
+def create_database_sig(database):
+    """Creates a dictionary representing useful state in the database.
+
+    This signature is used only during evolution/simulation. It is not
+    stored.
+    """
+    evolver = EvolutionOperationsMulti(database).get_evolver()
+    connection = evolver.connection
+    introspection = connection.introspection
+    cursor = connection.cursor()
+    database_sig = {}
+
+    for table_name in introspection.get_table_list(cursor):
+        table_sig = {
+            'indexes': {}
+        }
+
+        indexes = evolver.get_indexes_for_table(table_name)
+
+        for index_name, index_info in indexes.iteritems():
+            table_sig['indexes'][index_name] = index_info
+
+        database_sig[table_name] = table_sig
+
+    return database_sig

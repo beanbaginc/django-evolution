@@ -15,7 +15,7 @@ from django_evolution.diff import Diff
 from django_evolution.evolve import get_unapplied_evolutions, get_mutations
 from django_evolution.models import Version, Evolution
 from django_evolution.mutations import AddField, DeleteApplication
-from django_evolution.signature import create_project_sig
+from django_evolution.signature import create_database_sig, create_project_sig
 from django_evolution.utils import write_sql, execute_sql
 
 
@@ -104,6 +104,7 @@ class Command(BaseCommand):
         sql = []
         new_evolutions = []
 
+        database_sig = create_database_sig(database)
         current_proj_sig = create_project_sig(database)
         current_signature = pickle.dumps(current_proj_sig)
 
@@ -113,8 +114,8 @@ class Command(BaseCommand):
             else:
                 latest_version = Version.objects.latest('when')
 
-            database_sig = pickle.loads(str(latest_version.signature))
-            diff = Diff(database_sig, current_proj_sig)
+            old_proj_sig = pickle.loads(str(latest_version.signature))
+            diff = Diff(old_proj_sig, current_proj_sig)
         except Evolution.DoesNotExist:
             raise CommandError("Can't evolve yet. Need to set an "
                                "evolution baseline.")
@@ -132,8 +133,8 @@ class Command(BaseCommand):
 
                 mutations = [
                     mutation for mutation in temp_mutations
-                    if mutation.is_mutable(app_label, database_sig,
-                                           database)
+                    if mutation.is_mutable(app_label, old_proj_sig,
+                                           database_sig, database)
                 ]
 
                 if mutations:
@@ -144,14 +145,14 @@ class Command(BaseCommand):
                         # Only compile SQL if we want to show it
                         if compile_sql or execute:
                             app_sql.extend(
-                                mutation.mutate(app_label, database_sig,
-                                                database))
+                                mutation.mutate(app_label, old_proj_sig,
+                                                database_sig, database))
 
                         # Now run the simulation, which will modify the
                         # signatures
                         try:
-                            mutation.simulate(app_label, database_sig,
-                                              database)
+                            mutation.simulate(app_label, old_proj_sig,
+                                              database_sig, database)
                         except CannotSimulate:
                             simulated = False
 
@@ -178,16 +179,16 @@ class Command(BaseCommand):
                     purge_sql = []
 
                     for app_label in diff.deleted:
-                        if delete_app.is_mutable(app_label, database_sig,
-                                                 database):
+                        if delete_app.is_mutable(app_label, old_proj_sig,
+                                                 database_sig, database):
                             if compile_sql or execute:
                                 purge_sql.append('-- Purge application %s'
                                                  % app_label)
                                 purge_sql.extend(
-                                    delete_app.mutate(app_label, database_sig,
-                                                      database))
-                            delete_app.simulate(app_label, database_sig,
-                                                database)
+                                    delete_app.mutate(app_label, old_proj_sig,
+                                                      database_sig, database))
+                            delete_app.simulate(app_label, old_proj_sig,
+                                                database_sig, database)
 
                     if not execute:
                         if compile_sql:
@@ -209,7 +210,7 @@ class Command(BaseCommand):
             raise CommandError(str(e))
 
         if simulated:
-            diff = Diff(database_sig, current_proj_sig)
+            diff = Diff(old_proj_sig, current_proj_sig)
 
             if not diff.is_empty(not purge):
                 if hint:

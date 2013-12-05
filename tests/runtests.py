@@ -42,7 +42,8 @@ def run_tests(verbosity=1, interactive=False):
                  '--with-doctest',
                  '--doctest-extension=.txt',
                  '--cover-package=django_evolution',
-                 '--match=tests[\/]*.py']
+                 '--match=tests[\/]*.py',
+                 '--match=^test']
 
     if len(sys.argv) > 2:
         nose_argv += sys.argv[2:]

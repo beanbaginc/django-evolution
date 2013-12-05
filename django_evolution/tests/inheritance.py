@@ -22,6 +22,8 @@ tests = r"""
 ...     int_field = models.IntegerField()
 
 # Store the base signatures
+>>> database_sig = signature.create_database_sig('default')
+
 >>> parent_model = ('ParentModel', ParentModel)
 >>> parent = register_models(parent_model)
 >>> parent_table_sig = test_proj_sig(parent_model)
@@ -45,8 +47,8 @@ tests = r"""
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -67,8 +69,8 @@ True
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True

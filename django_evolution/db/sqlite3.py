@@ -241,3 +241,25 @@ class EvolutionOperations(BaseEvolutionOperations):
         output.extend(self.copy_from_temp_table(table_name, fields))
         output.extend(self.delete_table(TEMP_TABLE_NAME))
         return output
+
+    def get_indexes_for_table(self, table_name):
+        cursor = self.connection.cursor()
+        qn = self.connection.ops.quote_name
+        indexes = {}
+
+        cursor.execute('PRAGMA index_list(%s);' % qn(table_name))
+
+        for row in list(cursor.fetchall()):
+            index_name = row[1]
+            indexes[index_name] = {
+                'unique': row[2],
+                'columns': []
+            }
+
+            cursor.execute('PRAGMA index_info(%s)' % qn(index_name))
+
+            for index_info in cursor.fetchall():
+                # Column name
+                indexes[index_name]['columns'].append(index_info[2])
+
+        return indexes

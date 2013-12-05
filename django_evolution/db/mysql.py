@@ -142,3 +142,27 @@ class EvolutionOperations(BaseEvolutionOperations):
 
         return ['RENAME TABLE %s TO %s;'
                 % (qn(old_db_tablename), qn(db_tablename))]
+
+    def get_indexes_for_table(self, table_name):
+        cursor = self.connection.cursor()
+        qn = self.connection.ops.quote_name
+        indexes = {}
+
+        try:
+            cursor.execute('SHOW INDEX FROM %s;' % qn(table_name))
+        except Exception:
+            return {}
+
+        for row in cursor.fetchall():
+            index_name = row[2]
+            col_name = row[4]
+
+            if index_name not in indexes:
+                indexes[index_name] = {
+                    'unique': not bool(row[1]),
+                    'columns': [],
+                }
+
+            indexes[index_name]['columns'].append(col_name)
+
+        return indexes

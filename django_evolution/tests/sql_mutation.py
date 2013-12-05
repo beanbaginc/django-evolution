@@ -21,6 +21,8 @@ tests = r"""
 ...     int_field = models.IntegerField()
 
 # Store the base signatures
+>>> database_sig = signature.create_database_sig('default')
+
 >>> start = register_models(('TestModel', SQLBaseModel))
 >>> start_sig = test_proj_sig(('TestModel', SQLBaseModel))
 
@@ -48,8 +50,8 @@ tests = r"""
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in sequence:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 Traceback (most recent call last):
 ...
 CannotSimulate: Cannot simulate SQLMutations
@@ -80,8 +82,8 @@ CannotSimulate: Cannot simulate SQLMutations
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in sequence:
-...     test_sql.extend(mutation.mutate('tests', test_sig))
-...     mutation.simulate('tests', test_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
+...     mutation.simulate('tests', test_sig, database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True

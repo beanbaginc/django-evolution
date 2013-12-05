@@ -7,9 +7,8 @@ from django.db.backends.util import truncate_name
 
 
 class BaseEvolutionOperations(object):
-    connection = None
-
-    def __init__(self, connection=default_connection):
+    def __init__(self, database_sig, connection=default_connection):
+        self.database_sig = database_sig
         self.connection = connection
 
     def quote_sql_param(self, param):
@@ -300,6 +299,19 @@ class BaseEvolutionOperations(object):
         else:
             params = (qn(opts.db_table), constraint_name,)
             return ['ALTER TABLE %s DROP CONSTRAINT %s;' % params]
+
+    def get_indexes_for_table(self, table_name):
+        """Returns a dictionary of indexes from the database.
+
+        This introspects the database to return a mapping of index names
+        to index information, with the following keys:
+
+            * columns -> list of column names
+            * unique -> whether it's a unique index
+
+        This function must be implemented by subclasses.
+        """
+        raise NotImplementedError
 
     def remove_field_constraints(self, field, opts, models, refs):
         sql = []

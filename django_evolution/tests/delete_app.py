@@ -36,6 +36,8 @@ tests = r"""
 
 # Store the base signatures, and populate the app cache
 
+>>> database_sig = signature.create_database_sig('default')
+
 >>> anchors = [('AppDeleteAnchor1', AppDeleteAnchor1), ('AppDeleteAnchor2',AppDeleteAnchor2)]
 >>> test_model = [('TestModel', AppDeleteBaseModel)]
 >>> custom_model = [('CustomTestModel', AppDeleteCustomTableModel)]
@@ -59,8 +61,8 @@ tests = r"""
 >>> test_sql = []
 >>> delete_app = DeleteApplication()
 >>> for app_label in d.deleted.keys():
-...     test_sql.append(delete_app.mutate(app_label, test_sig))
-...     delete_app.simulate(app_label, test_sig)
+...     test_sql.append(delete_app.mutate(app_label, test_sig, database_sig))
+...     delete_app.simulate(app_label, test_sig, database_sig)
 
 >>> Diff(test_sig, deleted_app_sig).is_empty(ignore_apps=True)
 True
@@ -73,8 +75,9 @@ True
 >>> test_sql = []
 >>> delete_app = DeleteApplication()
 >>> for app_label in d.deleted.keys():
-...     test_sql.append(delete_app.mutate(app_label, test_sig, 'default'))
-...     delete_app.simulate(app_label, test_sig)
+...     test_sql.append(delete_app.mutate(app_label, test_sig, database_sig,
+...                                       'default'))
+...     delete_app.simulate(app_label, test_sig, database_sig)
 
 >>> Diff(test_sig, deleted_app_sig).is_empty(ignore_apps=True)
 True
