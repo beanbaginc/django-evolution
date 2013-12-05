@@ -211,7 +211,7 @@ def execute_transaction(sql, output=False, database='default'):
         if output:
             write_sql(sql, database)
 
-        execute_sql(cursor, sql)
+        execute_sql(cursor, sql, database)
 
         transaction.commit(**using_args)
         transaction.leave_transaction_management(**using_args)

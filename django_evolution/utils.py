@@ -16,12 +16,12 @@ def write_sql(sql, database):
             print unicode(statement)
 
 
-def execute_sql(cursor, sql):
+def execute_sql(cursor, sql, database):
     """
     Execute a list of SQL statements on the provided cursor, unrolling
     parameters as required
     """
-    evolver = EvolutionOperationsMulti('default').get_evolver()
+    evolver = EvolutionOperationsMulti(database).get_evolver()
 
     for statement in sql:
         if isinstance(statement, tuple):

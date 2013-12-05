@@ -264,7 +264,7 @@ Type 'yes' to continue, or 'no' to cancel: """ % database)
 
                     try:
                         # Perform the SQL
-                        execute_sql(cursor, sql)
+                        execute_sql(cursor, sql, database)
 
                         # Now update the evolution table
                         version = Version(signature=current_signature)
