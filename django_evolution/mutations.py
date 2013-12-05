@@ -203,6 +203,9 @@ class MockModel(object):
         self._meta = MockMeta(proj_sig, app_name, model_name, model_sig)
         self._meta.setup_fields(self, stub)
 
+    def __repr__(self):
+        return '<MockModel for %s.%s>' % (self.app_name, self.model_name)
+
     def __eq__(self, other):
         # For our purposes, we don't want to appear equal to "self".
         # Really, Django 1.2 should be checking if this is a string before
