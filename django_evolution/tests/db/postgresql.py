@@ -607,3 +607,33 @@ inheritance = {
         'ALTER TABLE "tests_childmodel" DROP COLUMN "int_field" CASCADE;'
     ),
 }
+
+unique_together = {
+    'setting_from_empty': '\n'.join([
+        'CREATE UNIQUE INDEX tests_testmodel_int_field1_char_field1_key'
+        ' ON tests_testmodel ("int_field1", "char_field1");',
+    ]),
+
+    'replace_list': '\n'.join([
+        'ALTER TABLE "tests_testmodel"'
+        ' DROP CONSTRAINT tests_testmodel_int_field1_char_field1_key;',
+
+        'CREATE UNIQUE INDEX tests_testmodel_int_field2_char_field2_key'
+        ' ON tests_testmodel ("int_field2", "char_field2");',
+    ]),
+
+    'append_list': (
+        'CREATE UNIQUE INDEX tests_testmodel_int_field2_char_field2_key'
+        ' ON tests_testmodel ("int_field2", "char_field2");'
+    ),
+
+    'removing': (
+        'ALTER TABLE "tests_testmodel"'
+        ' DROP CONSTRAINT tests_testmodel_int_field1_char_field1_key;'
+    ),
+
+    'ignore_missing_indexes': (
+        'CREATE UNIQUE INDEX tests_testmodel_char_field1_char_field2_key'
+        ' ON tests_testmodel ("char_field1", "char_field2");'
+    )
+}

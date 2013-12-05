@@ -2756,3 +2756,83 @@ inheritance = {
         'DROP TABLE "TEMP_TABLE";'
     ])
 }
+
+unique_together = {
+    'setting_from_empty': '\n'.join([
+        'CREATE UNIQUE INDEX int_field1'
+        ' ON tests_testmodel ("int_field1", "char_field1");',
+    ]),
+
+    'replace_list': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("char_field1" varchar(20) NULL,'
+        ' "char_field2" varchar(40) NULL,'
+        ' "id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "int_field2" integer NULL,'
+        ' "int_field1" integer NULL);',
+
+        'INSERT INTO "TEMP_TABLE"'
+        ' ("char_field1", "char_field2", "id", "int_field2", "int_field1")'
+        ' SELECT "char_field1", "char_field2", "id", "int_field2",'
+        ' "int_field1" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("char_field1" varchar(20) NOT NULL,'
+        ' "char_field2" varchar(40) NOT NULL,'
+        ' "id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "int_field2" integer NOT NULL,'
+        ' "int_field1" integer NOT NULL);',
+
+        'INSERT INTO "tests_testmodel"'
+        ' ("char_field1", "char_field2", "id", "int_field2", "int_field1")'
+        ' SELECT "char_field1", "char_field2", "id", "int_field2",'
+        ' "int_field1" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+
+        'CREATE UNIQUE INDEX int_field2'
+        ' ON tests_testmodel ("int_field2", "char_field2");',
+    ]),
+
+    'append_list': '\n'.join([
+        'CREATE UNIQUE INDEX int_field2'
+        ' ON tests_testmodel ("int_field2", "char_field2");',
+    ]),
+
+    'removing': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("char_field1" varchar(20) NULL,'
+        ' "char_field2" varchar(40) NULL,'
+        ' "id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "int_field2" integer NULL,'
+        ' "int_field1" integer NULL);',
+
+        'INSERT INTO "TEMP_TABLE"'
+        ' ("char_field1", "char_field2", "id", "int_field2", "int_field1")'
+        ' SELECT "char_field1", "char_field2", "id", "int_field2",'
+        ' "int_field1" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("char_field1" varchar(20) NOT NULL,'
+        ' "char_field2" varchar(40) NOT NULL,'
+        ' "id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "int_field2" integer NOT NULL,'
+        ' "int_field1" integer NOT NULL);',
+
+        'INSERT INTO "tests_testmodel"'
+        ' ("char_field1", "char_field2", "id", "int_field2", "int_field1")'
+        ' SELECT "char_field1", "char_field2", "id", "int_field2",'
+        ' "int_field1" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+    ]),
+
+    'ignore_missing_indexes': (
+        'CREATE UNIQUE INDEX char_field1'
+        ' ON tests_testmodel ("char_field1", "char_field2");'
+    )
+}

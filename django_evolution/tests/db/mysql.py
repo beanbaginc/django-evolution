@@ -544,3 +544,31 @@ inheritance = {
         'ALTER TABLE `tests_childmodel` DROP COLUMN `int_field` CASCADE;'
     ),
 }
+
+unique_together = {
+    'setting_from_empty': '\n'.join([
+        'CREATE UNIQUE INDEX int_field1'
+        ' ON tests_testmodel (`int_field1`, `char_field1`);',
+    ]),
+
+    'replace_list': '\n'.join([
+        'DROP INDEX `int_field1` ON `tests_testmodel`;',
+
+        'CREATE UNIQUE INDEX int_field2'
+        ' ON tests_testmodel (`int_field2`, `char_field2`);',
+    ]),
+
+    'append_list': '\n'.join([
+        'CREATE UNIQUE INDEX int_field2'
+        ' ON tests_testmodel (`int_field2`, `char_field2`);',
+    ]),
+
+    'removing': '\n'.join([
+        'DROP INDEX `int_field1` ON `tests_testmodel`;',
+    ]),
+
+    'ignore_missing_indexes': (
+        'CREATE UNIQUE INDEX char_field1'
+        ' ON tests_testmodel (`char_field1`, `char_field2`);'
+    )
+}

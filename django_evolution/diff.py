@@ -2,7 +2,7 @@ from django.db import models
 
 from django_evolution import EvolutionException
 from django_evolution.mutations import (DeleteField, AddField, DeleteModel,
-                                        ChangeField)
+                                        ChangeField, ChangeMeta)
 from django_evolution.signature import ATTRIBUTE_DEFAULTS
 
 
@@ -54,6 +54,9 @@ class Diff(object):
                     'deleted': [ list of deleted field names ]
                     'changed': {
                         field: [ list of modified property names ]
+                    },
+                    'meta_changed': {
+                        'unique_together': new value
                     }
                 }
             'deleted': [ list of deleted model names ]
@@ -159,6 +162,17 @@ class Diff(object):
                             {}).setdefault('added',
                             []).append(field_name)
 
+                # Look for changes to unique_together
+                old_unique_together = old_model_sig['meta']['unique_together']
+                new_unique_together = new_model_sig['meta']['unique_together']
+
+                if list(old_unique_together) != list(new_unique_together):
+                    self.changed.setdefault(app_name,
+                        {}).setdefault('changed',
+                        {}).setdefault(model_name,
+                        {}).setdefault('meta_changed',
+                        []).append('unique_together')
+
     def is_empty(self, ignore_apps=True):
         """Is this an empty diff? i.e., is the source and target the same?
 
@@ -203,6 +217,12 @@ class Diff(object):
                     for prop in field_change:
                         lines.append("        Property '%s' has changed"
                                      % prop)
+
+                meta_changed = change.get('meta_changed', [])
+
+                for prop_name in meta_changed:
+                    lines.append("    Meta property '%s' has changed"
+                                 % prop_name)
 
         return '\n'.join(lines)
 
@@ -268,6 +288,15 @@ class Diff(object):
 
                     mutations.setdefault(app_label, []).append(
                         ChangeField(model_name, field_name, **changed_attrs))
+
+                meta_changed = change.get('meta_changed', [])
+
+                for prop_name in ('unique_together',):
+                    if prop_name in meta_changed:
+                        mutations.setdefault(app_label, []).append(
+                            ChangeMeta(model_name,
+                                       prop_name,
+                                       model_sig['meta'][prop_name]))
 
             for model_name in app_changes.get('deleted', {}):
                 mutations.setdefault(app_label, []).append(

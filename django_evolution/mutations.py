@@ -723,3 +723,41 @@ class DeleteApplication(BaseMutation):
     def is_mutable(self, app_label, proj_sig, database_sig, database):
         # the test is done in the mutate method above. We can return True
         return True
+
+
+class ChangeMeta(MonoBaseMutation):
+    def __init__(self, model_name, prop_name, new_value):
+        super(ChangeMeta, self).__init__(model_name)
+        self.prop_name = prop_name
+        self.new_value = new_value
+
+    def __str__(self):
+        return ("ChangeMeta('%s', '%s', %r)"
+                % (self.model_name, self.prop_name, self.new_value))
+
+    def simulate(self, app_label, proj_sig, database_sig, database=None):
+        app_sig = proj_sig[app_label]
+        model_sig = app_sig[self.model_name]
+
+        model_sig['meta'][self.prop_name] = self.new_value
+
+    def mutate(self, app_label, proj_sig, database_sig, database=None):
+        app_sig = proj_sig[app_label]
+        model_sig = app_sig[self.model_name]
+        old_value = model_sig['meta'][self.prop_name]
+
+        if old_value == self.new_value:
+            return []
+
+        model = MockModel(proj_sig, app_label, self.model_name, model_sig)
+        evolver = self.evolver(model, database_sig, database)
+
+        try:
+            evolver_func = getattr(evolver, 'change_%s' % self.prop_name)
+        except AttributeError:
+            raise EvolutionNotImplementedError(
+                "ChangeMeta does not support modifying the '%s' "
+                "attribute on '%s'."
+                % (self.prop_name, self.model_name))
+
+        return evolver_func(model, old_value, self.new_value)

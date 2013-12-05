@@ -13,6 +13,7 @@ from django.utils.functional import curry
 
 from django_evolution import signature, is_multi_db
 from django_evolution.db import EvolutionOperationsMulti
+from django_evolution.signature import rescan_indexes_for_database_sig
 from django_evolution.tests import models as evo_test
 from django_evolution.utils import write_sql, execute_sql
 
@@ -70,101 +71,110 @@ def _register_models(database_sig, app_label='tests', db_name='default',
         if model._meta.module_name in cache.app_models['django_evolution']:
             del cache.app_models['django_evolution'][model._meta.module_name]
 
-            orig_db_table = model._meta.db_table
-            orig_object_name = model._meta.object_name
-            orig_module_name = model._meta.module_name
+        orig_db_table = model._meta.db_table
+        orig_object_name = model._meta.object_name
+        orig_module_name = model._meta.module_name
+
+        generated_db_table = truncate_name(
+            '%s_%s' % (model._meta.app_label, model._meta.module_name),
+            max_name_length)
+
+        if orig_db_table.startswith(generated_db_table):
+            model._meta.db_table = '%s_%s' % (app_label, name.lower())
+
+        model._meta.db_table = truncate_name(model._meta.db_table,
+                                             max_name_length)
+        model._meta.app_label = app_label
+        model._meta.object_name = name
+        model._meta.module_name = name.lower()
+
+        # Add an entry for the table in database_sig, if it's not already
+        # there.
+        if model._meta.db_table not in database_sig:
+            database_sig[model._meta.db_table] = \
+                signature.create_empty_database_table_sig()
+
+        if register_indexes:
+            # Now that we definitely have an entry, store the indexes for
+            # all the fields in database_sig, so that other operations can
+            # look up the index names.
+            for field in model._meta.local_fields:
+                if field.db_index or field.unique:
+                    signature.add_index_to_database_sig(
+                        evolver, database_sig, model, [field],
+                        unique=field.unique)
+
+            for fields in model._meta.unique_together:
+                signature.add_index_to_database_sig(
+                    evolver, database_sig, model,
+                    [
+                        model._meta.get_field_by_name(f)[0]
+                        for f in fields
+                    ],
+                    unique=True)
+
+            for fields in getattr(model._meta, 'index_together', []):
+                signature.add_index_to_database_sig(
+                    evolver, database_sig, model,
+                    [
+                        model._meta.get_field_by_name(f)[0]
+                        for f in fields
+                    ])
+
+        # Register the model with the app.
+        add_app_test_model(model, app_label=app_label)
+
+        for field in model._meta.local_many_to_many:
+            if not field.rel.through:
+                continue
+
+            through = field.rel.through
 
             generated_db_table = truncate_name(
-                '%s_%s' % (model._meta.app_label, model._meta.module_name),
+                '%s_%s' % (orig_db_table, field.name),
                 max_name_length)
 
-            if orig_db_table.startswith(generated_db_table):
-                model._meta.db_table = '%s_%s' % (app_label, name.lower())
+            if through._meta.db_table == generated_db_table:
+                through._meta.app_label = app_label
 
-            model._meta.db_table = truncate_name(model._meta.db_table,
-                                                 max_name_length)
-            model._meta.app_label = app_label
-            model._meta.object_name = name
-            model._meta.module_name = name.lower()
+                # Transform the 'through' table information only
+                # if we've transformed the parent db_table.
+                if model._meta.db_table != orig_db_table:
+                    through._meta.db_table = \
+                        '%s_%s' % (model._meta.db_table, field.name)
 
-            # Add an entry for the table in database_sig, if it's not already
-            # there.
-            if model._meta.db_table not in database_sig:
-                database_sig[model._meta.db_table] = \
-                    signature.create_empty_database_table_sig()
+                    through._meta.object_name = \
+                        through._meta.object_name.replace(
+                            orig_object_name,
+                            model._meta.object_name)
 
-            if register_indexes:
-                # Now that we definitely have an entry, store the indexes for
-                # all the fields in database_sig, so that other operations can
-                # look up the index names.
-                for field in model._meta.local_fields:
-                    if field.db_index or field.unique:
-                        signature.add_index_to_database_sig(
-                            evolver, database_sig, model, [field],
-                            unique=field.unique)
+                    through._meta.module_name = \
+                        through._meta.module_name.replace(
+                            orig_module_name,
+                            model._meta.module_name)
 
-                for field in getattr(model._meta, 'index_together', []):
-                    signature.add_index_to_database_sig(
-                        evolver, database_sig, model,
-                        [
-                            model._meta.get_field_by_name(f)[0]
-                            for f in index_fields
-                        ])
+            through._meta.db_table = \
+                truncate_name(through._meta.db_table, max_name_length)
 
-            # Register the model with the app.
-            add_app_test_model(model, app_label=app_label)
+            for field in through._meta.local_fields:
+                if field.rel and field.rel.to:
+                    column = field.column
 
-            for field in model._meta.local_many_to_many:
-                if not field.rel.through:
-                    continue
+                    if (column.startswith(orig_module_name) or
+                        column.startswith('to_%s' % orig_module_name) or
+                        column.startswith('from_%s' % orig_module_name)):
 
-                through = field.rel.through
+                        field.column = column.replace(
+                            orig_module_name,
+                            model._meta.module_name)
 
-                generated_db_table = truncate_name(
-                    '%s_%s' % (orig_db_table, field.name),
-                    max_name_length)
+            if (through._meta.module_name in
+                cache.app_models['django_evolution']):
+                del cache.app_models['django_evolution'][
+                    through._meta.module_name]
 
-                if through._meta.db_table == generated_db_table:
-                    through._meta.app_label = app_label
-
-                    # Transform the 'through' table information only
-                    # if we've transformed the parent db_table.
-                    if model._meta.db_table != orig_db_table:
-                        through._meta.db_table = \
-                            '%s_%s' % (model._meta.db_table, field.name)
-
-                        through._meta.object_name = \
-                            through._meta.object_name.replace(
-                                orig_object_name,
-                                model._meta.object_name)
-
-                        through._meta.module_name = \
-                            through._meta.module_name.replace(
-                                orig_module_name,
-                                model._meta.module_name)
-
-                through._meta.db_table = \
-                    truncate_name(through._meta.db_table, max_name_length)
-
-                for field in through._meta.local_fields:
-                    if field.rel and field.rel.to:
-                        column = field.column
-
-                        if (column.startswith(orig_module_name) or
-                            column.startswith('to_%s' % orig_module_name) or
-                            column.startswith('from_%s' % orig_module_name)):
-
-                            field.column = column.replace(
-                                orig_module_name,
-                                model._meta.module_name)
-
-                if (through._meta.module_name in
-                    cache.app_models['django_evolution']):
-                    del cache.app_models['django_evolution'][
-                        through._meta.module_name]
-
-                app_cache[through._meta.module_name] = through
-                add_app_test_model(through, app_label=app_label)
+            app_cache[through._meta.module_name] = through
+            add_app_test_model(through, app_label=app_label)
 
         app_cache[model._meta.module_name] = model
 
@@ -223,6 +233,7 @@ def execute_transaction(sql, output=False, database='default'):
     "A transaction wrapper for executing a list of SQL statements"
     my_connection = connection
     using_args = {}
+    out_sql = []
 
     if is_multi_db():
         if not database:
@@ -240,7 +251,7 @@ def execute_transaction(sql, output=False, database='default'):
 
         # Perform the SQL
         if output:
-            write_sql(sql, database)
+            out_sql.extend(write_sql(sql, database))
 
         execute_sql(cursor, sql, database)
 
@@ -251,9 +262,12 @@ def execute_transaction(sql, output=False, database='default'):
         transaction.rollback(**using_args)
         raise
 
+    return out_sql
+
 
 def execute_test_sql(start, end, sql, debug=False, app_label='tests',
-                     database='default'):
+                     database='default', database_sig=None, return_sql=False,
+                     rescan_indexes=True):
     """
     Execute a test SQL sequence. This method also creates and destroys the
     database tables required by the models registered against the test
@@ -271,6 +285,8 @@ def execute_test_sql(start, end, sql, debug=False, app_label='tests',
     (including setup and teardown SQL), and executes the Django-derived
     setup/teardown SQL.
     """
+    out_sql = []
+
     # Set up the initial state of the app cache
     set_app_test_models(copy.deepcopy(start), app_label=app_label)
 
@@ -280,24 +296,46 @@ def execute_test_sql(start, end, sql, debug=False, app_label='tests',
                         output=debug, database=database)
     execute_transaction(sql_indexes(evo_test, style, database),
                         output=debug, database=database)
+
+    if rescan_indexes and database_sig:
+        rescan_indexes_for_database_sig(database_sig, database)
+
     create_test_data(models.get_models(evo_test), database)
 
     # Set the app cache to the end state
     set_app_test_models(copy.deepcopy(end), app_label=app_label)
 
+    if callable(sql):
+        sql = sql()
+
     try:
         # Execute the test sql
         if debug:
-            write_sql(sql, database)
+            out_sql.extend(write_sql(sql, database))
         else:
-            execute_transaction(sql, output=True, database=database)
+            out_sql.extend(execute_transaction(sql, output=True,
+                                               database=database))
     finally:
         # Cleanup the apps.
         if debug:
-            print sql_delete(evo_test, style, database)
+            out_sql.append(sql_delete(evo_test, style, database))
         else:
-            execute_transaction(sql_delete(evo_test, style, database),
-                                output=debug, database=database)
+            out_sql.extend(execute_transaction(
+                sql_delete(evo_test, style, database),
+                output=debug, database=database))
+
+    # This is a terrible hack, but it's necessary while we use doctests
+    # and normal unit tests. If we always return the SQL, then the
+    # doctests will expect us to compare the output of that (along with the
+    # print statements).
+    #
+    # Down the road, everything should be redone to be standard unit tests,
+    # and then we can just compare the returned SQL statements instead of
+    # dealing with anything on stdout.
+    if return_sql:
+        return out_sql
+    else:
+        return None
 
 
 def create_test_data(app_models, database):

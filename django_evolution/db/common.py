@@ -217,6 +217,17 @@ class BaseEvolutionOperations(object):
 
         return self.connection.creation.sql_indexes_for_field(model, f, style)
 
+    def create_unique_index(self, model, index_name, fields):
+        qn = self.connection.ops.quote_name
+
+        self.record_index(model, fields)
+
+        return [
+            'CREATE UNIQUE INDEX %s ON %s (%s);'
+            % (index_name, model._meta.db_table,
+               ', '.join([qn(field.column) for field in fields])),
+        ]
+
     def drop_index(self, model, f):
         """Returns the SQL for dropping an index for a single field.
 
@@ -271,9 +282,7 @@ class BaseEvolutionOperations(object):
         for database backends that require it.
         """
         if unique:
-            return truncate_name(
-                '%s_%s_key' % (model._meta.db_table, fields[0].column),
-                self.connection.ops.max_name_length())
+            return truncate_name(fields[0].column)
 
         if django.VERSION >= (1, 5):
             colname = self.connection.creation._digest(
@@ -394,6 +403,50 @@ class BaseEvolutionOperations(object):
         else:
             return ['ALTER TABLE %s DROP CONSTRAINT %s;'
                     % (qn(opts.db_table), constraint_name)]
+
+    def change_unique_together(self, model, old_unique_together,
+                               new_unique_together):
+        """Changes the unique_together constraints of a table."""
+        qn = self.connection.ops.quote_name
+        opts = model._meta
+        sql = []
+
+        old_unique_together = set(old_unique_together)
+        new_unique_together = set(new_unique_together)
+
+        to_remove = old_unique_together.difference(new_unique_together)
+        to_add = new_unique_together.difference(old_unique_together)
+
+        for field_names in to_remove:
+            index_name = self.find_index_name(
+                model, [
+                    opts.get_field(field_name).column
+                    for field_name in field_names
+                ],
+                unique=True)
+
+            if index_name:
+                self.remove_recorded_index(model, index_name, unique=True)
+                sql.extend(self.get_drop_unique_constraint_sql(model,
+                                                               index_name))
+
+        for field_names in to_add:
+            index_name = self.get_new_index_name(
+                model,
+                [
+                    opts.get_field(field_name)
+                    for field_name in field_names
+                ],
+                unique=True)
+            sql.extend(self.create_unique_index(model, index_name, [
+                opts.get_field(field_name)
+                for field_name in field_names
+            ]))
+
+        return sql
+
+    def get_drop_unique_constraint_sql(self, model, index_name):
+        return self.get_drop_index_sql(model, index_name)
 
     def find_index_name(self, model, column_names, unique=False):
         """Finds an index in the database matching the given criteria.

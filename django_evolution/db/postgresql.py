@@ -28,15 +28,30 @@ class EvolutionOperations(BaseEvolutionOperations):
 
         return sql
 
+    def get_drop_unique_constraint_sql(self, model, index_name):
+        qn = self.connection.ops.quote_name
+
+        sql = [
+            'ALTER TABLE %s DROP CONSTRAINT %s;'
+             % (qn(model._meta.db_table), index_name),
+        ]
+
+        return sql
+
     def get_new_index_name(self, model, fields, unique=False):
-        if not unique:
+        if unique:
+            return truncate_name(
+                '%s_%s_key' % (
+                    model._meta.db_table,
+                    '_'.join([
+                        field.column for field in fields
+                    ])),
+                self.connection.ops.max_name_length())
+        else:
             # By default, Django 1.2 will use a digest hash for the column
             # name. The PostgreSQL support, however, uses the column name
             # itself.
             return '%s_%s' % (model._meta.db_table, fields[0].column)
-
-        return super(EvolutionOperations, self).get_new_index_name(
-            model, fields, unique)
 
     def get_indexes_for_table(self, table_name):
         cursor = self.connection.cursor()

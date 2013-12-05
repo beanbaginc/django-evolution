@@ -137,11 +137,18 @@ def create_database_sig(database):
     This signature is used only during evolution/simulation. It is not
     stored.
     """
+    database_sig = {}
+
+    rescan_indexes_for_database_sig(database_sig, database)
+
+    return database_sig
+
+
+def rescan_indexes_for_database_sig(database_sig, database):
     evolver = EvolutionOperationsMulti(database).get_evolver()
     connection = evolver.connection
     introspection = connection.introspection
     cursor = connection.cursor()
-    database_sig = {}
 
     for table_name in introspection.get_table_list(cursor):
         table_sig = create_empty_database_table_sig()
@@ -151,8 +158,6 @@ def create_database_sig(database):
             table_sig['indexes'][index_name] = index_info
 
         database_sig[table_name] = table_sig
-
-    return database_sig
 
 
 def add_index_to_database_sig(evolver, database_sig, model, fields,

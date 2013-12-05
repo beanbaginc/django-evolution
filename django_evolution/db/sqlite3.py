@@ -225,6 +225,24 @@ class EvolutionOperations(BaseEvolutionOperations):
         return self.change_attribute(model, field.name, '_unique',
                                      new_unique_value, initial)
 
+    def get_drop_unique_constraint_sql(self, model, index_name):
+        output = []
+        opts = model._meta
+        table_name = opts.db_table
+        fields = [
+            f
+            for f in opts.local_fields
+            if f.db_type(connection=self.connection) is not None
+        ]
+
+        output.extend(self.create_temp_table(fields))
+        output.extend(self.copy_to_temp_table(table_name, fields))
+        output.extend(self.delete_table(table_name))
+        output.extend(self.create_table(table_name, fields))
+        output.extend(self.copy_from_temp_table(table_name, fields))
+        output.extend(self.delete_table(TEMP_TABLE_NAME))
+        return output
+
     def change_attribute(self, model, field_name, attr_name, new_attr_value,
                          initial=None):
         output = []
