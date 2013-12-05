@@ -1,6 +1,7 @@
 tests = r"""
 >>> from django.db import models
 
+>>> from django_evolution import signature
 >>> from django_evolution.tests.utils import test_proj_sig, register_models, deregister_models
 >>> from django_evolution.diff import Diff
 
@@ -14,13 +15,16 @@ tests = r"""
 ...     ref = models.ForeignKey(Case41Anchor)
 
 # Store the base signatures
+>>> database_sig = signature.create_database_sig('db_multi')
+
 >>> anchors = (
 ...     ('Case41Anchor', Case41Anchor),
 ... )
 
 >>> test_model = ('TestModel', Case41Model)
->>> start = register_models(*anchors)
->>> start.update(register_models(test_model))
+>>> start = register_models(database_sig, register_indexes=True, *anchors)
+>>> start.update(register_models(database_sig, test_model,
+...                              register_indexes=True))
 >>> start_sig = test_proj_sig(test_model, *anchors)
 
 # Regression case 41: If deleteing a model and a foreign key to that model,
@@ -30,7 +34,7 @@ tests = r"""
 >>> class UpdatedCase41Model(models.Model):
 ...     value = models.IntegerField()
 
->>> end = register_models(('TestModel', UpdatedCase41Model), *anchors)
+>>> end = register_models(database_sig, ('TestModel', UpdatedCase41Model), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',UpdatedCase41Model), *anchors)
 
 # ... And also delete the model that was being referenced

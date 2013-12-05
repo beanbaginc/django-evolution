@@ -65,11 +65,12 @@ tests = r"""
 >>> test_model = ('TestModel', RenameBaseModel)
 >>> custom_model = ('CustomTableModel', CustomRenameTableModel)
 
->>> custom = register_models(custom_model)
+>>> custom = register_models(database_sig, custom_model, register_indexes=True)
 >>> custom_table_sig = test_proj_sig(custom_model)
 
->>> start = register_models(*anchors)
->>> start.update(register_models(test_model))
+>>> start = register_models(database_sig, register_indexes=True, *anchors)
+>>> start.update(register_models(database_sig, test_model,
+...                              register_indexes=True))
 >>> start_sig = test_proj_sig(test_model, *anchors)
 
 # Rename a database column
@@ -82,18 +83,19 @@ tests = r"""
 ...     m2m_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> end = register_models(('TestModel', RenameColumnModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', RenameColumnModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel', RenameColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>)", "DeleteField('TestModel', 'int_field')"]
 
 >>> evolution = [RenameField('TestModel', 'int_field', 'renamed_field')]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -111,18 +113,19 @@ True
 ...     m2m_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> end = register_models(('TestModel', RenameColumnWithTableNameModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', RenameColumnWithTableNameModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',RenameColumnWithTableNameModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>)", "DeleteField('TestModel', 'int_field')"]
 
 >>> evolution = [RenameField('TestModel', 'int_field', 'renamed_field', db_table='ignored_db-table')]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -141,18 +144,19 @@ True
 ...     m2m_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> end = register_models(('TestModel', RenamePrimaryKeyColumnModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', RenamePrimaryKeyColumnModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',RenamePrimaryKeyColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'my_pk_id', models.AutoField, initial=<<USER VALUE REQUIRED>>, primary_key=True)", "DeleteField('TestModel', 'id')"]
 
 >>> evolution = [RenameField('TestModel', 'id', 'my_pk_id')]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -170,7 +174,7 @@ True
 ...     m2m_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> end = register_models(('TestModel', RenameForeignKeyColumnModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', RenameForeignKeyColumnModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',RenameForeignKeyColumnModel), *anchors)
 >>> start_sig = copy.deepcopy(start_sig)
 >>> d = Diff(start_sig, end_sig)
@@ -178,11 +182,12 @@ True
 ["AddField('TestModel', 'renamed_field', models.ForeignKey, initial=<<USER VALUE REQUIRED>>, related_model='tests.RenameAnchor1')", "DeleteField('TestModel', 'fk_field')"]
 
 >>> evolution = [RenameField('TestModel', 'fk_field', 'renamed_field')]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -201,18 +206,19 @@ True
 ...     m2m_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> end = register_models(('TestModel', RenameNonDefaultColumnNameModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', RenameNonDefaultColumnNameModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',RenameNonDefaultColumnNameModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>)", "DeleteField('TestModel', 'int_field_named')"]
 
 >>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field')]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -230,18 +236,19 @@ True
 ...     m2m_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> end = register_models(('TestModel', RenameNonDefaultColumnNameToNonDefaultNameModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', RenameNonDefaultColumnNameToNonDefaultNameModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',RenameNonDefaultColumnNameToNonDefaultNameModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>, db_column='non-default_column_name')", "DeleteField('TestModel', 'int_field_named')"]
 
 >>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field', db_column='non-default_column_name')]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -259,18 +266,19 @@ True
 ...     m2m_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> end = register_models(('TestModel', RenameNonDefaultColumnNameToNonDefaultNameAndTableModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', RenameNonDefaultColumnNameToNonDefaultNameAndTableModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',RenameNonDefaultColumnNameToNonDefaultNameAndTableModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'renamed_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>, db_column='non-default_column_name2')", "DeleteField('TestModel', 'int_field_named')"]
 
 >>> evolution = [RenameField('TestModel', 'int_field_named', 'renamed_field', db_column='non-default_column_name2', db_table='custom_ignored_db-table')]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -286,18 +294,19 @@ True
 ...     class Meta:
 ...         db_table = 'custom_rename_table_name'
 
->>> end = register_models(('CustomTableModel', RenameColumnCustomTableModel))
+>>> end = register_models(database_sig, ('CustomTableModel', RenameColumnCustomTableModel))
 >>> end_sig = test_proj_sig(('CustomTableModel',RenameColumnCustomTableModel))
 >>> d = Diff(custom_table_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('CustomTableModel', 'renamed_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>)", "DeleteField('CustomTableModel', 'value')"]
 
 >>> evolution = [RenameField('CustomTableModel', 'value', 'renamed_field')]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(custom_table_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -315,7 +324,7 @@ True
 ...     renamed_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> end = register_models(('TestModel', RenameM2MTableModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', RenameM2MTableModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',RenameM2MTableModel), *anchors)
 >>> start_sig = copy.deepcopy(start_sig)
 >>> d = Diff(start_sig, end_sig)
@@ -323,11 +332,12 @@ True
 ["AddField('TestModel', 'renamed_field', models.ManyToManyField, related_model='tests.RenameAnchor2')", "DeleteField('TestModel', 'm2m_field')"]
 
 >>> evolution = [RenameField('TestModel', 'm2m_field', 'renamed_field')]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -344,7 +354,7 @@ True
 ...     renamed_field = models.ManyToManyField(RenameAnchor2)
 ...     m2m_field_named = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> end = register_models(('TestModel', RenameM2MTableWithColumnNameModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', RenameM2MTableWithColumnNameModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',RenameM2MTableWithColumnNameModel), *anchors)
 >>> start_sig = copy.deepcopy(start_sig)
 >>> d = Diff(start_sig, end_sig)
@@ -352,11 +362,12 @@ True
 ["AddField('TestModel', 'renamed_field', models.ManyToManyField, related_model='tests.RenameAnchor2')", "DeleteField('TestModel', 'm2m_field')"]
 
 >>> evolution = [RenameField('TestModel', 'm2m_field', 'renamed_field', db_column='ignored_db-column')]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -374,7 +385,7 @@ True
 ...     m2m_field = models.ManyToManyField(RenameAnchor2)
 ...     renamed_field = models.ManyToManyField(RenameAnchor3, db_table='non-default_db_table')
 
->>> end = register_models(('TestModel', RenameNonDefaultM2MTableModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', RenameNonDefaultM2MTableModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',RenameNonDefaultM2MTableModel), *anchors)
 >>> start_sig = copy.deepcopy(start_sig)
 >>> d = Diff(start_sig, end_sig)
@@ -382,11 +393,12 @@ True
 ["AddField('TestModel', 'renamed_field', models.ManyToManyField, db_table='non-default_db_table', related_model='tests.RenameAnchor3')", "DeleteField('TestModel', 'm2m_field_named')"]
 
 >>> evolution = [RenameField('TestModel', 'm2m_field_named', 'renamed_field')]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 False

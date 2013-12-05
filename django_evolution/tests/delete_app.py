@@ -45,7 +45,7 @@ tests = r"""
 >>> all_models.extend(anchors)
 >>> all_models.extend(test_model)
 >>> all_models.extend(custom_model)
->>> start = register_models(*all_models)
+>>> start = register_models(database_sig, *all_models, register_indexes=True)
 >>> start_sig = test_proj_sig(*all_models)
 
 # Copy the base signature, and delete the tests app.
@@ -56,13 +56,13 @@ tests = r"""
 >>> print d.deleted
 {'tests': ['AppDeleteAnchor1', 'AppDeleteAnchor2', 'TestModel', 'CustomTestModel']}
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
-
 >>> test_sql = []
 >>> delete_app = DeleteApplication()
 >>> for app_label in d.deleted.keys():
-...     test_sql.append(delete_app.mutate(app_label, test_sig, database_sig))
-...     delete_app.simulate(app_label, test_sig, database_sig)
+...     test_sql.append(delete_app.mutate(app_label, test_sig, test_database_sig))
+...     delete_app.simulate(app_label, test_sig, test_database_sig)
 
 >>> Diff(test_sig, deleted_app_sig).is_empty(ignore_apps=True)
 True
@@ -75,9 +75,9 @@ True
 >>> test_sql = []
 >>> delete_app = DeleteApplication()
 >>> for app_label in d.deleted.keys():
-...     test_sql.append(delete_app.mutate(app_label, test_sig, database_sig,
-...                                       'default'))
-...     delete_app.simulate(app_label, test_sig, database_sig)
+...     test_sql.append(delete_app.mutate(app_label, test_sig,
+...                                       test_database_sig, 'default'))
+...     delete_app.simulate(app_label, test_sig, test_database_sig)
 
 >>> Diff(test_sig, deleted_app_sig).is_empty(ignore_apps=True)
 True

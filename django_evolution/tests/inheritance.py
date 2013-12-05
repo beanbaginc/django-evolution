@@ -25,11 +25,11 @@ tests = r"""
 >>> database_sig = signature.create_database_sig('default')
 
 >>> parent_model = ('ParentModel', ParentModel)
->>> parent = register_models(parent_model)
+>>> parent = register_models(database_sig, parent_model, register_indexes=True)
 >>> parent_table_sig = test_proj_sig(parent_model)
 
 >>> test_model = ('ChildModel', ChildModel)
->>> start = register_models(test_model)
+>>> start = register_models(database_sig, test_model, register_indexes=True)
 >>> start_sig = test_proj_sig(test_model, parent_model)
 
 # Add field to child model
@@ -38,17 +38,18 @@ tests = r"""
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField(default=42)
 
->>> end = register_models(('ChildModel', AddToChildModel), parent_model)
+>>> end = register_models(database_sig, ('ChildModel', AddToChildModel), parent_model)
 >>> end_sig = test_proj_sig(('ChildModel',AddToChildModel), parent_model)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']] # AddToChildModel
 ["AddField('ChildModel', 'added_field', models.IntegerField, initial=42)"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -60,17 +61,18 @@ True
 >>> class AddToChildModel(models.Model):
 ...     char_field = models.CharField(max_length=20)
 
->>> end = register_models(('ChildModel', AddToChildModel), parent_model)
+>>> end = register_models(database_sig, ('ChildModel', AddToChildModel), parent_model)
 >>> end_sig = test_proj_sig(('ChildModel',AddToChildModel), parent_model)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']] # DeleteFromChildModel
 ["DeleteField('ChildModel', 'int_field')"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True

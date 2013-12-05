@@ -39,7 +39,7 @@ tests = r"""
 
 >>> database_sig = signature.create_database_sig('default')
 
->>> start = register_models(*base_models)
+>>> start = register_models(database_sig, register_indexes=True, *base_models)
 >>> start_sig = test_proj_sig(*base_models)
 
 # Delete a Model
@@ -52,11 +52,12 @@ tests = r"""
 >>> print [str(e) for e in d.evolution()['tests']]
 ["DeleteModel('BasicModel')"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -74,11 +75,12 @@ True
 >>> print [str(e) for e in d.evolution()['tests']]
 ["DeleteModel('BasicWithM2MModel')"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -96,11 +98,12 @@ True
 >>> print [str(e) for e in d.evolution()['tests']]
 ["DeleteModel('CustomTableModel')"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -116,11 +119,12 @@ True
 >>> print [str(e) for e in d.evolution()['tests']]
 ["DeleteModel('CustomTableWithM2MModel')"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True

@@ -120,28 +120,36 @@ class EvolutionOperations(BaseEvolutionOperations):
             % params
         ]
 
-    def drop_index(self, model, f):
+    def get_drop_index_sql(self, model, index_name):
         qn = self.connection.ops.quote_name
-        params = (qn(self.get_index_name(model, f)), qn(model._meta.db_table))
-        return ['DROP INDEX %s ON %s;' % params]
 
-    def change_unique(self, model, field_name, new_unique_value, initial=None):
+        return ['DROP INDEX %s ON %s;'
+                % (qn(index_name), qn(model._meta.db_table))]
+
+    def get_change_unique_sql(self, model, field, new_unique_value,
+                              constraint_name, initial):
         qn = self.connection.ops.quote_name
         opts = model._meta
-        f = opts.get_field(field_name)
-        constraint_name = '%s' % (f.column,)
+
         if new_unique_value:
-            params = (constraint_name, qn(opts.db_table), qn(f.column),)
-            return ['CREATE UNIQUE INDEX %s ON %s(%s);' % params]
+            return ['CREATE UNIQUE INDEX %s ON %s(%s);'
+                    % (constraint_name, qn(opts.db_table), qn(field.column))]
         else:
-            params = (constraint_name, qn(opts.db_table))
-            return ['DROP INDEX %s ON %s;' % params]
+            return ['DROP INDEX %s ON %s;'
+                    % (constraint_name, qn(opts.db_table))]
 
     def get_rename_table_sql(self, model, old_db_tablename, db_tablename):
         qn = self.connection.ops.quote_name
 
         return ['RENAME TABLE %s TO %s;'
                 % (qn(old_db_tablename), qn(db_tablename))]
+
+    def get_new_index_name(self, model, fields, unique=False):
+        if unique:
+            return fields[0].column
+
+        return super(EvolutionOperations, self).get_new_index_name(
+            model, fields, unique)
 
     def get_indexes_for_table(self, table_name):
         cursor = self.connection.cursor()

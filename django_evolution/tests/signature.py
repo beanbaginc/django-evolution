@@ -53,10 +53,12 @@ tests = r"""
 ...     child_field = models.CharField(max_length=20)
 
 # Store the base signatures
->>> base_cache = register_models(
+>>> database_sig = signature.create_database_sig('db_multi')
+>>> base_cache = register_models(database_sig,
 ...     ('Anchor1', Anchor1), ('Anchor2', Anchor2), ('Anchor3', Anchor3),
 ...     ('TestModel', SigModel), ('ParentModel', ParentModel),
-...     ('ChildModel', ChildModel))
+...     ('ChildModel', ChildModel),
+...     register_indexes=True)
 
 # You can create a model signature for a model
 >>> pprint(signature.create_model_sig(SigModel))
@@ -115,7 +117,8 @@ tests = r"""
 ...     name = models.CharField(max_length=20)
 ...     age = models.IntegerField()
 ...     ref = models.ForeignKey(Anchor1)
->>> start = register_models(('TestModel', BaseModel), *anchors)
+>>> start = register_models(database_sig, ('TestModel', BaseModel),
+...                         register_indexes=True, *anchors)
 
 >>> start_sig = test_proj_sig(('TestModel', BaseModel), *anchors)
 
@@ -125,7 +128,8 @@ tests = r"""
 ...     age = models.IntegerField()
 ...     ref = models.ForeignKey(Anchor1)
 
->>> end = register_models(('TestModel', TestModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', TestModel),
+...                       register_indexes=True, *anchors)
 >>> test_sig = test_proj_sig(('TestModel',TestModel), *anchors)
 >>> d = Diff(start_sig, test_sig)
 >>> d.is_empty()
@@ -140,7 +144,7 @@ True
 ...     ref = models.ForeignKey(Anchor1)
 ...     date_of_birth = models.DateField()
 
->>> end = register_models(('TestModel', AddFieldModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', AddFieldModel), *anchors)
 >>> test_sig = test_proj_sig(('TestModel',AddFieldModel), *anchors)
 >>> d = Diff(start_sig, test_sig)
 >>> d.is_empty()
@@ -153,7 +157,7 @@ False
 ...     name = models.CharField(max_length=20)
 ...     ref = models.ForeignKey(Anchor1)
 
->>> end = register_models(('TestModel', DeleteFieldModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', DeleteFieldModel), *anchors)
 >>> test_sig = test_proj_sig(('TestModel',DeleteFieldModel), *anchors)
 >>> d = Diff(start_sig, test_sig)
 >>> d.is_empty()
@@ -168,7 +172,7 @@ False
 ...     age = models.IntegerField()
 ...     ref = models.ForeignKey(Anchor1)
 
->>> end = register_models(('TestModel', RenameFieldModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', RenameFieldModel), *anchors)
 >>> test_sig = test_proj_sig(('TestModel',RenameFieldModel), *anchors)
 >>> d = Diff(start_sig, test_sig)
 >>> d.is_empty()
@@ -182,7 +186,7 @@ False
 ...     age = models.IntegerField(null=True)
 ...     ref = models.ForeignKey(Anchor1)
 
->>> end = register_models(('TestModel', AddPropertyModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', AddPropertyModel), *anchors)
 >>> test_sig = test_proj_sig(('TestModel',AddPropertyModel), *anchors)
 >>> d = Diff(start_sig, test_sig)
 >>> d.is_empty()
@@ -204,7 +208,7 @@ In model tests.TestModel:
 ...     age = models.IntegerField(null=False)
 ...     ref = models.ForeignKey(Anchor1)
 
->>> end = register_models(('TestModel', AddDefaultPropertyModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', AddDefaultPropertyModel), *anchors)
 >>> test_sig = test_proj_sig(('TestModel',AddDefaultPropertyModel), *anchors)
 >>> d = Diff(start_sig, test_sig)
 >>> d.is_empty()
@@ -218,7 +222,7 @@ True
 ...     age = models.IntegerField()
 ...     ref = models.ForeignKey(Anchor1)
 
->>> end = register_models(('TestModel', ChangePropertyModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', ChangePropertyModel), *anchors)
 >>> test_sig = test_proj_sig(('TestModel',ChangePropertyModel), *anchors)
 >>> d = Diff(start_sig, test_sig)
 >>> d.is_empty()
@@ -239,7 +243,7 @@ In model tests.TestModel:
 ...     age = models.IntegerField()
 ...     ref = models.ForeignKey(Anchor2)
 
->>> end = register_models(('TestModel', ChangeFKModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', ChangeFKModel), *anchors)
 >>> test_sig = test_proj_sig(('TestModel',ChangeFKModel), *anchors)
 >>> d = Diff(start_sig, test_sig)
 >>> d.is_empty()

@@ -28,10 +28,15 @@ class EvolutionOperations(BaseEvolutionOperations):
 
         return sql
 
-    def get_index_name(self, model, f):
-        # By default, Django 1.2 will use a digest hash for the column name.
-        # The PostgreSQL support, however, uses the column name itself.
-        return '%s_%s' % (model._meta.db_table, f.column)
+    def get_new_index_name(self, model, fields, unique=False):
+        if not unique:
+            # By default, Django 1.2 will use a digest hash for the column
+            # name. The PostgreSQL support, however, uses the column name
+            # itself.
+            return '%s_%s' % (model._meta.db_table, fields[0].column)
+
+        return super(EvolutionOperations, self).get_new_index_name(
+            model, fields, unique)
 
     def get_indexes_for_table(self, table_name):
         cursor = self.connection.cursor()

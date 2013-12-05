@@ -5,6 +5,9 @@ from django.core.management import color
 from django.db import connection as default_connection
 from django.db.backends.util import truncate_name
 
+from django_evolution.signature import (add_index_to_database_sig,
+                                        remove_index_from_database_sig)
+
 
 class BaseEvolutionOperations(object):
     def __init__(self, database_sig, connection=default_connection):
@@ -184,6 +187,10 @@ class BaseEvolutionOperations(object):
                           ' '.join([null_constraints, unique_constraints]))
                 output = ['ALTER TABLE %s ADD COLUMN %s %s %s;' % params]
 
+        if f.unique or f.primary_key:
+            self.record_index(model, [f], use_constraint_name=True,
+                              unique=True)
+
         return output
 
     def set_field_null(self, model, f, null):
@@ -196,27 +203,88 @@ class BaseEvolutionOperations(object):
             return 'ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;' % params
 
     def create_index(self, model, f):
-        "Returns the CREATE INDEX SQL statements."
+        """Returns the SQL for creating an index for a single field.
+
+        The index will be recorded in the database signature for future
+        operations within the transaction, and the appropriate SQL for
+        creating the index will be returned.
+
+        This is not intended to be overridden.
+        """
         style = color.no_style()
+
+        self.record_index(model, [f])
 
         return self.connection.creation.sql_indexes_for_field(model, f, style)
 
     def drop_index(self, model, f):
-        qn = self.connection.ops.quote_name
-        index_name = self.get_index_name(model, f)
-        max_length = self.connection.ops.max_name_length()
+        """Returns the SQL for dropping an index for a single field.
 
-        return ['DROP INDEX %s;' % qn(truncate_name(index_name, max_length))]
+        The index matching the field's column will be looked up and,
+        if found, the SQL for dropping it will be returned.
 
-    def get_index_name(self, model, f):
-        if django.VERSION >= (1, 5):
-            colname = self.connection.creation._digest([f.name])
-        elif django.VERSION >= (1, 2):
-            colname = self.connection.creation._digest(f.column)
+        If the index was not found on the database or in the database
+        signature, this won't return any SQL statements.
+
+        This is not intended to be overridden. Instead, subclasses should
+        override `get_drop_index_sql`.
+        """
+        index_name = self.find_index_name(model, [f.column])
+
+        if index_name:
+            return self.drop_index_by_name(model, index_name)
         else:
-            colname = f.column
+            return []
 
-        return '%s_%s' % (model._meta.db_table, colname)
+    def drop_index_by_name(self, model, index_name):
+        """Returns the SQL to drop an index, given an index name.
+
+        The index will be removed fom the database signature, and
+        the appropriate SQL for dropping the index will be returned.
+
+        This is not intended to be overridden. Instead, subclasses should
+        override `get_drop_index_sql`.
+        """
+        self.remove_recorded_index(model, index_name)
+
+        return self.get_drop_index_sql(model, index_name)
+
+    def get_drop_index_sql(self, model, index_name):
+        """Returns the database-specific SQL to drop an index.
+
+        This can be overridden by subclasses if they use a syntax
+        other than "DROP INDEX <name>;"
+        """
+        qn = self.connection.ops.quote_name
+
+        return ['DROP INDEX %s;' % qn(index_name)]
+
+    def get_new_index_name(self, model, fields, unique=False):
+        """Returns a newly generated index name.
+
+        This returns an index name conforming to the appropriate
+        Django database backend's way of naming indexes. The index
+        name takes into account the model, list of fields, and whether
+        it's a unique index.
+
+        The default works well in most cases, but can be overridden
+        for database backends that require it.
+        """
+        if unique:
+            return truncate_name(
+                '%s_%s_key' % (model._meta.db_table, fields[0].column),
+                self.connection.ops.max_name_length())
+
+        if django.VERSION >= (1, 5):
+            colname = self.connection.creation._digest(
+                [f.name for f in fields])
+        elif django.VERSION >= (1, 2):
+            colname = self.connection.creation._digest(fields[0].column)
+        else:
+            colname = fields[0].column
+
+        return truncate_name('%s_%s' % (model._meta.db_table, colname),
+                             self.connection.ops.max_name_length())
 
     def change_null(self, model, field_name, new_null_attr, initial=None):
         qn = self.connection.ops.quote_name
@@ -226,7 +294,6 @@ class BaseEvolutionOperations(object):
 
         if new_null_attr:
             # Setting null to True
-            opts = model._meta
             output.append(self.set_field_null(model, f, new_null_attr))
         else:
             if initial is not None:
@@ -286,19 +353,75 @@ class BaseEvolutionOperations(object):
             return self.drop_index(model, f)
 
     def change_unique(self, model, field_name, new_unique_value, initial=None):
-        qn = self.connection.ops.quote_name
-        opts = model._meta
-        f = opts.get_field(field_name)
-        constraint_name = truncate_name(
-            '%s_%s_key' % (opts.db_table, f.column),
-            self.connection.ops.max_name_length())
+        """Returns the SQL to change a field's unique flag.
+
+        Changing the unique flag for a given column will affect indexes.
+        If setting unique to True, an index will be created in the
+        database signature for future operations within the transaction.
+        If False, the index will be dropped from the database signature.
+
+        The SQL needed to change the column will be returned.
+
+        This is not intended to be overridden. Instead, subclasses should
+        override `get_change_unique_sql`.
+        """
+        f = model._meta.get_field(field_name)
 
         if new_unique_value:
-            params = (qn(opts.db_table), constraint_name, qn(f.column),)
-            return ['ALTER TABLE %s ADD CONSTRAINT %s UNIQUE(%s);' % params]
+            constraint_name = self.get_new_index_name(model, [f], unique=True)
+            self.record_index(model, [f], index_name=constraint_name,
+                              unique=True)
         else:
-            params = (qn(opts.db_table), constraint_name,)
-            return ['ALTER TABLE %s DROP CONSTRAINT %s;' % params]
+            constraint_name = self.find_index_name(model, [f.column],
+                                                   unique=True)
+            self.remove_recorded_index(model, constraint_name, unique=True)
+
+        return self.get_change_unique_sql(model, f, new_unique_value,
+                                          constraint_name, initial)
+
+    def get_change_unique_sql(self, model, field, new_unique_value,
+                              constraint_name, initial):
+        """Returns the database-specific SQL to change a column's unique flag.
+
+        This can be overridden by subclasses if they use a different syntax.
+        """
+        qn = self.connection.ops.quote_name
+        opts = model._meta
+
+        if new_unique_value:
+            return ['ALTER TABLE %s ADD CONSTRAINT %s UNIQUE(%s);'
+                    % (qn(opts.db_table), constraint_name, qn(field.column))]
+        else:
+            return ['ALTER TABLE %s DROP CONSTRAINT %s;'
+                    % (qn(opts.db_table), constraint_name)]
+
+    def find_index_name(self, model, column_names, unique=False):
+        """Finds an index in the database matching the given criteria.
+
+        This will look in the database signature, attempting to find the
+        name of an index that matches the list of columns and the
+        uniqueness flag. If one is found, it will be returned. Otherwise,
+        None is returned.
+
+        This takes into account all indexes found when first beginning
+        then evolution process, and those added during the evolution
+        process.
+        """
+        if not isinstance(column_names, (list, tuple)):
+            column_names = (column_names,)
+
+        opts = model._meta
+        table_name = opts.db_table
+
+        if table_name in self.database_sig:
+            indexes = self.database_sig[table_name]['indexes']
+
+            for index_name, index_info in indexes.iteritems():
+                if (index_info['columns'] == column_names and
+                    index_info['unique'] == unique):
+                    return index_name
+
+        return None
 
     def get_indexes_for_table(self, table_name):
         """Returns a dictionary of indexes from the database.
@@ -361,6 +484,27 @@ class BaseEvolutionOperations(object):
                     relto, style, refs))
 
         return sql
+
+    def record_index(self, model, fields, use_constraint_name=False,
+                     index_name=None, unique=False):
+        """Records an index in the database signature.
+
+        This is a convenience to record an index in the database signature
+        for future lookups. It can take an index name, or it can generate
+        a constraint name if that's to be used.
+        """
+        if not index_name and use_constraint_name:
+            index_name = truncate_name(
+                '%s_%s_key' % (model._meta.db_table, fields[0].column),
+                self.connection.ops.max_name_length())
+
+        add_index_to_database_sig(self, self.database_sig, model, fields,
+                                  index_name=index_name, unique=unique)
+
+    def remove_recorded_index(self, model, index_name, unique=False):
+        """Removes an index from the database signature."""
+        remove_index_from_database_sig(self.database_sig, model,
+                                       index_name, unique=unique)
 
     def normalize_value(self, value):
         if isinstance(value, bool):

@@ -12,6 +12,7 @@ from django.utils.datastructures import SortedDict
 from django.utils.functional import curry
 
 from django_evolution import signature, is_multi_db
+from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.tests import models as evo_test
 from django_evolution.utils import write_sql, execute_sql
 
@@ -52,8 +53,11 @@ sql_indexes = curry(wrap_sql_func, sql.sql_indexes)
 sql_delete = curry(wrap_sql_func, sql.sql_delete)
 
 
-def _register_models(app_label='tests', db_name='default', *models):
+def _register_models(database_sig, app_label='tests', db_name='default',
+                     *models, **kwargs):
     app_cache = SortedDict()
+    evolver = EvolutionOperationsMulti(db_name, database_sig).get_evolver()
+    register_indexes = kwargs.get('register_indexes', False)
 
     my_connection = connection
 
@@ -83,6 +87,31 @@ def _register_models(app_label='tests', db_name='default', *models):
             model._meta.object_name = name
             model._meta.module_name = name.lower()
 
+            # Add an entry for the table in database_sig, if it's not already
+            # there.
+            if model._meta.db_table not in database_sig:
+                database_sig[model._meta.db_table] = \
+                    signature.create_empty_database_table_sig()
+
+            if register_indexes:
+                # Now that we definitely have an entry, store the indexes for
+                # all the fields in database_sig, so that other operations can
+                # look up the index names.
+                for field in model._meta.local_fields:
+                    if field.db_index or field.unique:
+                        signature.add_index_to_database_sig(
+                            evolver, database_sig, model, [field],
+                            unique=field.unique)
+
+                for field in getattr(model._meta, 'index_together', []):
+                    signature.add_index_to_database_sig(
+                        evolver, database_sig, model,
+                        [
+                            model._meta.get_field_by_name(f)[0]
+                            for f in index_fields
+                        ])
+
+            # Register the model with the app.
             add_app_test_model(model, app_label=app_label)
 
             for field in model._meta.local_many_to_many:
@@ -148,12 +177,14 @@ def _register_models(app_label='tests', db_name='default', *models):
     return app_cache
 
 
-def register_models(*models):
-    return _register_models('tests', 'default', *models)
+def register_models(database_sig, *models, **kwargs):
+    return _register_models(database_sig, 'tests', 'default', *models,
+                            **kwargs)
 
 
-def register_models_multi(app_label, db_name, *models):
-    return _register_models(app_label, db_name, *models)
+def register_models_multi(database_sig, app_label, db_name, *models, **kwargs):
+    return _register_models(database_sig, app_label, db_name, *models,
+                            **kwargs)
 
 
 def _test_proj_sig(app_label, *models, **kwargs):
@@ -395,6 +426,22 @@ def generate_index_name(table, col_name, field_name=None):
         column = col_name
 
     return '%s_%s' % (table, column)
+
+
+def has_index_with_columns(database_sig, table_name, columns, unique=False):
+    """Returns whether there's an index with the given criteria.
+
+    This looks in the database signature for an index for the given table,
+    column names, and with the given uniqueness flag. It will return a boolean
+    indicating if one was found.
+    """
+    assert table_name in database_sig
+
+    for index_info in database_sig[table_name]['indexes'].itervalues():
+        if index_info['columns'] == columns and index_info['unique'] == unique:
+            return True
+
+    return False
 
 
 def generate_constraint_name(r_col, col, r_table, table):

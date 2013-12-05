@@ -204,6 +204,11 @@ class EvolutionOperations(BaseEvolutionOperations):
                                         create_index=False))
         output.extend(self.copy_from_temp_table(table_name, new_fields))
         output.extend(self.delete_table(TEMP_TABLE_NAME))
+
+        if f.unique or f.primary_key:
+            self.record_index(model, [f], use_constraint_name=True,
+                              unique=True)
+
         return output
 
     def change_null(self, model, field_name, new_null_attr, initial=None):
@@ -215,8 +220,9 @@ class EvolutionOperations(BaseEvolutionOperations):
         return self.change_attribute(model, field_name, 'max_length',
                                      new_max_length, initial)
 
-    def change_unique(self, model, field_name, new_unique_value, initial=None):
-        return self.change_attribute(model, field_name, '_unique',
+    def get_change_unique_sql(self, model, field, new_unique_value,
+                              constraint_name, initial):
+        return self.change_attribute(model, field.name, '_unique',
                                      new_unique_value, initial)
 
     def change_attribute(self, model, field_name, attr_name, new_attr_value,

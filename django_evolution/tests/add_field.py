@@ -21,7 +21,10 @@ tests = r"""
 >>> from django_evolution import models as test_app
 >>> from django_evolution import signature
 >>> from django_evolution.mutations import AddField, DeleteField
->>> from django_evolution.tests.utils import test_proj_sig, execute_test_sql, register_models, deregister_models
+>>> from django_evolution.tests.utils import (has_index_with_columns,
+...                                           test_proj_sig, execute_test_sql,
+...                                           register_models,
+...                                           deregister_models)
 >>> from django_evolution.diff import Diff
 
 >>> import copy
@@ -62,12 +65,13 @@ tests = r"""
 >>> database_sig = signature.create_database_sig('default')
 
 >>> custom_model = ('CustomTableModel', CustomTableModel)
->>> custom = register_models(custom_model)
+>>> custom = register_models(database_sig, custom_model, register_indexes=True)
 >>> custom_table_sig = test_proj_sig(custom_model)
 
 >>> test_model = ('TestModel', AddBaseModel)
->>> start = register_models(*anchors)
->>> start.update(register_models(test_model))
+>>> start = register_models(database_sig, *anchors, register_indexes=True)
+>>> start.update(register_models(database_sig, test_model,
+...                              register_indexes=True))
 >>> start_sig = test_proj_sig(test_model, *anchors)
 
 # Add non-null field with non-callable initial value
@@ -76,51 +80,55 @@ tests = r"""
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField()
 
->>> end = register_models(('TestModel', AddNonNullColumnModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', AddNonNullColumnModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',AddNonNullColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']] #AddNonNullColumnModel
 ["AddField('TestModel', 'added_field', models.IntegerField, initial=<<USER VALUE REQUIRED>>)"]
 
 # Evolution won't run as-is
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 Traceback (most recent call last):
 ...
 EvolutionException: Cannot use hinted evolution: AddField or ChangeField mutation for 'TestModel.added_field' in 'tests' requires user-specified initial value.
 
 # First try without an initial value. This will fail
 >>> evolution = [AddField('TestModel', 'added_field', models.IntegerField)]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 Traceback (most recent call last):
 ...
 SimulationFailure: Cannot create new column 'added_field' on 'tests.TestModel' without a non-null initial value.
 
 # Now try with an explicitly null initial value. This will also fail
 >>> evolution = [AddField('TestModel', 'added_field', models.IntegerField, initial=None)]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 Traceback (most recent call last):
 ...
 SimulationFailure: Cannot create new column 'added_field' on 'tests.TestModel' without a non-null initial value.
 
 # Now try with a good initial value
 >>> evolution = [AddField('TestModel', 'added_field', models.IntegerField, initial=1)]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -130,11 +138,12 @@ True
 
 # Now try with a good callable initial value
 >>> evolution = [AddField('TestModel', 'added_field', models.IntegerField, initial=AddSequenceFieldInitial('AddNonNullCallableColumnModel'))]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -148,18 +157,19 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField(null=True)
 
->>> end = register_models(('TestModel',AddNullColumnModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel',AddNullColumnModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',AddNullColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']] #AddNullColumnModel
 ["AddField('TestModel', 'added_field', models.IntegerField, null=True)"]
 
 >>> evolution = [AddField('TestModel', 'added_field', models.IntegerField, initial=1, null=True)]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -173,18 +183,19 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.CharField(max_length=10)
 
->>> end = register_models(('TestModel',AddStringColumnModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel',AddStringColumnModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',AddStringColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']] # AddStringColumnModel
 ["AddField('TestModel', 'added_field', models.CharField, initial=<<USER VALUE REQUIRED>>, max_length=10)"]
 
 >>> evolution = [AddField('TestModel', 'added_field', models.CharField, initial="abc's xyz", max_length=10)]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -198,7 +209,7 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.CharField(max_length=10, blank=True)
 
->>> end = register_models(('TestModel',AddBlankStringColumnModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel',AddBlankStringColumnModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',AddBlankStringColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']] # AddBlankStringColumnModel
@@ -210,7 +221,7 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.DateTimeField()
 
->>> end = register_models(('TestModel',AddDateColumnModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel',AddDateColumnModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',AddDateColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']] # AddDateColumnModel
@@ -218,11 +229,12 @@ True
 
 >>> new_date = datetime(2007,12,13,16,42,0)
 >>> evolution = [AddField('TestModel', 'added_field', models.DateTimeField, initial=new_date)]
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in evolution:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -236,17 +248,18 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField(default=42)
 
->>> end = register_models(('TestModel',AddDefaultColumnModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel',AddDefaultColumnModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',AddDefaultColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']] #AddDefaultColumnModel
 ["AddField('TestModel', 'added_field', models.IntegerField, initial=42)"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -260,7 +273,7 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.BooleanField(default=True)
 
->>> end = register_models(('TestModel', AddMismatchInitialBoolColumnModel),
+>>> end = register_models(database_sig, ('TestModel', AddMismatchInitialBoolColumnModel),
 ...                        *anchors)
 >>> end_sig = test_proj_sig(('TestModel', AddMismatchInitialBoolColumnModel),
 ...                          *anchors)
@@ -268,12 +281,13 @@ True
 >>> print [str(e) for e in d.evolution()['tests']] #AddDefaultColumnModel
 ["AddField('TestModel', 'added_field', models.BooleanField, initial=True)"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in [AddField('TestModel', 'added_field',
 ...                           models.BooleanField, initial=False)]:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -287,17 +301,18 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.CharField(max_length=20, default='')
 
->>> end = register_models(('TestModel',AddEmptyStringDefaultColumnModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel',AddEmptyStringDefaultColumnModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',AddEmptyStringDefaultColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']] #AddEmptyStringDefaultColumnModel
 ["AddField('TestModel', 'added_field', models.CharField, initial=u'', max_length=20)"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -312,17 +327,18 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField(null=True)
 
->>> end = register_models(('TestModel', AddNullColumnModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', AddNullColumnModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel', AddNullColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']] #AddNullColumnModel
 ["AddField('TestModel', 'added_field', models.IntegerField, null=True)"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -336,17 +352,18 @@ True
 ...     int_field = models.IntegerField()
 ...     add_field = models.IntegerField(db_column='non-default_column', null=True)
 
->>> end = register_models(('TestModel',NonDefaultColumnModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel',NonDefaultColumnModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',NonDefaultColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'add_field', models.IntegerField, null=True, db_column='non-default_column')"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -362,17 +379,18 @@ True
 ...     class Meta:
 ...         db_table = 'custom_table_name'
 
->>> end = register_models(('CustomTableModel',AddColumnCustomTableModel))
+>>> end = register_models(database_sig, ('CustomTableModel',AddColumnCustomTableModel))
 >>> end_sig = test_proj_sig(('CustomTableModel',AddColumnCustomTableModel))
 >>> d = Diff(custom_table_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('CustomTableModel', 'added_field', models.IntegerField, null=True)"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(custom_table_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -387,18 +405,19 @@ True
 ...     char_field = models.CharField(max_length=20)
 ...     int_field = models.IntegerField()
 
->>> end = register_models(('TestModel', AddPrimaryKeyModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', AddPrimaryKeyModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',AddPrimaryKeyModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'my_primary_key', models.AutoField, initial=<<USER VALUE REQUIRED>>, primary_key=True)", "DeleteField('TestModel', 'id')"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 
 >>> for mutation in [AddField('TestModel', 'my_primary_key', models.AutoField, initial=AddSequenceFieldInitial('AddPrimaryKeyModel'), primary_key=True), DeleteField('TestModel', 'id')]:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 Traceback (most recent call last):
 ...
 SimulationFailure: Cannot delete a primary key.
@@ -409,22 +428,30 @@ SimulationFailure: Cannot delete a primary key.
 ...     int_field = models.IntegerField()
 ...     add_field = models.IntegerField(db_index=True, null=True)
 
->>> end = register_models(('TestModel',AddIndexedColumnModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel',AddIndexedColumnModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',AddIndexedColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'add_field', models.IntegerField, null=True, db_index=True)"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
+
+>>> has_index_with_columns(test_database_sig, 'tests_testmodel', ['add_field'])
+False
+
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
 
->>> execute_test_sql(start, end, test_sql, debug=False) #AddIndexedColumnModel
+>>> has_index_with_columns(test_database_sig, 'tests_testmodel', ['add_field'])
+True
+
+>>> execute_test_sql(start, end, test_sql) #AddIndexedColumnModel
 %(AddIndexedColumnModel)s
 
 # Unique field.
@@ -433,19 +460,28 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField(unique=True, null=True)
 
->>> end = register_models(('TestModel',AddUniqueColumnModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel',AddUniqueColumnModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',AddUniqueColumnModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'added_field', models.IntegerField, unique=True, null=True)"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
+>>> has_index_with_columns(test_database_sig, 'tests_testmodel', ['added_field'],
+...                        unique=True)
+False
+
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
+True
+
+>>> has_index_with_columns(test_database_sig, 'tests_testmodel', ['added_field'],
+...                        unique=True)
 True
 
 >>> execute_test_sql(start, end, test_sql) #AddUniqueColumnModel
@@ -457,19 +493,28 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.IntegerField(unique=True, db_index=True, null=True)
 
->>> end = register_models(('TestModel',AddUniqueIndexedModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel',AddUniqueIndexedModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',AddUniqueIndexedModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'added_field', models.IntegerField, unique=True, null=True, db_index=True)"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
+>>> has_index_with_columns(test_database_sig, 'tests_testmodel', ['added_field'],
+...                        unique=True)
+False
+
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
+True
+
+>>> has_index_with_columns(test_database_sig, 'tests_testmodel', ['added_field'],
+...                        unique=True)
 True
 
 >>> execute_test_sql(start, end, test_sql) #AddUniqueIndexedModel
@@ -481,17 +526,18 @@ Foreign Key field.
 ...     int_field = models.IntegerField()
 ...     added_field = models.ForeignKey(AddAnchor1, null=True)
 
->>> end = register_models(('TestModel',AddForeignKeyModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel',AddForeignKeyModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',AddForeignKeyModel), *anchors)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'added_field', models.ForeignKey, null=True, related_model='tests.AddAnchor1')"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -505,7 +551,7 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.ManyToManyField(AddAnchor1)
 
->>> end = register_models(('TestModel',AddM2MDatabaseTableModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel',AddM2MDatabaseTableModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel',AddM2MDatabaseTableModel), *anchors)
 >>> end_sig['tests'][AddAnchor1.__name__] = signature.create_model_sig(AddAnchor1)
 >>> anchor_sig = copy.deepcopy(start_sig)
@@ -514,11 +560,12 @@ True
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'added_field', models.ManyToManyField, related_model='tests.AddAnchor1')"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(anchor_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -532,7 +579,7 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.ManyToManyField(AddAnchor2)
 
->>> end = register_models(('TestModel', AddM2MNonDefaultDatabaseTableModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', AddM2MNonDefaultDatabaseTableModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel', AddM2MNonDefaultDatabaseTableModel), *anchors)
 >>> end_sig['tests'][AddAnchor2.__name__] = signature.create_model_sig(AddAnchor2)
 >>> anchor_sig = copy.deepcopy(start_sig)
@@ -541,11 +588,12 @@ True
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'added_field', models.ManyToManyField, related_model='tests.AddAnchor2')"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(anchor_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
@@ -560,18 +608,19 @@ True
 ...     int_field = models.IntegerField()
 ...     added_field = models.ManyToManyField('AddM2MSelfDatabaseTableModel')
 
->>> end = register_models(('TestModel', AddM2MSelfDatabaseTableModel), *anchors)
+>>> end = register_models(database_sig, ('TestModel', AddM2MSelfDatabaseTableModel), *anchors)
 >>> end_sig = test_proj_sig(('TestModel', AddM2MSelfDatabaseTableModel), *anchors)
 
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["AddField('TestModel', 'added_field', models.ManyToManyField, related_model='tests.TestModel')"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True

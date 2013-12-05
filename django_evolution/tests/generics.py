@@ -36,8 +36,9 @@ tests = r"""
 >>> anchor = ('Anchor', GenericAnchor)
 >>> content_type = ('contenttypes.ContentType', ContentType)
 >>> test_model = ('TestModel', GenericBaseModel)
->>> start = register_models(anchor)
->>> start.update(register_models(test_model))
+>>> start = register_models(database_sig, anchor, register_indexes=True)
+>>> start.update(register_models(database_sig, test_model,
+...                              register_indexes=True))
 >>> start_sig = test_proj_sig(test_model, content_type, anchor)
 
 # Delete a column
@@ -50,17 +51,18 @@ tests = r"""
 ...     # Plus a generic relation, which should be ignored
 ...     generic = generic.GenericRelation(GenericAnchor)
 
->>> end = register_models(('TestModel', DeleteColumnModel), anchor)
+>>> end = register_models(database_sig, ('TestModel', DeleteColumnModel), anchor)
 >>> end_sig = test_proj_sig(('TestModel', DeleteColumnModel), content_type, anchor)
 >>> d = Diff(start_sig, end_sig)
 >>> print [str(e) for e in d.evolution()['tests']]
 ["DeleteField('TestModel', 'char_field')"]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in d.evolution()['tests']:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True

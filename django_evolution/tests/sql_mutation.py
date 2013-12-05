@@ -23,7 +23,8 @@ tests = r"""
 # Store the base signatures
 >>> database_sig = signature.create_database_sig('default')
 
->>> start = register_models(('TestModel', SQLBaseModel))
+>>> start = register_models(database_sig, ('TestModel', SQLBaseModel),
+...                         register_indexes=True)
 >>> start_sig = test_proj_sig(('TestModel', SQLBaseModel))
 
 # Add 3 Fields resulting in new database columns.
@@ -33,7 +34,7 @@ tests = r"""
 ...     added_field1 = models.IntegerField(null=True)
 ...     added_field2 = models.IntegerField(null=True)
 ...     added_field3 = models.IntegerField(null=True)
->>> end = register_models(('TestModel', SQLMutationModel))
+>>> end = register_models(database_sig, ('TestModel', SQLMutationModel))
 >>> end_sig = test_proj_sig(('TestModel',SQLMutationModel))
 >>> d = Diff(start_sig, end_sig)
 
@@ -47,11 +48,12 @@ tests = r"""
 ...        'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field3" integer NULL;',
 ...    ])]
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in sequence:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 Traceback (most recent call last):
 ...
 CannotSimulate: Cannot simulate SQLMutations
@@ -79,11 +81,12 @@ CannotSimulate: Cannot simulate SQLMutations
 
 >>> sequence = %(SQLMutationSequence)s
 
+>>> test_database_sig = copy.deepcopy(database_sig)
 >>> test_sig = copy.deepcopy(start_sig)
 >>> test_sql = []
 >>> for mutation in sequence:
-...     test_sql.extend(mutation.mutate('tests', test_sig, database_sig))
-...     mutation.simulate('tests', test_sig, database_sig)
+...     test_sql.extend(mutation.mutate('tests', test_sig, test_database_sig))
+...     mutation.simulate('tests', test_sig, test_database_sig)
 
 >>> Diff(test_sig, end_sig).is_empty()
 True
