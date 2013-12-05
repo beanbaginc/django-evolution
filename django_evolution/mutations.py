@@ -629,25 +629,26 @@ class ChangeField(MonoBaseMutation):
                                                ATTRIBUTE_DEFAULTS[field_attr])
 
             # Avoid useless SQL commands if nothing has changed.
-            if not old_field_attr == attr_value:
+            if old_field_attr != attr_value:
                 try:
                     evolver_func = getattr(self.evolver(model, database),
                                            'change_%s' % field_attr)
-                    if field_attr == 'null':
-                        sql_statements.extend(
-                            evolver_func(model, self.field_name, attr_value,
-                                         self.initial))
-                    elif field_attr == 'db_table':
-                        sql_statements.extend(
-                            evolver_func(model, old_field_attr, attr_value))
-                    else:
-                        sql_statements.extend(
-                            evolver_func(model, self.field_name, attr_value))
                 except AttributeError:
                     raise EvolutionNotImplementedError(
                         "ChangeField does not support modifying the '%s' "
                         "attribute on '%s.%s'."
                         % (field_attr, self.model_name, self.field_name))
+
+                if field_attr == 'null':
+                    sql_statements.extend(
+                        evolver_func(model, self.field_name, attr_value,
+                                     self.initial))
+                elif field_attr == 'db_table':
+                    sql_statements.extend(
+                        evolver_func(model, old_field_attr, attr_value))
+                else:
+                    sql_statements.extend(
+                        evolver_func(model, self.field_name, attr_value))
 
         return sql_statements
 

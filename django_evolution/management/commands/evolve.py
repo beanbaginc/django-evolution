@@ -1,3 +1,4 @@
+import logging
 from optparse import make_option
 try:
     import cPickle as pickle
@@ -58,7 +59,13 @@ class Command(BaseCommand):
     requires_model_validation = False
 
     def handle(self, *app_labels, **options):
-        self.evolve(*app_labels, **options)
+        try:
+            self.evolve(*app_labels, **options)
+        except CommandError:
+            raise
+        except Exception, e:
+            logging.error('Unexpected error: %s' % e, exc_info=1)
+            raise
 
     def evolve(self, *app_labels, **options):
         verbosity = int(options['verbosity'])
