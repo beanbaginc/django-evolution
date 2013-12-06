@@ -1,0 +1,3 @@
+REVIEWBOARD_URL = "https://reviews.reviewboard.org/"
+REPOSITORY = "Django Evolution"
+BRANCH = "master"
