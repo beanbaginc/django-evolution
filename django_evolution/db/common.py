@@ -94,7 +94,8 @@ class BaseEvolutionOperations(object):
 
             # Sort the list, in order to create consistency in the order of
             # ALTER TABLEs. This is primarily needed for unit tests.
-            for refto, refs in sorted(references.items()):
+            for refto, refs in sorted(references.iteritems(),
+                                      key=lambda i: repr(i)):
                 pending_references.setdefault(refto, []).extend(refs)
                 sql.extend(creation.sql_for_pending_references(
                     refto, style, pending_references))

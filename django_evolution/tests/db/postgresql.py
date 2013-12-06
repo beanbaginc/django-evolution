@@ -142,21 +142,21 @@ if autocreate_through_tables:
             ')',
             ';',
 
-            ('ALTER TABLE "tests_testmodel_added_field"'
-             ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
-             ' REFERENCES "tests_testmodel" ("id")'
-             ' DEFERRABLE INITIALLY DEFERRED;')
-            % generate_constraint_name('testmodel_id', 'id',
-                                       'tests_testmodel_added_field',
-                                       'tests_testmodel'),
-
-            ('ALTER TABLE "tests_testmodel_added_field"'
-             ' ADD CONSTRAINT "%s" FOREIGN KEY ("addanchor1_id")'
-             ' REFERENCES "tests_addanchor1" ("id")'
-             ' DEFERRABLE INITIALLY DEFERRED;')
+            'ALTER TABLE "tests_testmodel_added_field"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("addanchor1_id")'
+            ' REFERENCES "tests_addanchor1" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
             % generate_constraint_name('addanchor1_id', 'id',
                                        'tests_testmodel_added_field',
                                        'tests_addanchor1'),
+
+            'ALTER TABLE "tests_testmodel_added_field"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
         ]),
 
         'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
@@ -168,21 +168,21 @@ if autocreate_through_tables:
             ')',
             ';',
 
-            ('ALTER TABLE "tests_testmodel_added_field"'
-             ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
-             ' REFERENCES "tests_testmodel" ("id")'
-             ' DEFERRABLE INITIALLY DEFERRED;')
-            % generate_constraint_name('testmodel_id', 'id',
-                                       'tests_testmodel_added_field',
-                                       'tests_testmodel'),
-
-            ('ALTER TABLE "tests_testmodel_added_field"'
-             ' ADD CONSTRAINT "%s" FOREIGN KEY ("addanchor2_id")'
-             ' REFERENCES "custom_add_anchor_table" ("id")'
-             ' DEFERRABLE INITIALLY DEFERRED;')
+            'ALTER TABLE "tests_testmodel_added_field"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("addanchor2_id")'
+            ' REFERENCES "custom_add_anchor_table" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
             % generate_constraint_name('addanchor2_id', 'id',
                                        'tests_testmodel_added_field',
                                        'custom_add_anchor_table'),
+
+            'ALTER TABLE "tests_testmodel_added_field"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
         ]),
 
         'AddManyToManySelf': '\n'.join([
@@ -194,18 +194,18 @@ if autocreate_through_tables:
             ')',
             ';',
 
-            ('ALTER TABLE "tests_testmodel_added_field"'
-             ' ADD CONSTRAINT "%s" FOREIGN KEY ("from_testmodel_id")'
-             ' REFERENCES "tests_testmodel" ("id")'
-             ' DEFERRABLE INITIALLY DEFERRED;')
+            'ALTER TABLE "tests_testmodel_added_field"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("from_testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
             % generate_constraint_name('from_testmodel_id', 'id',
                                        'tests_testmodel_added_field',
                                        'tests_testmodel'),
 
-            ('ALTER TABLE "tests_testmodel_added_field"'
-             ' ADD CONSTRAINT "%s" FOREIGN KEY ("to_testmodel_id")'
-             ' REFERENCES "tests_testmodel" ("id")'
-             ' DEFERRABLE INITIALLY DEFERRED;')
+            'ALTER TABLE "tests_testmodel_added_field"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("to_testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
             % generate_constraint_name('to_testmodel_id', 'id',
                                        'tests_testmodel_added_field',
                                        'tests_testmodel'),

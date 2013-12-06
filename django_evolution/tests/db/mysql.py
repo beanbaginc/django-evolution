@@ -141,18 +141,18 @@ add_field = {
         ';',
 
         'ALTER TABLE `tests_testmodel_added_field`'
-        ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
-        ' REFERENCES `tests_testmodel` (`id`);'
-        % generate_constraint_name('testmodel_id', 'id',
-                                   'tests_testmodel_added_field',
-                                   'tests_testmodel'),
-
-        'ALTER TABLE `tests_testmodel_added_field`'
         ' ADD CONSTRAINT `%s` FOREIGN KEY (`addanchor1_id`)'
         ' REFERENCES `tests_addanchor1` (`id`);'
         % generate_constraint_name('addanchor1_id', 'id',
                                    'tests_testmodel_added_field',
                                    'tests_addanchor1'),
+
+        'ALTER TABLE `tests_testmodel_added_field`'
+        ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
+        ' REFERENCES `tests_testmodel` (`id`);'
+        % generate_constraint_name('testmodel_id', 'id',
+                                   'tests_testmodel_added_field',
+                                   'tests_testmodel'),
     ]),
 
     'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
@@ -165,18 +165,18 @@ add_field = {
         ';',
 
         'ALTER TABLE `tests_testmodel_added_field`'
-        ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
-        ' REFERENCES `tests_testmodel` (`id`);'
-        % generate_constraint_name('testmodel_id', 'id',
-                                   'tests_testmodel_added_field',
-                                   'tests_testmodel'),
-
-        'ALTER TABLE `tests_testmodel_added_field`'
         ' ADD CONSTRAINT `%s` FOREIGN KEY (`addanchor2_id`)'
         ' REFERENCES `custom_add_anchor_table` (`id`);'
         % generate_constraint_name('addanchor2_id', 'id',
                                    'tests_testmodel_added_field',
                                    'custom_add_anchor_table'),
+
+        'ALTER TABLE `tests_testmodel_added_field`'
+        ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
+        ' REFERENCES `tests_testmodel` (`id`);'
+        % generate_constraint_name('testmodel_id', 'id',
+                                   'tests_testmodel_added_field',
+                                   'tests_testmodel'),
     ]),
 
     'AddManyToManySelf': '\n'.join([
