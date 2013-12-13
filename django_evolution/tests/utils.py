@@ -7,13 +7,14 @@ from django.core.management.color import no_style
 from django.db import connection, transaction, settings, models
 from django.db.backends.util import truncate_name
 from django.db.models.loading import cache
-from django.db.models.options import Options
 from django.utils.datastructures import SortedDict
 from django.utils.functional import curry
 
 from django_evolution import signature, is_multi_db
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.signature import rescan_indexes_for_database_sig
+from django_evolution.support import (digest_index_names,
+                                      supports_index_together)
 from django_evolution.tests import models as evo_test
 from django_evolution.utils import write_sql, execute_sql
 
@@ -29,14 +30,6 @@ DEFAULT_TEST_ATTRIBUTE_VALUES = {
     models.DateTimeField: datetime.now(),
     models.PositiveIntegerField: '42'
 }
-
-
-# This is not a great check, but it's from the same version as auto-created
-# tables (Django 1.2), so we use it.
-digest_index_names = hasattr(Options({}), 'auto_created')
-
-# Index names changed in Django 1.5, with the introduction of index_together.
-supports_index_together = hasattr(Options({}), 'index_together')
 
 
 digest = connection.creation._digest

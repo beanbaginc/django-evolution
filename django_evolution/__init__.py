@@ -65,12 +65,7 @@ class EvolutionNotImplementedError(EvolutionException, NotImplementedError):
     pass
 
 
-try:
-    from django.db import connections
-    __is_multi_db = True
-except:
-    __is_multi_db = False
-
-
 def is_multi_db():
-    return __is_multi_db
+    from django_evolution.support import supports_multi_db
+
+    return supports_multi_db

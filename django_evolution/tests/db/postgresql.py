@@ -1,8 +1,5 @@
-from django.db.models.options import Options
-
+from django_evolution.support import autocreate_through_tables
 from django_evolution.tests.utils import generate_constraint_name
-
-autocreate_through_tables = hasattr(Options({}), 'auto_created')
 
 
 add_field = {
