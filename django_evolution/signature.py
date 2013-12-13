@@ -161,7 +161,7 @@ def rescan_indexes_for_database_sig(database_sig, database):
 
 
 def add_index_to_database_sig(evolver, database_sig, model, fields,
-                              index_name=None, unique=False):
+                              index_name, unique=False):
     """Adds an index to the database signature.
 
     This index can be used for later lookup during the evolution process.
@@ -170,9 +170,6 @@ def add_index_to_database_sig(evolver, database_sig, model, fields,
     """
     table_name = model._meta.db_table
     assert table_name in database_sig
-
-    if not index_name:
-        index_name = evolver.get_new_index_name(model, fields, unique)
 
     database_sig[table_name]['indexes'][index_name] = {
         'unique': unique,

@@ -1,12 +1,13 @@
 import copy
 
-import django
 from django.core.management import color
 from django.db import connection as default_connection
 from django.db.backends.util import truncate_name
 
 from django_evolution.signature import (add_index_to_database_sig,
                                         remove_index_from_database_sig)
+from django_evolution.support import (digest_index_names,
+                                      supports_index_together)
 
 
 class BaseEvolutionOperations(object):
@@ -273,27 +274,55 @@ class BaseEvolutionOperations(object):
     def get_new_index_name(self, model, fields, unique=False):
         """Returns a newly generated index name.
 
-        This returns an index name conforming to the appropriate
-        Django database backend's way of naming indexes. The index
-        name takes into account the model, list of fields, and whether
-        it's a unique index.
+        This returns a unique index name for any indexes created by
+        django-evolution. It does not need to match what Django would
+        create by default.
 
         The default works well in most cases, but can be overridden
         for database backends that require it.
         """
-        if unique:
-            return truncate_name(fields[0].column)
-
-        if django.VERSION >= (1, 5):
-            colname = self.connection.creation._digest(
-                [f.name for f in fields])
-        elif django.VERSION >= (1, 2):
-            colname = self.connection.creation._digest(fields[0].column)
-        else:
-            colname = fields[0].column
+        colname = self.connection.creation._digest(*[f.name for f in fields])
 
         return truncate_name('%s_%s' % (model._meta.db_table, colname),
                              self.connection.ops.max_name_length())
+
+    def get_default_index_name(self, table_name, field):
+        """Returns a default index name for the database.
+
+        This will return an index name for the given field that matches what
+        the database or Django database backend would automatically generate
+        when marking a field as indexed or unique.
+
+        This can be overridden by subclasses if the database or Django
+        database backend provides different values.
+        """
+        assert field.unique or field.db_index
+
+        if field.unique:
+            index_name = field.column
+        elif field.db_index:
+            # This whole block of logic comes from sql_indexes_for_field
+            # in django.db.backends.creation, and is designed to match
+            # the logic for the past few versions of Django.
+
+            column = field.column
+
+            if digest_index_names:
+                if supports_index_together:
+                    # Starting in Django 1.5, the _digest is passed a raw
+                    # list. While this is probably a bug (digest should
+                    # expect a string), we still need to retain
+                    # compatibility. We know this behavior hasn't changed
+                    # as of Django 1.6.1.
+                    #
+                    # It also uses the field name, and not the column name.
+                    column = [field.name]
+
+                column = self.connection.creation._digest(column)
+
+            index_name = '%s_%s' % (table_name, column)
+
+        return truncate_name(index_name, self.connection.ops.max_name_length())
 
     def change_null(self, model, field_name, new_null_attr, initial=None):
         qn = self.connection.ops.quote_name

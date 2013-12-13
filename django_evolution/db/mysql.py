@@ -144,13 +144,6 @@ class EvolutionOperations(BaseEvolutionOperations):
         return ['RENAME TABLE %s TO %s;'
                 % (qn(old_db_tablename), qn(db_tablename))]
 
-    def get_new_index_name(self, model, fields, unique=False):
-        if unique:
-            return fields[0].column
-
-        return super(EvolutionOperations, self).get_new_index_name(
-            model, fields, unique)
-
     def get_indexes_for_table(self, table_name):
         cursor = self.connection.cursor()
         qn = self.connection.ops.quote_name

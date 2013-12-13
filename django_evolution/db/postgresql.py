@@ -38,20 +38,15 @@ class EvolutionOperations(BaseEvolutionOperations):
 
         return sql
 
-    def get_new_index_name(self, model, fields, unique=False):
-        if unique:
-            return truncate_name(
-                '%s_%s_key' % (
-                    model._meta.db_table,
-                    '_'.join([
-                        field.column for field in fields
-                    ])),
-                self.connection.ops.max_name_length())
-        else:
-            # By default, Django 1.2 will use a digest hash for the column
-            # name. The PostgreSQL support, however, uses the column name
-            # itself.
-            return '%s_%s' % (model._meta.db_table, fields[0].column)
+    def get_default_index_name(self, table_name, field):
+        assert field.unique or field.db_index
+
+        if field.unique:
+            index_name = '%s_%s_key' % (table_name, field.column)
+        elif field.db_index:
+            index_name = '%s_%s' % (table_name, field.column)
+
+        return truncate_name(index_name, self.connection.ops.max_name_length())
 
     def get_indexes_for_table(self, table_name):
         cursor = self.connection.cursor()

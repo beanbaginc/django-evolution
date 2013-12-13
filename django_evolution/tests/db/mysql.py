@@ -312,7 +312,9 @@ change_field = {
     ),
 
     'AddUniqueChangeModel': (
-        'CREATE UNIQUE INDEX int_field4 ON `tests_testmodel`(`int_field4`);'
+        'CREATE UNIQUE INDEX %s ON `tests_testmodel`(`int_field4`);'
+        % generate_index_name('tests_testmodel', 'int_field4',
+                              default=False)
     ),
 
     'RemoveUniqueChangeModel': (
@@ -547,20 +549,29 @@ inheritance = {
 
 unique_together = {
     'setting_from_empty': '\n'.join([
-        'CREATE UNIQUE INDEX int_field1'
-        ' ON tests_testmodel (`int_field1`, `char_field1`);',
+        'CREATE UNIQUE INDEX %s'
+        ' ON tests_testmodel (`int_field1`, `char_field1`);'
+        % generate_index_name('tests_testmodel',
+                              ['int_field1', 'char_field1'],
+                              default=False),
     ]),
 
     'replace_list': '\n'.join([
         'DROP INDEX `int_field1` ON `tests_testmodel`;',
 
-        'CREATE UNIQUE INDEX int_field2'
-        ' ON tests_testmodel (`int_field2`, `char_field2`);',
+        'CREATE UNIQUE INDEX %s'
+        ' ON tests_testmodel (`int_field2`, `char_field2`);'
+        % generate_index_name('tests_testmodel',
+                              ['int_field2', 'char_field2'],
+                              default=False),
     ]),
 
     'append_list': '\n'.join([
-        'CREATE UNIQUE INDEX int_field2'
-        ' ON tests_testmodel (`int_field2`, `char_field2`);',
+        'CREATE UNIQUE INDEX %s'
+        ' ON tests_testmodel (`int_field2`, `char_field2`);'
+        % generate_index_name('tests_testmodel',
+                              ['int_field2', 'char_field2'],
+                              default=False),
     ]),
 
     'removing': '\n'.join([
@@ -568,7 +579,18 @@ unique_together = {
     ]),
 
     'ignore_missing_indexes': (
-        'CREATE UNIQUE INDEX char_field1'
+        'CREATE UNIQUE INDEX %s'
         ' ON tests_testmodel (`char_field1`, `char_field2`);'
-    )
+        % generate_index_name('tests_testmodel',
+                              ['char_field1', 'char_field2'],
+                              default=False)
+    ),
+
+    'upgrade_from_v1_sig': (
+        'CREATE UNIQUE INDEX %s'
+        ' ON tests_testmodel (`int_field1`, `char_field1`);'
+        % generate_index_name('tests_testmodel',
+                              ['int_field1', 'char_field1'],
+                              default=False)
+    ),
 }

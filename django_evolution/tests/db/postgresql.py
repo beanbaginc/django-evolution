@@ -1,5 +1,6 @@
 from django_evolution.support import autocreate_through_tables
-from django_evolution.tests.utils import generate_constraint_name
+from django_evolution.tests.utils import (generate_constraint_name,
+                                          generate_index_name)
 
 
 add_field = {
@@ -329,8 +330,9 @@ change_field = {
     ),
 
     "AddUniqueChangeModel": (
-        'ALTER TABLE "tests_testmodel"'
-        ' ADD CONSTRAINT tests_testmodel_int_field4_key UNIQUE("int_field4");'
+        'ALTER TABLE "tests_testmodel" ADD CONSTRAINT %s UNIQUE("int_field4");'
+        % generate_index_name('tests_testmodel', 'int_field4',
+                              default=False)
     ),
 
     "RemoveUniqueChangeModel": (
@@ -606,22 +608,31 @@ inheritance = {
 }
 
 unique_together = {
-    'setting_from_empty': '\n'.join([
-        'CREATE UNIQUE INDEX tests_testmodel_int_field1_char_field1_key'
-        ' ON tests_testmodel ("int_field1", "char_field1");',
-    ]),
+    'setting_from_empty': (
+        'CREATE UNIQUE INDEX %s'
+        ' ON tests_testmodel ("int_field1", "char_field1");'
+        % generate_index_name('tests_testmodel',
+                              ['int_field1', 'char_field1'],
+                              default=False)
+    ),
 
     'replace_list': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
         ' DROP CONSTRAINT tests_testmodel_int_field1_char_field1_key;',
 
-        'CREATE UNIQUE INDEX tests_testmodel_int_field2_char_field2_key'
-        ' ON tests_testmodel ("int_field2", "char_field2");',
+        'CREATE UNIQUE INDEX %s'
+        ' ON tests_testmodel ("int_field2", "char_field2");'
+        % generate_index_name('tests_testmodel',
+                              ['int_field2', 'char_field2'],
+                              default=False),
     ]),
 
     'append_list': (
-        'CREATE UNIQUE INDEX tests_testmodel_int_field2_char_field2_key'
+        'CREATE UNIQUE INDEX %s'
         ' ON tests_testmodel ("int_field2", "char_field2");'
+        % generate_index_name('tests_testmodel',
+                              ['int_field2', 'char_field2'],
+                              default=False)
     ),
 
     'removing': (
@@ -630,7 +641,10 @@ unique_together = {
     ),
 
     'ignore_missing_indexes': (
-        'CREATE UNIQUE INDEX tests_testmodel_char_field1_char_field2_key'
+        'CREATE UNIQUE INDEX %s'
         ' ON tests_testmodel ("char_field1", "char_field2");'
+        % generate_index_name('tests_testmodel',
+                              ['char_field1', 'char_field2'],
+                              default=False)
     )
 }
