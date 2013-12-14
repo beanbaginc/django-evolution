@@ -78,6 +78,7 @@ def create_model_sig(model):
             'db_tablespace': model._meta.db_tablespace,
             'db_table': model._meta.db_table,
             'pk_column': str(model._meta.pk.column),
+            '__unique_together_applied': True,
         },
         'fields': {},
     }
@@ -192,3 +193,33 @@ def remove_index_from_database_sig(database_sig, model, index_name,
     assert unique == indexes[index_name]['unique']
 
     del indexes[index_name]
+
+
+def has_unique_together_changed(old_model_sig, new_model_sig):
+    """Returns whether unique_together has changed between signatures.
+
+    unique_together is considered to have changed under the following
+    conditions:
+
+        * They are different in value.
+        * Either the old or new is non-empty (even if equal) and evolving
+          from an older signature from Django Evolution pre-0.7, where
+          unique_together wasn't applied to the database.
+    """
+    old_meta = old_model_sig['meta']
+    new_meta = new_model_sig['meta']
+    old_unique_together = old_meta['unique_together']
+    new_unique_together = new_meta['unique_together']
+
+    return (list(old_unique_together) != list(new_unique_together) or
+            ((old_unique_together or new_unique_together) and
+             not old_meta.get('__unique_together_applied', False)))
+
+
+def record_unique_together_applied(model_sig):
+    """Records that unique_together was applied.
+
+    This will prevent that unique_together from becoming invalidated in
+    future evolutions.
+    """
+    model_sig['meta']['__unique_together_applied'] = True

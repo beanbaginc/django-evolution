@@ -7,7 +7,8 @@ from django.db import models
 from django.utils.datastructures import SortedDict
 from django.utils.functional import curry
 
-from django_evolution.signature import ATTRIBUTE_DEFAULTS
+from django_evolution.signature import (ATTRIBUTE_DEFAULTS,
+                                        record_unique_together_applied)
 from django_evolution import (CannotSimulate, SimulationFailure,
                               EvolutionNotImplementedError, is_multi_db)
 from django_evolution.db import EvolutionOperationsMulti
@@ -741,13 +742,13 @@ class ChangeMeta(MonoBaseMutation):
 
         model_sig['meta'][self.prop_name] = self.new_value
 
+        if self.prop_name == 'unique_together':
+            record_unique_together_applied(model_sig)
+
     def mutate(self, app_label, proj_sig, database_sig, database=None):
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
         old_value = model_sig['meta'][self.prop_name]
-
-        if old_value == self.new_value:
-            return []
 
         model = MockModel(proj_sig, app_label, self.model_name, model_sig)
         evolver = self.evolver(model, database_sig, database)

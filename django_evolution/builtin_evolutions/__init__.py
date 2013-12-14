@@ -3,6 +3,7 @@ from django.contrib.sessions.models import Session
 
 BUILTIN_SEQUENCES = {
     'django.contrib.auth': [],
+    'django.contrib.contenttypes': [],
     'django.contrib.sessions': [],
 }
 
@@ -19,3 +20,11 @@ try:
     from django.contrib.auth.models import Message
 except ImportError:
     BUILTIN_SEQUENCES['django.contrib.auth'].append('auth_delete_message')
+
+
+# Starting with Django Evolution 0.7.0, we explicitly need ChangeMetas for
+# unique_together.
+BUILTIN_SEQUENCES['django.contrib.auth'].append(
+    'auth_unique_together_baseline')
+BUILTIN_SEQUENCES['django.contrib.contenttypes'].append(
+    'contenttypes_unique_together_baseline')

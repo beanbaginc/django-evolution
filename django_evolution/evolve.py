@@ -5,7 +5,8 @@ from django_evolution import EvolutionException, is_multi_db
 from django_evolution.builtin_evolutions import BUILTIN_SEQUENCES
 from django_evolution.models import Evolution, Version
 from django_evolution.mutations import SQLMutation
-from django_evolution.signature import create_project_sig
+from django_evolution.signature import (has_unique_together_changed,
+                                        create_project_sig)
 
 
 def get_evolution_sequence(app):
@@ -117,7 +118,9 @@ def get_mutations(app, evolution_labels, database):
         # that aren't in the old signature.
         for model_name, model_sig in app_sig.iteritems():
             if (model_name not in old_app_sig or
-                old_app_sig[model_name] != model_sig):
+                old_app_sig[model_name] != model_sig or
+                has_unique_together_changed(old_app_sig[model_name],
+                                            model_sig)):
                 changed_models.add(model_name)
 
         # Now do the same for models in the old signature, in case the

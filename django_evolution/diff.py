@@ -3,7 +3,8 @@ from django.db import models
 from django_evolution import EvolutionException
 from django_evolution.mutations import (DeleteField, AddField, DeleteModel,
                                         ChangeField, ChangeMeta)
-from django_evolution.signature import ATTRIBUTE_DEFAULTS
+from django_evolution.signature import (ATTRIBUTE_DEFAULTS,
+                                        has_unique_together_changed)
 
 
 class NullFieldInitialCallback(object):
@@ -163,10 +164,7 @@ class Diff(object):
                             []).append(field_name)
 
                 # Look for changes to unique_together
-                old_unique_together = old_model_sig['meta']['unique_together']
-                new_unique_together = new_model_sig['meta']['unique_together']
-
-                if list(old_unique_together) != list(new_unique_together):
+                if has_unique_together_changed(old_model_sig, new_model_sig):
                     self.changed.setdefault(app_name,
                         {}).setdefault('changed',
                         {}).setdefault(model_name,

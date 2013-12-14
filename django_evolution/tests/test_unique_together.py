@@ -185,3 +185,68 @@ class UniqueTogetherTests(EvolutionTestCase):
             ],
             'ignore_missing_indexes',
             rescan_indexes=False)
+
+    def test_upgrade_from_v1_sig_no_indexes(self):
+        """Testing ChangeMeta(unique_together) and upgrade from v1 signature
+        with no changes and no indexes in database"""
+        class DestModel(models.Model):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta:
+                unique_together = [('int_field1', 'char_field1')]
+
+        self.set_base_model(NoUniqueTogetherBaseModel)
+
+        # Pretend this is an older signature with the same unique_together.
+        meta = self.start_sig['tests']['TestModel']['meta']
+        del meta['__unique_together_applied']
+        meta['unique_together'] = DestModel._meta.unique_together
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta('TestModel', 'unique_together',
+                           [('int_field1', 'char_field1')])
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'unique_together',"
+                " [('int_field1', 'char_field1')])"
+            ],
+            'upgrade_from_v1_sig',
+            rescan_indexes=False)
+
+    def test_upgrade_from_v1_sig_with_indexes(self):
+        """Testing ChangeMeta(unique_together) and upgrade from v1 signature
+        with no changes and with indexes in database"""
+        class DestModel(models.Model):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta:
+                unique_together = [('int_field1', 'char_field1')]
+
+        self.set_base_model(UniqueTogetherBaseModel)
+
+        # Pretend this is an older signature with the same unique_together.
+        meta = self.start_sig['tests']['TestModel']['meta']
+        del meta['__unique_together_applied']
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta('TestModel', 'unique_together',
+                           [('int_field1', 'char_field1')])
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'unique_together',"
+                " [('int_field1', 'char_field1')])"
+            ],
+            None,
+            rescan_indexes=False)

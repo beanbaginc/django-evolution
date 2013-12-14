@@ -1,4 +1,5 @@
 import copy
+import re
 from itertools import chain
 
 from django.db import models
@@ -38,6 +39,8 @@ class BaseModel(models.Model):
 class EvolutionTestCase(TransactionTestCase):
     sql_mapping_key = None
 
+    ws_re = re.compile(r'\s+')
+
     def setUp(self):
         base_model = self.get_default_base_model()
 
@@ -46,6 +49,21 @@ class EvolutionTestCase(TransactionTestCase):
 
     def tearDown(self):
         deregister_models()
+
+    def shortDescription(self):
+        """Returns the description of the current test.
+
+        This changes the default behavior to replace all newlines with spaces,
+        allowing a test description to span lines. It should still be kept
+        short, though.
+        """
+        doc = self._testMethodDoc
+
+        if doc is not None:
+            doc = doc.split('\n\n', 1)[0]
+            doc = self.ws_re.sub(' ', doc).strip()
+
+        return doc
 
     def get_default_base_model(self):
         return BaseModel

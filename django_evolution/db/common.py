@@ -444,33 +444,27 @@ class BaseEvolutionOperations(object):
         new_unique_together = set(new_unique_together)
 
         to_remove = old_unique_together.difference(new_unique_together)
-        to_add = new_unique_together.difference(old_unique_together)
 
         for field_names in to_remove:
-            index_name = self.find_index_name(
-                model, [
-                    opts.get_field(field_name).column
-                    for field_name in field_names
-                ],
-                unique=True)
+            fields = self.get_fields_for_names(model, field_names)
+            columns = self.get_column_names_for_fields(fields)
+            index_name = self.find_index_name(model, columns, unique=True)
 
             if index_name:
                 self.remove_recorded_index(model, index_name, unique=True)
                 sql.extend(self.get_drop_unique_constraint_sql(model,
                                                                index_name))
 
-        for field_names in to_add:
-            index_name = self.get_new_index_name(
-                model,
-                [
-                    opts.get_field(field_name)
-                    for field_name in field_names
-                ],
-                unique=True)
-            sql.extend(self.create_unique_index(model, index_name, [
-                opts.get_field(field_name)
-                for field_name in field_names
-            ]))
+        for field_names in new_unique_together:
+            fields = self.get_fields_for_names(model, field_names)
+            columns = self.get_column_names_for_fields(fields)
+            index_name = self.find_index_name(model, columns, unique=True)
+
+            if not index_name:
+                # This doesn't exist in the database, so we want to add it.
+                index_name = self.get_new_index_name(model, fields,
+                                                     unique=True)
+                sql.extend(self.create_unique_index(model, index_name, fields))
 
         return sql
 
@@ -504,6 +498,16 @@ class BaseEvolutionOperations(object):
                     return index_name
 
         return None
+
+    def get_fields_for_names(self, model, field_names):
+        """Returns a list of fields for the given field names."""
+        return [
+            model._meta.get_field(field_name)
+            for field_name in field_names
+        ]
+
+    def get_column_names_for_fields(self, fields):
+        return [field.column for field in fields]
 
     def get_indexes_for_table(self, table_name):
         """Returns a dictionary of indexes from the database.

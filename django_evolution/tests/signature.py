@@ -95,7 +95,8 @@ tests = r"""
                      'related_model': 'tests.Anchor3'},
             'ref7': {'field_type': <class 'django.db.models.fields.related.ManyToManyField'>,
                      'related_model': 'tests.TestModel'}},
- 'meta': {'db_table': 'tests_testmodel',
+ 'meta': {'__unique_together_applied': True,
+          'db_table': 'tests_testmodel',
           'db_tablespace': '',
           'pk_column': 'id',
           'unique_together': []}}
@@ -107,7 +108,8 @@ tests = r"""
                                 'primary_key': True,
                                 'related_model': 'tests.ParentModel',
                                 'unique': True}},
- 'meta': {'db_table': 'tests_childmodel',
+ 'meta': {'__unique_together_applied': True,
+          'db_table': 'tests_childmodel',
           'db_tablespace': '',
           'pk_column': 'parentmodel_ptr_id',
           'unique_together': []}}

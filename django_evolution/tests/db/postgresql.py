@@ -646,5 +646,13 @@ unique_together = {
         % generate_index_name('tests_testmodel',
                               ['char_field1', 'char_field2'],
                               default=False)
-    )
+    ),
+
+    'upgrade_from_v1_sig': (
+        'CREATE UNIQUE INDEX %s'
+        ' ON tests_testmodel ("int_field1", "char_field1");'
+        % generate_index_name('tests_testmodel',
+                              ['int_field1', 'char_field1'],
+                              default=False)
+    ),
 }
