@@ -33,7 +33,7 @@ setup(
     maintainer_email='chipx86@chipx86.com',
     packages=find_packages(exclude=['tests']),
     install_requires=[
-        'Django>=1.1.1',
+        'Django>=1.4.10',
     ],
     include_package_data=True,
     classifiers=[
