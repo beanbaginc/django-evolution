@@ -103,9 +103,9 @@ class Diff(object):
 
                 if new_model_sig is None:
                     # Model has been deleted
-                    self.changed.setdefault(app_name,
-                        {}).setdefault('deleted',
-                        []).append(model_name)
+                    items = self.chain_set_default(self.changed, app_name,
+                                                   'deleted')
+                    items.append(model_name)
                     continue
 
                 old_fields = old_model_sig['fields']
@@ -117,11 +117,10 @@ class Diff(object):
 
                     if new_field_data is None:
                         # Field has been deleted
-                        self.changed.setdefault(app_name,
-                            {}).setdefault('changed',
-                            {}).setdefault(model_name,
-                            {}).setdefault('deleted',
-                            []).append(field_name)
+                        items = self.chain_set_default(
+                            self.changed, app_name, 'changed', model_name,
+                            'deleted')
+                        items.append(field_name)
                         continue
 
                     properties = set(old_field_data.keys())
@@ -146,11 +145,10 @@ class Diff(object):
                                 pass
 
                             # Field has been changed
-                            self.changed.setdefault(app_name,
-                                {}).setdefault('changed',
-                                {}).setdefault(model_name,
-                                {}).setdefault('changed',
-                                {}).setdefault(field_name, []).append(prop)
+                            items = self.chain_set_default(
+                                self.changed, app_name, 'changed',
+                                model_name, 'changed', field_name)
+                            items.append(prop)
 
                 # Look for added fields
                 new_fields = new_model_sig['fields']
@@ -159,27 +157,24 @@ class Diff(object):
                     old_field_data = old_fields.get(field_name, None)
 
                     if old_field_data is None:
-                        self.changed.setdefault(app_name,
-                            {}).setdefault('changed',
-                            {}).setdefault(model_name,
-                            {}).setdefault('added',
-                            []).append(field_name)
+                        items = self.chain_set_default(
+                            self.changed, app_name, 'changed',
+                            model_name, 'added')
+                        items.append(field_name)
 
                 # Look for changes to unique_together
                 if has_unique_together_changed(old_model_sig, new_model_sig):
-                    self.changed.setdefault(app_name,
-                        {}).setdefault('changed',
-                        {}).setdefault(model_name,
-                        {}).setdefault('meta_changed',
-                        []).append('unique_together')
+                    items = self.chain_set_default(
+                        self.changed, app_name, 'changed', model_name,
+                        'meta_changed')
+                    items.append('unique_together')
 
                 # Look for changes to index_together
                 if has_index_together_changed(old_model_sig, new_model_sig):
-                    self.changed.setdefault(app_name,
-                        {}).setdefault('changed',
-                        {}).setdefault(model_name,
-                        {}).setdefault('meta_changed',
-                        []).append('index_together')
+                    items = self.chain_set_default(
+                        self.changed, app_name, 'changed', model_name,
+                        'meta_changed')
+                    items.append('index_together')
 
     def is_empty(self, ignore_apps=True):
         """Is this an empty diff? i.e., is the source and target the same?
@@ -311,3 +306,15 @@ class Diff(object):
                     DeleteModel(model_name))
 
         return mutations
+
+    def chain_set_default(self, d, *keys, **kwargs):
+        """Chains several setdefault calls, creating a nested structure.
+
+        This allows for easily chaining a series of setdefault calls for
+        dictionaries in order to quickly build a tree and return the last
+        entry.
+        """
+        for key in keys[:-1]:
+            d = d.setdefault(key, {})
+
+        return d.setdefault(keys[-1], [])
