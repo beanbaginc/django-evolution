@@ -220,12 +220,16 @@ def _test_proj_sig(app_label, *models, **kwargs):
     return proj_sig
 
 
-def test_proj_sig(*models, **kwargs):
+def create_test_proj_sig(*models, **kwargs):
     return _test_proj_sig('tests', *models, **kwargs)
 
 
-def test_proj_sig_multi(app_label, *models, **kwargs):
+def create_test_proj_sig_multi(app_label, *models, **kwargs):
     return _test_proj_sig(app_label, *models, **kwargs)
+
+# XXX Legacy names for these functions
+test_proj_sig = create_test_proj_sig
+test_proj_sig_multi = create_test_proj_sig_multi
 
 
 def execute_transaction(sql, output=False, database='default'):
@@ -304,10 +308,10 @@ def execute_test_sql(start, end, sql, debug=False, app_label='tests',
     # Set the app cache to the end state
     set_app_test_models(copy.deepcopy(end), app_label=app_label)
 
-    if callable(sql):
-        sql = sql()
-
     try:
+        if callable(sql):
+            sql = sql()
+
         # Execute the test sql
         if debug:
             out_sql.extend(write_sql(sql, database))

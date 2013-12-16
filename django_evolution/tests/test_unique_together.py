@@ -1,8 +1,7 @@
 from django.db import models
 
 from django_evolution.mutations import ChangeMeta
-from django_evolution.tests.base_test_case import (ChangeAnchor1,
-                                                   EvolutionTestCase)
+from django_evolution.tests.base_test_case import EvolutionTestCase
 
 
 class NoUniqueTogetherBaseModel(models.Model):
@@ -30,9 +29,6 @@ class UniqueTogetherTests(EvolutionTestCase):
         "In model tests.TestModel:\n"
         "    Meta property 'unique_together' has changed"
     )
-
-    def get_default_base_model(self):
-        return None
 
     def test_keeping_empty(self):
         """Testing ChangeMeta(unique_together) and keeping list empty"""

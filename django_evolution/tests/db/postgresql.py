@@ -44,6 +44,17 @@ add_field = {
         ' ALTER COLUMN "added_field" SET NOT NULL;',
     ]),
 
+    'AddBlankStringColumnModel': '\n'.join([
+        'ALTER TABLE "tests_testmodel"'
+        ' ADD COLUMN "added_field" varchar(10)  DEFAULT \'\';',
+
+        'ALTER TABLE "tests_testmodel"'
+        ' ALTER COLUMN "added_field" DROP DEFAULT;',
+
+        'ALTER TABLE "tests_testmodel"'
+        ' ALTER COLUMN "added_field" SET NOT NULL;',
+    ]),
+
     'AddDateColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field" timestamp with'
@@ -425,10 +436,10 @@ delete_model = {
 
 delete_application = {
     'DeleteApplication': '\n'.join([
-        'DROP TABLE "tests_appdeleteanchor1";',
-        'DROP TABLE "app_delete_custom_add_anchor_table";',
         'DROP TABLE "tests_testmodel_anchor_m2m";',
         'DROP TABLE "tests_testmodel";',
+        'DROP TABLE "tests_appdeleteanchor1";',
+        'DROP TABLE "app_delete_custom_add_anchor_table";',
         'DROP TABLE "app_delete_custom_table_name";',
     ]),
 
@@ -471,22 +482,40 @@ rename_field = {
         ' RENAME COLUMN "value" TO "renamed_field";'
     ),
 
-    'RenameNonDefaultManyToManyTableModel': (
+    'RenameNonDefaultManyToManyTableModel': '\n'.join([
         'ALTER TABLE "non-default_db_table"'
-        ' RENAME TO "tests_testmodel_renamed_field";'
-    ),
+        ' DROP CONSTRAINT "%s";'
+        % generate_constraint_name('testmodel_id', 'id',
+                                   'non-default_db_table',
+                                   'tests_testmodel'),
+
+        'ALTER TABLE "non-default_db_table"'
+        ' RENAME TO "tests_testmodel_renamed_field";',
+
+        'ALTER TABLE "tests_testmodel_renamed_field"'
+        ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+        ' REFERENCES "tests_testmodel" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED;'
+        % generate_constraint_name('testmodel_id', 'id',
+                                   'tests_testmodel_renamed_field',
+                                   'tests_testmodel'),
+    ]),
 }
 
 sql_mutation = {
-    'SQLMutationSequence': """[
-...    SQLMutation('first-two-fields', [
-...        'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field1" integer NULL;',
-...        'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field2" integer NULL;'
-...    ], update_first_two),
-...    SQLMutation('third-field', [
-...        'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field3" integer NULL;',
-...    ], update_third)]
-""",
+    'AddFirstTwoFields': '\n'.join([
+        'ALTER TABLE "tests_testmodel"'
+        ' ADD COLUMN "added_field1" integer NULL;',
+
+        'ALTER TABLE "tests_testmodel"'
+        ' ADD COLUMN "added_field2" integer NULL;'
+    ]),
+
+    'AddThirdField': (
+        'ALTER TABLE "tests_testmodel"'
+        ' ADD COLUMN "added_field3" integer NULL;'
+    ),
+
     'SQLMutationOutput': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field1" integer NULL;',

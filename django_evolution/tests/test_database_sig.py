@@ -13,22 +13,14 @@ class DatabaseSigTests(TestCase):
 
     def test_initial_state(self):
         """Testing initial state of database_sig"""
-        self.assertEqual(
-            set(self.database_sig.keys()),
-            set([
-                'django_admin_log',
-                'auth_permission',
-                'auth_group',
-                'auth_group_permissions',
-                'django_session',
-                'auth_user_groups',
-                'auth_user_user_permissions',
-                'django_site',
-                'django_evolution',
-                'django_project_version',
-                'auth_user',
-                'django_content_type',
-            ]))
+        tables = self.database_sig.keys()
+
+        # Check that a few known tables are in the list, to make sure
+        # the scan worked.
+        self.assertTrue('auth_permission' in tables)
+        self.assertTrue('auth_user' in tables)
+        self.assertTrue('django_evolution' in tables)
+        self.assertTrue('django_project_version' in tables)
 
         self.assertTrue('indexes' in self.database_sig['django_evolution'])
 

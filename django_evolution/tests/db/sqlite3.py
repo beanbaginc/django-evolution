@@ -119,6 +119,35 @@ add_field = {
         'DROP TABLE "TEMP_TABLE";',
     ]),
 
+    'AddBlankStringColumnModel': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("int_field" integer NULL,'
+        ' "id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NULL,'
+        ' "added_field" varchar(10) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("int_field", "id", "char_field")'
+        ' SELECT "int_field", "id", "char_field"'
+        ' FROM "tests_testmodel";',
+
+        'UPDATE "TEMP_TABLE" SET "added_field" = \'\';',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("int_field" integer NOT NULL,'
+        ' "id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "added_field" varchar(10) NOT NULL);',
+
+        'INSERT INTO "tests_testmodel"'
+        ' ("int_field", "id", "char_field", "added_field")'
+        ' SELECT "int_field", "id", "char_field", "added_field"'
+        ' FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+    ]),
+
     'AddDateColumnModel': '\n'.join([
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("int_field" integer NULL,'
@@ -2282,10 +2311,10 @@ delete_model = {
 
 delete_application = {
     'DeleteApplication': '\n'.join([
-        'DROP TABLE "tests_appdeleteanchor1";',
-        'DROP TABLE "app_delete_custom_add_anchor_table";',
         'DROP TABLE "tests_testmodel_anchor_m2m";',
         'DROP TABLE "tests_testmodel";',
+        'DROP TABLE "tests_appdeleteanchor1";',
+        'DROP TABLE "app_delete_custom_add_anchor_table";',
         'DROP TABLE "app_delete_custom_table_name";',
     ]),
 
@@ -2470,26 +2499,26 @@ rename_field = {
 
     'RenameNonDefaultColumnNameModel': '\n'.join([
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("renamed_field" integer NULL,'
+        '("int_field" integer NULL,'
         ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
+        ' "renamed_field" integer NULL,'
         ' "custom_db_col_name_indexed" integer NULL,'
         ' "fk_field_id" integer NULL,'
         ' "id" integer NULL UNIQUE PRIMARY KEY);',
 
         'INSERT INTO "TEMP_TABLE"'
-        ' ("renamed_field", "char_field", "int_field",'
+        ' ("int_field", "char_field", "renamed_field",'
         ' "custom_db_col_name_indexed", "fk_field_id", "id")'
-        ' SELECT "custom_db_col_name", "char_field", "int_field",'
+        ' SELECT "int_field", "char_field", "custom_db_col_name",'
         ' "custom_db_col_name_indexed", "fk_field_id", "id"'
         ' FROM "tests_testmodel";',
 
         'DROP TABLE "tests_testmodel";',
 
         'CREATE TABLE "tests_testmodel"'
-        '("renamed_field" integer NOT NULL,'
+        '("int_field" integer NOT NULL,'
         ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
+        ' "renamed_field" integer NOT NULL,'
         ' "custom_db_col_name_indexed" integer NOT NULL,'
         ' "fk_field_id" integer NOT NULL,'
         ' "id" integer NOT NULL UNIQUE PRIMARY KEY);',
@@ -2503,9 +2532,9 @@ rename_field = {
         % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
 
         'INSERT INTO "tests_testmodel"'
-        ' ("renamed_field", "char_field", "int_field",'
+        ' ("int_field", "char_field", "renamed_field",'
         ' "custom_db_col_name_indexed", "fk_field_id", "id")'
-        ' SELECT "renamed_field", "char_field", "int_field",'
+        ' SELECT "int_field", "char_field", "renamed_field",'
         ' "custom_db_col_name_indexed", "fk_field_id", "id"'
         ' FROM "TEMP_TABLE";',
 
@@ -2514,26 +2543,26 @@ rename_field = {
 
     'RenameNonDefaultColumnNameToNonDefaultNameModel': '\n'.join([
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("non-default_column_name" integer NULL,'
+        '("int_field" integer NULL,'
         ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
+        ' "non-default_column_name" integer NULL,'
         ' "custom_db_col_name_indexed" integer NULL,'
         ' "fk_field_id" integer NULL,'
         ' "id" integer NULL UNIQUE PRIMARY KEY);',
 
         'INSERT INTO "TEMP_TABLE"'
-        ' ("non-default_column_name", "char_field", "int_field",'
+        ' ("int_field", "char_field", "non-default_column_name",'
         ' "custom_db_col_name_indexed", "fk_field_id", "id")'
-        ' SELECT "custom_db_col_name", "char_field", "int_field",'
+        ' SELECT "int_field", "char_field", "custom_db_col_name",'
         ' "custom_db_col_name_indexed", "fk_field_id", "id"'
         ' FROM "tests_testmodel";',
 
         'DROP TABLE "tests_testmodel";',
 
         'CREATE TABLE "tests_testmodel"'
-        '("non-default_column_name" integer NOT NULL,'
+        '("int_field" integer NOT NULL,'
         ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
+        ' "non-default_column_name" integer NOT NULL,'
         ' "custom_db_col_name_indexed" integer NOT NULL,'
         ' "fk_field_id" integer NOT NULL,'
         ' "id" integer NOT NULL UNIQUE PRIMARY KEY);',
@@ -2547,9 +2576,9 @@ rename_field = {
         % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
 
         'INSERT INTO "tests_testmodel"'
-        ' ("non-default_column_name", "char_field", "int_field",'
+        ' ("int_field", "char_field", "non-default_column_name",'
         ' "custom_db_col_name_indexed", "fk_field_id", "id")'
-        ' SELECT "non-default_column_name", "char_field", "int_field",'
+        ' SELECT "int_field", "char_field", "non-default_column_name",'
         ' "custom_db_col_name_indexed", "fk_field_id", "id"'
         ' FROM "TEMP_TABLE";',
 
@@ -2558,26 +2587,26 @@ rename_field = {
 
     'RenameNonDefaultColumnNameToNonDefaultNameAndTableModel': '\n'.join([
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("non-default_column_name2" integer NULL,'
+        '("int_field" integer NULL,'
         ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
+        ' "non-default_column_name2" integer NULL,'
         ' "custom_db_col_name_indexed" integer NULL,'
         ' "fk_field_id" integer NULL,'
         ' "id" integer NULL UNIQUE PRIMARY KEY);',
 
         'INSERT INTO "TEMP_TABLE"'
-        ' ("non-default_column_name2", "char_field", "int_field",'
+        ' ("int_field", "char_field", "non-default_column_name2",'
         ' "custom_db_col_name_indexed", "fk_field_id", "id")'
-        ' SELECT "custom_db_col_name", "char_field", "int_field",'
+        ' SELECT "int_field", "char_field", "custom_db_col_name",'
         ' "custom_db_col_name_indexed", "fk_field_id", "id"'
         ' FROM "tests_testmodel";',
 
         'DROP TABLE "tests_testmodel";',
 
         'CREATE TABLE "tests_testmodel"'
-        '("non-default_column_name2" integer NOT NULL,'
+        '("int_field" integer NOT NULL,'
         ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
+        ' "non-default_column_name2" integer NOT NULL,'
         ' "custom_db_col_name_indexed" integer NOT NULL,'
         ' "fk_field_id" integer NOT NULL,'
         ' "id" integer NOT NULL UNIQUE PRIMARY KEY);',
@@ -2591,10 +2620,10 @@ rename_field = {
         % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
 
         'INSERT INTO "tests_testmodel"'
-        ' ("non-default_column_name2", "char_field", "int_field",'
+        ' ("int_field", "char_field", "non-default_column_name2",'
         ' "custom_db_col_name_indexed", "fk_field_id", "id")'
-        ' SELECT "non-default_column_name2", "char_field",'
-        ' "int_field", "custom_db_col_name_indexed", "fk_field_id", "id"'
+        ' SELECT "int_field", "char_field", "non-default_column_name2",'
+        ' "custom_db_col_name_indexed", "fk_field_id", "id"'
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
@@ -2642,15 +2671,19 @@ rename_field = {
 }
 
 sql_mutation = {
-    'SQLMutationSequence': """[
-...    SQLMutation('first-two-fields', [
-...        'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field1" integer NULL;',
-...        'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field2" integer NULL;'
-...    ], update_first_two),
-...    SQLMutation('third-field', [
-...        'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field3" integer NULL;',
-...    ], update_third)]
-""",
+    'AddFirstTwoFields': '\n'.join([
+        'ALTER TABLE "tests_testmodel"'
+        ' ADD COLUMN "added_field1" integer NULL;',
+
+        'ALTER TABLE "tests_testmodel"'
+        ' ADD COLUMN "added_field2" integer NULL;',
+    ]),
+
+    'AddThirdField': (
+        'ALTER TABLE "tests_testmodel"'
+        ' ADD COLUMN "added_field3" integer NULL;'
+    ),
+
     'SQLMutationOutput': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field1" integer NULL;',
