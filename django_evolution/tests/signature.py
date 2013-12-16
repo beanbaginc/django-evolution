@@ -98,6 +98,7 @@ tests = r"""
  'meta': {'__unique_together_applied': True,
           'db_table': 'tests_testmodel',
           'db_tablespace': '',
+          'index_together': [],
           'pk_column': 'id',
           'unique_together': []}}
 
@@ -111,6 +112,7 @@ tests = r"""
  'meta': {'__unique_together_applied': True,
           'db_table': 'tests_childmodel',
           'db_tablespace': '',
+          'index_together': [],
           'pk_column': 'parentmodel_ptr_id',
           'unique_together': []}}
 

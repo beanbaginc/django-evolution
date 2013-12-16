@@ -75,6 +75,7 @@ def create_model_sig(model):
     model_sig = {
         'meta': {
             'unique_together': model._meta.unique_together,
+            'index_together': getattr(model._meta, 'index_together', []),
             'db_tablespace': model._meta.db_tablespace,
             'db_table': model._meta.db_table,
             'pk_column': str(model._meta.pk.column),
@@ -193,6 +194,16 @@ def remove_index_from_database_sig(database_sig, model, index_name,
     assert unique == indexes[index_name]['unique']
 
     del indexes[index_name]
+
+
+def has_index_together_changed(old_model_sig, new_model_sig):
+    """Returns whether index_together has changed between signatures."""
+    old_meta = old_model_sig['meta']
+    new_meta = new_model_sig['meta']
+    old_index_together = old_meta.get('index_together', [])
+    new_index_together = new_meta['index_together']
+
+    return list(old_index_together) != list(new_index_together)
 
 
 def has_unique_together_changed(old_model_sig, new_model_sig):

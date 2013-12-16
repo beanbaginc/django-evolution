@@ -4,6 +4,7 @@ from django_evolution import EvolutionException
 from django_evolution.mutations import (DeleteField, AddField, DeleteModel,
                                         ChangeField, ChangeMeta)
 from django_evolution.signature import (ATTRIBUTE_DEFAULTS,
+                                        has_index_together_changed,
                                         has_unique_together_changed)
 
 
@@ -57,6 +58,7 @@ class Diff(object):
                         field: [ list of modified property names ]
                     },
                     'meta_changed': {
+                        'index_together': new value
                         'unique_together': new value
                     }
                 }
@@ -170,6 +172,14 @@ class Diff(object):
                         {}).setdefault(model_name,
                         {}).setdefault('meta_changed',
                         []).append('unique_together')
+
+                # Look for changes to index_together
+                if has_index_together_changed(old_model_sig, new_model_sig):
+                    self.changed.setdefault(app_name,
+                        {}).setdefault('changed',
+                        {}).setdefault(model_name,
+                        {}).setdefault('meta_changed',
+                        []).append('index_together')
 
     def is_empty(self, ignore_apps=True):
         """Is this an empty diff? i.e., is the source and target the same?
@@ -289,7 +299,7 @@ class Diff(object):
 
                 meta_changed = change.get('meta_changed', [])
 
-                for prop_name in ('unique_together',):
+                for prop_name in ('unique_together', 'index_together'):
                     if prop_name in meta_changed:
                         mutations.setdefault(app_label, []).append(
                             ChangeMeta(model_name,

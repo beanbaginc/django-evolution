@@ -324,6 +324,18 @@ class BaseEvolutionOperations(object):
 
         return truncate_name(index_name, self.connection.ops.max_name_length())
 
+    def get_default_index_together_name(self, table_name, fields):
+        """Returns a default index name for an index_together.
+
+        This will return an index name for the given field that matches what
+        Django uses for index_together fields.
+        """
+        index_name = '%s_%s' % (
+            table_name,
+            self.connection.creation._digest([f.name for f in fields]))
+
+        return truncate_name(index_name, self.connection.ops.max_name_length())
+
     def change_null(self, model, field_name, new_null_attr, initial=None):
         qn = self.connection.ops.quote_name
         opts = model._meta
@@ -470,6 +482,38 @@ class BaseEvolutionOperations(object):
 
     def get_drop_unique_constraint_sql(self, model, index_name):
         return self.get_drop_index_sql(model, index_name)
+
+    def change_index_together(self, model, old_index_together,
+                              new_index_together):
+        """Changes the index_together indexes of a table."""
+        sql = []
+        style = color.no_style()
+
+        old_index_together = set(old_index_together)
+        new_index_together = set(new_index_together)
+
+        to_remove = old_index_together.difference(new_index_together)
+
+        for field_names in to_remove:
+            fields = self.get_fields_for_names(model, field_names)
+            columns = self.get_column_names_for_fields(fields)
+            index_name = self.find_index_name(model, columns)
+
+            if index_name:
+                sql.extend(self.drop_index_by_name(model, index_name))
+
+        for field_names in new_index_together:
+            fields = self.get_fields_for_names(model, field_names)
+            columns = self.get_column_names_for_fields(fields)
+            index_name = self.find_index_name(model, columns)
+
+            if not index_name:
+                # This doesn't exist in the database, so we want to add it.
+                self.record_index(model, fields)
+                sql.extend(self.connection.creation.sql_indexes_for_fields(
+                    model, fields, style))
+
+        return sql
 
     def find_index_name(self, model, column_names, unique=False):
         """Finds an index in the database matching the given criteria.

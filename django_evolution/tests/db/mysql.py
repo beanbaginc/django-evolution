@@ -621,3 +621,42 @@ unique_together = {
                               default=False)
     ),
 }
+
+index_together = {
+    'setting_from_empty': '\n'.join([
+        'CREATE INDEX `%s`'
+        ' ON `tests_testmodel` (`int_field1`, `char_field1`);'
+        % generate_index_name('tests_testmodel', ['int_field1', 'char_field1'])
+    ]),
+
+    'replace_list': '\n'.join([
+        'DROP INDEX `%s` ON `tests_testmodel`;'
+        % generate_index_name('tests_testmodel',
+                              ['int_field1', 'char_field1']),
+
+        'CREATE INDEX `%s`'
+        ' ON `tests_testmodel` (`int_field2`, `char_field2`);'
+        % generate_index_name('tests_testmodel',
+                              ['int_field2', 'char_field2']),
+    ]),
+
+    'append_list': '\n'.join([
+        'CREATE INDEX `%s`'
+        ' ON `tests_testmodel` (`int_field2`, `char_field2`);'
+        % generate_index_name('tests_testmodel',
+                              ['int_field2', 'char_field2']),
+    ]),
+
+    'removing': '\n'.join([
+        'DROP INDEX `%s` ON `tests_testmodel`;'
+        % generate_index_name('tests_testmodel',
+                              ['int_field1', 'char_field1']),
+    ]),
+
+    'ignore_missing_indexes': (
+        'CREATE INDEX `%s`'
+        ' ON `tests_testmodel` (`char_field1`, `char_field2`);'
+        % generate_index_name('tests_testmodel',
+                              ['char_field1', 'char_field2'])
+    ),
+}

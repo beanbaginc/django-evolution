@@ -102,23 +102,22 @@ def _register_models(database_sig, app_label='tests', db_name='default',
                         index_name=index_name,
                         unique=field.unique)
 
-            for fields in model._meta.unique_together:
+            for field_names in model._meta.unique_together:
                 signature.add_index_to_database_sig(
                     evolver, database_sig, model,
-                    [
-                        model._meta.get_field_by_name(f)[0]
-                        for f in fields
-                    ],
-                    index_name=fields[0],
+                    evolver.get_fields_for_names(model, field_names),
+                    index_name=field_names[0],
                     unique=True)
 
-            for fields in getattr(model._meta, 'index_together', []):
+            for field_names in getattr(model._meta, 'index_together', []):
+                fields = evolver.get_fields_for_names(model, field_names)
+                index_name = evolver.get_default_index_together_name(
+                    model._meta.db_table, fields)
+
                 signature.add_index_to_database_sig(
                     evolver, database_sig, model,
-                    [
-                        model._meta.get_field_by_name(f)[0]
-                        for f in fields
-                    ])
+                    fields,
+                    index_name=index_name)
 
         # Register the model with the app.
         add_app_test_model(model, app_label=app_label)
