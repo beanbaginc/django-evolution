@@ -68,26 +68,27 @@ class Command(BaseCommand):
             raise
 
     def evolve(self, *app_labels, **options):
-        verbosity = int(options['verbosity'])
-        interactive = options['interactive']
-        execute = options['execute']
-        compile_sql = options['compile_sql']
-        hint = options['hint']
-        purge = options['purge']
-        database = options['database']
+        self.hint = options['hint']
 
-        if not database and is_multi_db():
+        self.verbosity = int(options['verbosity'])
+        self.interactive = options['interactive']
+        self.execute = options['execute']
+        self.compile_sql = options['compile_sql']
+        self.purge = options['purge']
+        self.database = options['database']
+
+        if not self.database and is_multi_db():
             from django.db.utils import DEFAULT_DB_ALIAS
-            database = DEFAULT_DB_ALIAS
+            self.database = DEFAULT_DB_ALIAS
 
-        using_args = {}
+        self.using_args = {}
 
         if is_multi_db():
-            using_args['using'] = database
+            self.using_args['using'] = self.database
 
         # Use the list of all apps, unless app labels are specified.
         if app_labels:
-            if execute:
+            if self.execute:
                 raise CommandError('Cannot specify an application name when '
                                    'executing evolutions.')
             try:
@@ -99,153 +100,187 @@ class Command(BaseCommand):
             app_list = get_apps()
 
         # Iterate over all applications running the mutations
-        evolution_required = False
-        simulated = True
-        sql = []
-        new_evolutions = []
+        self.evolution_required = False
+        self.simulated = True
+        self.new_evolutions = []
 
-        database_sig = create_database_sig(database)
-        current_proj_sig = create_project_sig(database)
-        current_signature = pickle.dumps(current_proj_sig)
+        self.database_sig = create_database_sig(self.database)
+        self.current_proj_sig = create_project_sig(self.database)
+        self.current_signature = pickle.dumps(self.current_proj_sig)
+
+        sql = []
 
         try:
             if is_multi_db():
-                latest_version = Version.objects.using(database).latest('when')
+                latest_version = \
+                    Version.objects.using(self.database).latest('when')
             else:
                 latest_version = Version.objects.latest('when')
 
-            old_proj_sig = pickle.loads(str(latest_version.signature))
-            diff = Diff(old_proj_sig, current_proj_sig)
+            self.old_proj_sig = pickle.loads(str(latest_version.signature))
+            self.diff = Diff(self.old_proj_sig, self.current_proj_sig)
         except Evolution.DoesNotExist:
             raise CommandError("Can't evolve yet. Need to set an "
                                "evolution baseline.")
 
         try:
             for app in app_list:
-                app_label = app.__name__.split('.')[-2]
-                if hint:
-                    evolutions = []
-                    hinted_evolution = diff.evolution()
-                    temp_mutations = hinted_evolution.get(app_label, [])
-                else:
-                    evolutions = get_unapplied_evolutions(app, database)
-                    temp_mutations = get_mutations(app, evolutions, database)
-
-                mutations = [
-                    mutation for mutation in temp_mutations
-                    if mutation.is_mutable(app_label, old_proj_sig,
-                                           database_sig, database)
-                ]
-
-                if mutations:
-                    app_sql = ['-- Evolve application %s' % app_label]
-                    evolution_required = True
-
-                    for mutation in mutations:
-                        # Only compile SQL if we want to show it
-                        if compile_sql or execute:
-                            app_sql.extend(
-                                mutation.mutate(app_label, old_proj_sig,
-                                                database_sig, database))
-
-                        # Now run the simulation, which will modify the
-                        # signatures
-                        try:
-                            mutation.simulate(app_label, old_proj_sig,
-                                              database_sig, database)
-                        except CannotSimulate:
-                            simulated = False
-
-                    new_evolutions.extend(
-                        Evolution(app_label=app_label, label=label)
-                        for label in evolutions)
-
-                    if not execute:
-                        if compile_sql:
-                            write_sql(app_sql, database)
-                        else:
-                            print self.generate_hint(app, app_label, mutations)
-
-                    sql.extend(app_sql)
-                else:
-                    if verbosity > 1:
-                        print 'Application %s is up to date' % app_label
+                sql.extend(self.evolve_app(app))
 
             # Process the purged applications if requested to do so.
-            if purge:
-                if diff.deleted:
-                    evolution_required = True
-                    delete_app = DeleteApplication()
-                    purge_sql = []
-
-                    for app_label in diff.deleted:
-                        if delete_app.is_mutable(app_label, old_proj_sig,
-                                                 database_sig, database):
-                            if compile_sql or execute:
-                                purge_sql.append('-- Purge application %s'
-                                                 % app_label)
-                                purge_sql.extend(
-                                    delete_app.mutate(app_label, old_proj_sig,
-                                                      database_sig, database))
-                            delete_app.simulate(app_label, old_proj_sig,
-                                                database_sig, database)
-
-                    if not execute:
-                        if compile_sql:
-                            write_sql(purge_sql, database)
-                        else:
-                            print 'The following application(s) can be purged:'
-
-                            for app_label in diff.deleted:
-                                print '    ', app_label
-
-                            print
-
-                    sql.extend(purge_sql)
-                else:
-                    if verbosity > 1:
-                        print 'No applications need to be purged.'
-
+            if self.purge:
+                sql.extend(self.purge_apps())
         except EvolutionException, e:
             raise CommandError(str(e))
 
-        if simulated:
-            diff = Diff(old_proj_sig, current_proj_sig)
+        self.check_simulation()
 
-            if not diff.is_empty(not purge):
-                if hint:
-                    print self.style.ERROR(
-                        'Your models contain changes that Django Evolution '
-                        'cannot resolve automatically.')
-                    print ('This is probably due to a currently unimplemented '
-                           'mutation type.')
-                    print ('You will need to manually construct a mutation '
-                           'to resolve the remaining changes.')
+        if self.evolution_required:
+            self.perform_evolution(sql)
+        elif self.verbosity > 0:
+            self.stdout.write('No evolution required.\n')
+
+    def evolve_app(self, app):
+        app_label = app.__name__.split('.')[-2]
+        sql = []
+
+        if self.hint:
+            evolutions = []
+            hinted_evolution = self.diff.evolution()
+            temp_mutations = hinted_evolution.get(app_label, [])
+        else:
+            evolutions = get_unapplied_evolutions(app, self.database)
+            temp_mutations = get_mutations(app, evolutions, self.database)
+
+        mutations = [
+            mutation for mutation in temp_mutations
+            if mutation.is_mutable(app_label, self.old_proj_sig,
+                                   self.database_sig, self.database)
+        ]
+
+        if mutations:
+            app_sql = ['', '-- Evolve application %s' % app_label]
+            self.evolution_required = True
+
+            for mutation in mutations:
+                # Only compile SQL if we want to show it
+                if self.compile_sql or self.execute:
+                    app_sql.extend(
+                        mutation.mutate(app_label, self.old_proj_sig,
+                                        self.database_sig, self.database))
+
+                # Now run the simulation, which will modify the
+                # signatures
+                try:
+                    mutation.simulate(app_label, self.old_proj_sig,
+                                      self.database_sig, self.database)
+                except CannotSimulate:
+                    self.simulated = False
+
+            self.new_evolutions.extend(
+                Evolution(app_label=app_label, label=label)
+                for label in evolutions)
+
+            if not self.execute:
+                if self.compile_sql:
+                    write_sql(app_sql, self.database)
                 else:
-                    print self.style.ERROR(
-                        'The stored evolutions do not completely resolve '
-                        'all model changes.')
-                    print ('Run `./manage.py evolve --hint` to see a '
-                           'suggestion for the changes required.')
+                    self.stdout.write(
+                        '%s\n' % self.generate_hint(app, app_label, mutations))
 
-                print
-                print ('The following are the changes that could '
-                       'not be resolved:')
-                print diff
+            sql.extend(app_sql)
+        else:
+            if self.verbosity > 1:
+                self.stdout.write('Application %s is up to date\n' % app_label)
+
+        return sql
+
+    def purge_apps(self):
+        sql = []
+
+        if self.diff.deleted:
+            self.evolution_required = True
+            delete_app = DeleteApplication()
+            purge_sql = []
+
+            for app_label in self.diff.deleted:
+                if delete_app.is_mutable(app_label, self.old_proj_sig,
+                                         self.database_sig,
+                                         self.database):
+                    if self.compile_sql or self.execute:
+                        purge_sql.append('-- Purge application %s'
+                                         % app_label)
+                        purge_sql.extend(
+                            delete_app.mutate(app_label,
+                                              self.old_proj_sig,
+                                              self.database_sig,
+                                              self.database))
+                    delete_app.simulate(app_label, self.old_proj_sig,
+                                        self.database_sig,
+                                        self.database)
+
+            if not self.execute:
+                if self.compile_sql:
+                    write_sql(purge_sql, self.database)
+                else:
+                    self.stdout.write(
+                        'The following application(s) can be purged:\n')
+
+                    for app_label in self.diff.deleted:
+                        self.stdout.write('    %s\n' % app_label)
+
+                    self.stdout.write('\n')
+
+            sql.extend(purge_sql)
+        else:
+            if self.verbosity > 1:
+                self.stdout.write('No applications need to be purged.\n')
+
+        return sql
+
+    def check_simulation(self):
+        if self.simulated:
+            diff = Diff(self.old_proj_sig, self.current_proj_sig)
+
+            if not diff.is_empty(not self.purge):
+                if self.hint:
+                    self.stdout.write(self.style.ERROR(
+                        'Your models contain changes that Django Evolution '
+                        'cannot resolve automatically.\n'))
+                    self.stdout.write(
+                        'This is probably due to a currently unimplemented '
+                        'mutation type.\n')
+                    self.stdout.write(
+                        'You will need to manually construct a mutation '
+                        'to resolve the remaining changes.\n')
+                else:
+                    self.stdout.write(self.style.ERROR(
+                        'The stored evolutions do not completely resolve '
+                        'all model changes.\n'))
+                    self.stdout.write(
+                        'Run `./manage.py evolve --hint` to see a '
+                        'suggestion for the changes required.\n')
+
+                self.stdout.write(
+                    '\n'
+                    'The following are the changes that could not be '
+                    'resolved:\n'
+                    '%s\n'
+                    % diff)
 
                 raise CommandError('Your models contain changes that Django '
                                    'Evolution cannot resolve automatically.')
         else:
-            print self.style.NOTICE(
+            self.stdout.write(self.style.NOTICE(
                 'Evolution could not be simulated, possibly due to raw '
-                'SQL mutations')
+                'SQL mutations\n'))
 
-        if evolution_required:
-            if execute:
-                # Now that we've worked out the mutations required,
-                # and we know they simulate OK, run the evolutions
-                if interactive:
-                    confirm = raw_input("""
+    def perform_evolution(self, sql):
+        if self.execute:
+            # Now that we've worked out the mutations required,
+            # and we know they simulate OK, run the evolutions
+            if self.interactive:
+                confirm = raw_input("""
 You have requested a database evolution. This will alter tables
 and data currently in the %r database, and may result in
 IRREVERSABLE DATA LOSS. Evolutions should be *thoroughly* reviewed
@@ -253,57 +288,56 @@ prior to execution.
 
 Are you sure you want to execute the evolutions?
 
-Type 'yes' to continue, or 'no' to cancel: """ % database)
-                else:
-                    confirm = 'yes'
+Type 'yes' to continue, or 'no' to cancel: """ % self.database)
+            else:
+                confirm = 'yes'
+
+            if is_multi_db():
+                from django.db import connections
+
+            if confirm.lower() == 'yes':
+                # Begin Transaction
+                transaction.enter_transaction_management(**self.using_args)
+                transaction.managed(flag=True, **self.using_args)
 
                 if is_multi_db():
-                    from django.db import connections
-
-                if confirm.lower() == 'yes':
-                    # Begin Transaction
-                    transaction.enter_transaction_management(**using_args)
-                    transaction.managed(flag=True, **using_args)
-
-                    if is_multi_db():
-                        cursor = connections[database].cursor()
-                    else:
-                        cursor = connection.cursor()
-
-                    try:
-                        # Perform the SQL
-                        execute_sql(cursor, sql, database)
-
-                        # Now update the evolution table
-                        version = Version(signature=current_signature)
-                        version.save(**using_args)
-
-                        for evolution in new_evolutions:
-                            evolution.version = version
-                            evolution.save(**using_args)
-
-                        transaction.commit(**using_args)
-                    except Exception, ex:
-                        transaction.rollback(**using_args)
-                        raise CommandError('Error applying evolution: %s'
-                                           % str(ex))
-
-                    transaction.leave_transaction_management(**using_args)
-
-                    if verbosity > 0:
-                        print 'Evolution successful.'
+                    cursor = connections[self.database].cursor()
                 else:
-                    print self.style.ERROR('Evolution cancelled.')
-            elif not compile_sql:
-                if verbosity > 0:
-                    if simulated:
-                        print "Trial evolution successful."
+                    cursor = connection.cursor()
 
-                        if not hint:
-                            print ("Run './manage.py evolve --execute' to "
-                                   "apply evolution.")
-        elif verbosity > 0:
-            print 'No evolution required.'
+                try:
+                    # Perform the SQL
+                    execute_sql(cursor, sql, self.database)
+
+                    # Now update the evolution table
+                    version = Version(signature=self.current_signature)
+                    version.save(**self.using_args)
+
+                    for evolution in self.new_evolutions:
+                        evolution.version = version
+                        evolution.save(**self.using_args)
+
+                    transaction.commit(**self.using_args)
+                except Exception, ex:
+                    transaction.rollback(**self.using_args)
+                    raise CommandError('Error applying evolution: %s'
+                                       % str(ex))
+
+                transaction.leave_transaction_management(**self.using_args)
+
+                if self.verbosity > 0:
+                    self.stdout.write('Evolution successful.\n')
+            else:
+                self.stdout.write(self.style.ERROR('Evolution cancelled.\n'))
+        elif not self.compile_sql:
+            if self.verbosity > 0:
+                if self.simulated:
+                    self.stdout.write('Trial evolution successful.\n')
+
+                    if not self.hint:
+                        self.stdout.write(
+                            "Run './manage.py evolve --execute' to "
+                            "apply evolution.\n")
 
     def generate_hint(self, app, app_label, mutations):
         imports = set()
