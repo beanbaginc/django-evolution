@@ -2,6 +2,7 @@ from django.db import models
 
 from django_evolution.diff import Diff
 from django_evolution.mutations import DeleteApplication
+from django_evolution.mutators import AppMutator
 from django_evolution.tests.base_test_case import EvolutionTestCase
 
 
@@ -72,7 +73,10 @@ class DeleteAppTests(EvolutionTestCase):
         test_database_sig = self.copy_sig(self.database_sig)
         test_sig = self.copy_sig(self.start_sig)
 
-        sql = mutation.mutate('tests', test_sig, test_database_sig, database)
+        app_mutator = AppMutator('tests', test_sig, test_database_sig,
+                                 database)
+        app_mutator.run_mutation(mutation)
+        sql = app_mutator.to_sql()
 
         self.assertEqual('\n'.join(sql),
                          self.get_sql_mapping(sql_name, database))

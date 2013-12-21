@@ -236,7 +236,7 @@ class BaseMutation(object):
     def __init__(self):
         pass
 
-    def mutate(self, app_label, proj_sig, database_sig, database=None):
+    def mutate(self, mutator):
         """
         Performs the mutation on the database. Database changes will occur
         after this function is invoked.
@@ -297,15 +297,29 @@ class SQLMutation(BaseMutation):
         else:
             raise CannotSimulate('Cannot simulate SQLMutations')
 
-    def mutate(self, app_label, proj_sig, database_sig, database=None):
+    def mutate(self, mutator):
         "The mutation of an SQL mutation returns the raw SQL"
-        return self.sql
+        mutator.add_sql(self, self.sql)
 
     def is_mutable(self, app_label, proj_sig, database_sig, database):
         return True
 
 
-class DeleteField(MonoBaseMutation):
+class MutateModelField(MonoBaseMutation):
+    """Base class for any fields that mutate a model.
+
+    This is used for classes that perform any mutation on a model.
+    Such mutations will be provided a model they can work with.
+
+    Operations added to the mutator by this field will be associated with
+    that model. That will allow the operations backend to perform any
+    optimizations to improve evolution time for the model.
+    """
+    def mutate(self, mutator, model):
+        raise NotImplementedError
+
+
+class DeleteField(MutateModelField):
     def __init__(self, model_name, field_name):
         super(DeleteField, self).__init__(model_name)
         self.field_name = field_name
@@ -345,33 +359,26 @@ class DeleteField(MonoBaseMutation):
             raise SimulationFailure('Cannot find the field named "%s".'
                                     % self.field_name)
 
-    def mutate(self, app_label, proj_sig, database_sig, database=None):
-        app_sig = proj_sig[app_label]
-        model_sig = app_sig[self.model_name]
-        field_sig = model_sig['fields'][self.field_name]
-
-        model = MockModel(proj_sig, app_label, self.model_name, model_sig,
-                          db_name=database)
+    def mutate(self, mutator, model):
+        field_sig = mutator.model_sig['fields'][self.field_name]
 
         # Temporarily remove field_type from the field signature
         # so that we can create a field
         field_type = field_sig.pop('field_type')
-        field = create_field(proj_sig, self.field_name, field_type, field_sig,
-                             model)
+        field = create_field(mutator.proj_sig, self.field_name, field_type,
+                             field_sig, model)
         field_sig['field_type'] = field_type
 
-        evolver = self.evolver(model, database_sig, database)
-
-        if field_type == models.ManyToManyField:
-            sql_statements = \
-                evolver.delete_table(field._get_m2m_db_table(model._meta))
+        if field_type is models.ManyToManyField:
+            mutator.add_sql(
+                self,
+                mutator.evolver.delete_table(
+                    field._get_m2m_db_table(model._meta)))
         else:
-            sql_statements = evolver.delete_column(model, field)
-
-        return sql_statements
+            mutator.delete_column(self, field)
 
 
-class AddField(MonoBaseMutation):
+class AddField(MutateModelField):
     def __init__(self, model_name, field_name, field_type,
                  initial=None, **kwargs):
         super(AddField, self).__init__(model_name)
@@ -428,47 +435,28 @@ class AddField(MonoBaseMutation):
 
         model_sig['fields'][self.field_name].update(self.field_attrs)
 
-    def mutate(self, app_label, proj_sig, database_sig, database=None):
+    def mutate(self, mutator, model):
         if self.field_type is models.ManyToManyField:
-            return self.add_m2m_table(app_label, proj_sig, database_sig,
-                                      database)
+            self.add_m2m_table(mutator, model)
         else:
-            return self.add_column(app_label, proj_sig, database_sig, database)
+            self.add_column(mutator, model)
 
-    def add_column(self, app_label, proj_sig, database_sig, database):
-        app_sig = proj_sig[app_label]
-        model_sig = app_sig[self.model_name]
+    def add_column(self, mutator, model):
+        field = create_field(mutator.proj_sig, self.field_name,
+                             self.field_type, self.field_attrs, model)
 
-        model = MockModel(proj_sig, app_label, self.model_name, model_sig,
-                          db_name=database)
-        field = create_field(proj_sig, self.field_name, self.field_type,
-                             self.field_attrs, model)
+        mutator.add_column(self, field, self.initial)
 
-        evolver = self.evolver(model, database_sig, database)
-
-        sql_statements = evolver.add_column(model, field, self.initial)
-
-        # Create SQL index if necessary
-        sql_statements.extend(evolver.create_index(model, field))
-
-        return sql_statements
-
-    def add_m2m_table(self, app_label, proj_sig, database_sig, database):
-        app_sig = proj_sig[app_label]
-        model_sig = app_sig[self.model_name]
-
-        model = MockModel(proj_sig, app_label, self.model_name, model_sig,
-                          db_name=database)
-
-        field = create_field(proj_sig, self.field_name, self.field_type,
-                             self.field_attrs, model)
+    def add_m2m_table(self, mutator, model):
+        field = create_field(mutator.proj_sig, self.field_name,
+                             self.field_type, self.field_attrs, model)
 
         related_app_label, related_model_name = \
             self.field_attrs['related_model'].split('.')
-        related_sig = proj_sig[related_app_label][related_model_name]
-        related_model = MockModel(proj_sig, related_app_label,
+        related_sig = mutator.proj_sig[related_app_label][related_model_name]
+        related_model = MockModel(mutator.proj_sig, related_app_label,
                                   related_model_name, related_sig,
-                                  db_name=database)
+                                  mutator.database)
         related = MockRelated(related_model, model, field)
 
         if hasattr(field, '_get_m2m_column_name'):
@@ -484,13 +472,10 @@ class AddField(MonoBaseMutation):
             field.m2m_reverse_name = curry(field._get_m2m_reverse_attr,
                                            related, 'column')
 
-        evolver = self.evolver(model, database_sig, database)
-        sql_statements = evolver.add_m2m_table(model, field)
-
-        return sql_statements
+        mutator.add_sql(self, mutator.evolver.add_m2m_table(model, field))
 
 
-class RenameField(MonoBaseMutation):
+class RenameField(MutateModelField):
     def __init__(self, model_name, old_field_name, new_field_name,
                  db_column=None, db_table=None):
         super(RenameField, self).__init__(model_name)
@@ -532,10 +517,8 @@ class RenameField(MonoBaseMutation):
 
         field_dict[self.new_field_name] = field_dict.pop(self.old_field_name)
 
-    def mutate(self, app_label, proj_sig, database_sig, database=None):
-        app_sig = proj_sig[app_label]
-        model_sig = app_sig[self.model_name]
-        old_field_sig = model_sig['fields'][self.old_field_name]
+    def mutate(self, mutator, model):
+        old_field_sig = mutator.model_sig['fields'][self.old_field_name]
 
         # Temporarily remove the field type so that we can create mock field
         # instances
@@ -544,7 +527,7 @@ class RenameField(MonoBaseMutation):
         # Duplicate the old field sig, and apply the table/column changes
         new_field_sig = copy.copy(old_field_sig)
 
-        if models.ManyToManyField == field_type:
+        if field_type is models.ManyToManyField:
             if self.db_table:
                 new_field_sig['db_table'] = self.db_table
             else:
@@ -555,29 +538,31 @@ class RenameField(MonoBaseMutation):
             new_field_sig.pop('db_column', None)
 
         # Create the mock field instances.
-        old_field = create_field(proj_sig, self.old_field_name, field_type,
-                                 old_field_sig, None)
-        new_field = create_field(proj_sig, self.new_field_name, field_type,
-                                 new_field_sig, None)
+        old_field = create_field(mutator.proj_sig, self.old_field_name,
+                                 field_type, old_field_sig, None)
+        new_field = create_field(mutator.proj_sig, self.new_field_name,
+                                 field_type, new_field_sig, None)
 
         # Restore the field type to the signature
         old_field_sig['field_type'] = field_type
 
-        model = MockModel(proj_sig, app_label, self.model_name, model_sig,
-                          db_name=database)
+        new_model = MockModel(mutator.proj_sig, mutator.app_label,
+                              self.model_name, mutator.model_sig,
+                              db_name=mutator.database)
+        evolver = mutator.evolver
 
-        evolver = self.evolver(model, database_sig, database)
+        if field_type is models.ManyToManyField:
+            old_m2m_table = old_field._get_m2m_db_table(new_model._meta)
+            new_m2m_table = new_field._get_m2m_db_table(new_model._meta)
 
-        if models.ManyToManyField == field_type:
-            old_m2m_table = old_field._get_m2m_db_table(model._meta)
-            new_m2m_table = new_field._get_m2m_db_table(model._meta)
-
-            return evolver.rename_table(model, old_m2m_table, new_m2m_table)
+            sql = evolver.rename_table(new_model, old_m2m_table, new_m2m_table)
         else:
-            return evolver.rename_column(model._meta, old_field, new_field)
+            sql = evolver.rename_column(new_model._meta, old_field, new_field)
+
+        mutator.add_sql(self, sql)
 
 
-class ChangeField(MonoBaseMutation):
+class ChangeField(MutateModelField):
     def __init__(self, model_name, field_name, initial=None, **kwargs):
         super(ChangeField, self).__init__(model_name)
         self.field_name = field_name
@@ -618,46 +603,27 @@ class ChangeField(MonoBaseMutation):
                 "non-null initial value."
                 % (self.field_name, app_label, self.model_name))
 
-    def mutate(self, app_label, proj_sig, database_sig, database=None):
-        app_sig = proj_sig[app_label]
-        model_sig = app_sig[self.model_name]
-        old_field_sig = model_sig['fields'][self.field_name]
-        model = MockModel(proj_sig, app_label, self.model_name, model_sig,
-                          db_name=database)
+    def mutate(self, mutator, model):
+        field_sig = mutator.model_sig['fields'][self.field_name]
+        field = model._meta.get_field(self.field_name)
 
-        sql_statements = []
-
-        for field_attr, attr_value in self.field_attrs.items():
-            old_field_attr = old_field_sig.get(field_attr,
-                                               ATTRIBUTE_DEFAULTS[field_attr])
+        for field_attr, attr_value in self.field_attrs.iteritems():
+            old_attr_value = field_sig.get(field_attr,
+                                           ATTRIBUTE_DEFAULTS[field_attr])
 
             # Avoid useless SQL commands if nothing has changed.
-            if old_field_attr != attr_value:
-                try:
-                    evolver_func = getattr(
-                        self.evolver(model, database_sig, database),
-                        'change_%s' % field_attr)
-                except AttributeError:
+            if old_attr_value != attr_value:
+                if not hasattr(mutator.evolver, 'change_%s' % field_attr):
                     raise EvolutionNotImplementedError(
                         "ChangeField does not support modifying the '%s' "
                         "attribute on '%s.%s'."
                         % (field_attr, self.model_name, self.field_name))
 
-                if field_attr == 'null':
-                    sql_statements.extend(
-                        evolver_func(model, self.field_name, attr_value,
-                                     self.initial))
-                elif field_attr == 'db_table':
-                    sql_statements.extend(
-                        evolver_func(model, old_field_attr, attr_value))
-                else:
-                    sql_statements.extend(
-                        evolver_func(model, self.field_name, attr_value))
-
-        return sql_statements
+                mutator.change_column(self, field, field_attr,
+                                      old_attr_value, attr_value)
 
 
-class DeleteModel(MonoBaseMutation):
+class DeleteModel(MutateModelField):
     def __str__(self):
         return "DeleteModel(%r)" % self.model_name
 
@@ -667,26 +633,20 @@ class DeleteModel(MonoBaseMutation):
         # Simulate the deletion of the model.
         del app_sig[self.model_name]
 
-    def mutate(self, app_label, proj_sig, database_sig, database=None):
-        app_sig = proj_sig[app_label]
-        model_sig = app_sig[self.model_name]
-
-        sql_statements = []
-        model = MockModel(proj_sig, app_label, self.model_name, model_sig,
-                          db_name=database)
-        evolver = self.evolver(model, database_sig, database)
+    def mutate(self, mutator, model):
+        sql = []
 
         # Remove any many to many tables.
-        for field_name, field_sig in model_sig['fields'].items():
-            if field_sig['field_type'] == models.ManyToManyField:
+        for field_name, field_sig in mutator.model_sig['fields'].items():
+            if field_sig['field_type'] is models.ManyToManyField:
                 field = model._meta.get_field(field_name)
                 m2m_table = field._get_m2m_db_table(model._meta)
-                sql_statements += evolver.delete_table(m2m_table)
+                sql.extend(mutator.evolver.delete_table(m2m_table))
 
         # Remove the table itself.
-        sql_statements += evolver.delete_table(model._meta.db_table)
+        sql.extend(mutator.evolver.delete_table(model._meta.db_table))
 
-        return sql_statements
+        mutator.add_sql(self, sql)
 
 
 class DeleteApplication(BaseMutation):
@@ -705,30 +665,26 @@ class DeleteApplication(BaseMutation):
                                        database):
                     del app_sig[model_name]
 
-    def mutate(self, app_label, proj_sig, database_sig, database=None):
-        sql_statements = []
-
+    def mutate(self, mutator):
         # This test will introduce a regression, but we can't afford to remove
         # all models at a same time if they aren't owned by the same database
-        if database:
-            app_sig = proj_sig[app_label]
+        if mutator.database:
+            app_sig = mutator.proj_sig[mutator.app_label]
 
             for model_name in app_sig.keys():
                 mutation = DeleteModel(model_name)
 
-                if mutation.is_mutable(app_label, proj_sig, database_sig,
-                                       database):
-                    sql_statements.extend(mutation.mutate(
-                        app_label, proj_sig, database_sig, database))
-
-        return sql_statements
+                if mutation.is_mutable(mutator.app_label, mutator.proj_sig,
+                                       mutator.database_sig,
+                                       mutator.database):
+                    mutator.run_mutation(mutation)
 
     def is_mutable(self, app_label, proj_sig, database_sig, database):
         # the test is done in the mutate method above. We can return True
         return True
 
 
-class ChangeMeta(MonoBaseMutation):
+class ChangeMeta(MutateModelField):
     def __init__(self, model_name, prop_name, new_value):
         super(ChangeMeta, self).__init__(model_name)
         self.prop_name = prop_name
@@ -747,21 +703,11 @@ class ChangeMeta(MonoBaseMutation):
         if self.prop_name == 'unique_together':
             record_unique_together_applied(model_sig)
 
-    def mutate(self, app_label, proj_sig, database_sig, database=None):
-        app_sig = proj_sig[app_label]
-        model_sig = app_sig[self.model_name]
-        old_value = model_sig['meta'][self.prop_name]
-
-        model = MockModel(proj_sig, app_label, self.model_name, model_sig,
-                          db_name=database)
-        evolver = self.evolver(model, database_sig, database)
-
-        try:
-            evolver_func = getattr(evolver, 'change_%s' % self.prop_name)
-        except AttributeError:
+    def mutate(self, mutator, model):
+        if not hasattr(mutator.evolver, 'change_%s' % self.prop_name):
             raise EvolutionNotImplementedError(
                 "ChangeMeta does not support modifying the '%s' "
                 "attribute on '%s'."
                 % (self.prop_name, self.model_name))
 
-        return evolver_func(model, old_value, self.new_value)
+        mutator.change_meta(self, self.prop_name, self.new_value)

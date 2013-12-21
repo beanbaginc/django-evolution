@@ -2658,34 +2658,34 @@ sql_mutation = {
 generics = {
     'DeleteColumnModel': '\n'.join([
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("object_id" integer unsigned NULL,'
-        ' "int_field" integer NULL,'
+        '("int_field" integer NULL,'
+        ' "content_type_id" integer NULL,'
         ' "id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "content_type_id" integer NULL);',
+        ' "object_id" integer unsigned NULL);',
 
         'INSERT INTO "TEMP_TABLE"'
-        ' ("object_id", "int_field", "id", "content_type_id")'
-        ' SELECT "object_id", "int_field", "id", "content_type_id"'
+        ' ("int_field", "content_type_id", "id", "object_id")'
+        ' SELECT "int_field", "content_type_id", "id", "object_id"'
         ' FROM "tests_testmodel";',
 
         'DROP TABLE "tests_testmodel";',
 
         'CREATE TABLE "tests_testmodel"'
-        '("object_id" integer unsigned NOT NULL,'
-        ' "int_field" integer NOT NULL,'
+        '("int_field" integer NOT NULL,'
+        ' "content_type_id" integer NOT NULL,'
         ' "id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "content_type_id" integer NOT NULL);',
-
-        'CREATE INDEX "%s" ON "tests_testmodel" ("object_id");'
-        % generate_index_name('tests_testmodel', 'object_id'),
+        ' "object_id" integer unsigned NOT NULL);',
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("content_type_id");'
         % generate_index_name('tests_testmodel', 'content_type_id',
                               'content_type'),
 
+        'CREATE INDEX "%s" ON "tests_testmodel" ("object_id");'
+        % generate_index_name('tests_testmodel', 'object_id'),
+
         'INSERT INTO "tests_testmodel"'
-        ' ("object_id", "int_field", "id", "content_type_id")'
-        ' SELECT "object_id", "int_field", "id", "content_type_id"'
+        ' ("int_field", "content_type_id", "id", "object_id")'
+        ' SELECT "int_field", "content_type_id", "id", "object_id"'
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',

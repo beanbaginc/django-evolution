@@ -4,6 +4,7 @@ import re
 from django.test.testcases import TransactionTestCase
 
 from django_evolution.diff import Diff
+from django_evolution.mutators import AppMutator
 from django_evolution.signature import create_database_sig
 from django_evolution.tests.utils import (create_test_proj_sig,
                                           deregister_models,
@@ -141,16 +142,11 @@ class EvolutionTestCase(TransactionTestCase):
     def perform_mutations(self, evolutions, end, end_sig, sql_name,
                           rescan_indexes=True, db_name=None):
         def run_mutations():
-            test_sql = []
+            app_mutator = AppMutator('tests', test_sig, self.test_database_sig,
+                                     db_name)
+            app_mutator.run_mutations(evolutions)
 
-            for mutation in evolutions:
-                test_sql.extend(mutation.mutate('tests', test_sig,
-                                                self.test_database_sig,
-                                                database=db_name))
-                mutation.simulate('tests', test_sig, self.test_database_sig,
-                                  database=db_name)
-
-            return test_sql
+            return app_mutator.to_sql()
 
         db_name = db_name or self.default_database_name
 

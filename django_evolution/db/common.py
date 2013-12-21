@@ -4,6 +4,7 @@ from django.core.management import color
 from django.db import connection as default_connection
 from django.db.backends.util import truncate_name
 
+from django_evolution import EvolutionNotImplementedError
 from django_evolution.signature import (add_index_to_database_sig,
                                         remove_index_from_database_sig)
 from django_evolution.support import supports_index_together
@@ -13,6 +14,68 @@ class BaseEvolutionOperations(object):
     def __init__(self, database_sig, connection=default_connection):
         self.database_sig = database_sig
         self.connection = connection
+
+    def generate_table_ops_sql(self, mutator, ops):
+        """Generates SQL for a sequence of mutation operations.
+
+        By default, this will process each operation one-by-one, generating
+        default SQL, using generate_table_op_sql().
+
+        This can be overridden to batch operations into fewer SQL statements.
+        """
+        sql = []
+
+        for op in ops:
+            sql.extend(self.generate_table_op_sql(mutator, op))
+
+        return sql
+
+    def generate_table_op_sql(self, mutator, op):
+        """Generates SQL for a single mutation operation.
+
+        This will call different SQL-generating functions provided by the
+        class, depending on the details of the operation.
+        """
+        sql = []
+        op_type = op['type']
+        mutation = op['mutation']
+
+        model = mutator.create_model()
+
+        if op_type == 'add_column':
+            field = op['field']
+            sql.extend(self.add_column(model, field, op['initial']))
+            sql.extend(self.create_index(model, field))
+        elif op_type == 'change_column':
+            field_name = op['field'].name
+            attr_name = op['attr_name']
+            old_value = op['old_value']
+            new_value = op['new_value']
+
+            evolve_func = getattr(self, 'change_%s' % attr_name)
+
+            if attr_name == 'null':
+                sql.extend(evolve_func(model, field_name, new_value,
+                                       mutation.initial))
+            elif attr_name == 'db_table':
+                sql.extend(evolve_func(model, old_value, new_value))
+            else:
+                sql.extend(evolve_func(model, field_name, new_value))
+        elif op_type == 'delete_column':
+            sql.extend(self.delete_column(model, op['field']))
+        elif op_type == 'change_meta':
+            evolve_func = getattr(self, 'change_%s' % op['prop_name'])
+            sql.extend(evolve_func(model, op['old_value'],
+                                   op['new_value']))
+        elif op_type == 'sql':
+            sql.extend(op['sql'])
+        else:
+            raise EvolutionNotImplementedError(
+                'Unknown mutation operation "%s"' % op_type)
+
+        mutator.finish_op(op)
+
+        return sql
 
     def quote_sql_param(self, param):
         "Add protective quoting around an SQL string parameter"

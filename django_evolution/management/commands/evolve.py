@@ -16,6 +16,7 @@ from django_evolution.diff import Diff
 from django_evolution.evolve import get_unapplied_evolutions, get_mutations
 from django_evolution.models import Version, Evolution
 from django_evolution.mutations import AddField, DeleteApplication
+from django_evolution.mutators import AppMutator
 from django_evolution.signature import create_database_sig, create_project_sig
 from django_evolution.utils import write_sql, execute_sql
 
@@ -158,20 +159,16 @@ class Command(BaseCommand):
             app_sql = ['', '-- Evolve application %s' % app_label]
             self.evolution_required = True
 
-            for mutation in mutations:
-                # Only compile SQL if we want to show it
-                if self.compile_sql or self.execute:
-                    app_sql.extend(
-                        mutation.mutate(app_label, self.old_proj_sig,
-                                        self.database_sig, self.database))
+            app_mutator = AppMutator(app_label, self.old_proj_sig,
+                                     self.database_sig, self.database)
+            app_mutator.run_mutations(mutations)
+            app_mutator_sql = app_mutator.to_sql()
 
-                # Now run the simulation, which will modify the
-                # signatures
-                try:
-                    mutation.simulate(app_label, self.old_proj_sig,
-                                      self.database_sig, self.database)
-                except CannotSimulate:
-                    self.simulated = False
+            if self.compile_sql or self.execute:
+                app_sql.extend(app_mutator_sql)
+
+            if not app_mutator.can_simulate:
+                self.simulated = False
 
             self.new_evolutions.extend(
                 Evolution(app_label=app_label, label=label)
@@ -203,17 +200,15 @@ class Command(BaseCommand):
                 if delete_app.is_mutable(app_label, self.old_proj_sig,
                                          self.database_sig,
                                          self.database):
+                    app_mutator = AppMutator(app_label, self.old_proj_sig,
+                                             self.database_sig, self.database)
+                    app_mutator.run_mutation(delete_app)
+                    app_mutator_sql = app_mutator.to_sql()
+
                     if self.compile_sql or self.execute:
                         purge_sql.append('-- Purge application %s'
                                          % app_label)
-                        purge_sql.extend(
-                            delete_app.mutate(app_label,
-                                              self.old_proj_sig,
-                                              self.database_sig,
-                                              self.database))
-                    delete_app.simulate(app_label, self.old_proj_sig,
-                                        self.database_sig,
-                                        self.database)
+                        purge_sql.extend(app_mutator_sql)
 
             if not self.execute:
                 if self.compile_sql:
