@@ -43,15 +43,19 @@ class DeleteAppTests(EvolutionTestCase):
 
     def test_delete_app(self):
         """Testing DeleteApplication"""
-        self._perform_delete_app_test(None,
-                                      'DeleteApplicationWithoutDatabase')
+        self._perform_delete_app_test('DeleteApplicationWithoutDatabase')
 
     def test_delete_app_with_custom_database(self):
         """Testing DeleteApplication with custom database"""
-        self._perform_delete_app_test('default', 'DeleteApplication')
+        self._perform_delete_app_test('DeleteApplication', database='db_multi')
 
-    def _perform_delete_app_test(self, database, sql_name):
+    def _perform_delete_app_test(self, sql_name, database=None):
         # Simulate deletion of the app.
+        self.set_base_model(
+            self.default_base_model,
+            extra_models=self.default_extra_models,
+            db_name=database)
+
         end_sig = self.copy_sig(self.start_sig)
         end_sig.pop('tests')
 
@@ -62,12 +66,13 @@ class DeleteAppTests(EvolutionTestCase):
                           'CustomTestModel'])
 
         mutation = DeleteApplication()
-        self.perform_simulations([mutation], end_sig, ignore_apps=True)
+        self.perform_simulations([mutation], end_sig, ignore_apps=True,
+                                 db_name=database)
 
         test_database_sig = self.copy_sig(self.database_sig)
         test_sig = self.copy_sig(self.start_sig)
 
-        sql = mutation.mutate('tests', test_sig, test_database_sig,
-                              database)
+        sql = mutation.mutate('tests', test_sig, test_database_sig, database)
 
-        self.assertEqual('\n'.join(sql), self.get_sql_mapping(sql_name))
+        self.assertEqual('\n'.join(sql),
+                         self.get_sql_mapping(sql_name, database))

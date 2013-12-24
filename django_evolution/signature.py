@@ -102,7 +102,7 @@ def create_app_sig(app, database):
 
     for model in get_models(app):
         # only include those who want to be syncdb
-        if not is_multi_db() or router.allow_syncdb(database, model):
+        if not is_multi_db() or router.allow_syncdb(database, model.__class__):
             app_sig[model._meta.object_name] = create_model_sig(model)
 
     return app_sig

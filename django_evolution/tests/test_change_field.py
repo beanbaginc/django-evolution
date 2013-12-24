@@ -662,3 +662,35 @@ class ChangeFieldTests(EvolutionTestCase):
             None,
             None,
             expect_noop=True)
+
+    def test_change_with_custom_database(self):
+        """Testing ChangeField with custom database"""
+        class DestModel(models.Model):
+            my_id = models.AutoField(primary_key=True)
+            alt_pk = models.IntegerField()
+            int_field = models.IntegerField(db_column='custom_db_column')
+            int_field1 = models.IntegerField(db_index=True)
+            int_field2 = models.IntegerField(db_index=False)
+            int_field3 = models.IntegerField(unique=True)
+            int_field4 = models.IntegerField(unique=False)
+            char_field = models.CharField(max_length=20)
+            char_field1 = models.CharField(max_length=25, null=False)
+            char_field2 = models.CharField(max_length=30, null=False)
+            m2m_field1 = models.ManyToManyField(
+                ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeField('TestModel', 'char_field1', null=False,
+                            initial="abc's xyz"),
+            ],
+            ("In model tests.TestModel:\n"
+             "    In field 'char_field1':\n"
+             "        Property 'null' has changed"),
+            [
+                "ChangeField('TestModel', 'char_field1',"
+                " initial=<<USER VALUE REQUIRED>>, null=False)",
+            ],
+            'SetNotNullChangeModelWithConstant',
+            db_name='db_multi')

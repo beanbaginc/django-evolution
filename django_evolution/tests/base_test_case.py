@@ -11,12 +11,13 @@ from django_evolution.tests.utils import (create_test_proj_sig,
                                           deregister_models,
                                           execute_test_sql,
                                           has_index_with_columns,
-                                          register_models,
+                                          register_models_multi,
                                           test_sql_mapping)
 
 
 class EvolutionTestCase(TransactionTestCase):
     sql_mapping_key = None
+    default_database_name = 'default'
     default_model_name = 'TestModel'
     default_base_model = None
     default_extra_models = []
@@ -53,9 +54,9 @@ class EvolutionTestCase(TransactionTestCase):
 
         return doc
 
-    def set_base_model(self, model, name=None, extra_models=[],
-                       db_name='default'):
+    def set_base_model(self, model, name=None, extra_models=[], db_name=None):
         name = name or self.default_model_name
+        db_name = db_name or self.default_database_name
 
         if self.base_model:
             deregister_models()
@@ -65,11 +66,14 @@ class EvolutionTestCase(TransactionTestCase):
         self.database_sig = create_database_sig(db_name)
 
         self.start = self.register_model(model, name,
-                                         register_indexes=True)
+                                         register_indexes=True,
+                                         db_name=db_name)
         self.start_sig = self.create_test_proj_sig(model, name)
 
-    def make_end_signatures(self, model, model_name):
-        end = self.register_model(model, name=model_name)
+    def make_end_signatures(self, model, model_name, db_name=None):
+        db_name = db_name or self.default_database_name
+
+        end = self.register_model(model, name=model_name, db_name=db_name)
         end_sig = self.create_test_proj_sig(model, name=model_name)
 
         return end, end_sig
@@ -82,11 +86,13 @@ class EvolutionTestCase(TransactionTestCase):
                                 rescan_indexes=True,
                                 use_hinted_evolutions=False,
                                 perform_simulations=True,
-                                perform_mutations=True):
+                                perform_mutations=True,
+                                db_name=None):
         model_name = model_name or self.default_model_name
+        db_name = db_name or self.default_database_name
 
         if end is None or end_sig is None:
-            end, end_sig = self.make_end_signatures(model, model_name)
+            end, end_sig = self.make_end_signatures(model, model_name, db_name)
 
         # See if the diff between signatures contains the contents we expect.
         d = self.perform_diff_test(end_sig, diff_text, expected_hint,
@@ -97,11 +103,12 @@ class EvolutionTestCase(TransactionTestCase):
             evolutions = d.evolution()['tests']
 
         if perform_simulations:
-            self.perform_simulations(evolutions, end_sig)
+            self.perform_simulations(evolutions, end_sig, db_name=db_name)
 
         if perform_mutations:
             self.perform_mutations(evolutions, end, end_sig, sql_name,
-                                   rescan_indexes=rescan_indexes)
+                                   rescan_indexes=rescan_indexes,
+                                   db_name=db_name)
 
     def perform_diff_test(self, end_sig, diff_text, expected_hint,
                           expect_empty=False):
@@ -119,28 +126,36 @@ class EvolutionTestCase(TransactionTestCase):
 
         return d
 
-    def perform_simulations(self, evolutions, end_sig, ignore_apps=False):
+    def perform_simulations(self, evolutions, end_sig, ignore_apps=False,
+                            db_name=None):
+        db_name = db_name or self.default_database_name
+
         self.test_database_sig = self.copy_sig(self.database_sig)
         test_sig = self.copy_sig(self.start_sig)
 
         for mutation in evolutions:
-            mutation.simulate('tests', test_sig, self.test_database_sig)
+            mutation.simulate('tests', test_sig, self.test_database_sig,
+                              database=db_name)
 
         # Check that the simulation's changes results in an empty diff.
         d = Diff(test_sig, end_sig)
         self.assertTrue(d.is_empty(ignore_apps=ignore_apps))
 
     def perform_mutations(self, evolutions, end, end_sig, sql_name,
-                          rescan_indexes=True):
+                          rescan_indexes=True, db_name=None):
         def run_mutations():
             test_sql = []
 
             for mutation in evolutions:
                 test_sql.extend(mutation.mutate('tests', test_sig,
-                                                self.test_database_sig))
-                mutation.simulate('tests', test_sig, self.test_database_sig)
+                                                self.test_database_sig,
+                                                database=db_name))
+                mutation.simulate('tests', test_sig, self.test_database_sig,
+                                  database=db_name)
 
             return test_sql
+
+        db_name = db_name or self.default_database_name
 
         self.test_database_sig = self.copy_sig(self.database_sig)
         test_sig = self.copy_sig(self.start_sig)
@@ -150,18 +165,24 @@ class EvolutionTestCase(TransactionTestCase):
             run_mutations,
             database_sig=self.test_database_sig,
             rescan_indexes=rescan_indexes,
-            return_sql=True)
+            return_sql=True,
+            database=db_name)
 
         if sql_name is not None:
             self.assertEqual('\n'.join(sql),
-                             self.get_sql_mapping(sql_name))
+                             self.get_sql_mapping(sql_name, db_name))
 
-    def get_sql_mapping(self, name):
-        return test_sql_mapping(self.sql_mapping_key)[name]
+    def get_sql_mapping(self, name, db_name=None):
+        db_name = db_name or self.default_database_name
 
-    def register_model(self, model, name, **kwargs):
-        return register_models(self.database_sig, (name, model),
-                               *self.extra_models, **kwargs)
+        return test_sql_mapping(self.sql_mapping_key, db_name)[name]
+
+    def register_model(self, model, name, db_name=None, **kwargs):
+        db_name = db_name or self.default_database_name
+
+        return register_models_multi(self.database_sig, 'tests',
+                                     db_name, (name, model),
+                                     *self.extra_models, **kwargs)
 
     def create_test_proj_sig(self, model, name, extra_models=[]):
         return create_test_proj_sig((name, model),

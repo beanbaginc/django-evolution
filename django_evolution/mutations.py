@@ -4,6 +4,7 @@ from django.db.models.fields import AutoField, FieldDoesNotExist
 from django.db.models.fields.related import (ForeignKey, ManyToManyField,
                                              RECURSIVE_RELATIONSHIP_CONSTANT)
 from django.db import models
+from django.db.models.base import ModelState
 from django.utils.datastructures import SortedDict
 from django.utils.functional import curry
 
@@ -43,7 +44,7 @@ def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
     else:
         field = field_type(name=field_name, **field_attrs)
 
-    if field_type == ManyToManyField and parent_model is not None:
+    if field_type is ManyToManyField and parent_model is not None:
         # Starting in Django 1.2, a ManyToManyField must have a through
         # model defined. This will be set internally to an auto-created
         # model if one isn't specified. We have to fake that model.
@@ -198,11 +199,13 @@ class MockModel(object):
     to derive database column and table names using the standard
     Django fields.
     """
-    def __init__(self, proj_sig, app_name, model_name, model_sig, stub=False):
+    def __init__(self, proj_sig, app_name, model_name, model_sig, stub=False,
+                 db_name=None):
         self.app_name = app_name
         self.model_name = model_name
         self._meta = MockMeta(proj_sig, app_name, model_name, model_sig)
         self._meta.setup_fields(self, stub)
+        self._state = ModelState(db_name)
 
     def __repr__(self):
         return '<MockModel for %s.%s>' % (self.app_name, self.model_name)
@@ -267,7 +270,7 @@ class MonoBaseMutation(BaseMutation):
 
     def evolver(self, model, database_sig, database=None):
         if is_multi_db() and database is None:
-            db_name = router.db_for_write(model)
+            db_name = router.db_for_write(model.__class__, instance=model)
         else:
             db_name = database or 'default'
 
@@ -277,8 +280,9 @@ class MonoBaseMutation(BaseMutation):
         if is_multi_db():
             app_sig = proj_sig[app_label]
             model_sig = app_sig[self.model_name]
-            model = MockModel(proj_sig, app_label, self.model_name, model_sig)
-            db_name = router.db_for_write(model)
+            model = MockModel(proj_sig, app_label, self.model_name, model_sig,
+                              db_name=database)
+            db_name = router.db_for_write(model.__class__, instance=model)
             return db_name and db_name == database
         else:
             return True
@@ -355,7 +359,8 @@ class DeleteField(MonoBaseMutation):
         model_sig = app_sig[self.model_name]
         field_sig = model_sig['fields'][self.field_name]
 
-        model = MockModel(proj_sig, app_label, self.model_name, model_sig)
+        model = MockModel(proj_sig, app_label, self.model_name, model_sig,
+                          db_name=database)
 
         # Temporarily remove field_type from the field signature
         # so that we can create a field
@@ -443,7 +448,8 @@ class AddField(MonoBaseMutation):
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
 
-        model = MockModel(proj_sig, app_label, self.model_name, model_sig)
+        model = MockModel(proj_sig, app_label, self.model_name, model_sig,
+                          db_name=database)
         field = create_field(proj_sig, self.field_name, self.field_type,
                              self.field_attrs, model)
 
@@ -460,7 +466,8 @@ class AddField(MonoBaseMutation):
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
 
-        model = MockModel(proj_sig, app_label, self.model_name, model_sig)
+        model = MockModel(proj_sig, app_label, self.model_name, model_sig,
+                          db_name=database)
 
         field = create_field(proj_sig, self.field_name, self.field_type,
                              self.field_attrs, model)
@@ -469,7 +476,8 @@ class AddField(MonoBaseMutation):
             self.field_attrs['related_model'].split('.')
         related_sig = proj_sig[related_app_label][related_model_name]
         related_model = MockModel(proj_sig, related_app_label,
-                                  related_model_name, related_sig)
+                                  related_model_name, related_sig,
+                                  db_name=database)
         related = MockRelated(related_model, model, field)
 
         if hasattr(field, '_get_m2m_column_name'):
@@ -564,7 +572,8 @@ class RenameField(MonoBaseMutation):
         # Restore the field type to the signature
         old_field_sig['field_type'] = field_type
 
-        model = MockModel(proj_sig, app_label, self.model_name, model_sig)
+        model = MockModel(proj_sig, app_label, self.model_name, model_sig,
+                          db_name=database)
 
         evolver = self.evolver(model, database_sig, database)
 
@@ -622,7 +631,8 @@ class ChangeField(MonoBaseMutation):
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
         old_field_sig = model_sig['fields'][self.field_name]
-        model = MockModel(proj_sig, app_label, self.model_name, model_sig)
+        model = MockModel(proj_sig, app_label, self.model_name, model_sig,
+                          db_name=database)
 
         sql_statements = []
 
@@ -671,7 +681,8 @@ class DeleteModel(MonoBaseMutation):
         model_sig = app_sig[self.model_name]
 
         sql_statements = []
-        model = MockModel(proj_sig, app_label, self.model_name, model_sig)
+        model = MockModel(proj_sig, app_label, self.model_name, model_sig,
+                          db_name=database)
         evolver = self.evolver(model, database_sig, database)
 
         # Remove any many to many tables.
@@ -750,7 +761,8 @@ class ChangeMeta(MonoBaseMutation):
         model_sig = app_sig[self.model_name]
         old_value = model_sig['meta'][self.prop_name]
 
-        model = MockModel(proj_sig, app_label, self.model_name, model_sig)
+        model = MockModel(proj_sig, app_label, self.model_name, model_sig,
+                          db_name=database)
         evolver = self.evolver(model, database_sig, database)
 
         try:

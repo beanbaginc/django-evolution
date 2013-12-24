@@ -131,3 +131,30 @@ class DeleteModelTests(EvolutionTestCase):
             'CustomTableWithM2MModel',
             end_sig=end_sig,
             end=end)
+
+    def test_delete_model_with_custom_database(self):
+        """Testing DeleteModel with custom database"""
+        class BasicModel(models.Model):
+            value = models.IntegerField()
+
+        self.set_base_model(BasicModel, 'BasicModel', db_name='db_multi')
+
+        end_sig = self.copy_sig(self.start_sig)
+        end = self.copy_models(self.start)
+
+        end_sig['tests'].pop('BasicModel')
+        end.pop('basicmodel')
+
+        self.perform_evolution_tests(
+            None,
+            [
+                DeleteModel('BasicModel'),
+            ],
+            'The model tests.BasicModel has been deleted',
+            [
+                "DeleteModel('BasicModel')",
+            ],
+            'BasicModel',
+            end_sig=end_sig,
+            end=end,
+            db_name='db_multi')

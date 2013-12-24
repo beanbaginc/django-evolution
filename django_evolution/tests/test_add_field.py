@@ -551,3 +551,52 @@ class AddFieldTests(EvolutionTestCase):
                 " related_model='tests.TestModel')",
             ],
             'AddManyToManySelf')
+
+    def test_add_with_custom_database(self):
+        """Testing AddField with custom database"""
+        class DestModel(models.Model):
+            char_field = models.CharField(max_length=20)
+            int_field = models.IntegerField()
+            added_field = models.ForeignKey(AddAnchor1, null=True)
+
+        self.set_base_model(
+            self.default_base_model,
+            extra_models=self.default_extra_models,
+            db_name='db_multi')
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                AddField('TestModel', 'added_field', models.ForeignKey,
+                         null=True, related_model='tests.AddAnchor1'),
+            ],
+            ("In model tests.TestModel:\n"
+             "    Field 'added_field' has been added"),
+            [
+                "AddField('TestModel', 'added_field', models.ForeignKey,"
+                " null=True, related_model='tests.AddAnchor1')",
+            ],
+            'AddForeignKeyModel',
+            db_name='db_multi')
+
+    def test_add_many_to_many_field_and_custom_database(self):
+        """Testing AddField with ManyToManyField and custom database"""
+        class DestModel(models.Model):
+            char_field = models.CharField(max_length=20)
+            int_field = models.IntegerField()
+            added_field = models.ManyToManyField(AddAnchor1)
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                AddField('TestModel', 'added_field', models.ManyToManyField,
+                         related_model='tests.AddAnchor1'),
+            ],
+            ("In model tests.TestModel:\n"
+             "    Field 'added_field' has been added"),
+            [
+                "AddField('TestModel', 'added_field', models.ManyToManyField,"
+                " related_model='tests.AddAnchor1')",
+            ],
+            'AddManyToManyDatabaseTableModel',
+            db_name='db_multi')
