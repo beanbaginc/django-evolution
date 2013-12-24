@@ -712,7 +712,7 @@ class DeleteApplication(BaseMutation):
 
                 if mutation.is_mutable(app_label, proj_sig, database_sig,
                                        database):
-                    del app_sig[self.model_name]
+                    del app_sig[model_name]
 
     def mutate(self, app_label, proj_sig, database_sig, database=None):
         sql_statements = []
