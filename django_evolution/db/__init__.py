@@ -6,7 +6,7 @@ class EvolutionOperationsMulti(object):
         database_sig = database_sig or {}
 
         try:
-            from django.db import connections, router
+            from django.db import connections
             engine = settings.DATABASES[db_name]['ENGINE'].split('.')[-1]
             connection = connections[db_name]
             module_name = ['django_evolution.db', engine]

@@ -1,3 +1,6 @@
+from django.db import router
+from django.db.models import get_app, get_model
+
 from django_evolution.db import EvolutionOperationsMulti
 
 
@@ -41,3 +44,13 @@ def execute_sql(cursor, sql, database):
 
             if statement and not statement.startswith('--'):
                 cursor.execute(statement)
+
+
+def get_database_for_model_name(app_name, model_name):
+    """Returns the database used for a given model.
+
+    Given an app name and a model name, this will return the proper
+    database connection name used for making changes to that model. It
+    will go through any custom routers that understand that type of model.
+    """
+    return router.db_for_write(get_model(app_name, model_name))

@@ -19,9 +19,6 @@ FK_INTEGER_TYPES = [
     'AutoField', 'PositiveIntegerField', 'PositiveSmallIntegerField'
 ]
 
-if is_multi_db():
-    from django.db import router
-
 
 def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
     """
@@ -270,19 +267,15 @@ class MonoBaseMutation(BaseMutation):
 
     def evolver(self, model, database_sig, database=None):
         if is_multi_db() and database is None:
-            db_name = router.db_for_write(model.__class__, instance=model)
-        else:
-            db_name = database or 'default'
+            database = get_database_for_model_name(model.app_label,
+                                                   model.model_name)
 
-        return EvolutionOperationsMulti(db_name, database_sig).get_evolver()
+        return EvolutionOperationsMulti(database, database_sig).get_evolver()
 
     def is_mutable(self, app_label, proj_sig, database_sig, database):
         if is_multi_db():
-            app_sig = proj_sig[app_label]
-            model_sig = app_sig[self.model_name]
-            model = MockModel(proj_sig, app_label, self.model_name, model_sig,
-                              db_name=database)
-            db_name = router.db_for_write(model.__class__, instance=model)
+            db_name = (database or
+                       get_database_for_model_name(app_label, self.model_name))
             return db_name and db_name == database
         else:
             return True
