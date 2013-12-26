@@ -1,4 +1,3 @@
-from django_evolution.support import autocreate_through_tables
 from django_evolution.tests.utils import generate_index_name
 
 
@@ -461,75 +460,35 @@ add_field = {
         % generate_index_name('tests_testmodel', 'added_field_id',
                               'added_field'),
     ]),
+
+    'AddManyToManyDatabaseTableModel': '\n'.join([
+        'CREATE TABLE "tests_testmodel_added_field" (',
+        '    "id" integer NOT NULL PRIMARY KEY,',
+        '    "testmodel_id" integer NOT NULL,',
+        '    "addanchor1_id" integer NOT NULL,',
+        '    UNIQUE ("testmodel_id", "addanchor1_id")',
+        ')',
+        ';',
+    ]),
+    'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+        'CREATE TABLE "tests_testmodel_added_field" (',
+        '    "id" integer NOT NULL PRIMARY KEY,',
+        '    "testmodel_id" integer NOT NULL,',
+        '    "addanchor2_id" integer NOT NULL,',
+        '    UNIQUE ("testmodel_id", "addanchor2_id")',
+        ')',
+        ';',
+    ]),
+    'AddManyToManySelf': '\n'.join([
+        'CREATE TABLE "tests_testmodel_added_field" (',
+        '    "id" integer NOT NULL PRIMARY KEY,',
+        '    "from_testmodel_id" integer NOT NULL,',
+        '    "to_testmodel_id" integer NOT NULL,',
+        '    UNIQUE ("from_testmodel_id", "to_testmodel_id")',
+        ')',
+        ';',
+    ]),
 }
-
-
-if autocreate_through_tables:
-    add_field.update({
-        'AddManyToManyDatabaseTableModel': '\n'.join([
-            'CREATE TABLE "tests_testmodel_added_field" (',
-            '    "id" integer NOT NULL PRIMARY KEY,',
-            '    "testmodel_id" integer NOT NULL,',
-            '    "addanchor1_id" integer NOT NULL,',
-            '    UNIQUE ("testmodel_id", "addanchor1_id")',
-            ')',
-            ';',
-        ]),
-        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
-            'CREATE TABLE "tests_testmodel_added_field" (',
-            '    "id" integer NOT NULL PRIMARY KEY,',
-            '    "testmodel_id" integer NOT NULL,',
-            '    "addanchor2_id" integer NOT NULL,',
-            '    UNIQUE ("testmodel_id", "addanchor2_id")',
-            ')',
-            ';',
-        ]),
-        'AddManyToManySelf': '\n'.join([
-            'CREATE TABLE "tests_testmodel_added_field" (',
-            '    "id" integer NOT NULL PRIMARY KEY,',
-            '    "from_testmodel_id" integer NOT NULL,',
-            '    "to_testmodel_id" integer NOT NULL,',
-            '    UNIQUE ("from_testmodel_id", "to_testmodel_id")',
-            ')',
-            ';',
-        ]),
-    })
-else:
-    add_field.update({
-        'AddManyToManyDatabaseTableModel': '\n'.join([
-            'CREATE TABLE "tests_testmodel_added_field" (',
-            '    "id" integer NOT NULL PRIMARY KEY,',
-            '    "testmodel_id" integer NOT NULL REFERENCES '
-            '"tests_testmodel" ("id"),',
-            '    "addanchor1_id" integer NOT NULL REFERENCES '
-            '"tests_addanchor1" ("id"),',
-            '    UNIQUE ("testmodel_id", "addanchor1_id")',
-            ')',
-            ';',
-        ]),
-        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
-            'CREATE TABLE "tests_testmodel_added_field" (',
-            '    "id" integer NOT NULL PRIMARY KEY,',
-            '    "testmodel_id" integer NOT NULL REFERENCES '
-            '"tests_testmodel" ("id"),',
-            '    "addanchor2_id" integer NOT NULL REFERENCES '
-            '"custom_add_anchor_table" ("id"),',
-            '    UNIQUE ("testmodel_id", "addanchor2_id")',
-            ')',
-            ';',
-        ]),
-        'AddManyToManySelf': '\n'.join([
-            'CREATE TABLE "tests_testmodel_added_field" (',
-            '    "id" integer NOT NULL PRIMARY KEY,',
-            '    "from_testmodel_id" integer NOT NULL REFERENCES '
-            '"tests_testmodel" ("id"),',
-            '    "to_testmodel_id" integer NOT NULL REFERENCES '
-            '"tests_testmodel" ("id"),',
-            '    UNIQUE ("from_testmodel_id", "to_testmodel_id")',
-            ')',
-            ';',
-        ]),
-    })
 
 delete_field = {
     'DefaultNamedColumnModel': '\n'.join([

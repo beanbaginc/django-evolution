@@ -6,8 +6,7 @@ from django.db.backends.util import truncate_name
 
 from django_evolution.signature import (add_index_to_database_sig,
                                         remove_index_from_database_sig)
-from django_evolution.support import (digest_index_names,
-                                      supports_index_together)
+from django_evolution.support import supports_index_together
 
 
 class BaseEvolutionOperations(object):
@@ -304,22 +303,19 @@ class BaseEvolutionOperations(object):
             # This whole block of logic comes from sql_indexes_for_field
             # in django.db.backends.creation, and is designed to match
             # the logic for the past few versions of Django.
+            if supports_index_together:
+                # Starting in Django 1.5, the _digest is passed a raw
+                # list. While this is probably a bug (digest should
+                # expect a string), we still need to retain
+                # compatibility. We know this behavior hasn't changed
+                # as of Django 1.6.1.
+                #
+                # It also uses the field name, and not the column name.
+                column = [field.name]
+            else:
+                column = field.column
 
-            column = field.column
-
-            if digest_index_names:
-                if supports_index_together:
-                    # Starting in Django 1.5, the _digest is passed a raw
-                    # list. While this is probably a bug (digest should
-                    # expect a string), we still need to retain
-                    # compatibility. We know this behavior hasn't changed
-                    # as of Django 1.6.1.
-                    #
-                    # It also uses the field name, and not the column name.
-                    column = [field.name]
-
-                column = self.connection.creation._digest(column)
-
+            column = self.connection.creation._digest(column)
             index_name = '%s_%s' % (table_name, column)
 
         return truncate_name(index_name, self.connection.ops.max_name_length())

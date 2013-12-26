@@ -1,15 +1,11 @@
-from django.db import connections
+from django.db import connections, router
 from django.db.models import get_apps, get_models
 from django.db.models.fields.related import ForeignKey
 from django.conf import global_settings
 from django.contrib.contenttypes import generic
 from django.utils.datastructures import SortedDict
 
-from django_evolution import is_multi_db
 from django_evolution.db import EvolutionOperationsMulti
-
-if is_multi_db():
-    from django.db import router
 
 
 ATTRIBUTE_DEFAULTS = {
@@ -102,7 +98,7 @@ def create_app_sig(app, database):
 
     for model in get_models(app):
         # only include those who want to be syncdb
-        if not is_multi_db() or router.allow_syncdb(database, model.__class__):
+        if router.allow_syncdb(database, model.__class__):
             app_sig[model._meta.object_name] = create_model_sig(model)
 
     return app_sig

@@ -7,10 +7,11 @@ except ImportError:
 
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import BaseCommand, CommandError
+from django.db import connections, transaction
 from django.db.models import get_apps, get_app
-from django.db import connection, transaction
+from django.db.utils import DEFAULT_DB_ALIAS
 
-from django_evolution import CannotSimulate, EvolutionException, is_multi_db
+from django_evolution import CannotSimulate, EvolutionException
 from django_evolution.diff import Diff
 from django_evolution.evolve import get_unapplied_evolutions, get_mutations
 from django_evolution.models import Version, Evolution
@@ -77,14 +78,12 @@ class Command(BaseCommand):
         self.purge = options['purge']
         self.database = options['database']
 
-        if not self.database and is_multi_db():
-            from django.db.utils import DEFAULT_DB_ALIAS
+        if not self.database:
             self.database = DEFAULT_DB_ALIAS
 
-        self.using_args = {}
-
-        if is_multi_db():
-            self.using_args['using'] = self.database
+        self.using_args = {
+            'using': self.database
+        }
 
         # Use the list of all apps, unless app labels are specified.
         if app_labels:
@@ -111,11 +110,8 @@ class Command(BaseCommand):
         sql = []
 
         try:
-            if is_multi_db():
-                latest_version = \
-                    Version.objects.using(self.database).latest('when')
-            else:
-                latest_version = Version.objects.latest('when')
+            latest_version = \
+                Version.objects.using(self.database).latest('when')
 
             self.old_proj_sig = pickle.loads(str(latest_version.signature))
             self.diff = Diff(self.old_proj_sig, self.current_proj_sig)
@@ -292,18 +288,12 @@ Type 'yes' to continue, or 'no' to cancel: """ % self.database)
             else:
                 confirm = 'yes'
 
-            if is_multi_db():
-                from django.db import connections
-
             if confirm.lower() == 'yes':
                 # Begin Transaction
                 transaction.enter_transaction_management(**self.using_args)
                 transaction.managed(flag=True, **self.using_args)
 
-                if is_multi_db():
-                    cursor = connections[self.database].cursor()
-                else:
-                    cursor = connection.cursor()
+                cursor = connections[self.database].cursor()
 
                 try:
                     # Perform the SQL

@@ -5,23 +5,19 @@ from datetime import datetime
 import django
 from django.core.management import sql
 from django.core.management.color import no_style
-from django.db import connection, transaction, settings, models
+from django.db import connection, connections, transaction, settings, models
 from django.db.backends.util import truncate_name
 from django.db.models.loading import cache
+from django.db.utils import DEFAULT_DB_ALIAS
 from django.utils.datastructures import SortedDict
 from django.utils.functional import curry
 
-from django_evolution import signature, is_multi_db
+from django_evolution import signature
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.signature import rescan_indexes_for_database_sig
-from django_evolution.support import (digest_index_names,
-                                      supports_index_together)
+from django_evolution.support import supports_index_together
 from django_evolution.tests import models as evo_test
 from django_evolution.utils import write_sql, execute_sql
-
-if is_multi_db():
-    from django.db import connections
-    from django.db.utils import DEFAULT_DB_ALIAS
 
 
 DEFAULT_TEST_ATTRIBUTE_VALUES = {
@@ -37,10 +33,7 @@ digest = connection.creation._digest
 
 
 def wrap_sql_func(func, evo_test, style, db_name=None):
-    if is_multi_db():
-        return func(evo_test, style, connections[db_name or DEFAULT_DB_ALIAS])
-    else:
-        return func(evo_test, style)
+    return func(evo_test, style, connections[db_name or DEFAULT_DB_ALIAS])
 
 # Wrap the sql.* functions to work with the multi-db support
 sql_create = curry(wrap_sql_func, sql.sql_create)
@@ -54,11 +47,7 @@ def _register_models(database_sig, app_label='tests', db_name='default',
     evolver = EvolutionOperationsMulti(db_name, database_sig).get_evolver()
     register_indexes = kwargs.get('register_indexes', False)
 
-    my_connection = connection
-
-    if is_multi_db():
-        my_connection = connections[db_name or DEFAULT_DB_ALIAS]
-
+    my_connection = connections[db_name or DEFAULT_DB_ALIAS]
     max_name_length = my_connection.ops.max_name_length()
 
     for name, model in reversed(models):
@@ -234,15 +223,15 @@ test_proj_sig_multi = create_test_proj_sig_multi
 def execute_transaction(sql, output=False, database='default'):
     "A transaction wrapper for executing a list of SQL statements"
     my_connection = connection
-    using_args = {}
     out_sql = []
 
-    if is_multi_db():
-        if not database:
-            database = DEFAULT_DB_ALIAS
+    if not database:
+        database = DEFAULT_DB_ALIAS
 
-        my_connection = connections[database]
-        using_args['using'] = database
+    my_connection = connections[database]
+    using_args = {
+        'using': database,
+    }
 
     try:
         # Begin Transaction
@@ -343,10 +332,9 @@ def execute_test_sql(start, end, sql, debug=False, app_label='tests',
 def create_test_data(app_models, database):
     deferred_models = []
     deferred_fields = {}
-    using_args = {}
-
-    if is_multi_db():
-        using_args['using'] = database
+    using_args = {
+        'using': database,
+    }
 
     for model in app_models:
         params = {}
@@ -356,10 +344,7 @@ def create_test_data(app_models, database):
             if not deferred:
                 if type(field) in (models.ForeignKey, models.ManyToManyField):
                     related_model = field.rel.to
-                    related_q = related_model.objects.all()
-
-                    if is_multi_db():
-                        related_q = related_q.using(database)
+                    related_q = related_model.objects.all().using(database)
 
                     if related_q.count():
                         related_instance = related_q[0]
@@ -412,10 +397,7 @@ def create_test_data(app_models, database):
 
 
 def test_sql_mapping(test_field_name, db_name='default'):
-    if is_multi_db():
-        engine = settings.DATABASES[db_name]['ENGINE'].split('.')[-1]
-    else:
-        engine = settings.DATABASE_ENGINE
+    engine = settings.DATABASES[db_name]['ENGINE'].split('.')[-1]
 
     sql_for_engine = __import__('django_evolution.tests.db.%s' % (engine),
                                 {}, {}, [''])

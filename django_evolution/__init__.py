@@ -63,9 +63,3 @@ class SimulationFailure(EvolutionException):
 
 class EvolutionNotImplementedError(EvolutionException, NotImplementedError):
     pass
-
-
-def is_multi_db():
-    from django_evolution.support import supports_multi_db
-
-    return supports_multi_db

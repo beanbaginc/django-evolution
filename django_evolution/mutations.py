@@ -11,7 +11,7 @@ from django.utils.functional import curry
 from django_evolution.signature import (ATTRIBUTE_DEFAULTS,
                                         record_unique_together_applied)
 from django_evolution import (CannotSimulate, SimulationFailure,
-                              EvolutionNotImplementedError, is_multi_db)
+                              EvolutionNotImplementedError)
 from django_evolution.db import EvolutionOperationsMulti
 
 
@@ -266,19 +266,16 @@ class MonoBaseMutation(BaseMutation):
         self.model_name = model_name
 
     def evolver(self, model, database_sig, database=None):
-        if is_multi_db() and database is None:
+        if database is None:
             database = get_database_for_model_name(model.app_label,
                                                    model.model_name)
 
         return EvolutionOperationsMulti(database, database_sig).get_evolver()
 
     def is_mutable(self, app_label, proj_sig, database_sig, database):
-        if is_multi_db():
-            db_name = (database or
-                       get_database_for_model_name(app_label, self.model_name))
-            return db_name and db_name == database
-        else:
-            return True
+        db_name = (database or
+                   get_database_for_model_name(app_label, self.model_name))
+        return db_name and db_name == database
 
 
 class SQLMutation(BaseMutation):

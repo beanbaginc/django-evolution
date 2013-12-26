@@ -1,4 +1,3 @@
-from django_evolution.support import autocreate_through_tables
 from django_evolution.tests.utils import (generate_constraint_name,
                                           generate_index_name)
 
@@ -138,126 +137,85 @@ add_field = {
         'CREATE INDEX "tests_testmodel_added_field_id"'
         ' ON "tests_testmodel" ("added_field_id");'
     ]),
+
+    'AddManyToManyDatabaseTableModel': '\n'.join([
+        'CREATE TABLE "tests_testmodel_added_field" (',
+        '    "id" serial NOT NULL PRIMARY KEY,',
+        '    "testmodel_id" integer NOT NULL,',
+        '    "addanchor1_id" integer NOT NULL,',
+        '    UNIQUE ("testmodel_id", "addanchor1_id")',
+        ')',
+        ';',
+
+        'ALTER TABLE "tests_testmodel_added_field"'
+        ' ADD CONSTRAINT "%s" FOREIGN KEY ("addanchor1_id")'
+        ' REFERENCES "tests_addanchor1" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED;'
+        % generate_constraint_name('addanchor1_id', 'id',
+                                   'tests_testmodel_added_field',
+                                   'tests_addanchor1'),
+
+        'ALTER TABLE "tests_testmodel_added_field"'
+        ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+        ' REFERENCES "tests_testmodel" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED;'
+        % generate_constraint_name('testmodel_id', 'id',
+                                   'tests_testmodel_added_field',
+                                   'tests_testmodel'),
+    ]),
+
+    'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+        'CREATE TABLE "tests_testmodel_added_field" (',
+        '    "id" serial NOT NULL PRIMARY KEY,',
+        '    "testmodel_id" integer NOT NULL,',
+        '    "addanchor2_id" integer NOT NULL,',
+        '    UNIQUE ("testmodel_id", "addanchor2_id")',
+        ')',
+        ';',
+
+        'ALTER TABLE "tests_testmodel_added_field"'
+        ' ADD CONSTRAINT "%s" FOREIGN KEY ("addanchor2_id")'
+        ' REFERENCES "custom_add_anchor_table" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED;'
+        % generate_constraint_name('addanchor2_id', 'id',
+                                   'tests_testmodel_added_field',
+                                   'custom_add_anchor_table'),
+
+        'ALTER TABLE "tests_testmodel_added_field"'
+        ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+        ' REFERENCES "tests_testmodel" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED;'
+        % generate_constraint_name('testmodel_id', 'id',
+                                   'tests_testmodel_added_field',
+                                   'tests_testmodel'),
+    ]),
+
+    'AddManyToManySelf': '\n'.join([
+        'CREATE TABLE "tests_testmodel_added_field" (',
+        '    "id" serial NOT NULL PRIMARY KEY,',
+        '    "from_testmodel_id" integer NOT NULL,',
+        '    "to_testmodel_id" integer NOT NULL,',
+        '    UNIQUE ("from_testmodel_id", "to_testmodel_id")',
+        ')',
+        ';',
+
+        'ALTER TABLE "tests_testmodel_added_field"'
+        ' ADD CONSTRAINT "%s" FOREIGN KEY ("from_testmodel_id")'
+        ' REFERENCES "tests_testmodel" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED;'
+        % generate_constraint_name('from_testmodel_id', 'id',
+                                   'tests_testmodel_added_field',
+                                   'tests_testmodel'),
+
+        'ALTER TABLE "tests_testmodel_added_field"'
+        ' ADD CONSTRAINT "%s" FOREIGN KEY ("to_testmodel_id")'
+        ' REFERENCES "tests_testmodel" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED;'
+        % generate_constraint_name('to_testmodel_id', 'id',
+                                   'tests_testmodel_added_field',
+                                   'tests_testmodel'),
+    ]),
 }
-
-if autocreate_through_tables:
-    add_field.update({
-        'AddManyToManyDatabaseTableModel': '\n'.join([
-            'CREATE TABLE "tests_testmodel_added_field" (',
-            '    "id" serial NOT NULL PRIMARY KEY,',
-            '    "testmodel_id" integer NOT NULL,',
-            '    "addanchor1_id" integer NOT NULL,',
-            '    UNIQUE ("testmodel_id", "addanchor1_id")',
-            ')',
-            ';',
-
-            'ALTER TABLE "tests_testmodel_added_field"'
-            ' ADD CONSTRAINT "%s" FOREIGN KEY ("addanchor1_id")'
-            ' REFERENCES "tests_addanchor1" ("id")'
-            ' DEFERRABLE INITIALLY DEFERRED;'
-            % generate_constraint_name('addanchor1_id', 'id',
-                                       'tests_testmodel_added_field',
-                                       'tests_addanchor1'),
-
-            'ALTER TABLE "tests_testmodel_added_field"'
-            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
-            ' REFERENCES "tests_testmodel" ("id")'
-            ' DEFERRABLE INITIALLY DEFERRED;'
-            % generate_constraint_name('testmodel_id', 'id',
-                                       'tests_testmodel_added_field',
-                                       'tests_testmodel'),
-        ]),
-
-        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
-            'CREATE TABLE "tests_testmodel_added_field" (',
-            '    "id" serial NOT NULL PRIMARY KEY,',
-            '    "testmodel_id" integer NOT NULL,',
-            '    "addanchor2_id" integer NOT NULL,',
-            '    UNIQUE ("testmodel_id", "addanchor2_id")',
-            ')',
-            ';',
-
-            'ALTER TABLE "tests_testmodel_added_field"'
-            ' ADD CONSTRAINT "%s" FOREIGN KEY ("addanchor2_id")'
-            ' REFERENCES "custom_add_anchor_table" ("id")'
-            ' DEFERRABLE INITIALLY DEFERRED;'
-            % generate_constraint_name('addanchor2_id', 'id',
-                                       'tests_testmodel_added_field',
-                                       'custom_add_anchor_table'),
-
-            'ALTER TABLE "tests_testmodel_added_field"'
-            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
-            ' REFERENCES "tests_testmodel" ("id")'
-            ' DEFERRABLE INITIALLY DEFERRED;'
-            % generate_constraint_name('testmodel_id', 'id',
-                                       'tests_testmodel_added_field',
-                                       'tests_testmodel'),
-        ]),
-
-        'AddManyToManySelf': '\n'.join([
-            'CREATE TABLE "tests_testmodel_added_field" (',
-            '    "id" serial NOT NULL PRIMARY KEY,',
-            '    "from_testmodel_id" integer NOT NULL,',
-            '    "to_testmodel_id" integer NOT NULL,',
-            '    UNIQUE ("from_testmodel_id", "to_testmodel_id")',
-            ')',
-            ';',
-
-            'ALTER TABLE "tests_testmodel_added_field"'
-            ' ADD CONSTRAINT "%s" FOREIGN KEY ("from_testmodel_id")'
-            ' REFERENCES "tests_testmodel" ("id")'
-            ' DEFERRABLE INITIALLY DEFERRED;'
-            % generate_constraint_name('from_testmodel_id', 'id',
-                                       'tests_testmodel_added_field',
-                                       'tests_testmodel'),
-
-            'ALTER TABLE "tests_testmodel_added_field"'
-            ' ADD CONSTRAINT "%s" FOREIGN KEY ("to_testmodel_id")'
-            ' REFERENCES "tests_testmodel" ("id")'
-            ' DEFERRABLE INITIALLY DEFERRED;'
-            % generate_constraint_name('to_testmodel_id', 'id',
-                                       'tests_testmodel_added_field',
-                                       'tests_testmodel'),
-        ]),
-    })
-else:
-    add_field.update({
-        'AddManyToManyDatabaseTableModel': '\n'.join([
-            'CREATE TABLE "tests_testmodel_added_field" (',
-            '    "id" serial NOT NULL PRIMARY KEY,',
-            '    "testmodel_id" integer NOT NULL REFERENCES'
-            ' "tests_testmodel" ("id") DEFERRABLE INITIALLY DEFERRED,',
-            '    "addanchor1_id" integer NOT NULL REFERENCES'
-            ' "tests_addanchor1" ("id") DEFERRABLE INITIALLY DEFERRED,',
-            '    UNIQUE ("testmodel_id", "addanchor1_id")',
-            ')',
-            ';'
-        ]),
-
-        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
-            'CREATE TABLE "tests_testmodel_added_field" (',
-            '    "id" serial NOT NULL PRIMARY KEY,',
-            '    "testmodel_id" integer NOT NULL REFERENCES'
-            ' "tests_testmodel" ("id") DEFERRABLE INITIALLY DEFERRED,',
-            '    "addanchor2_id" integer NOT NULL REFERENCES'
-            ' "custom_add_anchor_table" ("id") DEFERRABLE INITIALLY DEFERRED,',
-            '    UNIQUE ("testmodel_id", "addanchor2_id")',
-            ')',
-            ';'
-        ]),
-
-        'AddManyToManySelf': '\n'.join([
-            'CREATE TABLE "tests_testmodel_added_field" (',
-            '    "id" serial NOT NULL PRIMARY KEY,',
-            '    "from_testmodel_id" integer NOT NULL REFERENCES'
-            ' "tests_testmodel" ("id") DEFERRABLE INITIALLY DEFERRED,',
-            '    "to_testmodel_id" integer NOT NULL REFERENCES'
-            ' "tests_testmodel" ("id") DEFERRABLE INITIALLY DEFERRED,',
-            '    UNIQUE ("from_testmodel_id", "to_testmodel_id")',
-            ')',
-            ';'
-        ]),
-    })
 
 delete_field = {
     'DefaultNamedColumnModel': (
@@ -383,36 +341,26 @@ change_field = {
         ' ALTER COLUMN "char_field" TYPE varchar(35)'
         ' USING CAST("char_field" as varchar(35));',
     ]),
+
+    "M2MDBTableChangeModel": '\n'.join([
+        'ALTER TABLE "change_field_non-default_m2m_table"'
+        ' DROP CONSTRAINT "%s";'
+        % generate_constraint_name('testmodel_id', 'my_id',
+                                   'change_field_non-default_m2m_table',
+                                   'tests_testmodel'),
+
+        'ALTER TABLE "change_field_non-default_m2m_table"'
+        ' RENAME TO "custom_m2m_db_table_name";',
+
+        'ALTER TABLE "custom_m2m_db_table_name"'
+        ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+        ' REFERENCES "tests_testmodel" ("my_id")'
+        ' DEFERRABLE INITIALLY DEFERRED;'
+        % generate_constraint_name('testmodel_id', 'my_id',
+                                   'custom_m2m_db_table_name',
+                                   'tests_testmodel'),
+    ]),
 }
-
-if autocreate_through_tables:
-    change_field.update({
-        "M2MDBTableChangeModel": '\n'.join([
-            'ALTER TABLE "change_field_non-default_m2m_table"'
-            ' DROP CONSTRAINT "%s";'
-            % generate_constraint_name('testmodel_id', 'my_id',
-                                       'change_field_non-default_m2m_table',
-                                       'tests_testmodel'),
-
-            'ALTER TABLE "change_field_non-default_m2m_table"'
-            ' RENAME TO "custom_m2m_db_table_name";',
-
-            'ALTER TABLE "custom_m2m_db_table_name"'
-            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
-            ' REFERENCES "tests_testmodel" ("my_id")'
-            ' DEFERRABLE INITIALLY DEFERRED;'
-            % generate_constraint_name('testmodel_id', 'my_id',
-                                       'custom_m2m_db_table_name',
-                                       'tests_testmodel'),
-        ]),
-    })
-else:
-    change_field.update({
-        "M2MDBTableChangeModel": (
-            'ALTER TABLE "change_field_non-default_m2m_table"'
-            ' RENAME TO "custom_m2m_db_table_name";'
-        ),
-    })
 
 delete_model = {
     'BasicModel': (
@@ -500,6 +448,72 @@ rename_field = {
                                    'tests_testmodel_renamed_field',
                                    'tests_testmodel'),
     ]),
+
+    'RenamePrimaryKeyColumnModel': '\n'.join([
+        'ALTER TABLE "non-default_db_table"' ' DROP CONSTRAINT "%s";'
+        % generate_constraint_name('testmodel_id', 'id',
+                                   'non-default_db_table',
+                                   'tests_testmodel'),
+
+        'ALTER TABLE "tests_testmodel_m2m_field" DROP CONSTRAINT "%s";'
+        % generate_constraint_name('testmodel_id', 'id',
+                                   'tests_testmodel_m2m_field',
+                                   'tests_testmodel'),
+
+        'ALTER TABLE "tests_testmodel" RENAME COLUMN "id" TO "my_pk_id";',
+
+        'ALTER TABLE "non-default_db_table"'
+        ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+        ' REFERENCES "tests_testmodel" ("my_pk_id")'
+        ' DEFERRABLE INITIALLY DEFERRED;'
+        % generate_constraint_name('testmodel_id', 'my_pk_id',
+                                   'non-default_db_table',
+                                   'tests_testmodel'),
+
+        'ALTER TABLE "tests_testmodel_m2m_field"'
+        ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+        ' REFERENCES "tests_testmodel" ("my_pk_id")'
+        ' DEFERRABLE INITIALLY DEFERRED;'
+        % generate_constraint_name('testmodel_id', 'my_pk_id',
+                                   'tests_testmodel_m2m_field',
+                                   'tests_testmodel'),
+    ]),
+
+    'RenameManyToManyTableModel': '\n'.join([
+        'ALTER TABLE "tests_testmodel_m2m_field" DROP CONSTRAINT "%s";'
+        % generate_constraint_name('testmodel_id', 'id',
+                                   'tests_testmodel_m2m_field',
+                                   'tests_testmodel'),
+
+        'ALTER TABLE "tests_testmodel_m2m_field"'
+        ' RENAME TO "tests_testmodel_renamed_field";',
+
+        'ALTER TABLE "tests_testmodel_renamed_field"'
+        ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+        ' REFERENCES "tests_testmodel" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED;'
+        % generate_constraint_name('testmodel_id', 'id',
+                                   'tests_testmodel_renamed_field',
+                                   'tests_testmodel'),
+    ]),
+
+    'RenameManyToManyTableWithColumnNameModel': '\n'.join([
+        'ALTER TABLE "tests_testmodel_m2m_field" DROP CONSTRAINT "%s";'
+        % generate_constraint_name('testmodel_id', 'id',
+                                   'tests_testmodel_m2m_field',
+                                   'tests_testmodel'),
+
+        'ALTER TABLE "tests_testmodel_m2m_field"'
+        ' RENAME TO "tests_testmodel_renamed_field";',
+
+        'ALTER TABLE "tests_testmodel_renamed_field"'
+        ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+        ' REFERENCES "tests_testmodel" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED;'
+        % generate_constraint_name('testmodel_id', 'id',
+                                   'tests_testmodel_renamed_field',
+                                   'tests_testmodel'),
+    ]),
 }
 
 sql_mutation = {
@@ -527,91 +541,6 @@ sql_mutation = {
         ' ADD COLUMN "added_field3" integer NULL;',
     ]),
 }
-
-if autocreate_through_tables:
-    rename_field.update({
-        'RenamePrimaryKeyColumnModel': '\n'.join([
-            'ALTER TABLE "non-default_db_table"' ' DROP CONSTRAINT "%s";'
-            % generate_constraint_name('testmodel_id', 'id',
-                                       'non-default_db_table',
-                                       'tests_testmodel'),
-
-            'ALTER TABLE "tests_testmodel_m2m_field" DROP CONSTRAINT "%s";'
-            % generate_constraint_name('testmodel_id', 'id',
-                                       'tests_testmodel_m2m_field',
-                                       'tests_testmodel'),
-
-            'ALTER TABLE "tests_testmodel" RENAME COLUMN "id" TO "my_pk_id";',
-
-            'ALTER TABLE "non-default_db_table"'
-            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
-            ' REFERENCES "tests_testmodel" ("my_pk_id")'
-            ' DEFERRABLE INITIALLY DEFERRED;'
-            % generate_constraint_name('testmodel_id', 'my_pk_id',
-                                       'non-default_db_table',
-                                       'tests_testmodel'),
-
-            'ALTER TABLE "tests_testmodel_m2m_field"'
-            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
-            ' REFERENCES "tests_testmodel" ("my_pk_id")'
-            ' DEFERRABLE INITIALLY DEFERRED;'
-            % generate_constraint_name('testmodel_id', 'my_pk_id',
-                                       'tests_testmodel_m2m_field',
-                                       'tests_testmodel'),
-        ]),
-
-        'RenameManyToManyTableModel': '\n'.join([
-            'ALTER TABLE "tests_testmodel_m2m_field" DROP CONSTRAINT "%s";'
-            % generate_constraint_name('testmodel_id', 'id',
-                                       'tests_testmodel_m2m_field',
-                                       'tests_testmodel'),
-
-            'ALTER TABLE "tests_testmodel_m2m_field"'
-            ' RENAME TO "tests_testmodel_renamed_field";',
-
-            'ALTER TABLE "tests_testmodel_renamed_field"'
-            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
-            ' REFERENCES "tests_testmodel" ("id")'
-            ' DEFERRABLE INITIALLY DEFERRED;'
-            % generate_constraint_name('testmodel_id', 'id',
-                                       'tests_testmodel_renamed_field',
-                                       'tests_testmodel'),
-        ]),
-
-        'RenameManyToManyTableWithColumnNameModel': '\n'.join([
-            'ALTER TABLE "tests_testmodel_m2m_field" DROP CONSTRAINT "%s";'
-            % generate_constraint_name('testmodel_id', 'id',
-                                       'tests_testmodel_m2m_field',
-                                       'tests_testmodel'),
-
-            'ALTER TABLE "tests_testmodel_m2m_field"'
-            ' RENAME TO "tests_testmodel_renamed_field";',
-
-            'ALTER TABLE "tests_testmodel_renamed_field"'
-            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
-            ' REFERENCES "tests_testmodel" ("id")'
-            ' DEFERRABLE INITIALLY DEFERRED;'
-            % generate_constraint_name('testmodel_id', 'id',
-                                       'tests_testmodel_renamed_field',
-                                       'tests_testmodel'),
-        ]),
-    })
-else:
-    rename_field.update({
-        'RenamePrimaryKeyColumnModel': (
-            'ALTER TABLE "tests_testmodel" RENAME COLUMN "id" TO "my_pk_id";'
-        ),
-
-        'RenameManyToManyTableModel': (
-            'ALTER TABLE "tests_testmodel_m2m_field"'
-            ' RENAME TO "tests_testmodel_renamed_field";'
-        ),
-
-        'RenameManyToManyTableWithColumnNameModel': (
-            'ALTER TABLE "tests_testmodel_m2m_field"'
-            ' RENAME TO "tests_testmodel_renamed_field";'
-        ),
-    })
 
 generics = {
     'DeleteColumnModel': (

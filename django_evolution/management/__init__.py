@@ -5,8 +5,9 @@ except ImportError:
 
 from django.core.management.color import color_style
 from django.db.models import signals, get_apps, get_app
+from django.db.utils import DEFAULT_DB_ALIAS
 
-from django_evolution import is_multi_db, models as django_evolution
+from django_evolution import models as django_evolution
 from django_evolution.diff import Diff
 from django_evolution.evolve import (get_evolution_sequence,
                                      get_unapplied_evolutions)
@@ -37,26 +38,19 @@ def evolution(app, created_models, verbosity=1, **kwargs):
     A hook into syncdb's post_syncdb signal, that is used to notify the user
     if a model evolution is necessary.
     """
-    default_db = None
-    if is_multi_db():
-        from django.db.utils import DEFAULT_DB_ALIAS
-        default_db = DEFAULT_DB_ALIAS
+    default_db = DEFAULT_DB_ALIAS
 
     db = kwargs.get('db', default_db)
     proj_sig = create_project_sig(db)
     signature = pickle.dumps(proj_sig)
 
-    using_args = {}
-
-    if is_multi_db():
-        using_args['using'] = db
+    using_args = {
+        'using': db,
+    }
 
     try:
-        if is_multi_db():
-            latest_version = \
-                django_evolution.Version.objects.using(db).latest('when')
-        else:
-            latest_version = django_evolution.Version.objects.latest('when')
+        latest_version = \
+            django_evolution.Version.objects.using(db).latest('when')
     except django_evolution.Version.DoesNotExist:
         # We need to create a baseline version.
         if verbosity > 0:

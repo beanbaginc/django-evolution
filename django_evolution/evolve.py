@@ -1,7 +1,7 @@
 import os
 import pickle
 
-from django_evolution import EvolutionException, is_multi_db
+from django_evolution import EvolutionException
 from django_evolution.builtin_evolutions import BUILTIN_SEQUENCES
 from django_evolution.models import Evolution, Version
 from django_evolution.mutations import SQLMutation
@@ -28,11 +28,7 @@ def get_unapplied_evolutions(app, database):
     sequence = get_evolution_sequence(app)
     app_label = app.__name__.split('.')[-2]
 
-    evolutions = Evolution.objects.filter(app_label=app_label)
-
-    if is_multi_db():
-        evolutions = evolutions.using(database)
-
+    evolutions = Evolution.objects.filter(app_label=app_label).using(database)
     applied = [evo.label for evo in evolutions]
 
     return [seq for seq in sequence if seq not in applied]
@@ -91,10 +87,7 @@ def get_mutations(app, evolution_labels, database):
                     'Error: Failed to find an SQL or Python evolution named %s'
                     % label)
 
-    if is_multi_db():
-        latest_version = Version.objects.using(database).latest('when')
-    else:
-        latest_version = Version.objects.latest('when')
+    latest_version = Version.objects.using(database).latest('when')
 
     app_label = app.__name__.split('.')[-2]
     old_proj_sig = pickle.loads(str(latest_version.signature))
