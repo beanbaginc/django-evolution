@@ -13,6 +13,7 @@ from django_evolution.signature import (ATTRIBUTE_DEFAULTS,
 from django_evolution import (CannotSimulate, SimulationFailure,
                               EvolutionNotImplementedError)
 from django_evolution.db import EvolutionOperationsMulti
+from django_evolution.utils import get_database_for_model_name
 
 
 FK_INTEGER_TYPES = [

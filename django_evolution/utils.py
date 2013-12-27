@@ -1,5 +1,5 @@
 from django.db import router
-from django.db.models import get_app, get_model
+from django.db.models import get_model
 
 from django_evolution.db import EvolutionOperationsMulti
 

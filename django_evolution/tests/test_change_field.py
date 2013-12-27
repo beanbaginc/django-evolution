@@ -1,6 +1,6 @@
 from django.db import connection, models
 
-from django_evolution import EvolutionException, SimulationFailure
+from django_evolution import SimulationFailure
 from django_evolution.mutations import ChangeField
 from django_evolution.tests.base_test_case import EvolutionTestCase
 from django_evolution.tests.utils import has_index_with_columns
@@ -11,9 +11,7 @@ class ChangeSequenceFieldInitial(object):
         self.suffix = suffix
 
     def __call__(self):
-        from django.db import connection
-        qn = connection.ops.quote_name
-        return qn('char_field')
+        return connection.ops.quote_name('char_field')
 
 
 class ChangeAnchor1(models.Model):

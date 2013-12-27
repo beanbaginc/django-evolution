@@ -50,7 +50,6 @@ class EvolutionOperations(BaseEvolutionOperations):
 
     def get_indexes_for_table(self, table_name):
         cursor = self.connection.cursor()
-        qn = self.connection.ops.quote_name
         indexes = {}
 
         cursor.execute(

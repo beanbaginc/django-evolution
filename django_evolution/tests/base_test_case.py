@@ -1,16 +1,13 @@
 import copy
 import re
 
-from django.db import models
 from django.test.testcases import TransactionTestCase
 
 from django_evolution.diff import Diff
-from django_evolution.mutations import ChangeField
 from django_evolution.signature import create_database_sig
 from django_evolution.tests.utils import (create_test_proj_sig,
                                           deregister_models,
                                           execute_test_sql,
-                                          has_index_with_columns,
                                           register_models_multi,
                                           test_sql_mapping)
 

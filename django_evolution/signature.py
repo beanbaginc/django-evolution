@@ -1,4 +1,4 @@
-from django.db import connections, router
+from django.db import router
 from django.db.models import get_apps, get_models
 from django.db.models.fields.related import ForeignKey
 from django.conf import global_settings

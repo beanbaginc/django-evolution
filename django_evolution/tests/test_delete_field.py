@@ -1,4 +1,4 @@
-from django.db import connection, models
+from django.db import models
 
 from django_evolution.mutations import DeleteField
 from django_evolution.tests.base_test_case import EvolutionTestCase

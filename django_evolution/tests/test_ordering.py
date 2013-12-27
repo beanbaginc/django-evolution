@@ -1,6 +1,5 @@
 from django.db import models
 
-from django_evolution.mutations import DeleteField, DeleteModel
 from django_evolution.tests.base_test_case import EvolutionTestCase
 
 
@@ -23,14 +22,14 @@ class OrderingTests(EvolutionTestCase):
         self.set_base_model(Case41Model,
                             extra_models=[('Case41Anchor', Case41Anchor)])
 
-        end = self.register_model(UpdatedCase41Model, name='TestModel')
+        self.register_model(UpdatedCase41Model, name='TestModel')
         end_sig = self.create_test_proj_sig(UpdatedCase41Model,
                                             name='TestModel')
 
         # Simulate the removal of Case41Anchor
         end_sig['tests'].pop('Case41Anchor')
 
-        d = self.perform_diff_test(
+        self.perform_diff_test(
             end_sig,
             ("The model tests.Case41Anchor has been deleted\n"
              "In model tests.TestModel:\n"

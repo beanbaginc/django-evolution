@@ -15,7 +15,6 @@ from django.utils.functional import curry
 from django_evolution import signature
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.signature import rescan_indexes_for_database_sig
-from django_evolution.support import supports_index_together
 from django_evolution.tests import models as evo_test
 from django_evolution.utils import write_sql, execute_sql
 

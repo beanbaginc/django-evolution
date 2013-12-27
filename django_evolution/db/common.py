@@ -444,8 +444,6 @@ class BaseEvolutionOperations(object):
     def change_unique_together(self, model, old_unique_together,
                                new_unique_together):
         """Changes the unique_together constraints of a table."""
-        qn = self.connection.ops.quote_name
-        opts = model._meta
         sql = []
 
         old_unique_together = set(old_unique_together)
