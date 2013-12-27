@@ -1,7 +1,13 @@
 from django.db import models
+from django.utils.unittest import SkipTest
 
 from django_evolution.mutations import ChangeMeta
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.support import supports_index_together
+
+
+if not supports_index_together:
+    raise SkipTest('index_together is not supported on this version of Django')
 
 
 class NoIndexTogetherBaseModel(models.Model):
