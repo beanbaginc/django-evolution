@@ -633,3 +633,116 @@ index_together = {
                               ['char_field1', 'char_field2'])
     ),
 }
+
+preprocessing = {
+    'add_change_field': '\n'.join([
+        'ALTER TABLE "tests_testmodel"'
+        ' ADD COLUMN "added_field" varchar(50) NULL  DEFAULT \'bar\';',
+
+        'ALTER TABLE "tests_testmodel"'
+        ' ALTER COLUMN "added_field" DROP DEFAULT;',
+    ]),
+
+    'add_change_rename_field': '\n'.join([
+        'ALTER TABLE "tests_testmodel"'
+        ' ADD COLUMN "renamed_field" varchar(50) NULL  DEFAULT \'bar\';',
+
+        'ALTER TABLE "tests_testmodel"'
+        ' ALTER COLUMN "renamed_field" DROP DEFAULT;',
+    ]),
+
+    'add_delete_add_field': '\n'.join([
+        'ALTER TABLE "tests_testmodel"'
+        ' ADD COLUMN "added_field" integer NOT NULL  DEFAULT 42;',
+
+        'ALTER TABLE "tests_testmodel"'
+        ' ALTER COLUMN "added_field" DROP DEFAULT;',
+    ]),
+
+    'add_delete_add_rename_field': '\n'.join([
+        'ALTER TABLE "tests_testmodel"'
+        ' ADD COLUMN "renamed_field" integer NOT NULL  DEFAULT 42;',
+
+        'ALTER TABLE "tests_testmodel"'
+        ' ALTER COLUMN "renamed_field" DROP DEFAULT;',
+    ]),
+
+    'add_rename_change_field': '\n'.join([
+        'ALTER TABLE "tests_testmodel"'
+        ' ADD COLUMN "renamed_field" varchar(50) NULL  DEFAULT \'bar\';',
+
+        'ALTER TABLE "tests_testmodel"'
+        ' ALTER COLUMN "renamed_field" DROP DEFAULT;',
+    ]),
+
+    'add_rename_change_rename_change_field': '\n'.join([
+        'ALTER TABLE "tests_testmodel"'
+        ' ADD COLUMN "renamed_field" varchar(50) NULL  DEFAULT \'foo\';',
+
+        'ALTER TABLE "tests_testmodel"'
+        ' ALTER COLUMN "renamed_field" DROP DEFAULT;',
+    ]),
+
+    'add_sql_delete': '\n'.join([
+        'ALTER TABLE "tests_testmodel"'
+        ' ADD COLUMN "added_field" varchar(20) NOT NULL  DEFAULT \'foo\';',
+
+        'ALTER TABLE "tests_testmodel"'
+        ' ALTER COLUMN "added_field" DROP DEFAULT;',
+
+        '-- Comment --',
+
+        'ALTER TABLE "tests_testmodel" DROP COLUMN "added_field" CASCADE;',
+    ]),
+
+    'change_rename_field': '\n'.join([
+        'ALTER TABLE "tests_testmodel"'
+        ' ALTER COLUMN "char_field" DROP NOT NULL;',
+
+        'ALTER TABLE "tests_testmodel"'
+        ' RENAME COLUMN "char_field" TO "renamed_field";',
+    ]),
+
+    'change_rename_change_rename_field': '\n'.join([
+        'ALTER TABLE "tests_testmodel"'
+        ' ALTER COLUMN "char_field" TYPE varchar(30)'
+        ' USING CAST("char_field" as varchar(30));',
+
+        'ALTER TABLE "tests_testmodel"'
+        ' ALTER COLUMN "char_field" DROP NOT NULL;',
+
+        'ALTER TABLE "tests_testmodel"'
+        ' RENAME COLUMN "char_field" TO "renamed_field";',
+    ]),
+
+    'delete_char_field': (
+        'ALTER TABLE "tests_testmodel" DROP COLUMN "char_field" CASCADE;'
+    ),
+
+    'rename_add_field': '\n'.join([
+        'ALTER TABLE "tests_testmodel"'
+        ' RENAME COLUMN "char_field" TO "renamed_field";',
+
+        'ALTER TABLE "tests_testmodel"'
+        ' ADD COLUMN "char_field" varchar(50) NULL ;',
+    ]),
+
+    'rename_change_rename_change_field': '\n'.join([
+        'ALTER TABLE "tests_testmodel"'
+        ' RENAME COLUMN "char_field" TO "renamed_field";',
+
+        'ALTER TABLE "tests_testmodel"'
+        ' ALTER COLUMN "renamed_field" TYPE varchar(50)'
+        ' USING CAST("renamed_field" as varchar(50));',
+
+        'ALTER TABLE "tests_testmodel"'
+        ' ALTER COLUMN "renamed_field" DROP NOT NULL;',
+    ]),
+
+    'rename_rename_field': '\n'.join([
+        'ALTER TABLE "tests_testmodel"'
+        ' RENAME COLUMN "char_field" TO "renamed_field";',
+    ]),
+
+    'noop': '',
+}

@@ -2882,3 +2882,430 @@ index_together = {
                               ['char_field1', 'char_field2'])
     ),
 }
+
+preprocessing = {
+    'add_change_field': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NULL,'
+        ' "added_field" varchar(50) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'UPDATE "TEMP_TABLE" SET "added_field" = \'bar\';',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "added_field" varchar(50) NULL);',
+
+        'INSERT INTO "tests_testmodel"'
+        ' ("my_id", "char_field", "added_field")'
+        ' SELECT "my_id", "char_field", "added_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+    ]),
+
+    'add_change_rename_field': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NULL,'
+        ' "renamed_field" varchar(50) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'UPDATE "TEMP_TABLE" SET "renamed_field" = \'bar\';',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "renamed_field" varchar(50) NULL);',
+
+        'INSERT INTO "tests_testmodel"'
+        ' ("my_id", "char_field", "renamed_field")'
+        ' SELECT "my_id", "char_field", "renamed_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+    ]),
+
+    'add_delete_add_field': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NULL,'
+        ' "added_field" integer NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'UPDATE "TEMP_TABLE" SET "added_field" = 42;',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "added_field" integer NOT NULL);',
+
+        'INSERT INTO "tests_testmodel"'
+        ' ("my_id", "char_field", "added_field")'
+        ' SELECT "my_id", "char_field", "added_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+    ]),
+
+    'add_delete_add_rename_field': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NULL,'
+        ' "renamed_field" integer NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'UPDATE "TEMP_TABLE" SET "renamed_field" = 42;',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "renamed_field" integer NOT NULL);',
+
+        'INSERT INTO "tests_testmodel"'
+        ' ("my_id", "char_field", "renamed_field")'
+        ' SELECT "my_id", "char_field", "renamed_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+    ]),
+
+    'add_rename_change_field': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NULL,'
+        ' "renamed_field" varchar(50) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'UPDATE "TEMP_TABLE" SET "renamed_field" = \'bar\';',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "renamed_field" varchar(50) NULL);',
+
+        'INSERT INTO "tests_testmodel"'
+        ' ("my_id", "char_field", "renamed_field")'
+        ' SELECT "my_id", "char_field", "renamed_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+    ]),
+
+    'add_rename_change_rename_change_field': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NULL, "renamed_field" varchar(50) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'UPDATE "TEMP_TABLE" SET "renamed_field" = \'foo\';',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "renamed_field" varchar(50) NULL);',
+
+        'INSERT INTO "tests_testmodel"'
+        ' ("my_id", "char_field", "renamed_field")'
+        ' SELECT "my_id", "char_field", "renamed_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+    ]),
+
+    'add_sql_delete': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NULL,'
+        ' "added_field" varchar(20) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'UPDATE "TEMP_TABLE" SET "added_field" = \'foo\';',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "added_field" varchar(20) NOT NULL);',
+
+        'INSERT INTO "tests_testmodel"'
+        ' ("my_id", "char_field", "added_field")'
+        ' SELECT "my_id", "char_field", "added_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+
+        '-- Comment --',
+
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL);',
+
+        'INSERT INTO "tests_testmodel" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+    ]),
+
+    'change_rename_field': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NULL);',
+
+        'INSERT INTO "tests_testmodel" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(20) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(20) NULL);',
+
+        'INSERT INTO "tests_testmodel" ("my_id", "renamed_field")'
+        ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+    ]),
+
+    'change_rename_change_rename_field': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(30) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(30) NOT NULL);',
+
+        'INSERT INTO "tests_testmodel" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(30) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(30) NULL);',
+
+        'INSERT INTO "tests_testmodel" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(30) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(30) NULL);',
+
+        'INSERT INTO "tests_testmodel" ("my_id", "renamed_field")'
+        ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+    ]),
+
+    'delete_char_field': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id")'
+        ' SELECT "my_id" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY);',
+
+        'INSERT INTO "tests_testmodel" ("my_id")'
+        ' SELECT "my_id" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";'
+    ]),
+
+    'rename_add_field': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(20) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(20) NOT NULL);',
+
+        'INSERT INTO "tests_testmodel" ("my_id", "renamed_field")'
+        ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(20) NULL,'
+        ' "char_field" varchar(50) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+        ' SELECT "my_id", "renamed_field" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(20) NOT NULL,'
+        ' "char_field" varchar(50) NULL);',
+
+        'INSERT INTO "tests_testmodel"'
+        ' ("my_id", "renamed_field", "char_field")'
+        ' SELECT "my_id", "renamed_field", "char_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+    ]),
+
+    'rename_change_rename_change_field': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(20) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(20) NOT NULL);',
+
+        'INSERT INTO "tests_testmodel" ("my_id", "renamed_field")'
+        ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(50) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+        ' SELECT "my_id", "renamed_field" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(50) NOT NULL);',
+
+        'INSERT INTO "tests_testmodel" ("my_id", "renamed_field")'
+        ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(50) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+        ' SELECT "my_id", "renamed_field" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(50) NULL);',
+
+        'INSERT INTO "tests_testmodel" ("my_id", "renamed_field")'
+        ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+    ]),
+
+    'rename_rename_field': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(20) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(20) NOT NULL);',
+
+        'INSERT INTO "tests_testmodel" ("my_id", "renamed_field")'
+        ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+    ]),
+
+    'noop': '',
+}

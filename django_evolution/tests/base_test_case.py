@@ -162,6 +162,7 @@ class EvolutionTestCase(TransactionTestCase):
             database=db_name)
 
         if sql_name is not None:
+            print "** Comparing SQL against '%s'" % sql_name
             self.assertEqual('\n'.join(sql),
                              self.get_sql_mapping(sql_name, db_name))
 

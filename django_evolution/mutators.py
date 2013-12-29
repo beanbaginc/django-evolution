@@ -1,8 +1,12 @@
 import copy
 
 from django_evolution.db import EvolutionOperationsMulti
+from django_evolution.diff import Diff
 from django_evolution.errors import CannotSimulate
-from django_evolution.mutations import MockModel, MutateModelField
+from django_evolution.mutations import (AddField, ChangeField, DeleteField,
+                                        MockModel, MonoBaseMutation,
+                                        MutateModelField, RenameField)
+from django_evolution.signature import create_project_sig
 from django_evolution.utils import get_database_for_model_name
 
 
@@ -271,6 +275,8 @@ class AppMutator(object):
 
     def run_mutations(self, mutations):
         """Runs a list of mutations."""
+        mutations = self._preprocess_mutations(mutations)
+
         for mutation in mutations:
             self.run_mutation(mutation)
 
@@ -315,3 +321,311 @@ class AppMutator(object):
 
             self._mutators.append(self._last_model_mutator)
             self._last_model_mutator = None
+
+    def _preprocess_mutations(self, mutations):
+        """Pre-processes a list of mutations to filter out unnecessary changes.
+
+        This attempts to take a set of mutations and figure out which ones
+        are actually necessary to create the resulting signature.
+
+        It does this by figuring out batches of mutations it can process in
+        one go (basically, adjacent AddFields, DeleteFields, RenameFields, and
+        ChangeFields), and then looks in each batch for any changes to fields
+        that become unnecessary (due to field deletion).
+        """
+        mutation_batches = self._create_mutation_batches(mutations)
+
+        # Go through all the mutation batches and get our resulting set of
+        # mutations to apply to the database.
+        result_mutations = []
+
+        try:
+            for mutation_batch in mutation_batches:
+                result_mutations.extend(
+                    self._process_mutation_batch(mutation_batch))
+        except CannotSimulate:
+            logging.warning(
+                'Unable to pre-process mutations for optimization. '
+                '%s contains a mutation that cannot be smimulated.'
+                % app_label)
+            result_mutations = mutations
+
+        return result_mutations
+
+    def _create_mutation_batches(self, mutations):
+        """Creates batches of mutations that can be pre-processed together.
+
+        Figure out batches of mutations that are pre-processable, and group
+        them together. Each batch will be considered as a whole when attempting
+        to figure out which mutations to include or to filter out.
+
+        Mutations that are not pre-processable will be left in their own
+        non-pre-processable batches.
+        """
+        cur_mutation_batch = (True, [])
+        mutation_batches = [cur_mutation_batch]
+
+        for mutation in mutations:
+            can_process = isinstance(mutation, MonoBaseMutation)
+
+            if can_process != cur_mutation_batch[0]:
+                cur_mutation_batch = (can_process, [])
+                mutation_batches.append(cur_mutation_batch)
+
+            cur_mutation_batch[1].append(mutation)
+
+        return mutation_batches
+
+    def _process_mutation_batch(self, mutation_batch):
+        """Processes and optimizes a batch of mutations.
+
+        This will look for any changes to fields that are unnecessary. It
+        looks for any field that's deleted in this batch, and gets rid of any
+        modifications made to that field, including the addition of the field.
+
+        If the field is both added and deleted in this batch, all mutations
+        concerning that field are filtered out.
+        """
+        can_process, mutations = mutation_batch
+
+        if can_process:
+            removed_mutations = set()
+            deleted_fields = set()
+            noop_fields = set()
+            last_change_mutations = {}
+            renames = {}
+
+            # On our first pass, we loop from last to first mutation and
+            # attempt the following things:
+            #
+            # 1) Filter out all mutations to fields that are later deleted.
+            #    We locate DeleteFields and then the mutations that previously
+            #    try to operate on those deleted fields (which are pointless
+            #    to execute).
+            #
+            # 2) We also look to see if there are any AddFields in this batch
+            #    that later have a corresponding DeleteField. We consider
+            #    these mutations, and any others dealing with these fields,
+            #    to be no-ops, which will be filtered out.
+            #
+            # 3) We collapse down multiple ChangeFields into the first
+            #    listed ChangeField or AddField. If a batch contains an
+            #    AddField and then one or more ChangeFields, it will result
+            #    in only a single AddField, with the attributes the field
+            #    would otherwise have after executing all ChangeFields.
+            #
+            # 4) All renames are tracked. If the rename is for a field
+            #    that's being deleted, it will be removed. Otherwise, the
+            #    history of rename mutations are stored along with the field,
+            #    in order from last to first, keyed off from the earliest
+            #    field name.
+            for mutation in reversed(mutations):
+                remove_mutation = False
+
+                if isinstance(mutation, AddField):
+                    if mutation.field_name in deleted_fields:
+                        # This field is both added and deleted in this
+                        # batch, resulting in a no-op. Track it for later
+                        # so we can filter out the DeleteField.
+                        noop_fields.add(mutation.field_name)
+                        deleted_fields.remove(mutation.field_name)
+                        remove_mutation = True
+                    elif mutation.field_name in last_change_mutations:
+                        # There's a ChangeField later in this batch that
+                        # modifies this field. Roll those changes up into
+                        # the initial AddField.
+                        last_change_mutation = \
+                            last_change_mutations[mutation.field_name]
+                        self._copy_change_attrs(last_change_mutation,
+                                                mutation)
+
+                        # Remove that ChangeField from the list of mutations.
+                        removed_mutations.add(last_change_mutation)
+                        del last_change_mutations[mutation.field_name]
+                elif isinstance(mutation, ChangeField):
+                    if mutation.field_name in deleted_fields:
+                        # This field is scheduled for deletion in this batch,
+                        # so this ChangeField is pointless. Filter it out.
+                        remove_mutation = True
+                    else:
+                        # There's another ChangeField later in this batch that
+                        # modifies this field. Roll those changes up into
+                        # this ChangeField.
+                        #
+                        # Eventually, all ChangeFields for a given field
+                        # will be rolled up into the first ChangeField.
+                        last_change_mutation = \
+                            last_change_mutations.get(mutation.field_name)
+
+                        if last_change_mutation:
+                            self._copy_change_attrs(last_change_mutation,
+                                                    mutation)
+
+                            # Remove that ChangeField from the list of
+                            # mutations.
+                            removed_mutations.add(last_change_mutation)
+
+                        last_change_mutations[mutation.field_name] = \
+                            mutation
+                elif isinstance(mutation, DeleteField):
+                    # Keep track of this field. Mutations preceding this
+                    # DeleteField that reference this field name will be
+                    # filtered out.
+                    deleted_fields.add(mutation.field_name)
+                elif isinstance(mutation, RenameField):
+                    if mutation.new_field_name in deleted_fields:
+                        # Rename the entry in the list of deleted fields so
+                        # that other mutations earlier in the list can
+                        # look it up.
+                        deleted_fields.remove(mutation.new_field_name)
+                        deleted_fields.add(mutation.old_field_name)
+                        remove_mutation = True
+
+                    # Create or update a record of rename mutations for this
+                    # field. We use this to fix up field names on the second
+                    # run through and to collapse RenameFields either into
+                    # the first AddField or the first RenameField.
+                    if mutation.new_field_name in renames:
+                        self._rename_dict_key(renames,
+                                              mutation.new_field_name,
+                                              mutation.old_field_name)
+                    else:
+                        renames[mutation.old_field_name] = {
+                            'can_process': False,
+                            'mutations': [],
+                        }
+
+                    # Add the mutation to the list of renames for the field.
+                    # This results in a chain from last RenameField to first.
+                    renames[mutation.old_field_name]['mutations'].append(
+                        mutation)
+
+                    if mutation.new_field_name in last_change_mutations:
+                        # Rename the entry for the last ChangeField mutation
+                        # so that earlier mutations will find the proper
+                        # entry.
+                        self._rename_dict_key(last_change_mutations,
+                                              mutation.new_field_name,
+                                              mutation.old_field_name)
+
+                if remove_mutation:
+                    removed_mutations.add(mutation)
+
+            # We may now have mutations marked for removal, others marked
+            # as no-ops, and have information on renames. Time to finish up
+            # the process.
+            #
+            # We now loop from first to last mutation and do the following:
+            #
+            # 1) Remove any DeleteFields that are part of a no-op. The
+            #    other fields as part of the no-op were already scheduled for
+            #    removal in the first loop.
+            #
+            # 2) Collapse down any RenameFields into the first RenameField or
+            #    AddField, and schedule the remaining for removal.
+            #
+            #    It also sets renames to be processable (so that they will
+            #    affect other field names) the first time an AddField or
+            #    RenameField is encountered.
+            #
+            #    Every RenameField that is processed is removed from the
+            #    renames mutations list, updating the key, in order to allow
+            #    future lookups to find the entry.
+            #
+            # 3) Change the field name on any fields from processable rename
+            #    entries.
+            if noop_fields or renames:
+                for mutation in mutations:
+                    remove_mutation = False
+
+                    if isinstance(mutation, AddField):
+                        if mutation.field_name in renames:
+                            # Update the field name being added to the
+                            # final name.
+                            rename_info = renames[mutation.field_name]
+                            rename_info['can_process'] = True
+                            rename_mutations = rename_info['mutations']
+                            mutation.field_name = \
+                                rename_mutations[0].new_field_name
+
+                            # Filter out each of the RenameFields.
+                            removed_mutations.update(rename_mutations)
+                    elif isinstance(mutation, ChangeField):
+                        if mutation.field_name in renames:
+                            # The field has been renamed, so update the name of
+                            # this ChangeField.
+                            rename_info = renames[mutation.field_name]
+
+                            if rename_info['can_process']:
+                                rename_mutation = rename_info['mutations'][0]
+                                mutation.field_name = \
+                                    rename_mutation.new_field_name
+                    elif isinstance(mutation, DeleteField):
+                        if mutation.field_name in noop_fields:
+                            # This DeleteField is pointless, since the
+                            # field it's trying to delete was added in this
+                            # batch. Just remove it. We'll have removed all
+                            # others related to it by now.
+                            remove_mutation = True
+                        elif mutation.field_name in renames:
+                            # The field has been renamed, so update the name
+                            # of this ChangeField.
+                            rename_info = renames[mutation.field_name]
+
+                            if rename_info['can_process']:
+                                rename_mutation = rename_info['mutations'][0]
+                                mutation.field_name = \
+                                    rename_mutation.old_field_name
+                    elif isinstance(mutation, RenameField):
+                        if mutation.old_field_name in noop_fields:
+                            # Rename the entry in noop_fields so that we
+                            # can properly handle future mutations
+                            # referencing that field.
+                            noop_fields.remove(mutation.old_field_name)
+                            noop_fields.add(mutation.new_field_name)
+                            remove_mutation = True
+
+                        if mutation.old_field_name in renames:
+                            # Set the renames for this field to be processable.
+                            # Then we'll update the mutation list and the
+                            # key in order to allow for future lookups.
+                            rename_info = renames[mutation.old_field_name]
+                            rename_info['can_process'] = True
+                            rename_mutations = rename_info['mutations']
+
+                            self._rename_dict_key(renames,
+                                                  mutation.old_field_name,
+                                                  mutation.new_field_name)
+
+                            # This will become the main RenameField, so we
+                            # want it to rename to the final field name.
+                            mutation.new_field_name = \
+                                rename_mutations[0].new_field_name
+
+                            # Mark everything but the last rename mutation
+                            # for removal, and update the list of mutations to
+                            # include only this one.
+                            removed_mutations.update(rename_mutations[:-1])
+                            rename_info['mutations'] = [rename_mutations[-1]]
+
+                    if remove_mutation:
+                        removed_mutations.add(mutation)
+
+            # Filter out all mutations we've scheduled for removal.
+            mutations = [
+                mutation
+                for mutation in mutations
+                if mutation not in removed_mutations
+            ]
+
+        return mutations
+
+    def _copy_change_attrs(self, source_mutation, dest_mutation):
+        dest_mutation.field_attrs.update(source_mutation.field_attrs)
+
+        if source_mutation.initial is not None:
+            dest_mutation.initial = source_mutation.initial
+
+    def _rename_dict_key(self, d, old_key, new_key):
+        d[new_key] = d[old_key]
+        del d[old_key]
