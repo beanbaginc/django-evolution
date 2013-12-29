@@ -223,12 +223,17 @@ class BaseEvolutionOperations(object):
                               initial(), qn(f.column))
                     output.append('UPDATE %s SET %s = %s WHERE %s IS NULL;'
                                   % params)
+
+                    if not f.null:
+                        # Only put this sql statement if the column cannot
+                        # be null.
+                        output.append(self.set_field_null(model, f, f.null))
                 else:
                     params = (qn(model._meta.db_table), qn(f.column),
                               f.db_type(connection=self.connection),
-                              unique_constraints)
+                              null_constraints, unique_constraints)
                     output = [
-                        ('ALTER TABLE %s ADD COLUMN %s %s %s DEFAULT %%s;'
+                        ('ALTER TABLE %s ADD COLUMN %s %s %s %s DEFAULT %%s;'
                          % params,
                          (initial,))
                     ]
@@ -240,10 +245,6 @@ class BaseEvolutionOperations(object):
                     output.append(
                         'ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT;'
                         % params)
-
-                if not f.null:
-                    # Only put this sql statement if the column cannot be null.
-                    output.append(self.set_field_null(model, f, f.null))
             else:
                 params = (qn(model._meta.db_table), qn(f.column),
                           f.db_type(connection=self.connection),

@@ -5,13 +5,10 @@ from django_evolution.tests.utils import (generate_constraint_name,
 add_field = {
     'AddNonNullNonCallableColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" integer  DEFAULT 1;',
+        ' ADD COLUMN "added_field" integer NOT NULL  DEFAULT 1;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
-
-        'ALTER TABLE "tests_testmodel"'
-        ' ALTER COLUMN "added_field" SET NOT NULL;',
     ]),
 
     'AddNonNullCallableColumnModel': '\n'.join([
@@ -26,7 +23,7 @@ add_field = {
 
     'AddNullColumnWithInitialColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" integer  DEFAULT 1;',
+        ' ADD COLUMN "added_field" integer NULL  DEFAULT 1;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
@@ -34,69 +31,52 @@ add_field = {
 
     'AddStringColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" varchar(10)  DEFAULT \'abc\\\'s xyz\';',
+        ' ADD COLUMN "added_field" varchar(10) NOT NULL'
+        '  DEFAULT \'abc\\\'s xyz\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
-
-        'ALTER TABLE "tests_testmodel"'
-        ' ALTER COLUMN "added_field" SET NOT NULL;',
     ]),
 
     'AddBlankStringColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" varchar(10)  DEFAULT \'\';',
+        ' ADD COLUMN "added_field" varchar(10) NOT NULL  DEFAULT \'\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
-
-        'ALTER TABLE "tests_testmodel"'
-        ' ALTER COLUMN "added_field" SET NOT NULL;',
     ]),
 
     'AddDateColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field" timestamp with'
-        ' time zone  DEFAULT 2007-12-13 16:42:00;',
+        ' time zone NOT NULL  DEFAULT 2007-12-13 16:42:00;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
-
-        'ALTER TABLE "tests_testmodel"'
-        ' ALTER COLUMN "added_field" SET NOT NULL;',
     ]),
 
     'AddDefaultColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" integer  DEFAULT 42;',
+        ' ADD COLUMN "added_field" integer NOT NULL  DEFAULT 42;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
-
-        'ALTER TABLE "tests_testmodel"'
-        ' ALTER COLUMN "added_field" SET NOT NULL;',
     ]),
 
     'AddMismatchInitialBoolColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" boolean  DEFAULT False;',
+        ' ADD COLUMN "added_field" boolean NOT NULL  DEFAULT False;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
-
-        'ALTER TABLE "tests_testmodel"'
-        ' ALTER COLUMN "added_field" SET NOT NULL;',
     ]),
 
     'AddEmptyStringDefaultColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" varchar(20)  DEFAULT \'\';',
+        ' ADD COLUMN "added_field" varchar(20) NOT NULL  DEFAULT \'\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
-
-        'ALTER TABLE "tests_testmodel"'
-        ' ALTER COLUMN "added_field" SET NOT NULL;',
     ]),
 
     'AddNullColumnModel': (
