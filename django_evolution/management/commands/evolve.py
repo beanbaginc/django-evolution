@@ -11,8 +11,8 @@ from django.db import connections, transaction
 from django.db.models import get_apps, get_app
 from django.db.utils import DEFAULT_DB_ALIAS
 
-from django_evolution import CannotSimulate, EvolutionException
 from django_evolution.diff import Diff
+from django_evolution.errors import EvolutionException
 from django_evolution.evolve import get_unapplied_evolutions, get_mutations
 from django_evolution.models import Version, Evolution
 from django_evolution.mutations import AddField, DeleteApplication

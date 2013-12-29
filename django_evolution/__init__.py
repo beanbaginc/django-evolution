@@ -43,23 +43,3 @@ def is_release():
 
 __version_info__ = VERSION[:-1]
 __version__ = get_package_version()
-
-
-class EvolutionException(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-
-    def __str__(self):
-        return str(self.msg)
-
-
-class CannotSimulate(EvolutionException):
-    pass
-
-
-class SimulationFailure(EvolutionException):
-    pass
-
-
-class EvolutionNotImplementedError(EvolutionException, NotImplementedError):
-    pass

@@ -1,6 +1,6 @@
 from django.db import connection, models
 
-from django_evolution import SimulationFailure
+from django_evolution.errors import SimulationFailure
 from django_evolution.mutations import ChangeField
 from django_evolution.tests.base_test_case import EvolutionTestCase
 from django_evolution.tests.utils import has_index_with_columns

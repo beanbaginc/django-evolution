@@ -1,6 +1,6 @@
 from django.db import models
 
-from django_evolution import EvolutionException
+from django_evolution.errors import EvolutionException
 from django_evolution.mutations import (DeleteField, AddField, DeleteModel,
                                         ChangeField, ChangeMeta)
 from django_evolution.signature import (ATTRIBUTE_DEFAULTS,

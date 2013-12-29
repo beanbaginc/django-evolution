@@ -2,7 +2,7 @@ from datetime import datetime
 
 from django.db import connection, models
 
-from django_evolution import EvolutionException, SimulationFailure
+from django_evolution.errors import EvolutionException, SimulationFailure
 from django_evolution.mutations import AddField, DeleteField
 from django_evolution.tests.base_test_case import EvolutionTestCase
 from django_evolution.tests.utils import has_index_with_columns

@@ -1,18 +1,18 @@
 import copy
 
+from django.db import models
+from django.db.models.base import ModelState
 from django.db.models.fields import AutoField, FieldDoesNotExist
 from django.db.models.fields.related import (ForeignKey, ManyToManyField,
                                              RECURSIVE_RELATIONSHIP_CONSTANT)
-from django.db import models
-from django.db.models.base import ModelState
 from django.utils.datastructures import SortedDict
 from django.utils.functional import curry
 
+from django_evolution.db import EvolutionOperationsMulti
+from django_evolution.errors import (CannotSimulate, SimulationFailure,
+                                     EvolutionNotImplementedError)
 from django_evolution.signature import (ATTRIBUTE_DEFAULTS,
                                         record_unique_together_applied)
-from django_evolution import (CannotSimulate, SimulationFailure,
-                              EvolutionNotImplementedError)
-from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.utils import get_database_for_model_name
 
 

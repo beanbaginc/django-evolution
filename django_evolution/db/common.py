@@ -4,7 +4,7 @@ from django.core.management import color
 from django.db import connection as default_connection
 from django.db.backends.util import truncate_name
 
-from django_evolution import EvolutionNotImplementedError
+from django_evolution.errors import EvolutionNotImplementedError
 from django_evolution.signature import (add_index_to_database_sig,
                                         remove_index_from_database_sig)
 from django_evolution.support import supports_index_together

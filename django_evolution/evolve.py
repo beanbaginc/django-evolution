@@ -1,8 +1,8 @@
 import os
 import pickle
 
-from django_evolution import EvolutionException
 from django_evolution.builtin_evolutions import BUILTIN_SEQUENCES
+from django_evolution.errors import EvolutionException
 from django_evolution.models import Evolution, Version
 from django_evolution.mutations import SQLMutation
 from django_evolution.signature import (has_unique_together_changed,

@@ -1,6 +1,6 @@
 from django.db import models
 
-from django_evolution import CannotSimulate
+from django_evolution.errors import CannotSimulate
 from django_evolution.mutations import SQLMutation
 from django_evolution.tests.base_test_case import EvolutionTestCase
 

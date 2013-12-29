@@ -1,7 +1,7 @@
 import copy
 
-from django_evolution import CannotSimulate
 from django_evolution.db import EvolutionOperationsMulti
+from django_evolution.errors import CannotSimulate
 from django_evolution.mutations import MockModel, MutateModelField
 from django_evolution.utils import get_database_for_model_name
 
