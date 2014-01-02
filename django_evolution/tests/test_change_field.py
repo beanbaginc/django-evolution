@@ -611,7 +611,7 @@ class ChangeFieldTests(EvolutionTestCase):
                             max_length=30, null=True),
                 ChangeField('TestModel', 'int_field', initial=None,
                             db_column='custom_db_column3',
-                            primary_key=False, unique=False, db_index=False),
+                            unique=False, db_index=False),
                 ChangeField('TestModel', 'char_field', initial=None,
                             max_length=35),
             ],

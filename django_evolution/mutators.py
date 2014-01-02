@@ -1,12 +1,11 @@
 import copy
+import logging
 
 from django_evolution.db import EvolutionOperationsMulti
-from django_evolution.diff import Diff
 from django_evolution.errors import CannotSimulate
 from django_evolution.mutations import (AddField, ChangeField, DeleteField,
                                         MockModel, MonoBaseMutation,
                                         MutateModelField, RenameField)
-from django_evolution.signature import create_project_sig
 from django_evolution.utils import get_database_for_model_name
 
 
@@ -80,11 +79,11 @@ class ModelMutator(object):
             'initial': initial,
         })
 
-    def change_column(self, mutation, field, attr_name, old_value, new_value):
+    def change_column(self, mutation, field, new_attrs):
         """Adds a pending Change Column operation.
 
-        This will cause to_sql() to include SQL for changing an attribute
-        for the given column.
+        This will cause to_sql() to include SQL for changing one or more
+        attributes for the given column.
         """
         assert not self._finalized
 
@@ -92,9 +91,7 @@ class ModelMutator(object):
             'type': 'change_column',
             'mutation': mutation,
             'field': field,
-            'attr_name': attr_name,
-            'old_value': old_value,
-            'new_value': new_value,
+            'new_attrs': new_attrs,
         })
 
     def delete_column(self, mutation, field):
@@ -346,8 +343,8 @@ class AppMutator(object):
         except CannotSimulate:
             logging.warning(
                 'Unable to pre-process mutations for optimization. '
-                '%s contains a mutation that cannot be smimulated.'
-                % app_label)
+                '%s contains a mutation that cannot be smimulated.',
+                self.app_label)
             result_mutations = mutations
 
         return result_mutations

@@ -9,6 +9,7 @@ from django.utils.datastructures import SortedDict
 from django.utils.functional import curry
 
 from django_evolution.db import EvolutionOperationsMulti
+from django_evolution.db.sql_result import SQLResult
 from django_evolution.errors import (CannotSimulate, SimulationFailure,
                                      EvolutionNotImplementedError)
 from django_evolution.signature import (ATTRIBUTE_DEFAULTS,
@@ -560,7 +561,7 @@ class RenameField(MutateModelField):
 
             sql = evolver.rename_table(new_model, old_m2m_table, new_m2m_table)
         else:
-            sql = evolver.rename_column(new_model._meta, old_field, new_field)
+            sql = evolver.rename_column(new_model, old_field, new_field)
 
         mutator.add_sql(self, sql)
 
@@ -610,20 +611,28 @@ class ChangeField(MutateModelField):
         field_sig = mutator.model_sig['fields'][self.field_name]
         field = model._meta.get_field(self.field_name)
 
-        for field_attr, attr_value in self.field_attrs.iteritems():
-            old_attr_value = field_sig.get(field_attr,
-                                           ATTRIBUTE_DEFAULTS[field_attr])
+        for attr_name in self.field_attrs.iterkeys():
+            if attr_name not in mutator.evolver.supported_change_attrs:
+                raise EvolutionNotImplementedError(
+                    "ChangeField does not support modifying the '%s' "
+                    "attribute on '%s.%s'."
+                    % (attr_name, self.model_name, self.field_name))
+
+        new_field_attrs = {}
+
+        for attr_name, attr_value in self.field_attrs.iteritems():
+            old_attr_value = field_sig.get(attr_name,
+                                           ATTRIBUTE_DEFAULTS[attr_name])
 
             # Avoid useless SQL commands if nothing has changed.
             if old_attr_value != attr_value:
-                if not hasattr(mutator.evolver, 'change_%s' % field_attr):
-                    raise EvolutionNotImplementedError(
-                        "ChangeField does not support modifying the '%s' "
-                        "attribute on '%s.%s'."
-                        % (field_attr, self.model_name, self.field_name))
+                new_field_attrs[attr_name] = {
+                    'old_value': old_attr_value,
+                    'new_value': attr_value,
+                }
 
-                mutator.change_column(self, field, field_attr,
-                                      old_attr_value, attr_value)
+        if new_field_attrs:
+            mutator.change_column(self, field, new_field_attrs)
 
 
 class DeleteModel(MutateModelField):
@@ -637,19 +646,19 @@ class DeleteModel(MutateModelField):
         del app_sig[self.model_name]
 
     def mutate(self, mutator, model):
-        sql = []
+        sql_result = SQLResult()
 
         # Remove any many to many tables.
         for field_name, field_sig in mutator.model_sig['fields'].items():
             if field_sig['field_type'] is models.ManyToManyField:
                 field = model._meta.get_field(field_name)
                 m2m_table = field._get_m2m_db_table(model._meta)
-                sql.extend(mutator.evolver.delete_table(m2m_table))
+                sql_result.add(mutator.evolver.delete_table(m2m_table))
 
         # Remove the table itself.
-        sql.extend(mutator.evolver.delete_table(model._meta.db_table))
+        sql_result.add(mutator.evolver.delete_table(model._meta.db_table))
 
-        mutator.add_sql(self, sql)
+        mutator.add_sql(self, sql_result)
 
 
 class DeleteApplication(BaseMutation):
@@ -707,7 +716,7 @@ class ChangeMeta(MutateModelField):
             record_unique_together_applied(model_sig)
 
     def mutate(self, mutator, model):
-        if not hasattr(mutator.evolver, 'change_%s' % self.prop_name):
+        if self.prop_name not in mutator.evolver.supported_change_meta:
             raise EvolutionNotImplementedError(
                 "ChangeMeta does not support modifying the '%s' "
                 "attribute on '%s'."

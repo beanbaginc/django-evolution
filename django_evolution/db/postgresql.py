@@ -1,42 +1,45 @@
 from django.db.backends.util import truncate_name
 
 from django_evolution.db.common import BaseEvolutionOperations
+from django_evolution.db.sql_result import AlterTableSQLResult
 
 
 class EvolutionOperations(BaseEvolutionOperations):
-    def rename_column(self, opts, old_field, new_field):
+    def rename_column(self, model, old_field, new_field):
         if old_field.column == new_field.column:
             # No Operation
-            return []
+            return None
 
         qn = self.connection.ops.quote_name
         max_name_length = self.connection.ops.max_name_length()
-        sql = []
+        opts = model._meta
         refs = {}
         models = []
 
-        sql.extend(self.remove_field_constraints(
-            old_field, opts, models, refs))
-
-        params = (qn(opts.db_table),
-                  truncate_name(qn(old_field.column), max_name_length),
-                  truncate_name(qn(new_field.column), max_name_length))
-        sql.append('ALTER TABLE %s RENAME COLUMN %s TO %s;' % params)
-
-        sql.extend(self.add_primary_key_field_constraints(
-            old_field, new_field, models, refs))
-
-        return sql
+        return AlterTableSQLResult(
+            self,
+            model,
+            pre_sql=self.remove_field_constraints(old_field, opts, models,
+                                                  refs),
+            alter_table=[
+                {
+                    'sql': 'RENAME COLUMN %s TO %s'
+                           % (truncate_name(qn(old_field.column),
+                                            max_name_length),
+                              truncate_name(qn(new_field.column),
+                                            max_name_length)),
+                },
+            ],
+            post_sql=self.add_primary_key_field_constraints(
+                old_field, new_field, models, refs)
+        )
 
     def get_drop_unique_constraint_sql(self, model, index_name):
-        qn = self.connection.ops.quote_name
-
-        sql = [
-            'ALTER TABLE %s DROP CONSTRAINT %s;'
-             % (qn(model._meta.db_table), index_name),
-        ]
-
-        return sql
+        return AlterTableSQLResult(
+            self,
+            model,
+            [{'sql': 'DROP CONSTRAINT %s' % index_name}]
+        )
 
     def get_default_index_name(self, table_name, field):
         assert field.unique or field.db_index

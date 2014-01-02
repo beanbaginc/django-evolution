@@ -1,7 +1,7 @@
 from django.core.management import color
 from django.db import models
 
-from django_evolution.db.common import BaseEvolutionOperations
+from django_evolution.db.common import BaseEvolutionOperations, SQLResult
 
 
 TEMP_TABLE_NAME = 'TEMP_TABLE'
@@ -20,14 +20,15 @@ class EvolutionOperations(BaseEvolutionOperations):
         ]
         table_name = model._meta.db_table
 
-        output.extend(self.create_temp_table(field_list))
-        output.extend(self.copy_to_temp_table(table_name, field_list))
-        output.extend(self.delete_table(table_name))
-        output.extend(self.create_table(table_name, field_list))
-        output.extend(self.copy_from_temp_table(table_name, field_list))
-        output.extend(self.delete_table(TEMP_TABLE_NAME))
+        sql_result = SQLResult()
+        sql_result.add(self.create_temp_table(field_list))
+        sql_result.add(self.copy_to_temp_table(table_name, field_list))
+        sql_result.add(self.delete_table(table_name))
+        sql_result.add(self.create_table(table_name, field_list))
+        sql_result.add(self.copy_from_temp_table(table_name, field_list))
+        sql_result.add(self.delete_table(TEMP_TABLE_NAME))
 
-        return output
+        return sql_result
 
     def copy_to_temp_table(self, source_table_name, original_field_list,
                            new_field_list=None):
@@ -158,11 +159,14 @@ class EvolutionOperations(BaseEvolutionOperations):
 
         return output
 
-    def rename_column(self, opts, old_field, new_field):
+    def rename_column(self, model, old_field, new_field):
+        sql_result = SQLResult()
+
         if old_field.column == new_field.column:
             # No Operation
-            return []
+            return sql_result
 
+        opts = model._meta
         original_fields = opts.local_fields
         new_fields = []
         for f in original_fields:
@@ -174,19 +178,18 @@ class EvolutionOperations(BaseEvolutionOperations):
                     new_fields.append(f)
 
         table_name = opts.db_table
-        output = []
-        output.extend(self.create_temp_table(new_fields))
-        output.extend(self.copy_to_temp_table(table_name, original_fields,
-                                              new_fields))
-        output.extend(self.delete_table(table_name))
-        output.extend(self.create_table(table_name, new_fields))
-        output.extend(self.copy_from_temp_table(table_name, new_fields))
-        output.extend(self.delete_table(TEMP_TABLE_NAME))
 
-        return output
+        sql_result.add(self.create_temp_table(new_fields))
+        sql_result.add(self.copy_to_temp_table(table_name, original_fields,
+                                               new_fields))
+        sql_result.add(self.delete_table(table_name))
+        sql_result.add(self.create_table(table_name, new_fields))
+        sql_result.add(self.copy_from_temp_table(table_name, new_fields))
+        sql_result.add(self.delete_table(TEMP_TABLE_NAME))
+
+        return sql_result
 
     def add_column(self, model, f, initial):
-        output = []
         table_name = model._meta.db_table
         original_fields = [
             field
@@ -196,37 +199,36 @@ class EvolutionOperations(BaseEvolutionOperations):
         new_fields = list(original_fields)
         new_fields.append(f)
 
-        output.extend(self.create_temp_table(new_fields))
-        output.extend(self.copy_to_temp_table(table_name, original_fields))
-        output.extend(self.insert_to_temp_table(f, initial))
-        output.extend(self.delete_table(table_name))
-        output.extend(self.create_table(table_name, new_fields,
-                                        create_index=False))
-        output.extend(self.copy_from_temp_table(table_name, new_fields))
-        output.extend(self.delete_table(TEMP_TABLE_NAME))
+        sql_result = SQLResult()
+        sql_result.add(self.create_temp_table(new_fields))
+        sql_result.add(self.copy_to_temp_table(table_name, original_fields))
+        sql_result.add(self.insert_to_temp_table(f, initial))
+        sql_result.add(self.delete_table(table_name))
+        sql_result.add(self.create_table(table_name, new_fields,
+                                         create_index=False))
+        sql_result.add(self.copy_from_temp_table(table_name, new_fields))
+        sql_result.add(self.delete_table(TEMP_TABLE_NAME))
 
         if f.unique or f.primary_key:
             self.record_index(model, [f], use_constraint_name=True,
                               unique=True)
 
-        return output
+        return sql_result
 
-    def change_null(self, model, field_name, new_null_attr, initial=None):
-        return self.change_attribute(model, field_name, 'null',
-                                     new_null_attr, initial)
+    def change_column_attr_null(self, model, mutation, field, old_value,
+                                new_value):
+        return self.change_attribute(model, field, 'null', new_value,
+                                     mutation.initial)
 
-    def change_max_length(self, model, field_name, new_max_length,
-                          initial=None):
-        return self.change_attribute(model, field_name, 'max_length',
-                                     new_max_length, initial)
+    def change_column_attr_max_length(self, model, mutation, field, old_value,
+                                      new_value):
+        return self.change_attribute(model, field, 'max_length', new_value)
 
     def get_change_unique_sql(self, model, field, new_unique_value,
                               constraint_name, initial):
-        return self.change_attribute(model, field.name, '_unique',
-                                     new_unique_value, initial)
+        return self.change_attribute(model, field, '_unique', new_unique_value)
 
     def get_drop_unique_constraint_sql(self, model, index_name):
-        output = []
         opts = model._meta
         table_name = opts.db_table
         fields = [
@@ -235,36 +237,39 @@ class EvolutionOperations(BaseEvolutionOperations):
             if f.db_type(connection=self.connection) is not None
         ]
 
-        output.extend(self.create_temp_table(fields))
-        output.extend(self.copy_to_temp_table(table_name, fields))
-        output.extend(self.delete_table(table_name))
-        output.extend(self.create_table(table_name, fields))
-        output.extend(self.copy_from_temp_table(table_name, fields))
-        output.extend(self.delete_table(TEMP_TABLE_NAME))
-        return output
+        sql_result = SQLResult()
+        sql_result.add(self.create_temp_table(fields))
+        sql_result.add(self.copy_to_temp_table(table_name, fields))
+        sql_result.add(self.delete_table(table_name))
+        sql_result.add(self.create_table(table_name, fields))
+        sql_result.add(self.copy_from_temp_table(table_name, fields))
+        sql_result.add(self.delete_table(TEMP_TABLE_NAME))
 
-    def change_attribute(self, model, field_name, attr_name, new_attr_value,
+        return sql_result
+
+    def change_attribute(self, model, field, attr_name, new_attr_value,
                          initial=None):
-        output = []
         opts = model._meta
         table_name = opts.db_table
-        setattr(opts.get_field(field_name), attr_name, new_attr_value)
+        setattr(field, attr_name, new_attr_value)
         fields = [
             f
             for f in opts.local_fields
             if f.db_type(connection=self.connection) is not None
         ]
 
-        output.extend(self.create_temp_table(fields))
-        output.extend(self.copy_to_temp_table(table_name, fields))
-        output.extend(self.insert_to_temp_table(opts.get_field(field_name),
-                                                initial))
-        output.extend(self.delete_table(table_name))
-        output.extend(self.create_table(table_name, fields,
-                                        create_index=False))
-        output.extend(self.copy_from_temp_table(table_name, fields))
-        output.extend(self.delete_table(TEMP_TABLE_NAME))
-        return output
+        sql_result = SQLResult()
+        sql_result.add(self.create_temp_table(fields))
+        sql_result.add(self.copy_to_temp_table(table_name, fields))
+        sql_result.add(self.insert_to_temp_table(opts.get_field(field.name),
+                                                 initial))
+        sql_result.add(self.delete_table(table_name))
+        sql_result.add(self.create_table(table_name, fields,
+                                         create_index=False))
+        sql_result.add(self.copy_from_temp_table(table_name, fields))
+        sql_result.add(self.delete_table(TEMP_TABLE_NAME))
+
+        return sql_result
 
     def get_indexes_for_table(self, table_name):
         cursor = self.connection.cursor()

@@ -1,52 +1,63 @@
 from django.core.management import color
 
 from django_evolution.db.common import BaseEvolutionOperations
+from django_evolution.db.sql_result import AlterTableSQLResult, SQLResult
 
 
 class EvolutionOperations(BaseEvolutionOperations):
     def delete_column(self, model, f):
-        sql = []
+        sql_result = AlterTableSQLResult(self, model)
 
         if f.rel:
             creation = self.connection.creation
             style = color.no_style()
 
-            sql.extend(creation.sql_remove_table_constraints(
+            sql_result.add(creation.sql_remove_table_constraints(
                 f.rel.to,
                 {f.rel.to: [(model, f)]},
                 style))
 
-        return sql + super(EvolutionOperations, self).delete_column(model, f)
+        sql_result.add_sql(
+            super(EvolutionOperations, self).delete_column(model, f))
 
-    def rename_column(self, opts, old_field, new_field):
+        return sql_result
+
+    def rename_column(self, model, old_field, new_field):
         if old_field.column == new_field.column:
             # No Operation
-            return []
+            return None
 
         col_type = new_field.db_type(connection=self.connection)
 
         if col_type is None:
             # Skip ManyToManyFields, because they're not represented as
             # database columns in this table.
-            return []
+            return None
 
-        sql = []
         models = []
         refs = {}
+        opts = model._meta
 
-        sql.extend(self.remove_field_constraints(
-            old_field, opts, models, refs))
-        sql.extend(self.get_rename_column_sql(opts, old_field, new_field))
-        sql.extend(self.add_primary_key_field_constraints(
-            old_field, new_field, models, refs))
+        pre_sql = self.remove_field_constraints(old_field, opts, models, refs)
+        alter_table_items = self._get_rename_column_sql(opts, old_field,
+                                                        new_field)
+        post_sql = self.add_primary_key_field_constraints(old_field, new_field,
+                                                          models, refs)
 
-        return sql
+        return AlterTableSQLResult(
+            self,
+            model,
+            pre_sql=pre_sql,
+            alter_table=alter_table_items,
+            post_sql=post_sql
+        )
 
-    def get_rename_column_sql(self, opts, old_field, new_field):
+    def _get_rename_column_sql(self, opts, old_field, new_field):
         qn = self.connection.ops.quote_name
         style = color.no_style()
         col_type = new_field.db_type(connection=self.connection)
         tablespace = new_field.db_tablespace or opts.db_tablespace
+        alter_table_item = ''
 
         # Make the definition (e.g. 'foo VARCHAR(30)') for this field.
         field_output = [
@@ -80,69 +91,95 @@ class EvolutionOperations(BaseEvolutionOperations):
                 self.connection.ops.deferrable_sql()
             )
 
-        pre_rename_sql = ''
-
         if old_field.primary_key:
-            pre_rename_sql = 'DROP PRIMARY KEY, '
+            alter_table_item = 'DROP PRIMARY KEY, '
 
-        return ['ALTER TABLE %s %sCHANGE COLUMN %s %s;'
-                % (qn(opts.db_table),
-                   pre_rename_sql,
-                   qn(old_field.column),
-                   ' '.join(field_output))]
+        alter_table_item += ('CHANGE COLUMN %s %s'
+                             % (qn(old_field.column), ' '.join(field_output)))
 
-    def set_field_null(self, model, f, null):
-        qn = self.connection.ops.quote_name
-        params = (qn(model._meta.db_table), qn(f.column),
-                  f.db_type(connection=self.connection))
+        return [{'sql': alter_table_item}]
+
+    def set_field_null(self, model, field, null):
         if null:
-            return 'ALTER TABLE %s MODIFY COLUMN %s %s DEFAULT NULL;' % params
+            null_attr = 'DEFAULT NULL'
         else:
-            return 'ALTER TABLE %s MODIFY COLUMN %s %s NOT NULL;' % params
+            null_attr = 'NOT NULL'
 
-    def change_max_length(self, model, field_name, new_max_length,
-                          initial=None):
+        return AlterTableSQLResult(
+            self,
+            model,
+            [
+                {
+                    'op': 'MODIFY COLUMN',
+                    'column': field.column,
+                    'db_type': field.db_type(connection=self.connection),
+                    'params': [null_attr],
+                }
+            ]
+        )
+
+    def change_column_attr_max_length(self, model, mutation, field, old_value,
+                                      new_value):
         qn = self.connection.ops.quote_name
-        opts = model._meta
-        f = opts.get_field(field_name)
-        f.max_length = new_max_length
-        params = {
-            'table': qn(opts.db_table),
-            'column': qn(f.column),
-            'length': f.max_length,
-            'type': f.db_type(connection=self.connection)
-        }
-        return [
-            'UPDATE %(table)s SET %(column)s=LEFT(%(column)s,%(length)d);'
-            % params,
 
-            'ALTER TABLE %(table)s MODIFY COLUMN %(column)s %(type)s;'
-            % params
-        ]
+        field.max_length = new_value
+
+        db_type = field.db_type(connection=self.connection)
+        params = {
+            'table': qn(model._meta.db_table),
+            'column': qn(field.column),
+            'length': field.max_length,
+            'type': db_type,
+        }
+
+        return AlterTableSQLResult(
+            self,
+            model,
+            pre_sql=[
+                'UPDATE %(table)s SET %(column)s=LEFT(%(column)s,%(length)d);'
+                % params,
+            ],
+            alter_table=[
+                {
+                    'op': 'MODIFY COLUMN',
+                    'column': field.column,
+                    'db_type': db_type,
+                },
+            ]
+        )
 
     def get_drop_index_sql(self, model, index_name):
         qn = self.connection.ops.quote_name
 
-        return ['DROP INDEX %s ON %s;'
-                % (qn(index_name), qn(model._meta.db_table))]
+        return SQLResult([
+            'DROP INDEX %s ON %s;'
+            % (qn(index_name), qn(model._meta.db_table))
+        ])
 
     def get_change_unique_sql(self, model, field, new_unique_value,
                               constraint_name, initial):
         qn = self.connection.ops.quote_name
         opts = model._meta
+        sql = []
 
         if new_unique_value:
-            return ['CREATE UNIQUE INDEX %s ON %s(%s);'
-                    % (constraint_name, qn(opts.db_table), qn(field.column))]
+            sql.append(
+                'CREATE UNIQUE INDEX %s ON %s(%s);'
+                % (constraint_name, qn(opts.db_table), qn(field.column)))
         else:
-            return ['DROP INDEX %s ON %s;'
-                    % (constraint_name, qn(opts.db_table))]
+            sql.append(
+                'DROP INDEX %s ON %s;'
+                % (constraint_name, qn(opts.db_table)))
+
+        return SQLResult(sql)
 
     def get_rename_table_sql(self, model, old_db_tablename, db_tablename):
         qn = self.connection.ops.quote_name
 
-        return ['RENAME TABLE %s TO %s;'
-                % (qn(old_db_tablename), qn(db_tablename))]
+        return SQLResult([
+            'RENAME TABLE %s TO %s;'
+            % (qn(old_db_tablename), qn(db_tablename))
+        ])
 
     def get_indexes_for_table(self, table_name):
         cursor = self.connection.cursor()
