@@ -389,6 +389,7 @@ class AppMutator(object):
             removed_mutations = set()
             deleted_fields = set()
             noop_fields = set()
+            model_names = set()
             last_change_mutations = {}
             renames = {}
 
@@ -418,6 +419,8 @@ class AppMutator(object):
             #    field name.
             for mutation in reversed(mutations):
                 remove_mutation = False
+
+                model_names.add(mutation.model_name)
 
                 if isinstance(mutation, AddField):
                     if mutation.field_name in deleted_fields:
@@ -613,6 +616,22 @@ class AppMutator(object):
                 mutation
                 for mutation in mutations
                 if mutation not in removed_mutations
+            ]
+
+            # Try to group all mutations to a table together. This lets the
+            # evolver's optimizations to better group together operations.
+            mutations_by_model = dict([
+                (model_name, [])
+                for model_name in model_names
+            ])
+
+            for mutation in mutations:
+                mutations_by_model[mutation.model_name].append(mutation)
+
+            mutations = [
+                mutation
+                for model_name in sorted(model_names)
+                for mutation in mutations_by_model[model_name]
             ]
 
         return mutations
