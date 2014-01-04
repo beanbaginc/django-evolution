@@ -258,6 +258,9 @@ class BaseMutation(object):
         """
         return False
 
+    def __repr__(self):
+        return '<%s>' % str(self)
+
 
 class MonoBaseMutation(BaseMutation):
     # introducting model_name at this stage will prevent subclasses to be
