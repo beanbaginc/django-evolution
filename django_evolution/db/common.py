@@ -19,6 +19,10 @@ class BaseEvolutionOperations(object):
 
     supported_change_meta = ('index_together', 'unique_together')
 
+    mergeable_ops = (
+        'add_column', 'change_column', 'delete_column', 'change_meta'
+    )
+
     def __init__(self, database_sig, connection=default_connection):
         self.database_sig = database_sig
         self.connection = connection
@@ -26,53 +30,73 @@ class BaseEvolutionOperations(object):
     def generate_table_ops_sql(self, mutator, ops):
         """Generates SQL for a sequence of mutation operations.
 
-        By default, this will process each operation one-by-one, generating
-        default SQL, using generate_table_op_sql().
-
-        This can be overridden to batch operations into fewer SQL statements.
+        This will process each operation one-by-one, generating default SQL,
+        using generate_table_op_sql().
         """
-        sql = []
+        sql_results = []
+        prev_sql_result = None
+        prev_op = None
 
         for op in ops:
-            sql.extend(self.generate_table_op_sql(mutator, op))
+            sql_result = self.generate_table_op_sql(mutator, op,
+                                                    prev_sql_result, prev_op)
+
+            if sql_result is not prev_sql_result:
+                sql_results.append(sql_result)
+                prev_sql_result = sql_result
+
+            prev_op = op
+
+        sql = []
+
+        for sql_result in sql_results:
+            sql.extend(sql_result.to_sql())
 
         return sql
 
-    def generate_table_op_sql(self, mutator, op):
+    def generate_table_op_sql(self, mutator, op, prev_sql_result, prev_op):
         """Generates SQL for a single mutation operation.
 
         This will call different SQL-generating functions provided by the
         class, depending on the details of the operation.
+
+        If two adjacent operations can be merged together (meaning that
+        they can be turned into one ALTER TABLE statement), they'll be placed
+        in the same AlterTableSQLResult.
         """
-        sql_result = SQLResult()
+        model = mutator.create_model()
+
         op_type = op['type']
         mutation = op['mutation']
 
-        model = mutator.create_model()
+        if prev_op and self._are_ops_mergeable(prev_op, op):
+            sql_result = prev_sql_result
+        else:
+            sql_result = AlterTableSQLResult(self, model)
 
         if op_type == 'add_column':
             field = op['field']
-            sql_result.add_sql(self.add_column(model, field, op['initial']))
-            sql_result.add_sql(self.create_index(model, field))
+            sql_result.add(self.add_column(model, field, op['initial']))
+            sql_result.add(self.create_index(model, field))
         elif op_type == 'change_column':
-            sql_result.add_sql(self.change_column_attrs(model, mutation,
-                                                        op['field'].name,
-                                                        op['new_attrs']))
+            sql_result.add(self.change_column_attrs(model, mutation,
+                                                    op['field'].name,
+                                                    op['new_attrs']))
         elif op_type == 'delete_column':
-            sql_result.add_sql(self.delete_column(model, op['field']))
+            sql_result.add(self.delete_column(model, op['field']))
         elif op_type == 'change_meta':
             evolve_func = getattr(self, 'change_meta_%s' % op['prop_name'])
-            sql_result.add_sql(evolve_func(model, op['old_value'],
-                                           op['new_value']))
+            sql_result.add(evolve_func(model, op['old_value'],
+                                       op['new_value']))
         elif op_type == 'sql':
-            sql_result.add_sql(op['sql'])
+            sql_result.add(op['sql'])
         else:
             raise EvolutionNotImplementedError(
                 'Unknown mutation operation "%s"' % op_type)
 
         mutator.finish_op(op)
 
-        return sql_result.to_sql()
+        return sql_result
 
     def quote_sql_param(self, param):
         "Add protective quoting around an SQL string parameter"
@@ -194,7 +218,7 @@ class BaseEvolutionOperations(object):
 
     def add_column(self, model, f, initial):
         qn = self.connection.ops.quote_name
-        sql_result = SQLResult()
+        sql_result = AlterTableSQLResult(self, model)
 
         if f.rel:
             # it is a foreign key field
@@ -212,15 +236,18 @@ class BaseEvolutionOperations(object):
             if f.unique or f.primary_key:
                 constraints.append('UNIQUE')
 
-            sql_result.add_sql([
-                'ALTER TABLE %s ADD COLUMN %s %s %s REFERENCES %s (%s) %s;'
-                % (qn(model._meta.db_table),
-                   qn(f.column),
-                   f.db_type(connection=self.connection),
-                   ' '.join(constraints),
-                   qn(related_table),
-                   qn(related_pk_col),
-                   self.connection.ops.deferrable_sql())
+            sql_result.add_alter_table([
+                {
+                    'op': 'ADD COLUMN',
+                    'column': f.column,
+                    'db_type': f.db_type(connection=self.connection),
+                    'params': constraints + [
+                        'REFERENCES',
+                        qn(related_table),
+                        '(%s)' % qn(related_pk_col),
+                        self.connection.ops.deferrable_sql(),
+                    ]
+                }
             ])
         else:
             null_constraints = '%sNULL' % (not f.null and 'NOT ' or '')
@@ -235,11 +262,13 @@ class BaseEvolutionOperations(object):
             # AddFieldInitialCallback which will shortly raise an exception.
             if initial is not None:
                 if callable(initial):
-                    sql_result.add_sql([
-                        'ALTER TABLE %s ADD COLUMN %s %s %s;'
-                        % (qn(model._meta.db_table), qn(f.column),
-                           f.db_type(connection=self.connection),
-                           unique_constraints)
+                    sql_result.add_alter_table([
+                        {
+                            'op': 'ADD COLUMN',
+                            'column': f.column,
+                            'db_type': f.db_type(connection=self.connection),
+                            'params': [unique_constraints],
+                        }
                     ])
 
                     sql_result.add_sql([
@@ -254,27 +283,36 @@ class BaseEvolutionOperations(object):
                         sql_result.add_sql(
                             self.set_field_null(model, f, f.null))
                 else:
-                    sql_result.add_sql([
-                        ('ALTER TABLE %s ADD COLUMN %s %s %s %s DEFAULT %%s;'
-                         % (qn(model._meta.db_table), qn(f.column),
-                            f.db_type(connection=self.connection),
-                            null_constraints, unique_constraints),
-                         (initial,))
+                    sql_result.add_alter_table([
+                        {
+                            'op': 'ADD COLUMN',
+                            'column': f.column,
+                            'db_type': f.db_type(connection=self.connection),
+                            'params': [
+                                null_constraints,
+                                unique_constraints,
+                                'DEFAULT',
+                                '%s',
+                            ],
+                            'sql_params': [initial]
+                        }
                     ])
 
                     # Django doesn't generate default columns, so now that
                     # we've added one to get default values for existing
                     # tables, drop that default.
-                    sql_result.add_sql([
+                    sql_result.add_post_sql([
                         'ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT;'
                         % (qn(model._meta.db_table), qn(f.column))
                     ])
             else:
-                sql_result.add_sql([
-                    'ALTER TABLE %s ADD COLUMN %s %s %s;'
-                    % (qn(model._meta.db_table), qn(f.column),
-                       f.db_type(connection=self.connection),
-                       ' '.join([null_constraints, unique_constraints]))
+                sql_result.add_alter_table([
+                    {
+                        'op': 'ADD COLUMN',
+                        'column': f.column,
+                        'db_type': f.db_type(connection=self.connection),
+                        'params': [null_constraints, unique_constraints],
+                    }
                 ])
 
         if f.unique or f.primary_key:
@@ -791,3 +829,13 @@ class BaseEvolutionOperations(object):
             return 1
         else:
             return 0
+
+    def _are_ops_mergeable(self, op1, op2):
+        """Returns whether two operations can be merged.
+
+        If two operation types are compatible, their operations can be
+        merged together into a single AlterTableSQLResult. This checks
+        to see if the operations qualify.
+        """
+        return (op1['type'] in self.mergeable_ops and
+                op2['type'] in self.mergeable_ops)

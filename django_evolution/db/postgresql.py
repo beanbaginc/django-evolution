@@ -23,6 +23,7 @@ class EvolutionOperations(BaseEvolutionOperations):
                                                   refs),
             alter_table=[
                 {
+                    'independent': True,
                     'sql': 'RENAME COLUMN %s TO %s'
                            % (truncate_name(qn(old_field.column),
                                             max_name_length),

@@ -119,37 +119,126 @@ class AlterTableSQLResult(SQLResult):
         """
         sql = []
         sql += self.pre_sql
-        sql += self.sql
 
         if self.alter_table:
             qn = self.evolver.connection.ops.quote_name
             quoted_table_name = qn(self.model._meta.db_table)
+            alter_table_batches = self._preprocess_alter_table_ops()
 
-            for item in self.alter_table:
-                alter_table_attrs = []
-                op = item.get('op', 'sql')
+            for statements, sql_params in alter_table_batches:
+                alter_table_sql = (
+                    'ALTER TABLE %s %s;'
+                    % (quoted_table_name, ', '.join(statements))
+                )
 
-                if op == 'sql':
-                    alter_table_attrs.append(item['sql'])
+                if sql_params:
+                    sql.append((alter_table_sql, sql_params))
                 else:
-                    alter_table_attrs.append(op)
+                    sql.append(alter_table_sql)
 
-                    if 'column' in item:
-                        alter_table_attrs.append(qn(item['column']))
-
-                    if op == 'MODIFY COLUMN' and 'db_type' in item:
-                        alter_table_attrs.append(item['db_type'])
-
-                    if 'params' in item:
-                        alter_table_attrs.extend(item['params'])
-
-                sql.append('ALTER TABLE %s %s;'
-                           % (quoted_table_name,
-                              ' '.join(alter_table_attrs)))
-
+        sql += self.sql
         sql += self.post_sql
 
         return sql
+
+    def _preprocess_alter_table_ops(self):
+        """Pre-processes Alter Table operations.
+
+        This will attempt to merge together adjacent MODIFY COLUMN
+        operations on a field to form a single MODIFY COLUMN.
+
+        It will also split the Alter Table operations into batches,
+        separated by operations setting independent=True.
+        """
+        qn = self.evolver.connection.ops.quote_name
+        new_alter_table_items = []
+        prev_op = None
+        prev_item = None
+
+        for item in self.alter_table:
+            alter_table_attrs = []
+            op = item.get('op', 'sql')
+
+            if op == 'MODIFY COLUMN':
+                if (prev_op == op and
+                    prev_item['column'] == item['column'] and
+                    prev_item['db_type'] == item['db_type']):
+                    # We're issuing another MODIFY COLUMN on the same column,
+                    # so combine.
+
+                    if 'params' in item:
+                        prev_params = prev_item.setdefault('params', [])
+
+                        for param in item['params']:
+                            if param and param not in prev_params:
+                                prev_params.append(param)
+
+                    if 'sql_params' in item:
+                        prev_item.setdefault('sql_params', []).extend(
+                            item['sql_params'])
+
+                    # Skip adding this or setting the prev_op/prev_item.
+                    continue
+
+            new_alter_table_items.append(item)
+            prev_op = op
+            prev_item = item
+
+        alter_table_statements = []
+        alter_table_sql_params = []
+        alter_table_batches = [(alter_table_statements,
+                                alter_table_sql_params)]
+
+        for item in new_alter_table_items:
+            alter_table_attrs = []
+            op = item.get('op', 'sql')
+            independent = item.get('independent', False)
+
+            if independent:
+                # This particular ALTER TABLE statement needs to stand
+                # alone, so break it up into its own batch.
+                alter_table_statements = []
+                alter_table_sql_params = []
+                alter_table_batches.append((alter_table_statements,
+                                            alter_table_sql_params))
+
+            if op == 'sql':
+                alter_table_attrs.append(item['sql'])
+            else:
+                alter_table_attrs.append(item['op'])
+
+                if 'column' in item:
+                    alter_table_attrs.append(qn(item['column']))
+
+                if op in ('MODIFY COLUMN', 'ADD COLUMN') and 'db_type' in item:
+                    alter_table_attrs.append(item['db_type'])
+
+                if 'params' in item:
+                    alter_table_attrs.extend([
+                        param
+                        for param in item['params']
+                        if param
+                    ])
+
+            alter_table_statements.append(' '.join(alter_table_attrs))
+
+            if 'sql_params' in item:
+                alter_table_sql_params.extend(item['sql_params'])
+
+            if independent:
+                # Now that we've processed this independent statement,
+                # start a new batch for the next.
+                alter_table_statements = []
+                alter_table_sql_params = []
+                alter_table_batches.append((alter_table_statements,
+                                            alter_table_sql_params))
+
+        # Filter out any batches that we are empty, and return the result.
+        return [
+            alter_table_batch
+            for alter_table_batch in alter_table_batches
+            if alter_table_batch[0]
+        ]
 
     def __repr__(self):
         return ('<AlterTableSQLResult: pre_sql=%r, sql=%r, post_sql=%r,'

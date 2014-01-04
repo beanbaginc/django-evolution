@@ -5,14 +5,14 @@ from django_evolution.tests.utils import (generate_constraint_name,
 add_field = {
     'AddNonNullNonCallableColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" integer NOT NULL  DEFAULT 1;',
+        ' ADD COLUMN "added_field" integer NOT NULL DEFAULT 1;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
     ]),
 
     'AddNonNullCallableColumnModel': '\n'.join([
-        'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" integer ;',
+        'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" integer;',
 
         'UPDATE "tests_testmodel"'
         ' SET "added_field" = "int_field" WHERE "added_field" IS NULL;',
@@ -23,7 +23,7 @@ add_field = {
 
     'AddNullColumnWithInitialColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" integer NULL  DEFAULT 1;',
+        ' ADD COLUMN "added_field" integer NULL DEFAULT 1;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
@@ -32,7 +32,7 @@ add_field = {
     'AddStringColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field" varchar(10) NOT NULL'
-        '  DEFAULT \'abc\\\'s xyz\';',
+        ' DEFAULT \'abc\\\'s xyz\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
@@ -40,7 +40,7 @@ add_field = {
 
     'AddBlankStringColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" varchar(10) NOT NULL  DEFAULT \'\';',
+        ' ADD COLUMN "added_field" varchar(10) NOT NULL DEFAULT \'\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
@@ -49,7 +49,7 @@ add_field = {
     'AddDateColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field" timestamp with'
-        ' time zone NOT NULL  DEFAULT 2007-12-13 16:42:00;',
+        ' time zone NOT NULL DEFAULT 2007-12-13 16:42:00;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
@@ -57,7 +57,7 @@ add_field = {
 
     'AddDefaultColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" integer NOT NULL  DEFAULT 42;',
+        ' ADD COLUMN "added_field" integer NOT NULL DEFAULT 42;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
@@ -65,7 +65,7 @@ add_field = {
 
     'AddMismatchInitialBoolColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" boolean NOT NULL  DEFAULT False;',
+        ' ADD COLUMN "added_field" boolean NOT NULL DEFAULT False;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
@@ -73,28 +73,28 @@ add_field = {
 
     'AddEmptyStringDefaultColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" varchar(20) NOT NULL  DEFAULT \'\';',
+        ' ADD COLUMN "added_field" varchar(20) NOT NULL DEFAULT \'\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
     ]),
 
     'AddNullColumnModel': (
-        'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" integer NULL ;'
+        'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" integer NULL;'
     ),
 
     'NonDefaultColumnModel': (
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "non-default_column" integer NULL ;'
+        ' ADD COLUMN "non-default_column" integer NULL;'
     ),
 
     'AddColumnCustomTableModel': (
         'ALTER TABLE "custom_table_name"'
-        ' ADD COLUMN "added_field" integer NULL ;'
+        ' ADD COLUMN "added_field" integer NULL;'
     ),
 
     'AddIndexedColumnModel': '\n'.join([
-        'ALTER TABLE "tests_testmodel" ADD COLUMN "add_field" integer NULL ;',
+        'ALTER TABLE "tests_testmodel" ADD COLUMN "add_field" integer NULL;',
         'CREATE INDEX "tests_testmodel_add_field"'
         ' ON "tests_testmodel" ("add_field");'
     ]),
@@ -304,9 +304,7 @@ change_field = {
     "MultiAttrSingleFieldChangeModel": '\n'.join([
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "char_field2" TYPE varchar(35)'
-        ' USING CAST("char_field2" as varchar(35));',
-
-        'ALTER TABLE "tests_testmodel"'
+        ' USING CAST("char_field2" as varchar(35)),'
         ' ALTER COLUMN "char_field2" DROP NOT NULL;',
     ]),
 
@@ -637,7 +635,7 @@ index_together = {
 preprocessing = {
     'add_change_field': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" varchar(50) NULL  DEFAULT \'bar\';',
+        ' ADD COLUMN "added_field" varchar(50) NULL DEFAULT \'bar\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
@@ -645,7 +643,7 @@ preprocessing = {
 
     'add_change_rename_field': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "renamed_field" varchar(50) NULL  DEFAULT \'bar\';',
+        ' ADD COLUMN "renamed_field" varchar(50) NULL DEFAULT \'bar\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "renamed_field" DROP DEFAULT;',
@@ -653,7 +651,7 @@ preprocessing = {
 
     'add_delete_add_field': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" integer NOT NULL  DEFAULT 42;',
+        ' ADD COLUMN "added_field" integer NOT NULL DEFAULT 42;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
@@ -661,7 +659,7 @@ preprocessing = {
 
     'add_delete_add_rename_field': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "renamed_field" integer NOT NULL  DEFAULT 42;',
+        ' ADD COLUMN "renamed_field" integer NOT NULL DEFAULT 42;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "renamed_field" DROP DEFAULT;',
@@ -669,7 +667,7 @@ preprocessing = {
 
     'add_rename_change_field': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "renamed_field" varchar(50) NULL  DEFAULT \'bar\';',
+        ' ADD COLUMN "renamed_field" varchar(50) NULL DEFAULT \'bar\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "renamed_field" DROP DEFAULT;',
@@ -677,7 +675,7 @@ preprocessing = {
 
     'add_rename_change_rename_change_field': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "renamed_field" varchar(50) NULL  DEFAULT \'foo\';',
+        ' ADD COLUMN "renamed_field" varchar(50) NULL DEFAULT \'foo\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "renamed_field" DROP DEFAULT;',
@@ -685,7 +683,7 @@ preprocessing = {
 
     'add_sql_delete': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" varchar(20) NOT NULL  DEFAULT \'foo\';',
+        ' ADD COLUMN "added_field" varchar(20) NOT NULL DEFAULT \'foo\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
@@ -706,9 +704,7 @@ preprocessing = {
     'change_rename_change_rename_field': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "char_field" TYPE varchar(30)'
-        ' USING CAST("char_field" as varchar(30));',
-
-        'ALTER TABLE "tests_testmodel"'
+        ' USING CAST("char_field" as varchar(30)),'
         ' ALTER COLUMN "char_field" DROP NOT NULL;',
 
         'ALTER TABLE "tests_testmodel"'
@@ -724,7 +720,7 @@ preprocessing = {
         ' RENAME COLUMN "char_field" TO "renamed_field";',
 
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "char_field" varchar(50) NULL ;',
+        ' ADD COLUMN "char_field" varchar(50) NULL;',
     ]),
 
     'rename_change_rename_change_field': '\n'.join([
@@ -733,9 +729,7 @@ preprocessing = {
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "renamed_field" TYPE varchar(50)'
-        ' USING CAST("renamed_field" as varchar(50));',
-
-        'ALTER TABLE "tests_testmodel"'
+        ' USING CAST("renamed_field" as varchar(50)),'
         ' ALTER COLUMN "renamed_field" DROP NOT NULL;',
     ]),
 
