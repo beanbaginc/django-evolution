@@ -60,6 +60,12 @@ class Command(BaseCommand):
 
     requires_model_validation = False
 
+    def __init__(self, style=None, *args, **kwargs):
+        super(Command, self).__init__(*args, **kwargs)
+
+        if style:
+            self.style = style
+
     def handle(self, *app_labels, **options):
         try:
             self.evolve(*app_labels, **options)

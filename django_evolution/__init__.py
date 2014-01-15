@@ -4,7 +4,7 @@
 #
 #   (Major, Minor, Micro, alpha/beta/rc/final, Release Number, Released)
 #
-VERSION = (0, 7, 0, 'beta', 1, True)
+VERSION = (0, 7, 0, 'beta', 2, True)
 
 
 def get_version_string():
