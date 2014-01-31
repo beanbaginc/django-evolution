@@ -3,9 +3,10 @@ import logging
 from datetime import datetime
 
 import django
+from django.conf import settings
 from django.core.management import sql
 from django.core.management.color import no_style
-from django.db import connection, connections, transaction, settings, models
+from django.db import connection, connections, transaction, models
 from django.db.backends.util import truncate_name
 from django.db.models.loading import cache
 from django.db.utils import DEFAULT_DB_ALIAS
@@ -40,6 +41,20 @@ sql_indexes = curry(wrap_sql_func, sql.sql_indexes)
 sql_delete = curry(wrap_sql_func, sql.sql_delete)
 
 
+def set_model_name(model, name):
+    if hasattr(model._meta, 'model_name'):
+        model._meta.model_name = name
+    else:
+        model._meta.module_name = name
+
+
+def get_model_name(model):
+    if hasattr(model._meta, 'model_name'):
+        return model._meta.model_name
+    else:
+        return model._meta.module_name
+
+
 def _register_models(database_sig, app_label='tests', db_name='default',
                      *models, **kwargs):
     app_cache = SortedDict()
@@ -50,15 +65,16 @@ def _register_models(database_sig, app_label='tests', db_name='default',
     max_name_length = my_connection.ops.max_name_length()
 
     for name, model in reversed(models):
-        if model._meta.module_name in cache.app_models['django_evolution']:
-            del cache.app_models['django_evolution'][model._meta.module_name]
+        orig_model_name = get_model_name(model)
+
+        if orig_model_name in cache.app_models['django_evolution']:
+            del cache.app_models['django_evolution'][orig_model_name]
 
         orig_db_table = model._meta.db_table
         orig_object_name = model._meta.object_name
-        orig_module_name = model._meta.module_name
 
         generated_db_table = truncate_name(
-            '%s_%s' % (model._meta.app_label, model._meta.module_name),
+            '%s_%s' % (model._meta.app_label, orig_model_name),
             max_name_length)
 
         if orig_db_table.startswith(generated_db_table):
@@ -68,7 +84,8 @@ def _register_models(database_sig, app_label='tests', db_name='default',
                                              max_name_length)
         model._meta.app_label = app_label
         model._meta.object_name = name
-        model._meta.module_name = name.lower()
+        model_name = name.lower()
+        set_model_name(model, model_name)
 
         # Add an entry for the table in database_sig, if it's not already
         # there.
@@ -134,10 +151,10 @@ def _register_models(database_sig, app_label='tests', db_name='default',
                             orig_object_name,
                             model._meta.object_name)
 
-                    through._meta.module_name = \
-                        through._meta.module_name.replace(
-                            orig_module_name,
-                            model._meta.module_name)
+                    set_model_name(
+                        through,
+                        get_model_name(through).replace(orig_model_name,
+                                                        model_name))
 
             through._meta.db_table = \
                 truncate_name(through._meta.db_table, max_name_length)
@@ -146,23 +163,23 @@ def _register_models(database_sig, app_label='tests', db_name='default',
                 if field.rel and field.rel.to:
                     column = field.column
 
-                    if (column.startswith(orig_module_name) or
-                        column.startswith('to_%s' % orig_module_name) or
-                        column.startswith('from_%s' % orig_module_name)):
+                    if (column.startswith(orig_model_name) or
+                        column.startswith('to_%s' % orig_model_name) or
+                        column.startswith('from_%s' % orig_model_name)):
 
                         field.column = column.replace(
-                            orig_module_name,
-                            model._meta.module_name)
+                            orig_model_name,
+                            get_model_name(model))
 
-            if (through._meta.module_name in
-                cache.app_models['django_evolution']):
-                del cache.app_models['django_evolution'][
-                    through._meta.module_name]
+            through_model_name = get_model_name(through)
 
-            app_cache[through._meta.module_name] = through
+            if through_model_name in cache.app_models['django_evolution']:
+                del cache.app_models['django_evolution'][through_model_name]
+
+            app_cache[through_model_name] = through
             add_app_test_model(through, app_label=app_label)
 
-        app_cache[model._meta.module_name] = model
+        app_cache[model_name] = model
 
     if evo_test not in cache.app_store:
         cache.app_store[evo_test] = len(cache.app_store)
