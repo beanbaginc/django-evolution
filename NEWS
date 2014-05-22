@@ -1,3 +1,13 @@
+version 0.7.1 (21-May-2014):
+	* Bug Fixes:
+		* Fixed a crash from no-op column renames on MySQL.
+
+		  When attempting to rename a column on MySQL and specifying a
+		  "new" name that was the same as the old name, the result would
+		  be a crash. Likewise, there were crashes when renaming a
+		  ManyToManyField.
+
+
 version 0.7.0 (3-February-2014):
 	* New Features:
 		* Added compatibility with Django 1.6.
