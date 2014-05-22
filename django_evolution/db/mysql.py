@@ -25,14 +25,14 @@ class EvolutionOperations(BaseEvolutionOperations):
     def rename_column(self, model, old_field, new_field):
         if old_field.column == new_field.column:
             # No Operation
-            return None
+            return []
 
         col_type = new_field.db_type(connection=self.connection)
 
         if col_type is None:
             # Skip ManyToManyFields, because they're not represented as
             # database columns in this table.
-            return None
+            return []
 
         models = []
         refs = {}
