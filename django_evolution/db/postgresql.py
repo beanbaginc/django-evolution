@@ -8,7 +8,7 @@ class EvolutionOperations(BaseEvolutionOperations):
     def rename_column(self, model, old_field, new_field):
         if old_field.column == new_field.column:
             # No Operation
-            return None
+            return []
 
         qn = self.connection.ops.quote_name
         max_name_length = self.connection.ops.max_name_length()

@@ -385,7 +385,7 @@ class BaseEvolutionOperations(object):
         if index_name:
             return self.drop_index_by_name(model, index_name)
         else:
-            return None
+            return []
 
     def drop_index_by_name(self, model, index_name):
         """Returns the SQL to drop an index, given an index name.
