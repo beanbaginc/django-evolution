@@ -43,7 +43,7 @@ To install Django Evolution, simply run:
     $ easy_install -U django_evolution
 
 You can also check out Django Evolution from the
-[https://github.com/beanbaginc/django-evolution](GitHub repository).
+[GitHub repository](https://github.com/beanbaginc/django-evolution).
 
 
 Using Django Evolution in your project
