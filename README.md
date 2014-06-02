@@ -8,7 +8,7 @@ For details on how to use Django Evolution, read the tutorial/instructions
 contained in docs/evolution.txt.
 
 Most new Django projects may also want to take a look at South
-(http://south.aeracode.org/).
+(http://south.aeracode.org/), or the features built into Django 1.7.
 
 
 When you run ./manage.py syncdb, Django will look for any new models that have
@@ -27,15 +27,13 @@ out, check out the source and let us know what you think.
 If you have any questions that aren't covered by the FAQ and/or documentation,
 there is a mailing list where you may be able to get answers.
 
+
 Using Django Evolution
 ----------------------
 
-Django Evolution requires features that are only available in Django v1.0 or
+Django Evolution requires features that are only available in Django v1.4 or
 higher.
 
-Django Evolution doesn't support all of Django's database features. In
-particular, it doesn't support the new multi-database feature or custom proxy
-models.
 
 Installation
 ------------
@@ -44,7 +42,9 @@ To install Django Evolution, simply run:
 
     $ easy_install -U django_evolution
 
-You can also check out Django Evolution from the GitHub repository.
+You can also check out Django Evolution from the
+[https://github.com/beanbaginc/django-evolution](GitHub repository).
+
 
 Using Django Evolution in your project
 --------------------------------------
