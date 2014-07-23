@@ -8,7 +8,7 @@ use_setuptools()
 from setuptools import setup, find_packages
 from setuptools.command.test import test
 
-import django_evolution
+from django_evolution import get_package_version, VERSION
 
 
 def run_tests(*args):
@@ -20,17 +20,22 @@ test.run_tests = run_tests
 
 PACKAGE_NAME = 'django_evolution'
 
+download_url = (
+    'http://downloads.reviewboard.org/releases/django-evolution/%s.%s/' %
+    (VERSION[0], VERSION[1])
+
 
 # Build the package
 setup(
     name=PACKAGE_NAME,
-    version=django_evolution.__version__,
+    version=get_package_version(),
     description='A database schema evolution tool for the Django web framework.',
     url='http://code.google.com/p/django-evolution/',
     author='Ben Khoo',
     author_email='khoobks@westnet.com.au',
     maintainer='Christian Hammond',
     maintainer_email='christian@beanbaginc.com',
+    download_url=download_url,
     packages=find_packages(exclude=['tests']),
     install_requires=[
         'Django>=1.4.10',
