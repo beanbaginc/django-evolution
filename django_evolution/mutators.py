@@ -3,9 +3,10 @@ import logging
 
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.errors import CannotSimulate
-from django_evolution.mutations import (AddField, ChangeField, DeleteField,
-                                        MockModel, MonoBaseMutation,
-                                        MutateModelField, RenameField)
+from django_evolution.mutations import (AddField, ChangeField, ChangeMeta,
+                                        DeleteField, MockModel,
+                                        MonoBaseMutation, MutateModelField,
+                                        RenameField)
 from django_evolution.utils import get_database_for_model_name
 
 
@@ -390,6 +391,7 @@ class AppMutator(object):
             deleted_fields = set()
             noop_fields = set()
             model_names = set()
+            unique_together = {}
             last_change_mutations = {}
             renames = {}
 
@@ -507,6 +509,15 @@ class AppMutator(object):
                         self._rename_dict_key(last_change_mutations,
                                               mutation.new_field_name,
                                               mutation.old_field_name)
+                elif isinstance(mutation, ChangeMeta):
+                    if (mutation.prop_name == 'unique_together' and
+                        mutation.model_name not in unique_together):
+                        # This is the most recent unique_together change
+                        # for this model, which wins, since each ChangeMeta
+                        # is expected to contain the full resulting value
+                        # of the property.
+                        unique_together[mutation.model_name] = \
+                            mutation.new_value
 
                 if remove_mutation:
                     removed_mutations.add(mutation)
@@ -534,7 +545,7 @@ class AppMutator(object):
             #
             # 3) Change the field name on any fields from processable rename
             #    entries.
-            if noop_fields or renames:
+            if noop_fields or renames or unique_together:
                 for mutation in mutations:
                     remove_mutation = False
 
@@ -607,6 +618,17 @@ class AppMutator(object):
                             # include only this one.
                             removed_mutations.update(rename_mutations[:-1])
                             rename_info['mutations'] = [rename_mutations[-1]]
+                    elif isinstance(mutation, ChangeMeta):
+                        if (mutation.prop_name == 'unique_together' and
+                            mutation.model_name in unique_together):
+                            # This was a previously found unique_together.
+                            # We'll check if the value matches the winning
+                            # value from before. If not, we'll discard this
+                            # mutation.
+                            value = unique_together[mutation.model_name]
+
+                            if mutation.new_value != value:
+                                remove_mutation = True
 
                     if remove_mutation:
                         removed_mutations.add(mutation)

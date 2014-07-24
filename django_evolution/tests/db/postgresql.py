@@ -576,6 +576,14 @@ unique_together = {
         ' DROP CONSTRAINT tests_testmodel_int_field1_char_field1_key;'
     ),
 
+    'set_remove': (
+        'CREATE UNIQUE INDEX %s'
+        ' ON tests_testmodel ("int_field1", "char_field1");'
+        % generate_index_name('tests_testmodel',
+                              ['int_field1', 'char_field1'],
+                              default=False)
+    ),
+
     'ignore_missing_indexes': (
         'CREATE UNIQUE INDEX %s'
         ' ON tests_testmodel ("char_field1", "char_field2");'

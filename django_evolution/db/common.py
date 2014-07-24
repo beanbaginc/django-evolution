@@ -360,7 +360,7 @@ class BaseEvolutionOperations(object):
     def create_unique_index(self, model, index_name, fields):
         qn = self.connection.ops.quote_name
 
-        self.record_index(model, fields)
+        self.record_index(model, fields, index_name=index_name, unique=True)
 
         return SQLResult([
             'CREATE UNIQUE INDEX %s ON %s (%s);'
@@ -809,6 +809,8 @@ class BaseEvolutionOperations(object):
             index_name = truncate_name(
                 '%s_%s_key' % (model._meta.db_table, fields[0].column),
                 self.connection.ops.max_name_length())
+
+        assert index_name or not unique
 
         add_index_to_database_sig(self, self.database_sig, model, fields,
                                   index_name=index_name, unique=unique)

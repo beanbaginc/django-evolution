@@ -150,6 +150,36 @@ class UniqueTogetherTests(EvolutionTestCase):
             ],
             'removing')
 
+    def test_set_remove(self):
+        """Testing ChangeMeta(unique_together) and setting indexes and removing
+        one
+        """
+        class DestModel(models.Model):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta:
+                unique_together = [('int_field1', 'char_field1')]
+
+        self.set_base_model(NoUniqueTogetherBaseModel)
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta('TestModel', 'unique_together',
+                           [('int_field1', 'char_field1'),
+                            ('int_field2', 'char_field2')]),
+                ChangeMeta('TestModel', 'unique_together',
+                           [('int_field1', 'char_field1')])
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'unique_together',"
+                " [('int_field1', 'char_field1')])"
+            ],
+            'set_remove')
+
     def test_missing_indexes(self):
         """Testing ChangeMeta(unique_together) and old missing indexes"""
         class DestModel(models.Model):

@@ -573,6 +573,14 @@ unique_together = {
         'DROP INDEX `int_field1` ON `tests_testmodel`;',
     ]),
 
+    'set_remove': '\n'.join([
+        'CREATE UNIQUE INDEX %s'
+        ' ON tests_testmodel (`int_field1`, `char_field1`);'
+        % generate_index_name('tests_testmodel',
+                              ['int_field1', 'char_field1'],
+                              default=False),
+    ]),
+
     'ignore_missing_indexes': (
         'CREATE UNIQUE INDEX %s'
         ' ON tests_testmodel (`char_field1`, `char_field2`);'
