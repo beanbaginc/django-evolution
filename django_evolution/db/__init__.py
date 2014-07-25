@@ -13,9 +13,12 @@ class EvolutionOperationsMulti(object):
             module = __import__('.'.join(module_name), {}, {}, [''])
             self.evolver = module.EvolutionOperations(database_sig, connection)
         except ImportError:
-            module_name = ['django_evolution.db', settings.DATABASE_ENGINE]
-            module = __import__('.'.join(module_name), {}, {}, [''])
-            self.evolver = module.EvolutionOperations(database_sig)
+            if hasattr(settings, 'DATABASE_ENGINE'):
+                module_name = ['django_evolution.db', settings.DATABASE_ENGINE]
+                module = __import__('.'.join(module_name), {}, {}, [''])
+                self.evolver = module.EvolutionOperations(database_sig)
+            else:
+                raise
 
     def get_evolver(self):
         return self.evolver
