@@ -22,7 +22,7 @@ PACKAGE_NAME = 'django_evolution'
 
 download_url = (
     'http://downloads.reviewboard.org/releases/django-evolution/%s.%s/' %
-    (VERSION[0], VERSION[1])
+    (VERSION[0], VERSION[1]))
 
 
 # Build the package
