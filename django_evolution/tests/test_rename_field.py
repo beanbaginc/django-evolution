@@ -19,7 +19,7 @@ class RenameAnchor3(models.Model):
     value = models.IntegerField()
 
 
-class RenameBaseModel(models.Model):
+class RenameFieldBaseModel(models.Model):
     char_field = models.CharField(max_length=20)
     int_field = models.IntegerField()
     int_field_named = models.IntegerField(db_column='custom_db_col_name')
@@ -43,7 +43,7 @@ class CustomRenameTableModel(models.Model):
 class RenameFieldTests(EvolutionTestCase):
     """Unit tests for RenameField mutations."""
     sql_mapping_key = 'rename_field'
-    default_base_model = RenameBaseModel
+    default_base_model = RenameFieldBaseModel
     default_extra_models = [
         ('RenameAnchor1', RenameAnchor1),
         ('RenameAnchor2', RenameAnchor2),

@@ -635,6 +635,66 @@ class ChangeField(MutateModelField):
             mutator.change_column(self, field, new_field_attrs)
 
 
+class RenameModel(MutateModelField):
+    def __init__(self, old_model_name, new_model_name, db_table):
+        super(RenameModel, self).__init__(old_model_name)
+        self.old_model_name = old_model_name
+        self.new_model_name = new_model_name
+        self.db_table = db_table
+
+    def __str__(self):
+        params = "'%s', '%s'" % (self.old_model_name, self.new_model_name)
+
+        if self.db_table:
+            params += ", db_table='%s'" % self.db_table
+
+        return 'RenameModel(%s)' % params
+
+    def simulate(self, app_label, proj_sig, database_sig, database=None):
+        app_sig = proj_sig[app_label]
+        model_sig = app_sig[self.old_model_name]
+
+        if self.db_table:
+            model_sig['meta']['db_table'] = self.db_table
+        else:
+            # db_table was not specified. Clear the old value if one was set.
+            # This amounts to resetting the column or table name to the Django
+            # default name.
+            model_sig['meta'].pop('db_table', None)
+
+        app_sig[self.new_model_name] = app_sig.pop(self.old_model_name)
+
+        old_related_model = '%s.%s' % (app_label, self.old_model_name)
+        new_related_model = '%s.%s' % (app_label, self.new_model_name)
+
+        for app_sig in proj_sig.itervalues():
+            if not isinstance(app_sig, dict):
+                continue
+
+            for model_sig in app_sig.itervalues():
+                for field in model_sig['fields'].itervalues():
+                    if ('related_model' in field and
+                        field['related_model'] == old_related_model):
+                        field['related_model'] = new_related_model
+
+    def mutate(self, mutator, model):
+        old_model_sig = mutator.model_sig
+        new_model_sig = copy.deepcopy(old_model_sig)
+
+        new_model_sig['meta']['db_table'] = self.db_table
+
+        new_model = MockModel(mutator.proj_sig, mutator.app_label,
+                              self.new_model_name, new_model_sig,
+                              db_name=mutator.database)
+        evolver = mutator.evolver
+
+        sql = evolver.rename_table(new_model,
+                                   old_model_sig['meta']['db_table'],
+                                   new_model_sig['meta']['db_table'])
+
+        mutator.add_sql(self, sql)
+
+
 class DeleteModel(MutateModelField):
     def __str__(self):
         return "DeleteModel(%r)" % self.model_name

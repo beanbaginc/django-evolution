@@ -360,6 +360,21 @@ delete_model = {
     ]),
 }
 
+rename_model = {
+    'RenameModel': (
+        'ALTER TABLE "tests_testmodel" RENAME TO "tests_destmodel";'
+    ),
+    'RenameModelSameTable': '',
+    'RenameModelForeignKeys': (
+        'ALTER TABLE "tests_testmodel" RENAME TO "tests_destmodel";'
+    ),
+    'RenameModelForeignKeysSameTable': '',
+    'RenameModelManyToManyField': (
+        'ALTER TABLE "tests_testmodel" RENAME TO "tests_destmodel";'
+    ),
+    'RenameModelManyToManyFieldSameTable': '',
+}
+
 delete_application = {
     'DeleteApplication': '\n'.join([
         'DROP TABLE "tests_testmodel_anchor_m2m";',

@@ -18,12 +18,14 @@ class EvolutionTestCase(TransactionTestCase):
     default_database_name = 'default'
     default_model_name = 'TestModel'
     default_base_model = None
+    default_pre_extra_models = []
     default_extra_models = []
 
     ws_re = re.compile(r'\s+')
 
     def setUp(self):
         self.base_model = None
+        self.pre_extra_models = []
         self.extra_models = []
         self.start = None
         self.start_sig = None
@@ -32,6 +34,7 @@ class EvolutionTestCase(TransactionTestCase):
 
         if self.default_base_model:
             self.set_base_model(self.default_base_model,
+                                pre_extra_models=self.default_pre_extra_models,
                                 extra_models=self.default_extra_models)
 
     def tearDown(self):
@@ -52,7 +55,8 @@ class EvolutionTestCase(TransactionTestCase):
 
         return doc
 
-    def set_base_model(self, model, name=None, extra_models=[], db_name=None):
+    def set_base_model(self, model, name=None, extra_models=[],
+                       pre_extra_models=[], db_name=None):
         name = name or self.default_model_name
         db_name = db_name or self.default_database_name
 
@@ -60,6 +64,7 @@ class EvolutionTestCase(TransactionTestCase):
             deregister_models()
 
         self.base_model = model
+        self.pre_extra_models = pre_extra_models
         self.extra_models = extra_models
         self.database_sig = create_database_sig(db_name)
 
@@ -174,13 +179,16 @@ class EvolutionTestCase(TransactionTestCase):
     def register_model(self, model, name, db_name=None, **kwargs):
         db_name = db_name or self.default_database_name
 
-        return register_models_multi(self.database_sig, 'tests',
-                                     db_name, (name, model),
-                                     *self.extra_models, **kwargs)
+        models = self.pre_extra_models + [(name, model)] + self.extra_models
 
-    def create_test_proj_sig(self, model, name, extra_models=[]):
-        return create_test_proj_sig((name, model),
-                                    *(extra_models + self.extra_models))
+        return register_models_multi(self.database_sig, 'tests',
+                                     db_name, *models, **kwargs)
+
+    def create_test_proj_sig(self, model, name, extra_models=[],
+                             pre_extra_models=[]):
+        return create_test_proj_sig(*(
+            self.pre_extra_models + pre_extra_models + [(name, model)] +
+            extra_models + self.extra_models))
 
     def copy_sig(self, sig):
         return copy.deepcopy(sig)
