@@ -404,7 +404,7 @@ def create_test_data(app_models, database):
                 related_model = field.rel.to
                 related_instance = related_model.objects.using(database)[0]
 
-                if type(field) == models.ForeignKey:
+                if type(field) is models.ForeignKey:
                     setattr(model, field.name, related_instance)
                 else:
                     getattr(model, field.name).add(related_instance,

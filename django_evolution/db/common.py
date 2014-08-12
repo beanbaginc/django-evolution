@@ -173,8 +173,6 @@ class BaseEvolutionOperations(object):
         return sql_result
 
     def delete_column(self, model, f):
-        qn = self.connection.ops.quote_name
-
         return AlterTableSQLResult(
             self,
             model,
@@ -322,8 +320,6 @@ class BaseEvolutionOperations(object):
         return sql_result
 
     def set_field_null(self, model, field, null):
-        qn = self.connection.ops.quote_name
-
         if null:
             attr = 'DROP NOT NULL'
         else:

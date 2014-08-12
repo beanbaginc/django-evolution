@@ -9,8 +9,6 @@ TEMP_TABLE_NAME = 'TEMP_TABLE'
 
 class EvolutionOperations(BaseEvolutionOperations):
     def delete_column(self, model, f):
-        output = []
-
         field_list = [
             field for field in model._meta.local_fields
             # Remove the field to be deleted
