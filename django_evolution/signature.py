@@ -46,11 +46,8 @@ def create_field_sig(field):
         if hasattr(field, alias):
             value = getattr(field, alias)
 
-            if isinstance(field, ForeignKey):
-                if attrib == 'db_index':
-                    default = True
-                else:
-                    default = ATTRIBUTE_DEFAULTS[attrib]
+            if isinstance(field, ForeignKey) and attrib == 'db_index':
+                default = True
             else:
                 default = ATTRIBUTE_DEFAULTS[attrib]
 
