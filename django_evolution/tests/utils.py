@@ -324,12 +324,13 @@ def execute_test_sql(start, end, sql, debug=False, app_label='tests',
                                                database=database))
     finally:
         # Cleanup the apps.
+        delete_sql = sql_delete(evo_test, style, database)
+
         if debug:
-            out_sql.append(sql_delete(evo_test, style, database))
+            out_sql.append(delete_sql)
         else:
-            out_sql.extend(execute_transaction(
-                sql_delete(evo_test, style, database),
-                output=debug, database=database))
+            out_sql.extend(execute_transaction(delete_sql, output=False,
+                                               database=database))
 
     # This is a terrible hack, but it's necessary while we use doctests
     # and normal unit tests. If we always return the SQL, then the
