@@ -12,7 +12,7 @@ class GenericAnchor(models.Model):
     # Host a generic key here, too
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField(db_index=True)
-    content_object = generic.GenericForeignKey('content_type','object_id')
+    content_object = generic.GenericForeignKey('content_type', 'object_id')
 
 
 class GenericBaseModel(models.Model):
@@ -22,7 +22,7 @@ class GenericBaseModel(models.Model):
     # Plus a generic foreign key - the Generic itself should be ignored
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField(db_index=True)
-    content_object = generic.GenericForeignKey('content_type','object_id')
+    content_object = generic.GenericForeignKey('content_type', 'object_id')
 
     # Plus a generic relation, which should be ignored
     generic = generic.GenericRelation(GenericAnchor)
@@ -50,7 +50,8 @@ class GenericRelationsTests(EvolutionTestCase):
             # Plus a generic foreign key - the Generic itself should be ignored
             content_type = models.ForeignKey(ContentType)
             object_id = models.PositiveIntegerField(db_index=True)
-            content_object = generic.GenericForeignKey('content_type','object_id')
+            content_object = generic.GenericForeignKey('content_type',
+                                                       'object_id')
 
             # Plus a generic relation, which should be ignored
             generic = generic.GenericRelation(GenericAnchor)

@@ -432,7 +432,8 @@ class PreprocessingTests(EvolutionTestCase):
             DestModel,
             [
                 RenameField('TestModel', 'char_field', 'foo_field'),
-                ChangeField('TestModel', 'foo_field', max_length=30, null=True),
+                ChangeField('TestModel', 'foo_field', max_length=30,
+                            null=True),
                 RenameField('TestModel', 'foo_field', 'renamed_field'),
                 ChangeField('TestModel', 'renamed_field', max_length=50),
             ],

@@ -118,7 +118,7 @@ class IndexTogetherTests(EvolutionTestCase):
 
             class Meta:
                 index_together = [('int_field1', 'char_field1'),
-                                   ('int_field2', 'char_field2')]
+                                  ('int_field2', 'char_field2')]
 
         self.set_base_model(IndexTogetherBaseModel)
         self.perform_evolution_tests(

@@ -31,17 +31,17 @@ class OrderingTests(EvolutionTestCase):
             lambda: self.perform_evolution_tests(
                 AddFieldsModel,
                 [
-                   SQLMutation('first-two-fields', [
-                       'ALTER TABLE "tests_testmodel" ADD COLUMN'
-                       ' "added_field1" integer NULL;',
+                    SQLMutation('first-two-fields', [
+                        'ALTER TABLE "tests_testmodel" ADD COLUMN'
+                        ' "added_field1" integer NULL;',
 
-                       'ALTER TABLE "tests_testmodel" ADD COLUMN'
-                       ' "added_field2" integer NULL;'
-                   ]),
-                   SQLMutation('third-field', [
-                       'ALTER TABLE "tests_testmodel" ADD COLUMN'
-                       ' "added_field3" integer NULL;',
-                   ])
+                        'ALTER TABLE "tests_testmodel" ADD COLUMN'
+                        ' "added_field2" integer NULL;'
+                    ]),
+                    SQLMutation('third-field', [
+                        'ALTER TABLE "tests_testmodel" ADD COLUMN'
+                        ' "added_field3" integer NULL;',
+                    ])
                 ],
                 ("In model tests.TestModel:\n"
                  "    Field 'added_field1' has been added\n"
@@ -87,4 +87,4 @@ class OrderingTests(EvolutionTestCase):
              "    Field 'added_field1' has been added\n"
              "    Field 'added_field3' has been added\n"
              "    Field 'added_field2' has been added"),
-             sql_name='SQLMutationOutput')
+            sql_name='SQLMutationOutput')

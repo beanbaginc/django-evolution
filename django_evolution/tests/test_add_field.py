@@ -49,7 +49,7 @@ class AddFieldTests(EvolutionTestCase):
         ('AddAnchor2', AddAnchor2),
     ]
 
-    DIFF_TEXT =  (
+    DIFF_TEXT = (
         "In model tests.TestModel:\n"
         "    Field 'added_field' has been added"
     )
@@ -134,7 +134,7 @@ class AddFieldTests(EvolutionTestCase):
             [
                 AddField('TestModel', 'added_field', models.IntegerField,
                          initial=AddSequenceFieldInitial(
-                            'AddNonNullCallableColumnModel')),
+                             'AddNonNullCallableColumnModel')),
             ],
             self.DIFF_TEXT,
             [
@@ -366,9 +366,10 @@ class AddFieldTests(EvolutionTestCase):
             lambda: self.perform_evolution_tests(
                 DestModel,
                 [
-                    AddField('TestModel', 'my_primary_key', models.AutoField,
-                             initial=AddSequenceFieldInitial('AddPrimaryKeyModel'),
-                             primary_key=True),
+                    AddField(
+                        'TestModel', 'my_primary_key', models.AutoField,
+                        initial=AddSequenceFieldInitial('AddPrimaryKeyModel'),
+                        primary_key=True),
                     DeleteField('TestModel', 'id'),
                 ],
                 ("In model tests.TestModel:\n"
