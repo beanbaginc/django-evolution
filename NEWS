@@ -1,3 +1,13 @@
+version 0.7.4 (15-September-2014):
+	* New Features:
+		* Add a RenameModel mutation for handling model renames.
+
+		  The new RenameModel mutation allows an evolution to indicate that a
+		  model has been renamed. This handles updating the signature for any
+		  related ForeignKeys or ManyToManyFields and generating any SQL to
+		  perform the table rename (if needed).
+
+
 version 0.7.3 (24-July-2014):
 	* Bug Fixes:
 		* Fixed issues evolving unique_together attributes on models.
