@@ -30,7 +30,7 @@ setup(
     name=PACKAGE_NAME,
     version=get_package_version(),
     description='A database schema evolution tool for the Django web framework.',
-    url='http://code.google.com/p/django-evolution/',
+    url='https://github.com/beanbaginc/django-evolution',
     author='Ben Khoo',
     author_email='khoobks@westnet.com.au',
     maintainer='Christian Hammond',
