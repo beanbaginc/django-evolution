@@ -425,27 +425,31 @@ class AppMutator(object):
                 model_names.add(mutation.model_name)
 
                 if isinstance(mutation, AddField):
-                    if mutation.field_name in deleted_fields:
+                    mutation_id = self._get_mutation_id(mutation)
+
+                    if mutation_id in deleted_fields:
                         # This field is both added and deleted in this
                         # batch, resulting in a no-op. Track it for later
                         # so we can filter out the DeleteField.
-                        noop_fields.add(mutation.field_name)
-                        deleted_fields.remove(mutation.field_name)
+                        noop_fields.add(mutation_id)
+                        deleted_fields.remove(mutation_id)
                         remove_mutation = True
-                    elif mutation.field_name in last_change_mutations:
+                    elif mutation_id in last_change_mutations:
                         # There's a ChangeField later in this batch that
                         # modifies this field. Roll those changes up into
                         # the initial AddField.
                         last_change_mutation = \
-                            last_change_mutations[mutation.field_name]
+                            last_change_mutations[mutation_id]
                         self._copy_change_attrs(last_change_mutation,
                                                 mutation)
 
                         # Remove that ChangeField from the list of mutations.
                         removed_mutations.add(last_change_mutation)
-                        del last_change_mutations[mutation.field_name]
+                        del last_change_mutations[mutation_id]
                 elif isinstance(mutation, ChangeField):
-                    if mutation.field_name in deleted_fields:
+                    mutation_id = self._get_mutation_id(mutation)
+
+                    if mutation_id in deleted_fields:
                         # This field is scheduled for deletion in this batch,
                         # so this ChangeField is pointless. Filter it out.
                         remove_mutation = True
@@ -457,7 +461,7 @@ class AppMutator(object):
                         # Eventually, all ChangeFields for a given field
                         # will be rolled up into the first ChangeField.
                         last_change_mutation = \
-                            last_change_mutations.get(mutation.field_name)
+                            last_change_mutations.get(mutation_id)
 
                         if last_change_mutation:
                             self._copy_change_attrs(last_change_mutation,
@@ -467,48 +471,53 @@ class AppMutator(object):
                             # mutations.
                             removed_mutations.add(last_change_mutation)
 
-                        last_change_mutations[mutation.field_name] = \
-                            mutation
+                        last_change_mutations[mutation_id] = mutation
                 elif isinstance(mutation, DeleteField):
                     # Keep track of this field. Mutations preceding this
                     # DeleteField that reference this field name will be
                     # filtered out.
-                    deleted_fields.add(mutation.field_name)
+                    deleted_fields.add(self._get_mutation_id(mutation))
                 elif isinstance(mutation, RenameField):
-                    if mutation.new_field_name in deleted_fields:
+                    old_mutation_id = self._get_mutation_id(
+                        mutation,
+                        mutation.old_field_name)
+                    new_mutation_id = self._get_mutation_id(
+                        mutation,
+                        mutation.new_field_name)
+
+                    if new_mutation_id in deleted_fields:
                         # Rename the entry in the list of deleted fields so
                         # that other mutations earlier in the list can
                         # look it up.
-                        deleted_fields.remove(mutation.new_field_name)
-                        deleted_fields.add(mutation.old_field_name)
+                        deleted_fields.remove(new_mutation_id)
+                        deleted_fields.add(old_mutation_id)
                         remove_mutation = True
 
                     # Create or update a record of rename mutations for this
                     # field. We use this to fix up field names on the second
                     # run through and to collapse RenameFields either into
                     # the first AddField or the first RenameField.
-                    if mutation.new_field_name in renames:
+                    if new_mutation_id in renames:
                         self._rename_dict_key(renames,
-                                              mutation.new_field_name,
-                                              mutation.old_field_name)
+                                              new_mutation_id,
+                                              old_mutation_id)
                     else:
-                        renames[mutation.old_field_name] = {
+                        renames[old_mutation_id] = {
                             'can_process': False,
                             'mutations': [],
                         }
 
                     # Add the mutation to the list of renames for the field.
                     # This results in a chain from last RenameField to first.
-                    renames[mutation.old_field_name]['mutations'].append(
-                        mutation)
+                    renames[old_mutation_id]['mutations'].append(mutation)
 
-                    if mutation.new_field_name in last_change_mutations:
+                    if new_mutation_id in last_change_mutations:
                         # Rename the entry for the last ChangeField mutation
                         # so that earlier mutations will find the proper
                         # entry.
                         self._rename_dict_key(last_change_mutations,
-                                              mutation.new_field_name,
-                                              mutation.old_field_name)
+                                              new_mutation_id,
+                                              old_mutation_id)
                 elif isinstance(mutation, ChangeMeta):
                     if (mutation.prop_name == 'unique_together' and
                         mutation.model_name not in unique_together):
@@ -550,10 +559,12 @@ class AppMutator(object):
                     remove_mutation = False
 
                     if isinstance(mutation, AddField):
-                        if mutation.field_name in renames:
+                        mutation_id = self._get_mutation_id(mutation)
+
+                        if mutation_id in renames:
                             # Update the field name being added to the
                             # final name.
-                            rename_info = renames[mutation.field_name]
+                            rename_info = renames[mutation_id]
                             rename_info['can_process'] = True
                             rename_mutations = rename_info['mutations']
                             mutation.field_name = \
@@ -562,51 +573,62 @@ class AppMutator(object):
                             # Filter out each of the RenameFields.
                             removed_mutations.update(rename_mutations)
                     elif isinstance(mutation, ChangeField):
-                        if mutation.field_name in renames:
+                        mutation_id = self._get_mutation_id(mutation)
+
+                        if mutation_id in renames:
                             # The field has been renamed, so update the name of
                             # this ChangeField.
-                            rename_info = renames[mutation.field_name]
+                            rename_info = renames[mutation_id]
 
                             if rename_info['can_process']:
                                 rename_mutation = rename_info['mutations'][0]
                                 mutation.field_name = \
                                     rename_mutation.new_field_name
                     elif isinstance(mutation, DeleteField):
-                        if mutation.field_name in noop_fields:
+                        mutation_id = self._get_mutation_id(mutation)
+
+                        if mutation_id in noop_fields:
                             # This DeleteField is pointless, since the
                             # field it's trying to delete was added in this
                             # batch. Just remove it. We'll have removed all
                             # others related to it by now.
                             remove_mutation = True
-                        elif mutation.field_name in renames:
+                        elif mutation_id in renames:
                             # The field has been renamed, so update the name
                             # of this ChangeField.
-                            rename_info = renames[mutation.field_name]
+                            rename_info = renames[mutation_id]
 
                             if rename_info['can_process']:
                                 rename_mutation = rename_info['mutations'][0]
                                 mutation.field_name = \
                                     rename_mutation.old_field_name
                     elif isinstance(mutation, RenameField):
-                        if mutation.old_field_name in noop_fields:
+                        old_mutation_id = self._get_mutation_id(
+                            mutation,
+                            mutation.old_field_name)
+                        new_mutation_id = self._get_mutation_id(
+                            mutation,
+                            mutation.new_field_name)
+
+                        if old_mutation_id in noop_fields:
                             # Rename the entry in noop_fields so that we
                             # can properly handle future mutations
                             # referencing that field.
-                            noop_fields.remove(mutation.old_field_name)
-                            noop_fields.add(mutation.new_field_name)
+                            noop_fields.remove(old_mutation_id)
+                            noop_fields.add(new_mutation_id)
                             remove_mutation = True
 
-                        if mutation.old_field_name in renames:
+                        if old_mutation_id in renames:
                             # Set the renames for this field to be processable.
                             # Then we'll update the mutation list and the
                             # key in order to allow for future lookups.
-                            rename_info = renames[mutation.old_field_name]
+                            rename_info = renames[old_mutation_id]
                             rename_info['can_process'] = True
                             rename_mutations = rename_info['mutations']
 
                             self._rename_dict_key(renames,
-                                                  mutation.old_field_name,
-                                                  mutation.new_field_name)
+                                                  old_mutation_id,
+                                                  new_mutation_id)
 
                             # This will become the main RenameField, so we
                             # want it to rename to the final field name.
@@ -667,3 +689,9 @@ class AppMutator(object):
     def _rename_dict_key(self, d, old_key, new_key):
         d[new_key] = d[old_key]
         del d[old_key]
+
+    def _get_mutation_id(self, mutation, field_name=None):
+        assert hasattr(mutation, 'model_name')
+        assert field_name or hasattr(mutation, 'field_name')
+
+        return (mutation.model_name, field_name or mutation.field_name)

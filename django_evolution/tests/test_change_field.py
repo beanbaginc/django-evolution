@@ -1,7 +1,9 @@
 from django.db import connection, models
 
+from django_evolution.diff import Diff
 from django_evolution.errors import SimulationFailure
 from django_evolution.mutations import ChangeField
+from django_evolution.mutators import AppMutator
 from django_evolution.tests.base_test_case import EvolutionTestCase
 from django_evolution.tests.utils import has_index_with_columns
 
@@ -692,3 +694,72 @@ class ChangeFieldTests(EvolutionTestCase):
             ],
             'SetNotNullChangeModelWithConstant',
             db_name='db_multi')
+
+    def test_change_with_add_same_name_other_model(self):
+        """Testing ChangeField with same field name as that added in
+        another model
+        """
+        class OtherModel(models.Model):
+            int_field = models.IntegerField()
+            test_field = models.CharField(max_length=32, null=True)
+
+        class OtherDestModel(models.Model):
+            int_field = models.IntegerField()
+            test_field = models.CharField(max_length=32, null=False)
+
+        class DestModel(models.Model):
+            my_id = models.AutoField(primary_key=True)
+            alt_pk = models.IntegerField()
+            int_field = models.IntegerField(db_column='custom_db_column')
+            int_field1 = models.IntegerField(db_index=True)
+            int_field2 = models.IntegerField(db_index=False)
+            int_field3 = models.IntegerField(unique=True)
+            int_field4 = models.IntegerField(unique=False)
+            char_field = models.CharField(max_length=20)
+            char_field1 = models.CharField(max_length=25, null=True)
+            char_field2 = models.CharField(max_length=30, null=False)
+            m2m_field1 = models.ManyToManyField(
+                ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            test_field = models.CharField(max_length=32, null=False)
+
+        self.set_base_model(
+            self.default_base_model,
+            pre_extra_models=[
+                ('OtherModel', OtherModel),
+                ('ChangeAnchor1', ChangeAnchor1)
+            ])
+
+        end, end_sig = self.make_end_signatures(DestModel, 'TestModel')
+        end2, end_sig2 = self.make_end_signatures(OtherDestModel, 'OtherModel')
+
+        end.update(end2)
+        end_sig['tests'].update(end_sig2['tests'])
+
+        d = self.perform_diff_test(
+            end_sig,
+            ("In model tests.TestModel:\n"
+             "    Field 'test_field' has been added\n"
+             "In model tests.OtherModel:\n"
+             "    In field 'test_field':\n"
+             "        Property 'null' has changed"),
+            [
+                "AddField('TestModel', 'test_field', models.CharField,"
+                " initial=<<USER VALUE REQUIRED>>, max_length=32)",
+                "ChangeField('OtherModel', 'test_field',"
+                " initial=<<USER VALUE REQUIRED>>, null=False)",
+            ])
+
+        test_sig = self.copy_sig(self.start_sig)
+        app_mutator = AppMutator('tests', test_sig, self.database_sig)
+        evolutions = d.evolution()['tests']
+        app_mutator.run_mutations(evolutions)
+
+        d = Diff(self.start_sig, test_sig)
+
+        self.assertEqual(
+            str(d),
+            ("In model tests.TestModel:\n"
+             "    Field 'test_field' has been added\n"
+             "In model tests.OtherModel:\n"
+             "    In field 'test_field':\n"
+             "        Property 'null' has changed"))
