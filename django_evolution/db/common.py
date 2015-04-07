@@ -346,6 +346,11 @@ class BaseEvolutionOperations(object):
 
         This is not intended to be overridden.
         """
+        index_name = self.find_index_name(model, [f.column])
+
+        if index_name:
+            return []
+
         style = color.no_style()
 
         self.record_index(model, [f])
@@ -488,7 +493,7 @@ class BaseEvolutionOperations(object):
                 sql_result = evolve_func(model, mutation, field,
                                          attr_info['old_value'],
                                          attr_info['new_value'])
-                assert isinstance(sql_result, SQLResult)
+                assert not sql_result or isinstance(sql_result, SQLResult)
             except Exception, e:
                 logging.critical(
                     'Error running database evolver function %s: %s',

@@ -976,10 +976,14 @@ change_field = {
         % generate_index_name('tests_testmodel', 'int_field2')
     ),
 
+    'AddDBIndexNoOpChangeModel': '',
+
     "RemoveDBIndexChangeModel": (
         'DROP INDEX "%s";'
         % generate_index_name('tests_testmodel', 'int_field1')
     ),
+
+    'RemoveDBIndexNoOpChangeModel': '',
 
     "AddUniqueChangeModel": '\n'.join([
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'

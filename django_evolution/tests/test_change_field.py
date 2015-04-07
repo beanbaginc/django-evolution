@@ -1,5 +1,6 @@
 from django.db import connection, models
 
+from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.diff import Diff
 from django_evolution.errors import SimulationFailure
 from django_evolution.mutations import ChangeField
@@ -398,6 +399,58 @@ class ChangeFieldTests(EvolutionTestCase):
         self.assertTrue(has_index_with_columns(
             self.test_database_sig, 'tests_testmodel', ['int_field2']))
 
+    def test_set_db_index_true_and_existing_index(self):
+        """Testing ChangeField with setting db_index=True and existing index
+        in the database
+        """
+        class DestModel(models.Model):
+            my_id = models.AutoField(primary_key=True)
+            alt_pk = models.IntegerField()
+            int_field = models.IntegerField(db_column='custom_db_column')
+            int_field1 = models.IntegerField(db_index=True)
+            int_field2 = models.IntegerField(db_index=True)
+            int_field3 = models.IntegerField(unique=True)
+            int_field4 = models.IntegerField(unique=False)
+            char_field = models.CharField(max_length=20)
+            char_field1 = models.CharField(max_length=25, null=True)
+            char_field2 = models.CharField(max_length=30, null=False)
+            m2m_field1 = models.ManyToManyField(
+                ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+
+        evolver = EvolutionOperationsMulti('default',
+                                           self.database_sig).get_evolver()
+        index_name = evolver.get_default_index_name(
+            'tests_testmodel', DestModel._meta.get_field('int_field2'))
+
+        self.database_sig['tests_testmodel']['indexes'] = {
+            index_name: {
+                'unique': False,
+                'columns': ['int_field2'],
+            }
+        }
+
+        self.assertTrue(has_index_with_columns(
+            self.database_sig, 'tests_testmodel', ['int_field2']))
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeField('TestModel', 'int_field2', initial=None,
+                            db_index=True),
+            ],
+            ("In model tests.TestModel:\n"
+             "    In field 'int_field2':\n"
+             "        Property 'db_index' has changed"),
+            [
+                "ChangeField('TestModel', 'int_field2', initial=None,"
+                " db_index=True)",
+            ],
+            'AddDBIndexNoOpChangeModel',
+            rescan_indexes=False)
+
+        self.assertTrue(has_index_with_columns(
+            self.test_database_sig, 'tests_testmodel', ['int_field2']))
+
     def test_set_db_index_false(self):
         """Testing ChangeField with setting db_index=False"""
         class DestModel(models.Model):
@@ -431,6 +484,48 @@ class ChangeFieldTests(EvolutionTestCase):
                 " db_index=False)",
             ],
             'RemoveDBIndexChangeModel')
+
+        self.assertFalse(has_index_with_columns(
+            self.test_database_sig, 'tests_testmodel', ['int_field1']))
+
+    def test_set_db_index_false_and_no_existing_index(self):
+        """Testing ChangeField with setting db_index=False without an
+        existing index in the database
+        """
+        class DestModel(models.Model):
+            my_id = models.AutoField(primary_key=True)
+            alt_pk = models.IntegerField()
+            int_field = models.IntegerField(db_column='custom_db_column')
+            int_field1 = models.IntegerField(db_index=False)
+            int_field2 = models.IntegerField(db_index=False)
+            int_field3 = models.IntegerField(unique=True)
+            int_field4 = models.IntegerField(unique=False)
+            char_field = models.CharField(max_length=20)
+            char_field1 = models.CharField(max_length=25, null=True)
+            char_field2 = models.CharField(max_length=30, null=False)
+            m2m_field1 = models.ManyToManyField(
+                ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+
+        self.database_sig['tests_testmodel']['indexes'] = {}
+
+        self.assertFalse(has_index_with_columns(
+            self.database_sig, 'tests_testmodel', ['int_field1']))
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeField('TestModel', 'int_field1', initial=None,
+                            db_index=False),
+            ],
+            ("In model tests.TestModel:\n"
+             "    In field 'int_field1':\n"
+             "        Property 'db_index' has changed"),
+            [
+                "ChangeField('TestModel', 'int_field1', initial=None,"
+                " db_index=False)",
+            ],
+            'RemoveDBIndexNoOpChangeModel',
+            rescan_indexes=False)
 
         self.assertFalse(has_index_with_columns(
             self.test_database_sig, 'tests_testmodel', ['int_field1']))

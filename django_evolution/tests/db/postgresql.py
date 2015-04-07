@@ -274,9 +274,13 @@ change_field = {
         ' ON "tests_testmodel" ("int_field2");'
     ),
 
+    'AddDBIndexNoOpChangeModel': '',
+
     "RemoveDBIndexChangeModel": (
         'DROP INDEX "tests_testmodel_int_field1";'
     ),
+
+    'RemoveDBIndexNoOpChangeModel': '',
 
     "AddUniqueChangeModel": (
         'ALTER TABLE "tests_testmodel" ADD CONSTRAINT %s UNIQUE("int_field4");'

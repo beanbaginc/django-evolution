@@ -296,10 +296,14 @@ change_field = {
         % generate_index_name('tests_testmodel', 'int_field2')
     ),
 
+    'AddDBIndexNoOpChangeModel': '',
+
     'RemoveDBIndexChangeModel': (
         'DROP INDEX `%s` ON `tests_testmodel`;'
         % generate_index_name('tests_testmodel', 'int_field1')
     ),
+
+    'RemoveDBIndexNoOpChangeModel': '',
 
     'AddUniqueChangeModel': (
         'CREATE UNIQUE INDEX %s ON `tests_testmodel`(`int_field4`);'
