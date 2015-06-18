@@ -21,9 +21,9 @@ def get_app(app_label, emptyOK=False):
     The ``emptyOK`` argument is ignored for Django >= 1.7.
     """
     if apps:
-        return get_app(app_label)
+        return apps.get_app(app_label)
     else:
-        return get_app(app_label, emptyOK)
+        return cache.get_app(app_label, emptyOK)
 
 
 __all__ = ['get_app', 'get_apps']
