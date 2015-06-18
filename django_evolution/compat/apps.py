@@ -1,11 +1,13 @@
 try:
     from django.apps.registry import apps
 
+    # Django >= 1.7
     get_apps = apps.get_apps
     cache = None
 except ImportError:
     from django.db.models.loading import cache
 
+    # Django < 1.7
     get_apps = cache.get_apps
     apps = None
 
@@ -19,9 +21,9 @@ def get_app(app_label, emptyOK=False):
     The ``emptyOK`` argument is ignored for Django >= 1.7.
     """
     if apps:
-        return apps.get_app(app_label)
+        return get_app(app_label)
     else:
-        return apps.get_app(app_label, emptyOK)
+        return get_app(app_label, emptyOK)
 
 
 __all__ = ['get_app', 'get_apps']
