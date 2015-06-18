@@ -94,8 +94,17 @@ def create_app_sig(app, database):
     app_sig = SortedDict()
 
     for model in get_models(app):
-        # only include those who want to be syncdb
-        if router.allow_syncdb(database, model.__class__):
+        # Only include those models that can be synced.
+        #
+        # On Django 1.7 and up, we need to check if the model allows for
+        # migrations (using allow_migrate_model).
+        #
+        # On older versions of Django, we check if the model allows for
+        # synchronization to the database (allow_syncdb).
+        if ((hasattr(router, 'allow_syncdb') and
+             router.allow_syncdb(database, model.__class__)) or
+            (hasattr(router, 'allow_migrate_model') and
+             router.allow_migrate_model(database, model.__class__))):
             app_sig[model._meta.object_name] = create_model_sig(model)
 
     return app_sig
@@ -146,6 +155,10 @@ def rescan_indexes_for_database_sig(database_sig, database):
     cursor = connection.cursor()
 
     for table_name in introspection.get_table_list(cursor):
+        if hasattr(table_name, 'name'):
+            # Django >= 1.7
+            table_name = table_name.name
+
         table_sig = create_empty_database_table_sig()
         indexes = evolver.get_indexes_for_table(table_name)
 

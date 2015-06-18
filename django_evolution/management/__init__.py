@@ -4,10 +4,11 @@ except ImportError:
     import pickle as pickle
 
 from django.core.management.color import color_style
-from django.db.models import signals, get_apps, get_app
+from django.db.models import signals
 from django.db.utils import DEFAULT_DB_ALIAS
 
 from django_evolution import models as django_evolution
+from django_evolution.compat.apps import get_apps, get_app
 from django_evolution.diff import Diff
 from django_evolution.evolve import (get_evolution_sequence,
                                      get_unapplied_evolutions)
