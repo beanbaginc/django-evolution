@@ -104,7 +104,7 @@ def create_app_sig(app, database):
         if ((hasattr(router, 'allow_syncdb') and
              router.allow_syncdb(database, model.__class__)) or
             (hasattr(router, 'allow_migrate_model') and
-             router.allow_migrate_model(database, model.__class__))):
+             router.allow_migrate_model(database, model))):
             app_sig[model._meta.object_name] = create_model_sig(model)
 
     return app_sig
