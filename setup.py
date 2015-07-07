@@ -38,7 +38,7 @@ setup(
     download_url=download_url,
     packages=find_packages(exclude=['tests']),
     install_requires=[
-        'Django>=1.4.10',
+        'Django>=1.4.10,<1.7.0',
     ],
     include_package_data=True,
     classifiers=[
