@@ -5,6 +5,7 @@ try:
 except ImportError:
     import pickle as pickle
 
+from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connections, transaction
@@ -70,6 +71,11 @@ class Command(BaseCommand):
             raise
 
     def evolve(self, *app_labels, **options):
+        if not getattr(settings, 'DJANGO_EVOLUTION_ENABLED', True):
+            raise CommandError(
+                'Django Evolution is disabled for this project. Evolutions '
+                'cannot be manually run.')
+
         self.hint = options['hint']
 
         self.verbosity = int(options['verbosity'])

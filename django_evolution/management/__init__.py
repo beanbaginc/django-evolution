@@ -3,6 +3,7 @@ try:
 except ImportError:
     import pickle as pickle
 
+from django.conf import settings
 from django.core.management.color import color_style
 from django.db.models import signals
 from django.db.utils import DEFAULT_DB_ALIAS
@@ -138,4 +139,5 @@ def evolution(app, created_models, verbosity=1, **kwargs):
                 print diff
 
 
-signals.post_syncdb.connect(evolution)
+if getattr(settings, 'DJANGO_EVOLUTION_ENABLED', True):
+    signals.post_syncdb.connect(evolution)
