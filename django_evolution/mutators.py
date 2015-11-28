@@ -133,7 +133,7 @@ class ModelMutator(object):
             'type': 'change_meta',
             'mutation': mutation,
             'prop_name': prop_name,
-            'old_value': self.model_sig['meta'][prop_name],
+            'old_value': self.model_sig['meta'].get(prop_name),
             'new_value': new_value,
         })
 

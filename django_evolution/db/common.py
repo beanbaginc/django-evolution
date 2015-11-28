@@ -672,7 +672,7 @@ class BaseEvolutionOperations(object):
         sql = []
         style = color.no_style()
 
-        old_index_together = set(old_index_together)
+        old_index_together = set(old_index_together or [])
         new_index_together = set(new_index_together)
 
         to_remove = old_index_together.difference(new_index_together)
