@@ -112,7 +112,7 @@ class Command(BaseCommand):
 
         try:
             latest_version = \
-                Version.objects.using(self.database).latest('when')
+                Version.objects.current_version(using=self.database)
 
             self.old_proj_sig = pickle.loads(str(latest_version.signature))
             self.diff = Diff(self.old_proj_sig, self.current_proj_sig)

@@ -87,7 +87,7 @@ def get_mutations(app, evolution_labels, database):
                     'Error: Failed to find an SQL or Python evolution named %s'
                     % label)
 
-    latest_version = Version.objects.using(database).latest('when')
+    latest_version = Version.objects.current_version(using=database)
 
     app_label = app.__name__.split('.')[-2]
     old_proj_sig = pickle.loads(str(latest_version.signature))
