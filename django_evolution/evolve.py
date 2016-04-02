@@ -4,7 +4,7 @@ import pickle
 from django_evolution.builtin_evolutions import BUILTIN_SEQUENCES
 from django_evolution.errors import EvolutionException
 from django_evolution.models import Evolution, Version
-from django_evolution.mutations import SQLMutation
+from django_evolution.mutations import RenameModel, SQLMutation
 from django_evolution.signature import (has_unique_together_changed,
                                         create_project_sig)
 
@@ -124,11 +124,16 @@ def get_mutations(app, evolution_labels, database):
 
         # We should now have a full list of which models changed. Filter
         # the list of mutations appropriately.
+        #
+        # Changes affecting a model that was newly-introduced are removed,
+        # unless the mutation is a RenameModel, in which case we'll need it
+        # during the optimization step (and will remove it if necessary then).
         mutations = [
             mutation
             for mutation in mutations
             if (not hasattr(mutation, 'model_name') or
-                mutation.model_name in changed_models)
+                mutation.model_name in changed_models or
+                isinstance(mutation, RenameModel))
         ]
 
     return mutations
