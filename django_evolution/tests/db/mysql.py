@@ -705,6 +705,29 @@ preprocessing = {
         ' ALTER COLUMN `renamed_field` DROP DEFAULT;',
     ]),
 
+    'add_rename_field_with_db_column': (
+        'ALTER TABLE `tests_testmodel`'
+        ' ADD COLUMN `added_field` varchar(50) NULL;'
+    ),
+
+    'add_field_rename_model': '\n'.join([
+        'ALTER TABLE `tests_testmodel`'
+        ' ADD COLUMN `added_field_id` integer NULL'
+        ' REFERENCES `tests_reffedpreprocmodel` (`id`);',
+
+        'CREATE INDEX `tests_testmodel_2d9d1ab4`'
+        ' ON `tests_testmodel` (`added_field_id`);',
+    ]),
+
+    'add_rename_field_rename_model': '\n'.join([
+        'ALTER TABLE `tests_testmodel`'
+        ' ADD COLUMN `renamed_field_id` integer NULL'
+        ' REFERENCES `tests_reffedpreprocmodel` (`id`);',
+
+        'CREATE INDEX `tests_testmodel_182b6181`'
+        ' ON `tests_testmodel` (`renamed_field_id`);',
+    ]),
+
     'add_sql_delete': '\n'.join([
         "ALTER TABLE `tests_testmodel`"
         " ADD COLUMN `added_field` varchar(20) NOT NULL DEFAULT 'foo';",
@@ -762,6 +785,10 @@ preprocessing = {
         'ALTER TABLE `tests_testmodel`'
         ' CHANGE COLUMN `char_field` `renamed_field` varchar(20) NOT NULL;',
     ]),
+
+    'rename_delete_model': (
+        'DROP TABLE `tests_testmodel`;'
+    ),
 
     'noop': '',
 }

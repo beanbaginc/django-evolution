@@ -3060,6 +3060,81 @@ preprocessing = {
         'DROP TABLE "TEMP_TABLE";',
     ]),
 
+    'add_rename_field_with_db_column': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NULL,'
+        ' "added_field" varchar(50) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "added_field" varchar(50) NULL);',
+
+        'INSERT INTO "tests_testmodel"'
+        ' ("my_id", "char_field", "added_field")'
+        ' SELECT "my_id", "char_field", "added_field" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+    ]),
+
+    'add_field_rename_model': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NULL,'
+        ' "added_field_id" integer NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "added_field_id" integer NULL);',
+
+        'INSERT INTO "tests_testmodel"'
+        ' ("my_id", "char_field", "added_field_id")'
+        ' SELECT "my_id", "char_field", "added_field_id" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+
+        'CREATE INDEX "tests_testmodel_2d9d1ab4" ON "tests_testmodel"'
+        ' ("added_field_id");'
+    ]),
+
+    'add_rename_field_rename_model': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NULL,'
+        ' "renamed_field_id" integer NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "renamed_field_id" integer NULL);',
+
+        'INSERT INTO "tests_testmodel"'
+        ' ("my_id", "char_field", "renamed_field_id")'
+        ' SELECT "my_id", "char_field", "renamed_field_id" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+
+        'CREATE INDEX "tests_testmodel_182b6181" ON "tests_testmodel"'
+        ' ("renamed_field_id");'
+    ]),
+
     'add_sql_delete': '\n'.join([
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
@@ -3333,6 +3408,10 @@ preprocessing = {
 
         'DROP TABLE "TEMP_TABLE";',
     ]),
+
+    'rename_delete_model': (
+        'DROP TABLE "tests_testmodel";'
+    ),
 
     'noop': '',
 }

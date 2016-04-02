@@ -52,7 +52,7 @@ def evolution(app, created_models, verbosity=1, **kwargs):
 
     try:
         latest_version = \
-            django_evolution.Version.objects.using(db).latest('when')
+            django_evolution.Version.objects.current_version(using=db)
     except django_evolution.Version.DoesNotExist:
         # We need to create a baseline version.
         if verbosity > 0:

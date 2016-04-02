@@ -4,9 +4,9 @@ import logging
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.errors import CannotSimulate
 from django_evolution.mutations import (AddField, ChangeField, ChangeMeta,
-                                        DeleteField, MockModel,
+                                        DeleteField, DeleteModel, MockModel,
                                         MonoBaseMutation, MutateModelField,
-                                        RenameField)
+                                        RenameField, RenameModel)
 from django_evolution.utils import get_database_for_model_name
 
 
@@ -133,7 +133,7 @@ class ModelMutator(object):
             'type': 'change_meta',
             'mutation': mutation,
             'prop_name': prop_name,
-            'old_value': self.model_sig['meta'][prop_name],
+            'old_value': self.model_sig['meta'].get(prop_name),
             'new_value': new_value,
         })
 
@@ -389,11 +389,13 @@ class AppMutator(object):
         if can_process:
             removed_mutations = set()
             deleted_fields = set()
+            deleted_models = set()
             noop_fields = set()
             model_names = set()
             unique_together = {}
             last_change_mutations = {}
             renames = {}
+            model_renames = {}
 
             # On our first pass, we loop from last to first mutation and
             # attempt the following things:
@@ -414,11 +416,16 @@ class AppMutator(object):
             #    in only a single AddField, with the attributes the field
             #    would otherwise have after executing all ChangeFields.
             #
-            # 4) All renames are tracked. If the rename is for a field
+            # 4) All field renames are tracked. If the rename is for a field
             #    that's being deleted, it will be removed. Otherwise, the
             #    history of rename mutations are stored along with the field,
             #    in order from last to first, keyed off from the earliest
             #    field name.
+            #
+            # 5) Similarly, all model renames are tracked. If the rename is
+            #    for a model being deleted, it will be removed. Otherwise, the
+            #    history of model rename mutations are stored, in order from
+            #    last to first, keyed off from the earliest model rename.
             for mutation in reversed(mutations):
                 remove_mutation = False
 
@@ -518,6 +525,40 @@ class AppMutator(object):
                         self._rename_dict_key(last_change_mutations,
                                               new_mutation_id,
                                               old_mutation_id)
+                elif isinstance(mutation, DeleteModel):
+                    # Keep track of this model. RenameModel mutations preceding
+                    # this DeleteModel that reference this model name will be
+                    # filtered out.
+                    deleted_models.add(mutation.model_name)
+                elif isinstance(mutation, RenameModel):
+                    old_model_name = mutation.old_model_name
+                    new_model_name = mutation.new_model_name
+
+                    if new_model_name in deleted_models:
+                        # Rename the entry in the list of deletd models so
+                        # that other mutations earlier in the list can look
+                        # it up.
+                        deleted_models.remove(new_model_name)
+                        deleted_models.add(old_model_name)
+                        remove_mutation = True
+
+                    # Create or update a record of rename mutations for this
+                    # model. We use this to fix up field names on the second
+                    # run through and to collapse RenameModels into the
+                    # first RenameModel.
+                    if new_model_name in model_renames:
+                        self._rename_dict_key(model_renames,
+                                              new_model_name,
+                                              old_model_name)
+                    else:
+                        model_renames[old_model_name] = {
+                            'can_process': False,
+                            'mutations': [],
+                        }
+
+                    # Add the mutation to the list of renames for the model.
+                    # This results in a chain from last RenameModel to first.
+                    model_renames[old_model_name]['mutations'].append(mutation)
                 elif isinstance(mutation, ChangeMeta):
                     if (mutation.prop_name == 'unique_together' and
                         mutation.model_name not in unique_together):
@@ -554,7 +595,19 @@ class AppMutator(object):
             #
             # 3) Change the field name on any fields from processable rename
             #    entries.
-            if noop_fields or renames or unique_together:
+            #
+            # 4) Collapse down any RenameModels into the first RenameModel,
+            #    and schedule the remaining for removal.
+            #
+            # 5) Update any added fields referencing another model (such as a
+            #    ForeignKey) to reference the model's new name, if renamed.
+            #
+            # 6) Remove any RenameModels that are renaming to the name
+            #    already found in the current signature. This is needed in
+            #    case we're processing RenameModels for a model that was just
+            #    introduced, so we don't attempt to rename a non-existing name
+            #    to the current name.
+            if noop_fields or renames or model_renames or unique_together:
                 for mutation in mutations:
                     remove_mutation = False
 
@@ -567,11 +620,37 @@ class AppMutator(object):
                             rename_info = renames[mutation_id]
                             rename_info['can_process'] = True
                             rename_mutations = rename_info['mutations']
+                            rename_mutation = rename_mutations[0]
                             mutation.field_name = \
-                                rename_mutations[0].new_field_name
+                                rename_mutation.new_field_name
+
+                            if rename_mutation.db_column:
+                                mutation.field_attrs['db_column'] = \
+                                    rename_mutation.db_column
 
                             # Filter out each of the RenameFields.
                             removed_mutations.update(rename_mutations)
+
+                        related_model = \
+                            mutation.field_attrs.get('related_model')
+
+                        if related_model:
+                            app_label, related_model_name = \
+                                related_model.split('.')
+                            rename_info = model_renames.get(related_model_name)
+
+                            if rename_info:
+                                # Update the related_model set in the final
+                                # field.
+                                rename_info['can_process'] = True
+                                rename_mutations = rename_info['mutations']
+                                rename_mutation = rename_mutations[0]
+
+                                mutation.field_attrs['related_model'] = \
+                                    '.'.join([
+                                        app_label,
+                                        rename_mutation.new_model_name
+                                    ])
                     elif isinstance(mutation, ChangeField):
                         mutation_id = self._get_mutation_id(mutation)
 
@@ -595,7 +674,7 @@ class AppMutator(object):
                             remove_mutation = True
                         elif mutation_id in renames:
                             # The field has been renamed, so update the name
-                            # of this ChangeField.
+                            # of this DeleteField.
                             rename_info = renames[mutation_id]
 
                             if rename_info['can_process']:
@@ -640,6 +719,52 @@ class AppMutator(object):
                             # include only this one.
                             removed_mutations.update(rename_mutations[:-1])
                             rename_info['mutations'] = [rename_mutations[-1]]
+                    elif isinstance(mutation, DeleteModel):
+                        rename_info = model_renames.get(mutation.model_name)
+
+                        if rename_info and rename_info['can_process']:
+                            # The model has been renamed, so update the name
+                            # of this DeleteModel.
+                            rename_mutation = rename_info['mutations'][0]
+                            mutation.model_name = \
+                                rename_mutation.old_model_name
+                    elif isinstance(mutation, RenameModel):
+                        old_model_name = mutation.old_model_name
+                        new_model_name = mutation.new_model_name
+
+                        if old_model_name in model_renames:
+                            # Set the renames for this model to be processable.
+                            # Then we'll update the mutation list and the key
+                            # in order to allow for future lookups.
+                            rename_info = model_renames[old_model_name]
+                            rename_info['can_process'] = True
+                            rename_mutations = rename_info['mutations']
+                            rename_mutation = rename_mutations[0]
+
+                            self._rename_dict_key(model_renames,
+                                                  old_model_name,
+                                                  new_model_name)
+
+                            # This will become the main RenameModel, so we
+                            # want it to rename to the final model name.
+                            mutation.new_model_name = \
+                                rename_mutation.new_model_name
+
+                            if rename_mutation.db_table:
+                                mutation.db_table = rename_mutation.db_table
+
+                            # Mark everything but the last rename mutation
+                            # for removal, and update the list of mutations to
+                            # include only this one
+                            removed_mutations.update(rename_mutations[:-1])
+                            rename_info['mutations'] = [rename_mutations[-1]]
+
+                            # If we're actually renaming to what we already
+                            # have in the baseline (due to having installed a
+                            # baseline schema for this model just previously),
+                            # we can skip this mutation entirely.
+                            if new_model_name in self.proj_sig[self.app_label]:
+                                remove_mutation = True
                     elif isinstance(mutation, ChangeMeta):
                         if (mutation.prop_name == 'unique_together' and
                             mutation.model_name in unique_together):
