@@ -1,6 +1,6 @@
-from django.core.management import color
 from django.db import models
 
+from django_evolution.compat.db import sql_indexes_for_model
 from django_evolution.db.common import BaseEvolutionOperations, SQLResult
 
 
@@ -8,6 +8,8 @@ TEMP_TABLE_NAME = 'TEMP_TABLE'
 
 
 class EvolutionOperations(BaseEvolutionOperations):
+    supports_constraints = False
+
     def delete_column(self, model, f):
         field_list = [
             field for field in model._meta.local_fields
@@ -108,10 +110,8 @@ class EvolutionOperations(BaseEvolutionOperations):
             def __init__(self, table_name, field_list):
                 self._meta = FakeMeta(table_name, field_list)
 
-        style = color.no_style()
-
-        return self.connection.creation.sql_indexes_for_model(
-            FakeModel(table_name, field_list), style)
+        return sql_indexes_for_model(self.connection,
+                                     FakeModel(table_name, field_list))
 
     def create_table(self, table_name, field_list, temporary=False,
                      create_index=True):

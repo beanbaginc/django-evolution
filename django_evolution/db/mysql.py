@@ -1,5 +1,6 @@
 from django.core.management import color
 
+from django_evolution.compat.db import sql_delete_constraints
 from django_evolution.db.common import BaseEvolutionOperations
 from django_evolution.db.sql_result import AlterTableSQLResult, SQLResult
 
@@ -9,13 +10,9 @@ class EvolutionOperations(BaseEvolutionOperations):
         sql_result = AlterTableSQLResult(self, model)
 
         if f.rel:
-            creation = self.connection.creation
-            style = color.no_style()
-
-            sql_result.add(creation.sql_remove_table_constraints(
-                f.rel.to,
-                {f.rel.to: [(model, f)]},
-                style))
+            sql_result.add(sql_delete_constraints(self.connection,
+                                                  f.rel.to,
+                                                  {f.rel.to: [(model, f)]}))
 
         sql_result.add_sql(
             super(EvolutionOperations, self).delete_column(model, f))

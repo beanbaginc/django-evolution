@@ -1,6 +1,6 @@
 from django.db import router
-from django.db.models import get_model
 
+from django_evolution.compat.models import get_model
 from django_evolution.db import EvolutionOperationsMulti
 
 

@@ -1,7 +1,7 @@
-from django.contrib.contenttypes import generic
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
+from django_evolution.compat.models import GenericForeignKey, GenericRelation
 from django_evolution.mutations import DeleteField
 from django_evolution.tests.base_test_case import EvolutionTestCase
 
@@ -12,7 +12,7 @@ class GenericAnchor(models.Model):
     # Host a generic key here, too
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField(db_index=True)
-    content_object = generic.GenericForeignKey('content_type', 'object_id')
+    content_object = GenericForeignKey('content_type', 'object_id')
 
 
 class GenericBaseModel(models.Model):
@@ -22,10 +22,10 @@ class GenericBaseModel(models.Model):
     # Plus a generic foreign key - the Generic itself should be ignored
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField(db_index=True)
-    content_object = generic.GenericForeignKey('content_type', 'object_id')
+    content_object = GenericForeignKey('content_type', 'object_id')
 
     # Plus a generic relation, which should be ignored
-    generic = generic.GenericRelation(GenericAnchor)
+    generic = GenericRelation(GenericAnchor)
 
 
 class GenericRelationsTests(EvolutionTestCase):
@@ -50,11 +50,10 @@ class GenericRelationsTests(EvolutionTestCase):
             # Plus a generic foreign key - the Generic itself should be ignored
             content_type = models.ForeignKey(ContentType)
             object_id = models.PositiveIntegerField(db_index=True)
-            content_object = generic.GenericForeignKey('content_type',
-                                                       'object_id')
+            content_object = GenericForeignKey('content_type', 'object_id')
 
             # Plus a generic relation, which should be ignored
-            generic = generic.GenericRelation(GenericAnchor)
+            generic = GenericRelation(GenericAnchor)
 
         self.perform_evolution_tests(
             DestModel,

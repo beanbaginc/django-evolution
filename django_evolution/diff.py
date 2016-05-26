@@ -1,5 +1,6 @@
 from django.db import models
 
+from django_evolution.compat.models import get_model
 from django_evolution.errors import EvolutionException
 from django_evolution.mutations import (DeleteField, AddField, DeleteModel,
                                         ChangeField, ChangeMeta)
@@ -32,7 +33,7 @@ def get_initial_value(app_label, model_name, field_name):
     callable will be used. This callable cannot actually be used in an
     evolution, but will indicate that user input is required.
     """
-    model = models.get_model(app_label, model_name)
+    model = get_model(app_label, model_name)
     field = model._meta.get_field(field_name)
 
     if field and (field.has_default() or

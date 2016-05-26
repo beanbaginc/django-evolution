@@ -5,16 +5,22 @@ from functools import partial
 
 import django
 from django.conf import settings
-from django.core.management import sql
-from django.core.management.color import no_style
-from django.db import connection, connections, transaction, models
-from django.db.backends.util import truncate_name
-from django.db.models.loading import cache
+from django.db import connection, connections, models
 from django.db.utils import DEFAULT_DB_ALIAS
-from django.utils.datastructures import SortedDict
-from django.utils.functional import curry
 
 from django_evolution import signature
+from django_evolution.compat.apps import (is_app_registered, register_app,
+                                          register_app_models,
+                                          unregister_app,
+                                          unregister_app_model)
+from django_evolution.compat.datastructures import OrderedDict
+from django_evolution.compat.db import (atomic,
+                                        create_index_name,
+                                        digest,
+                                        sql_create, sql_delete,
+                                        truncate_name)
+from django_evolution.compat.models import (all_models, get_models,
+                                            get_model_name, set_model_name)
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.signature import rescan_indexes_for_database_sig
 from django_evolution.tests import models as evo_test
@@ -30,35 +36,41 @@ DEFAULT_TEST_ATTRIBUTE_VALUES = {
 }
 
 
-digest = connection.creation._digest
-
-
-def wrap_sql_func(func, evo_test, style, db_name=None):
-    return func(evo_test, style, connections[db_name or DEFAULT_DB_ALIAS])
-
-# Wrap the sql.* functions to work with the multi-db support
-sql_create = curry(wrap_sql_func, sql.sql_create)
-sql_indexes = curry(wrap_sql_func, sql.sql_indexes)
-sql_delete = curry(wrap_sql_func, sql.sql_delete)
-
-
-def set_model_name(model, name):
-    if hasattr(model._meta, 'model_name'):
-        model._meta.model_name = name
-    else:
-        model._meta.module_name = name
-
-
-def get_model_name(model):
-    if hasattr(model._meta, 'model_name'):
-        return model._meta.model_name
-    else:
-        return model._meta.module_name
-
-
 def _register_models(database_sig, app_label='tests', db_name='default',
-                     *models, **kwargs):
-    app_cache = SortedDict()
+                     app=evo_test, *models, **kwargs):
+    """Register models for testing purposes.
+
+    Args:
+        database_sig (dict):
+            The database signature to populate with model information.
+
+        app_label (str, optional):
+            The label for the test app. Defaults to "tests".
+
+        db_name (str, optional):
+            The name of the database connection. Defaults to "default".
+
+        app (module, optional):
+            The application module for the test models.
+
+        *models (tuple):
+            The models to register.
+
+        **kwargs (dict):
+            Additional keyword arguments. This supports:
+
+            ``register_indexes``:
+                Specifies whether indexes should be registered for any
+                models. Defaults to ``False``.
+
+    Returns:
+        collections.OrderedDict:
+        A dictionary of registered models. The keys are model names, and
+        the values are the models.
+    """
+    django_evolution_models = all_models['django_evolution']
+
+    app_cache = OrderedDict()
     evolver = EvolutionOperationsMulti(db_name, database_sig).get_evolver()
     register_indexes = kwargs.get('register_indexes', False)
 
@@ -68,8 +80,8 @@ def _register_models(database_sig, app_label='tests', db_name='default',
     for name, model in reversed(models):
         orig_model_name = get_model_name(model)
 
-        if orig_model_name in cache.app_models['django_evolution']:
-            del cache.app_models['django_evolution'][orig_model_name]
+        if orig_model_name in django_evolution_models:
+            unregister_app_model('django_evolution', orig_model_name)
 
         orig_db_table = model._meta.db_table
         orig_object_name = model._meta.object_name
@@ -100,8 +112,12 @@ def _register_models(database_sig, app_label='tests', db_name='default',
             # look up the index names.
             for field in model._meta.local_fields:
                 if field.db_index or field.unique:
-                    index_name = evolver.get_default_index_name(
-                        model._meta.db_table, field)
+                    index_name = create_index_name(
+                        my_connection,
+                        model._meta.db_table,
+                        field_names=[field.name],
+                        col_names=[field.column],
+                        unique=field.unique)
 
                     signature.add_index_to_database_sig(
                         evolver, database_sig, model, [field],
@@ -109,16 +125,25 @@ def _register_models(database_sig, app_label='tests', db_name='default',
                         unique=field.unique)
 
             for field_names in model._meta.unique_together:
+                index_name = create_index_name(
+                    my_connection,
+                    model._meta.db_table,
+                    field_names=field_names,
+                    unique=True)
+
                 signature.add_index_to_database_sig(
                     evolver, database_sig, model,
                     evolver.get_fields_for_names(model, field_names),
-                    index_name=field_names[0],
+                    index_name=index_name,
                     unique=True)
 
             for field_names in getattr(model._meta, 'index_together', []):
                 fields = evolver.get_fields_for_names(model, field_names)
-                index_name = evolver.get_default_index_together_name(
-                    model._meta.db_table, fields)
+                index_name = create_index_name(
+                    my_connection,
+                    model._meta.db_table,
+                    field_names=[field.name for field in fields],
+                    col_names=[field.column for field in fields])
 
                 signature.add_index_to_database_sig(
                     evolver, database_sig, model,
@@ -174,38 +199,35 @@ def _register_models(database_sig, app_label='tests', db_name='default',
 
             through_model_name = get_model_name(through)
 
-            if through_model_name in cache.app_models['django_evolution']:
-                del cache.app_models['django_evolution'][through_model_name]
+            if through_model_name in django_evolution_models:
+                unregister_app_model('django_evolution', through_model_name)
 
             app_cache[through_model_name] = through
             add_app_test_model(through, app_label=app_label)
 
         app_cache[model_name] = model
 
-    if evo_test not in cache.app_store:
-        cache.app_store[evo_test] = len(cache.app_store)
-
-        if hasattr(cache, 'app_labels'):
-            cache.app_labels[app_label] = evo_test
+    if not is_app_registered(app):
+        register_app(app_label, app)
 
     return app_cache
 
 
 def register_models(database_sig, *models, **kwargs):
-    return _register_models(database_sig, 'tests', 'default', *models,
-                            **kwargs)
+    return _register_models(database_sig, 'tests', 'default', evo_test,
+                            *models, **kwargs)
 
 
 def register_models_multi(database_sig, app_label, db_name, *models, **kwargs):
-    return _register_models(database_sig, app_label, db_name, *models,
-                            **kwargs)
+    return _register_models(database_sig, app_label, db_name, evo_test,
+                            *models, **kwargs)
 
 
 def _test_proj_sig(app_label, *models, **kwargs):
     "Generate a dummy project signature based around a single model"
     version = kwargs.get('version', 1)
     proj_sig = {
-        app_label: SortedDict(),
+        app_label: OrderedDict(),
         '__version__': version,
     }
 
@@ -219,7 +241,7 @@ def _test_proj_sig(app_label, *models, **kwargs):
         else:
             app, name = parts
 
-        proj_sig.setdefault(app, SortedDict())[name] = \
+        proj_sig.setdefault(app, OrderedDict())[name] = \
             signature.create_model_sig(model)
 
     return proj_sig
@@ -246,28 +268,18 @@ def execute_transaction(sql, output=False, database='default'):
         database = DEFAULT_DB_ALIAS
 
     my_connection = connections[database]
-    using_args = {
-        'using': database,
-    }
 
     try:
-        # Begin Transaction
-        transaction.enter_transaction_management(**using_args)
-        transaction.managed(True, **using_args)
+        with atomic(using=database):
+            cursor = my_connection.cursor()
 
-        cursor = my_connection.cursor()
+            # Perform the SQL
+            if output:
+                out_sql.extend(write_sql(sql, database))
 
-        # Perform the SQL
-        if output:
-            out_sql.extend(write_sql(sql, database))
-
-        execute_sql(cursor, sql, database)
-
-        transaction.commit(**using_args)
-        transaction.leave_transaction_management(**using_args)
+            execute_sql(cursor, sql, database)
     except Exception, e:
         logging.error('Error executing SQL %s: %s' % (sql, e))
-        transaction.rollback(**using_args)
         raise
 
     return out_sql
@@ -299,16 +311,13 @@ def execute_test_sql(start, end, sql, debug=False, app_label='tests',
     set_app_test_models(copy.deepcopy(start), app_label=app_label)
 
     # Install the initial tables and indicies
-    style = no_style()
-    execute_transaction(sql_create(evo_test, style, database),
-                        output=debug, database=database)
-    execute_transaction(sql_indexes(evo_test, style, database),
+    execute_transaction(sql_create(evo_test, database),
                         output=debug, database=database)
 
     if rescan_indexes and database_sig:
         rescan_indexes_for_database_sig(database_sig, database)
 
-    create_test_data(models.get_models(evo_test), database)
+    create_test_data(get_models(evo_test), database)
 
     # Set the app cache to the end state
     set_app_test_models(copy.deepcopy(end), app_label=app_label)
@@ -325,7 +334,7 @@ def execute_test_sql(start, end, sql, debug=False, app_label='tests',
                                                database=database))
     finally:
         # Cleanup the apps.
-        delete_sql = sql_delete(evo_test, style, database)
+        delete_sql = sql_delete(evo_test, database)
 
         if debug:
             out_sql.append(delete_sql)
@@ -425,33 +434,18 @@ def test_sql_mapping(test_field_name, db_name='default'):
 
 def deregister_models(app_label='tests'):
     "Clear the test section of the app cache"
-    del cache.app_models[app_label]
-    clear_models_cache()
-
-
-def clear_models_cache():
-    """Clears the Django models cache.
-
-    This cache is used in Django >= 1.2 to quickly return results from
-    cache.get_models(). It needs to be cleared when modifying the model
-    registry.
-    """
-    if hasattr(cache, '_get_models_cache'):
-        # On Django 1.2, we need to clear this cache when unregistering models.
-        cache._get_models_cache.clear()
+    unregister_app(app_label)
 
 
 def set_app_test_models(models, app_label):
     """Sets the list of models in the Django test models registry."""
-    cache.app_models[app_label] = models
-    clear_models_cache()
+    register_app_models(app_label, models.items(), reset=True)
 
 
 def add_app_test_model(model, app_label):
     """Adds a model to the Django test models registry."""
-    key = model._meta.object_name.lower()
-    cache.app_models.setdefault(app_label, SortedDict())[key] = model
-    clear_models_cache()
+    register_app_models(app_label,
+                        [(model._meta.object_name.lower(), model)])
 
 
 def generate_index_name(db_type, table, col_names, field_names=None,
@@ -519,16 +513,17 @@ def generate_index_name(db_type, table, col_names, field_names=None,
         # list of either field names or column names. Note that digest()
         # takes variable positional arguments, which this is not passing.
         # This is due to a design bug in these versions.
-        name = digest(field_names or col_names)
+        name = digest(connection, field_names or col_names)
     elif django.VERSION >= (1, 2):
         # Django >= 1.2, < 1.7 used the digest of the name of the first
         # column. There was no index_together in these releases.
-        name = digest(col_names[0])
+        name = digest(connection, col_names[0])
     else:
         # Django < 1.2 used just the name of the first column, no digest.
         name = col_names[0]
 
-    return '%s_%s' % (table, name)
+    return truncate_name('%s_%s' % (table, name),
+                         connection.ops.max_name_length())
 
 
 def make_generate_index_name(db_type):
@@ -567,8 +562,54 @@ def has_index_with_columns(database_sig, table_name, columns, unique=False):
     return False
 
 
-def generate_constraint_name(r_col, col, r_table, table):
-    return '%s_refs_%s_%s' % (r_col, col, digest(r_table, table))
+def generate_constraint_name(db_type, r_col, col, r_table, table):
+    """Return the expected name for a constraint.
+
+    This will generate a constraint name for the current version of Django,
+    for comparison purposes.
+
+    Args:
+        db_type (str):
+            The type of database.
+
+        r_col (str):
+            The column name for the source of the relation.
+
+        col (str):
+            The column name for the "to" end of the relation.
+
+        r_table (str):
+            The table name for the source of the relation.
+
+        table (str):
+            The table name for the "to" end of the relation.
+
+    Returns:
+        str:
+        The expected name for a constraint.
+    """
+    return '%s_refs_%s_%s' % (r_col, col,
+                              digest(connection, r_table, table))
+
+
+def make_generate_constraint_name(db_type):
+    """Return a constraint generation function for the given database type.
+
+    This is used by the test data modules as a convenience to allow
+    for a local version of :py:func:`generate_constraint_name` that doesn't
+    need to be passed a database type on every call.
+
+    Args:
+        db_type (str):
+            The database type to use. Currently, only "postgres" does anything
+            special.
+
+    Returns:
+        callable:
+        A version of :py:func:`generate_constraint_name` that doesn't need the
+        ``db_type`` parameter.
+    """
+    return partial(generate_constraint_name, db_type)
 
 
 def generate_unique_constraint_name(table, col_names):
@@ -587,7 +628,7 @@ def generate_unique_constraint_name(table, col_names):
     Returns:
         The expected constraint name for this version of Django.
     """
-    name = digest(*col_names)
+    name = digest(connection, col_names)
 
     return truncate_name('%s_%s' % (table, name),
                          connection.ops.max_name_length())

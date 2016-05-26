@@ -1,10 +1,10 @@
 from django.db import router
-from django.db.models import get_apps, get_models
 from django.db.models.fields.related import ForeignKey
 from django.conf import global_settings
-from django.contrib.contenttypes import generic
-from django.utils.datastructures import SortedDict
 
+from django_evolution.compat.apps import get_apps
+from django_evolution.compat.models import GenericRelation, get_models
+from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.db import EvolutionOperationsMulti
 
 
@@ -79,7 +79,7 @@ def create_model_sig(model):
 
     for field in model._meta.local_fields + model._meta.local_many_to_many:
         # Special case - don't generate a signature for generic relations
-        if not isinstance(field, generic.GenericRelation):
+        if not isinstance(field, GenericRelation):
             model_sig['fields'][str(field.name)] = create_field_sig(field)
 
     return model_sig
@@ -91,7 +91,7 @@ def create_app_sig(app, database):
     Only those attributes that are interesting from a schema-evolution
     perspective are included.
     """
-    app_sig = SortedDict()
+    app_sig = OrderedDict()
 
     for model in get_models(app):
         # Only include those models that can be synced.

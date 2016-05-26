@@ -1,5 +1,4 @@
-from django.db.backends.util import truncate_name
-
+from django_evolution.compat.db import truncate_name
 from django_evolution.db.common import BaseEvolutionOperations
 from django_evolution.db.sql_result import AlterTableSQLResult
 
@@ -43,6 +42,26 @@ class EvolutionOperations(BaseEvolutionOperations):
         )
 
     def get_default_index_name(self, table_name, field):
+        """Return a default index name for the database.
+
+        This will return an index name for the given field that matches what
+        the database or Django database backend would automatically generate
+        when marking a field as indexed or unique.
+
+        This can be overridden by subclasses if the database or Django
+        database backend provides different values.
+
+        Args:
+            table_name (str):
+                The name of the table for the index.
+
+            field (django.db.models.Field):
+                The field for the index.
+
+        Returns:
+            str:
+            The name of the index.
+        """
         assert field.unique or field.db_index
 
         if field.unique:

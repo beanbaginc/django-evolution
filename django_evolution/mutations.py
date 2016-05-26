@@ -5,9 +5,9 @@ from django.db.models.base import ModelState
 from django.db.models.fields import AutoField, FieldDoesNotExist
 from django.db.models.fields.related import (ForeignKey, ManyToManyField,
                                              RECURSIVE_RELATIONSHIP_CONSTANT)
-from django.utils.datastructures import SortedDict
 from django.utils.functional import curry
 
+from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.db.sql_result import SQLResult
 from django_evolution.errors import (CannotSimulate, SimulationFailure,
@@ -71,7 +71,7 @@ def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
                                             field.name)
             through_model = '%s.%s' % (through_app_name, through_model_name)
 
-            fields = SortedDict()
+            fields = OrderedDict()
             fields['id'] = {
                 'field_type': AutoField,
                 'primary_key': True,
@@ -135,8 +135,8 @@ class MockMeta(object):
             'swapped': False,
         }
         self.meta.update(model_sig['meta'])
-        self._fields = SortedDict()
-        self._many_to_many = SortedDict()
+        self._fields = OrderedDict()
+        self._many_to_many = OrderedDict()
         self.abstract = False
         self.managed = True
         self.proxy = False

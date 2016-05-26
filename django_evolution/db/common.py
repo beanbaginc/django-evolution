@@ -1,15 +1,20 @@
 import copy
 import logging
 
-from django.core.management import color
 from django.db import connection as default_connection
-from django.db.backends.util import truncate_name
 
+from django_evolution.compat.db import (create_index_name,
+                                        create_index_together_name,
+                                        sql_add_constraints,
+                                        sql_create_for_many_to_many_field,
+                                        sql_delete_constraints,
+                                        sql_indexes_for_field,
+                                        sql_indexes_for_fields,
+                                        truncate_name)
 from django_evolution.db.sql_result import AlterTableSQLResult, SQLResult
 from django_evolution.errors import EvolutionNotImplementedError
 from django_evolution.signature import (add_index_to_database_sig,
                                         remove_index_from_database_sig)
-from django_evolution.support import supports_index_together
 
 
 class BaseEvolutionOperations(object):
@@ -18,6 +23,8 @@ class BaseEvolutionOperations(object):
     )
 
     supported_change_meta = ('index_together', 'unique_together')
+
+    supports_constraints = True
 
     mergeable_ops = (
         'add_column', 'change_column', 'delete_column', 'change_meta'
@@ -130,9 +137,7 @@ class BaseEvolutionOperations(object):
             # No Operation
             return sql_result
 
-        style = color.no_style()
         max_name_length = self.connection.ops.max_name_length()
-        creation = self.connection.creation
 
         refs = {}
         models = []
@@ -152,23 +157,27 @@ class BaseEvolutionOperations(object):
 
         remove_refs = refs.copy()
 
-        for relto in models:
-            sql_result.add_pre_sql(creation.sql_remove_table_constraints(
-                relto, remove_refs, style))
+        if self.supports_constraints:
+            for relto in models:
+                sql_result.add_pre_sql(sql_delete_constraints(
+                    self.connection, relto, remove_refs))
 
         sql_result.add(self.get_rename_table_sql(
             model, old_db_tablename, db_tablename))
 
-        for relto in models:
-            for rel_class, f in refs[relto]:
-                if rel_class._meta.db_table == old_db_tablename:
-                    rel_class._meta.db_table = db_tablename
+        if self.supports_constraints:
+            for relto in models:
+                for rel_class, f in refs[relto]:
+                    if rel_class._meta.db_table == old_db_tablename:
+                        rel_class._meta.db_table = db_tablename
 
-                rel_class._meta.db_table = \
-                    truncate_name(rel_class._meta.db_table, max_name_length)
+                    rel_class._meta.db_table = \
+                        truncate_name(rel_class._meta.db_table,
+                                      max_name_length)
 
-            sql_result.add_post_sql(
-                creation.sql_for_pending_references(relto, style, refs))
+                if self.supports_constraints:
+                    sql_result.add_post_sql(sql_add_constraints(
+                        self.connection, relto, refs))
 
         return sql_result
 
@@ -189,30 +198,21 @@ class BaseEvolutionOperations(object):
         qn = self.connection.ops.quote_name
         return SQLResult(['DROP TABLE %s;' % qn(table_name)])
 
-    def add_m2m_table(self, model, f):
-        style = color.no_style()
-        creation = self.connection.creation
+    def add_m2m_table(self, model, field):
+        """Return SQL statements for creating a ManyToManyField's table.
 
-        if f.rel.through:
-            references = {}
-            pending_references = {}
+        Args:
+            model (django.db.models.Model):
+                The database model owning the field.
 
-            sql, references = creation.sql_create_model(f.rel.through, style)
+            field (django.db.models.ManyToManyField):
+                The field owning the table.
 
-            # Sort the list, in order to create consistency in the order of
-            # ALTER TABLEs. This is primarily needed for unit tests.
-            for refto, refs in sorted(references.iteritems(),
-                                      key=lambda i: repr(i)):
-                pending_references.setdefault(refto, []).extend(refs)
-                sql.extend(creation.sql_for_pending_references(
-                    refto, style, pending_references))
-
-            sql.extend(creation.sql_for_pending_references(
-                f.rel.through, style, pending_references))
-        else:
-            sql = creation.sql_for_many_to_many_field(model, f, style)
-
-        return sql
+        Returns:
+            list:
+            The list of SQL statements for creating the table.
+        """
+        return sql_create_for_many_to_many_field(self.connection, model, field)
 
     def add_column(self, model, f, initial):
         qn = self.connection.ops.quote_name
@@ -351,12 +351,9 @@ class BaseEvolutionOperations(object):
         if index_name:
             return []
 
-        style = color.no_style()
-
         self.record_index(model, [f])
 
-        return SQLResult(
-            self.connection.creation.sql_indexes_for_field(model, f, style))
+        return SQLResult(sql_indexes_for_field(self.connection, model, f))
 
     def create_unique_index(self, model, index_name, fields):
         qn = self.connection.ops.quote_name
@@ -412,22 +409,34 @@ class BaseEvolutionOperations(object):
         return SQLResult(['DROP INDEX %s;' % qn(index_name)])
 
     def get_new_index_name(self, model, fields, unique=False):
-        """Returns a newly generated index name.
+        """Return a newly generated index name.
 
         This returns a unique index name for any indexes created by
-        django-evolution. It does not need to match what Django would
-        create by default.
+        django-evolution, based on how Django would compute the index.
 
-        The default works well in most cases, but can be overridden
-        for database backends that require it.
+        Args:
+            model (django.db.models.Model):
+                The database model for the index.
+
+            fields (list of django.db.models.Field):
+                The list of fields for the index.
+
+            unique (bool, optional):
+                Whether this index is unique.
+
+        Returns:
+            str:
+            The generated name for the index.
         """
-        colname = self.connection.creation._digest(*[f.name for f in fields])
-
-        return truncate_name('%s_%s' % (model._meta.db_table, colname),
-                             self.connection.ops.max_name_length())
+        return create_index_name(
+            self.connection,
+            table_name=model._meta.db_table,
+            field_names=[f.name for f in fields],
+            col_names=[f.column for f in fields],
+            unique=unique)
 
     def get_default_index_name(self, table_name, field):
-        """Returns a default index name for the database.
+        """Return a default index name for the database.
 
         This will return an index name for the given field that matches what
         the database or Django database backend would automatically generate
@@ -435,43 +444,52 @@ class BaseEvolutionOperations(object):
 
         This can be overridden by subclasses if the database or Django
         database backend provides different values.
+
+        Args:
+            table_name (str):
+                The name of the table for the index.
+
+            field (django.db.models.Field):
+                The field for the index.
+
+        Returns:
+            str:
+            The name of the index.
         """
         assert field.unique or field.db_index
 
         if field.unique:
-            index_name = field.column
+            return truncate_name(field.column,
+                                 self.connection.ops.max_name_length())
         elif field.db_index:
-            # This whole block of logic comes from sql_indexes_for_field
-            # in django.db.backends.creation, and is designed to match
-            # the logic for the past few versions of Django.
-            if supports_index_together:
-                # Starting in Django 1.5, the _digest is passed a raw
-                # list. While this is probably a bug (digest should
-                # expect a string), we still need to retain
-                # compatibility. We know this behavior hasn't changed
-                # as of Django 1.6.1.
-                #
-                # It also uses the field name, and not the column name.
-                column = [field.name]
-            else:
-                column = field.column
-
-            column = self.connection.creation._digest(column)
-            index_name = '%s_%s' % (table_name, column)
-
-        return truncate_name(index_name, self.connection.ops.max_name_length())
+            return create_index_name(self.connection, table_name,
+                                     field_names=[field.name],
+                                     col_names=[field.column])
+        else:
+            # This won't be reached, due to the assert above.
+            raise NotImplementedError
 
     def get_default_index_together_name(self, table_name, fields):
         """Returns a default index name for an index_together.
 
         This will return an index name for the given field that matches what
         Django uses for index_together fields.
-        """
-        index_name = '%s_%s' % (
-            table_name,
-            self.connection.creation._digest([f.name for f in fields]))
 
-        return truncate_name(index_name, self.connection.ops.max_name_length())
+        Args:
+            table_name (str):
+                The name of the table for the index.
+
+            fields (list of django.db.models.Field):
+                The fields for the index.
+
+        Returns:
+            str:
+            The name of the index.
+        """
+        return create_index_together_name(
+            self.connection,
+            table_name,
+            [field.name for field in fields])
 
     def change_column_attrs(self, model, mutation, field_name, new_attrs):
         """Returns the SQL for changing one or more column attributes.
@@ -668,9 +686,24 @@ class BaseEvolutionOperations(object):
 
     def change_meta_index_together(self, model, old_index_together,
                                    new_index_together):
-        """Changes the index_together indexes of a table."""
+        """Change the index_together indexes of a table.
+
+        Args:
+            model (django.db.models.Model):
+                The model being changed.
+
+            old_index_together (list):
+                The old value for the index_together.
+
+            new_index_together (list):
+                The new value for the index_together.
+
+        Returns:
+            list:
+            The list of SQL statements for changing the index_together
+            value.
+        """
         sql = []
-        style = color.no_style()
 
         old_index_together = set(old_index_together or [])
         new_index_together = set(new_index_together)
@@ -693,8 +726,9 @@ class BaseEvolutionOperations(object):
             if not index_name:
                 # This doesn't exist in the database, so we want to add it.
                 self.record_index(model, fields)
-                sql.extend(self.connection.creation.sql_indexes_for_fields(
-                    model, fields, style))
+                sql.extend(sql_indexes_for_fields(self.connection, model,
+                                                  fields,
+                                                  index_together=True))
 
         return sql
 
@@ -750,12 +784,33 @@ class BaseEvolutionOperations(object):
         raise NotImplementedError
 
     def remove_field_constraints(self, field, opts, models, refs):
+        """Return SQL for removing constraints on a field.
+
+        Args:
+            field (django.db.models.Field):
+                The field the constraints will be removed from.
+
+            opts (django.db.models.options.Options):
+                The Meta class for the model.
+
+            models (list of django.db.models.Model):
+                A caller-provided list that will be populated with models
+                that constraints will be removed from.
+
+            refs (dict):
+                A caller-supplied dictionary that will be populated with
+                references that are removed.
+
+                The keys are models, and the values are lists of
+                tuples of many-to-many models and fields.
+
+        Returns:
+            list:
+            The list of SQL statements for removing constraints on the field.
+        """
         sql = []
 
-        if field.primary_key:
-            creation = self.connection.creation
-            style = color.no_style()
-
+        if self.supports_constraints and field.primary_key:
             for f in opts.local_many_to_many:
                 if f.rel and f.rel.through:
                     through = f.rel.through
@@ -770,11 +825,10 @@ class BaseEvolutionOperations(object):
                                 (through, m2m_f))
 
             remove_refs = refs.copy()
-            style = color.no_style()
 
             for relto in models:
-                sql.extend(creation.sql_remove_table_constraints(
-                    relto, remove_refs, style))
+                sql.extend(sql_delete_constraints(self.connection, relto,
+                                                  remove_refs))
 
         return sql
 
@@ -782,10 +836,7 @@ class BaseEvolutionOperations(object):
                                           refs):
         sql = []
 
-        if old_field.primary_key:
-            creation = self.connection.creation
-            style = color.no_style()
-
+        if self.supports_constraints and old_field.primary_key:
             for relto in models:
                 for rel_class, f in refs[relto]:
                     f.rel.field_name = new_field.column
@@ -793,8 +844,7 @@ class BaseEvolutionOperations(object):
                 del relto._meta._fields[old_field.name]
                 relto._meta._fields[new_field.name] = new_field
 
-                sql.extend(creation.sql_for_pending_references(
-                    relto, style, refs))
+                sql.extend(sql_add_constraints(self.connection, relto, refs))
 
         return sql
 

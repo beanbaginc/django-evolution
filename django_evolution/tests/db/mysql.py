@@ -1,8 +1,9 @@
-from django_evolution.tests.utils import (generate_constraint_name,
-                                          generate_unique_constraint_name,
+from django_evolution.tests.utils import (generate_unique_constraint_name,
+                                          make_generate_constraint_name,
                                           make_generate_index_name)
 
 
+generate_constraint_name = make_generate_constraint_name('mysql')
 generate_index_name = make_generate_index_name('mysql')
 
 

@@ -6,8 +6,9 @@ tests = r"""
 >>> from django_evolution.tests.utils import (test_proj_sig, register_models,
 ...                                           deregister_models)
 >>> from pprint import pprint
->>> from django.contrib.contenttypes import generic
 >>> from django.contrib.contenttypes.models import ContentType
+>>> from django_evolution.compat.models import (GenericForeignKey,
+...                                             GenericRelation)
 
 # First, a model that has one of everything so we can validate all cases
 # for a signature
@@ -22,7 +23,7 @@ tests = r"""
 ...     # Host a generic key here, too
 ...     content_type = models.ForeignKey(ContentType)
 ...     object_id = models.PositiveIntegerField(db_index=True)
-...     content_object = generic.GenericForeignKey('content_type','object_id')
+...     content_object = GenericForeignKey('content_type','object_id')
 
 >>> anchors = [('Anchor1', Anchor1),('Anchor2', Anchor2),('Anchor3', Anchor3)]
 
@@ -42,9 +43,9 @@ tests = r"""
 ...     # Plus a generic foreign key - the Generic itself should be ignored
 ...     content_type = models.ForeignKey(ContentType)
 ...     object_id = models.PositiveIntegerField(db_index=True)
-...     content_object = generic.GenericForeignKey('content_type','object_id')
+...     content_object = GenericForeignKey('content_type','object_id')
 ...     # Plus a generic relation, which should be ignored
-...     generic = generic.GenericRelation(Anchor3)
+...     generic = GenericRelation(Anchor3)
 
 >>> class ParentModel(models.Model):
 ...     parent_field = models.CharField(max_length=20)

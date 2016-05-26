@@ -1,0 +1,511 @@
+"""Compatibility functions for database-related operations.
+
+This provides functions for database operations, SQL generation, index name
+generation, and more. These functions translate to the various versions of
+Django that are supported.
+"""
+
+from contextlib import contextmanager
+
+import django
+from django.core.management import color, sql
+from django.db import connections, transaction
+from django.db.backends.util import truncate_name
+from django.db.utils import DEFAULT_DB_ALIAS
+
+from django_evolution.support import supports_index_together
+
+
+@contextmanager
+def atomic(using=None):
+    """Perform database operations atomically within a transaction.
+
+    The caller can use this to ensure SQL statements are executed within
+    a transaction and then cleaned up nicely if there's an error.
+
+    This provides compatibility with all supported versions of Django.
+
+    Args:
+        using (str, optional):
+            The database connection name to use. Defaults to the default
+            database connection.
+    """
+    if hasattr(transaction, 'atomic'):
+        # Django >= 1.5
+        with transaction.atomic(using=using):
+            yield
+    else:
+        # Django < 1.5
+        assert hasattr(transaction, 'enter_transaction_management')
+
+        try:
+            # Begin Transaction
+            transaction.enter_transaction_management(using=using)
+            transaction.managed(True, using=using)
+
+            yield
+
+            transaction.commit(using=using)
+            transaction.leave_transaction_management(using=using)
+        except Exception:
+            transaction.rollback(using=using)
+            raise
+
+
+def digest(connection, *args):
+    """Return a digest hash for a set of arguments.
+
+    This is mostly used as part of the index/constraint name generation
+    processes. It offers compatibility with a range of Django versions.
+
+    Args:
+        connection (object):
+            The database connection.
+
+        *args (tuple):
+            The positional arguments used to build the digest hash out of.
+
+    Returns:
+        str:
+        The resulting digest hash.
+    """
+    return connection.creation._digest(*args)
+
+
+def sql_create(app, db_name=None):
+    """Return SQL statements for creating all models for an app.
+
+    This provides compatibility with all supported versions of Django.
+
+    Args:
+        app (module):
+            The application module.
+
+        db_name (str, optional):
+            The database connection name. Defaults to the default database
+            connection.
+
+    Returns:
+        list:
+        The list of SQL statements used to create the models for the app.
+    """
+    connection = connections[db_name or DEFAULT_DB_ALIAS]
+
+    style = color.no_style()
+
+    return (sql.sql_create(app, style, connection) +
+            sql.sql_indexes(app, style, connection))
+
+
+def _sql_delete_model(connection, schema_editor, model, deleted_models,
+                      deleted_refs, all_table_names,
+                      include_auto_created=False):
+    """Internal helper for returning SQL statements for deleting a model.
+
+    Args:
+        connection (object):
+            The database connection.
+
+        schema_editor (object):
+            The schema editor used to manipulate the database.
+
+        model (django.db.models.Model):
+            The model being deleted.
+
+        deleted_models (set):
+            A set used to store the models that have generated SQL statements.
+            This is used internally for nesting purposes.
+
+        deleted_refs (set):
+            A set used to store deleted references/constraint information
+            for generated SQL statements. This is used internally for
+            nesting purposes.
+
+        all_table_names (set):
+            A set of all the table names currently found on the database.
+
+        include_auto_created (bool, optional):
+            Whether to include auto-created models in the list of SQL
+            statements. Defaults to ``False``. This is used internally for
+            nesting purposes.
+
+    Returns:
+        tuple:
+        A tuple of two lists. The first list contains the SQL for deleting
+        constraints. The second contains the SQL for deleting models.
+    """
+    meta = model._meta
+
+    table_name = connection.introspection.table_name_converter(meta.db_table)
+
+    if table_name not in all_table_names:
+        return [], []
+
+    constraints_sql = []
+    models_sql = []
+
+    if (model not in deleted_models and
+        (not meta.auto_created or include_auto_created)):
+        deleted_models.add(model)
+        models_sql.append(schema_editor.sql_delete_table % {
+            'table': schema_editor.quote_name(meta.db_table),
+        })
+
+    for f in meta.local_fields:
+        if f.rel:
+            fk_names = schema_editor._constraint_names(
+                model, [f.column], foreign_key=True)
+
+            for fk_name in fk_names:
+                key = (model, fk_name)
+
+                if key not in deleted_refs:
+                    deleted_refs.add(key)
+                    constraints_sql.append(
+                        schema_editor._delete_constraint_sql(
+                            schema_editor.sql_delete_fk, model,
+                            fk_name))
+
+    for f in meta.local_many_to_many:
+        through = f.rel.through
+
+        if through._meta.auto_created or 1:
+            temp_constraints_sql, temp_models_sql = \
+                _sql_delete_model(connection, schema_editor, through,
+                                  deleted_models, deleted_refs,
+                                  all_table_names,
+                                  include_auto_created=True)
+            constraints_sql += temp_constraints_sql
+            models_sql += temp_models_sql
+
+    return constraints_sql, models_sql
+
+
+def sql_delete(app, db_name=None):
+    """Return SQL statements for deleting all models in an app.
+
+    This provides compatibility with all supported versions of Django.
+
+    Args:
+        app (module):
+            The application module containing the models to delete.
+
+        db_name (str, optional):
+            The database connection name. Defaults to the default database
+            connection.
+
+    Returns:
+        list:
+        The list of SQL statements for deleting the models and constraints.
+    """
+    connection = connections[db_name or DEFAULT_DB_ALIAS]
+    style = color.no_style()
+
+    return sql.sql_delete(app, style, connection)
+
+
+def sql_create_for_many_to_many_field(connection, model, field):
+    """Return SQL statements for creating a ManyToManyField's table.
+
+    This provides compatibility with all supported versions of Django.
+
+    Args:
+        connection (object):
+            The database connection.
+
+        model (django.db.models.Model):
+            The model for the ManyToManyField's relations.
+
+        field (django.db.models.ManyToManyField):
+            The field setting up the many-to-many relation.
+
+    Returns:
+        list:
+        The list of SQL statements for creating the table and constraints.
+    """
+    style = color.no_style()
+
+    if field.rel.through:
+        references = {}
+        pending_references = {}
+
+        sql, references = connection.creation.sql_create_model(
+            field.rel.through, style)
+
+        # Sort the list, in order to create consistency in the order of
+        # ALTER TABLEs. This is primarily needed for unit tests.
+        for refto, refs in sorted(references.iteritems(),
+                                  key=lambda i: repr(i)):
+            pending_references.setdefault(refto, []).extend(refs)
+            sql.extend(sql_add_constraints(connection, refto,
+                                           pending_references))
+
+        sql.extend(sql_add_constraints(connection, field.rel.through,
+                                       pending_references))
+    else:
+        sql = connection.creation.sql_for_many_to_many_field(
+            model, field, style)
+
+    return sql
+
+
+def sql_indexes_for_field(connection, model, field):
+    """Return SQL statements for creating indexes for a field.
+
+    This provides compatibility with all supported versions of Django.
+
+    Args:
+        connection (object):
+            The database connection.
+
+        model (django.db.models.Model):
+            The database model owning the field.
+
+        field (django.db.models.Field):
+            The field being indexed.
+
+    Returns:
+        list:
+        The list of SQL statements for creating the indexes.
+    """
+    return connection.creation.sql_indexes_for_field(model, field,
+                                                     color.no_style())
+
+
+def sql_indexes_for_fields(connection, model, fields, index_together=False):
+    """Return SQL statements for creating indexes covering multiple fields.
+
+    This provides compatibility with all supported versions of Django.
+
+    Args:
+        connection (object):
+            The database connection.
+
+        model (django.db.models.Model):
+            The database model owning the fields.
+
+        fields (list of django.db.models.Field):
+            The list of fields for the index.
+
+        index_together (bool, optional):
+            Whether this is from an index_together rule.
+
+    Returns:
+        list:
+        The list of SQL statements for creating the indexes.
+    """
+    return connection.creation.sql_indexes_for_fields(model, fields,
+                                                      color.no_style())
+
+
+def sql_indexes_for_model(connection, model):
+    """Return SQL statements for creating all indexes for a model.
+
+    This provides compatibility with all supported versions of Django.
+
+    Args:
+        connection (object):
+            The database connection.
+
+        model (django.db.models.Model):
+            The database model to create indexes for.
+
+    Returns:
+        list:
+        The list of SQL statements for creating the indexes.
+    """
+    return connection.creation.sql_indexes_for_model(model,
+                                                     color.no_style())
+
+
+def sql_delete_constraints(connection, model, remove_refs):
+    """Return SQL statements for deleting constraints.
+
+    This provides compatibility with all supported versions of Django.
+
+    Args:
+        connection (object):
+            The database connection.
+
+        model (django.db.models.Model):
+            The database model to delete constraints on.
+
+        remove_refs (dict):
+            A dictionary of constraint references to remove.
+
+            The keys are instances of :py:class:`django.db.models.Model`.
+            The values are a tuple of (:py:class:`django.db.models.Model`,
+            :py:class:`django.db.models.Field`).
+
+    Returns:
+        list:
+        The list of SQL statements for deleting constraints.
+    """
+    return connection.creation.sql_remove_table_constraints(
+        model, remove_refs, color.no_style())
+
+
+def sql_add_constraints(connection, model, refs):
+    """Return SQL statements for adding constraints.
+
+    This provides compatibility with all supported versions of Django.
+
+    Args:
+        connection (object):
+            The database connection.
+
+        model (django.db.models.Model):
+            The database model to add constraints on.
+
+        refs (dict):
+            A dictionary of constraint references to add.
+
+            The keys are instances of :py:class:`django.db.models.Model`.
+            The values are a tuple of (:py:class:`django.db.models.Model`,
+            :py:class:`django.db.models.Field`).
+
+    Returns:
+        list:
+        The list of SQL statements for adding constraints.
+    """
+    return connection.creation.sql_for_pending_references(
+        model, color.no_style(), refs)
+
+
+def create_index_name(connection, table_name, field_names=[], col_names=[],
+                      unique=False, suffix=''):
+    """Return the name for an index for a field.
+
+    This provides compatibility with all supported versions of Django.
+
+    Args:
+        connection (object):
+            The database connection.
+
+        table_name (str):
+            The name of the table.
+
+        field_names (list of str, optional):
+            The list of field names for the index.
+
+        col_names (list of str, optional):
+            The list of column names for the index.
+
+        unique (bool, optional):
+            Whether or not this index is unique.
+
+        suffix (str, optional):
+            A suffix for the index. This is only used with Django >= 1.7.
+
+    Returns:
+        str:
+        The generated index name for this version of Django.
+    """
+    if django.VERSION[:2] >= (1, 5):
+        # Django >= 1.5
+        #
+        # This comes from sql_indexes_for_fields().
+        index_name = '%s_%s' % (table_name,
+                                digest(connection, field_names))
+
+        return truncate_name(index_name, connection.ops.max_name_length())
+    else:
+        # Django < 1.5
+        #
+        # This whole block of logic comes from sql_indexes_for_field
+        # in django.db.backends.creation, and is designed to match
+        # the logic for the past few versions of Django.
+        if supports_index_together:
+            # Starting in Django 1.5, the _digest is passed a raw
+            # list. While this is probably a bug (digest should
+            # expect a string), we still need to retain
+            # compatibility.
+            #
+            # It also uses the field name, and not the column name.
+            column = field_names[0]
+        else:
+            column = col_names[0]
+
+        column = digest(connection, column)
+
+        return truncate_name('%s_%s' % (table_name, column),
+                             connection.ops.max_name_length())
+
+
+def create_index_together_name(connection, table_name, field_names):
+    """Return the name of an index for an index_together.
+
+    This provides compatibility with all supported versions of Django >= 1.5.
+    Prior versions don't support index_together.
+
+    Args:
+        connection (object):
+            The database connection.
+
+        table_name (str):
+            The name of the table.
+
+        field_names (list of str):
+            The list of field names indexed together.
+
+    Returns:
+        str:
+        The generated index name for this version of Django.
+    """
+    # Django < 1.7
+    #
+    # index_together was introduced in Django 1.5, and prior to 1.7, the
+    # format was identical to that of normal indexes.
+    assert django.VERSION[:2] >= (1, 5)
+
+    index_name = '%s_%s' % (table_name, digest(connection, field_names))
+
+    return truncate_name(index_name, connection.ops.max_name_length())
+
+
+def create_constraint_name(connection, r_col, col, r_table, table):
+    """Return the name of a constraint.
+
+    This provides compatibility with all supported versions of Django.
+
+    Args:
+        connection (object):
+            The database connection.
+
+        r_col (str):
+            The column name for the source of the relation.
+
+        col (str):
+            The column name for the "to" end of the relation.
+
+        r_table (str):
+            The table name for the source of the relation.
+
+        table (str):
+            The table name for the "to" end of the relation.
+
+    Returns:
+        str:
+        The generated constraint name for this version of Django.
+    """
+    return truncate_name(
+        '%s_refs_%s_%s' % (r_col, col, digest(connection, r_table, table)),
+        connection.ops.max_name_length())
+
+
+__all__ = [
+    'atomic',
+    'create_constraint_name',
+    'create_index_name',
+    'create_index_together_name',
+    'digest',
+    'sql_add_constraints',
+    'sql_delete_constraints',
+    'sql_create',
+    'sql_create_for_many_to_many_field',
+    'sql_delete',
+    'sql_indexes_for_field',
+    'sql_indexes_for_fields',
+    'sql_indexes_for_model',
+    'truncate_name',
+]

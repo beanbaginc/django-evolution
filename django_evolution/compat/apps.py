@@ -1,15 +1,22 @@
+"""Compatibility functions for the application registration.
+
+This provides functions for app registration and lookup. These functions
+translate to the various versions of Django that are supported.
+"""
+
 try:
+    # Django >= 1.7
     from django.apps.registry import apps
 
-    # Django >= 1.7
-    get_apps = apps.get_apps
     cache = None
 except ImportError:
+    # Django < 1.7
     from django.db.models.loading import cache
 
-    # Django < 1.7
-    get_apps = cache.get_apps
     apps = None
+
+from django_evolution.compat.datastructures import OrderedDict
+from django_evolution.compat.models import all_models
 
 
 def get_app(app_label, emptyOK=False):
@@ -19,11 +26,157 @@ def get_app(app_label, emptyOK=False):
     the old-style cache on Django < 1.7.
 
     The ``emptyOK`` argument is ignored for Django >= 1.7.
+
+    Args:
+        app_label (str):
+            The label for the app containing the models.
+
+        emptyOK (bool, optional):
+            Impacts the return value if the app has no models in it.
+
+    Returns:
+        module:
+        The app module, if available.
+
+        If not available, and ``emptyOK`` is set, this will return ``None``.
+        If ``emptyOK`` is not set, it will raise
+        :py:exc:`~django.core.exceptions.ImproperlyConfigured`.
+
+    Raises:
+        django.core.exceptions.ImproperlyConfigured:
+            The app module was not found, and ``emptyOK`` was ``False``.
     """
     if apps:
+        # Django >= 1.7
         return apps.get_app(app_label)
     else:
+        # Django < 1.7
         return cache.get_app(app_label, emptyOK)
 
 
-__all__ = ['get_app', 'get_apps']
+def get_apps():
+    """Return the list of all installed apps with models.
+
+    This returns the apps from the old-style cache on Django < 1.7.
+
+    Returns:
+        list: A list of all the modules containing model classes.
+    """
+    if apps:
+        # Django >= 1.7
+        raise NotImplementedError
+    else:
+        # Django < 1.7
+        return cache.get_apps()
+
+
+def is_app_registered(app):
+    """Return whether the app registry is tracking a given app.
+
+    Args:
+        app (module):
+            The app to check for.
+
+    Returns:
+        bool:
+        ``True`` if the app is tracked by the registry. ``False`` if not.
+    """
+    if apps:
+        # Django >= 1.7
+        raise NotImplementedError
+    else:
+        # Django < 1.7
+        return app in cache.app_store
+
+
+def register_app(app_label, app):
+    """Register a new app in the registry.
+
+    This must be balanced with a :py:func:`unregister_app` call.
+
+    Args:
+        app_label (str):
+            The label of the app.
+
+        app (module):
+            The app module.
+    """
+    if apps:
+        # Django >= 1.7
+        raise NotImplementedError
+    else:
+        # Django < 1.7
+        cache.app_store[app] = len(cache.app_store)
+
+        if hasattr(cache, 'app_labels'):
+            cache.app_labels[app_label] = app
+
+
+def unregister_app(app_label):
+    """Unregister an app in the registry.
+
+    This must be balanced with a :py:func:`register_app` call.
+
+    Args:
+        app_label (str):
+            The label of the app to register.
+    """
+    all_models[app_label].clear()
+    clear_app_cache()
+
+
+def register_app_models(app_label, model_infos, reset=False):
+    """Register one or more models to a given app.
+
+    These will add onto the list of existing models.
+
+    Args:
+        app_label (str):
+            The label of the app to register the models on.
+
+        model_info (list);
+            A list of pairs of ``(model name, model class)`` to register.
+
+        reset (bool, optional):
+            If set, the old list will be overwritten with the new list.
+    """
+    if app_label not in all_models:
+        all_models[app_label] = OrderedDict()
+
+    model_dict = all_models[app_label]
+
+    if reset:
+        model_dict.clear()
+
+    for model_name, model in model_infos:
+        model_dict[model_name] = model
+
+    clear_app_cache()
+
+
+def unregister_app_model(app_label, model_name):
+    """Unregister a model with the given name from the given app.
+
+    Args:
+        app_label (str):
+            The label of the app containing a model.
+
+        model_name (str):
+            The name of the model to unregister.
+    """
+    del all_models[app_label][model_name]
+    clear_app_cache()
+
+
+def clear_app_cache():
+    """Clear the Django app/models caches.
+
+    This cache is used in Django >= 1.2 to quickly return results when
+    fetching models. It needs to be cleared when modifying the model registry.
+    """
+    if apps:
+        # Django >= 1.7
+        raise NotImplementedError
+    elif hasattr(cache, '_get_models_cache'):
+        # Django >= 1.2, < 1.7
+        cache._get_models_cache.clear()

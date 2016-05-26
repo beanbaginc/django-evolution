@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
-from django.db.models import get_apps
 
+from django_evolution.compat.apps import get_apps
 from django_evolution.models import Evolution
 
 
