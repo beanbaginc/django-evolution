@@ -167,9 +167,33 @@ class EvolutionTestCase(TransactionTestCase):
             database=db_name)
 
         if sql_name is not None:
+            # Normalize the generated and expected SQL so that we are
+            # guaranteed to have a list with one item per line.
+            generated_sql = '\n'.join(sql).splitlines()
+            expected_sql = self.get_sql_mapping(sql_name, db_name).splitlines()
+
+            # Output the statements one-by-one, to help with diagnosing
+            # differences.
+
+            print
             print "** Comparing SQL against '%s'" % sql_name
-            self.assertEqual('\n'.join(sql),
-                             self.get_sql_mapping(sql_name, db_name))
+            print '** Generated:'
+            print
+
+            for line in generated_sql:
+                print '    %s' % line
+
+            print
+            print '** Expected:'
+            print
+
+            for line in expected_sql:
+                print '    %s' % line
+
+            print
+
+            # Compare as lists, so that we can better spot inconsistencies.
+            self.assertListEqual(generated_sql, expected_sql)
 
     def get_sql_mapping(self, name, db_name=None):
         db_name = db_name or self.default_database_name
