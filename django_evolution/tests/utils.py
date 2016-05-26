@@ -455,7 +455,7 @@ def add_app_test_model(model, app_label):
 
 
 def generate_index_name(db_type, table, col_names, field_names=None,
-                        default=True, index_together=False):
+                        index_together=False):
     """Generate a suitable index name to test against.
 
     The returned index name is meant for use in the test data modules, and
@@ -484,13 +484,6 @@ def generate_index_name(db_type, table, col_names, field_names=None,
             (unless using Postgres without ``index_together``), or when
             passing ``default=True``.
 
-        default (bool, optional):
-            Whether to return the default index that Django would provide.
-            If ``False``, a hard-coded index from Django Evolution would be
-            returned instead.
-
-            Defaults to ``True``.
-
         index_together (bool, optional):
             Whether this index covers multiple fields indexed together
             through Django's ``Model._meta.index_together``.
@@ -512,33 +505,28 @@ def generate_index_name(db_type, table, col_names, field_names=None,
 
     assert len(field_names) == len(col_names)
 
-    if default:
-        # Note that we're checking Django versions/engines specifically, since
-        # we want to test that we're getting the right index names for the
-        # right versions of Django, rather than asking Django for them.
-        if db_type == 'postgres' and not index_together:
-            # Postgres computes the index names separately from the rest of
-            # the engines. It just uses '<tablename>_<colname>", same as
-            # Django < 1.2. We only do this for normal indexes, though, not
-            # index_together.
-            name = col_names[0]
-        elif django.VERSION >= (1, 5):
-            # Django >= 1.5 computed the digest of the representation of a
-            # list of either field names or column names. Note that digest()
-            # takes variable positional arguments, which this is not passing.
-            # This is due to a design bug in these versions.
-            name = digest(field_names or col_names)
-        elif django.VERSION >= (1, 2):
-            # Django >= 1.2, < 1.7 used the digest of the name of the first
-            # column. There was no index_together in these releases.
-            name = digest(col_names[0])
-        else:
-            # Django < 1.2 used just the name of the first column, no digest.
-            name = col_names[0]
+    # Note that we're checking Django versions/engines specifically, since
+    # we want to test that we're getting the right index names for the
+    # right versions of Django, rather than asking Django for them.
+    if db_type == 'postgres' and not index_together:
+        # Postgres computes the index names separately from the rest of
+        # the engines. It just uses '<tablename>_<colname>", same as
+        # Django < 1.2. We only do this for normal indexes, though, not
+        # index_together.
+        name = col_names[0]
+    elif django.VERSION >= (1, 5):
+        # Django >= 1.5 computed the digest of the representation of a
+        # list of either field names or column names. Note that digest()
+        # takes variable positional arguments, which this is not passing.
+        # This is due to a design bug in these versions.
+        name = digest(field_names or col_names)
+    elif django.VERSION >= (1, 2):
+        # Django >= 1.2, < 1.7 used the digest of the name of the first
+        # column. There was no index_together in these releases.
+        name = digest(col_names[0])
     else:
-        # This is a name created by Django Evolution, so follow the format
-        # in get_new_index_name in the evolver.
-        name = digest(*(field_names or col_names))
+        # Django < 1.2 used just the name of the first column, no digest.
+        name = col_names[0]
 
     return '%s_%s' % (table, name)
 
@@ -581,3 +569,25 @@ def has_index_with_columns(database_sig, table_name, columns, unique=False):
 
 def generate_constraint_name(r_col, col, r_table, table):
     return '%s_refs_%s_%s' % (r_col, col, digest(r_table, table))
+
+
+def generate_unique_constraint_name(table, col_names):
+    """Return the expected name for a unique constraint.
+
+    This will generate a constraint name for the current version of Django,
+    for comparison purposes.
+
+    Args:
+        table (str):
+            The table name.
+
+        col_names (list of str):
+            The list of column names for the constraint.
+
+    Returns:
+        The expected constraint name for this version of Django.
+    """
+    name = digest(*col_names)
+
+    return truncate_name('%s_%s' % (table, name),
+                         connection.ops.max_name_length())

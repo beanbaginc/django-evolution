@@ -1,4 +1,5 @@
 from django_evolution.tests.utils import (generate_constraint_name,
+                                          generate_unique_constraint_name,
                                           make_generate_index_name)
 
 
@@ -290,8 +291,7 @@ change_field = {
 
     "AddUniqueChangeModel": (
         'ALTER TABLE "tests_testmodel" ADD CONSTRAINT %s UNIQUE("int_field4");'
-        % generate_index_name('tests_testmodel', 'int_field4',
-                              default=False)
+        % generate_unique_constraint_name('tests_testmodel', ['int_field4'])
     ),
 
     "RemoveUniqueChangeModel": (
@@ -572,9 +572,8 @@ unique_together = {
     'setting_from_empty': (
         'CREATE UNIQUE INDEX %s'
         ' ON tests_testmodel ("int_field1", "char_field1");'
-        % generate_index_name('tests_testmodel',
-                              ['int_field1', 'char_field1'],
-                              default=False)
+        % generate_unique_constraint_name('tests_testmodel',
+                                          ['int_field1', 'char_field1'])
     ),
 
     'replace_list': '\n'.join([
@@ -583,17 +582,15 @@ unique_together = {
 
         'CREATE UNIQUE INDEX %s'
         ' ON tests_testmodel ("int_field2", "char_field2");'
-        % generate_index_name('tests_testmodel',
-                              ['int_field2', 'char_field2'],
-                              default=False),
+        % generate_unique_constraint_name('tests_testmodel',
+                                          ['int_field2', 'char_field2']),
     ]),
 
     'append_list': (
         'CREATE UNIQUE INDEX %s'
         ' ON tests_testmodel ("int_field2", "char_field2");'
-        % generate_index_name('tests_testmodel',
-                              ['int_field2', 'char_field2'],
-                              default=False)
+        % generate_unique_constraint_name('tests_testmodel',
+                                          ['int_field2', 'char_field2'])
     ),
 
     'removing': (
@@ -604,25 +601,22 @@ unique_together = {
     'set_remove': (
         'CREATE UNIQUE INDEX %s'
         ' ON tests_testmodel ("int_field1", "char_field1");'
-        % generate_index_name('tests_testmodel',
-                              ['int_field1', 'char_field1'],
-                              default=False)
+        % generate_unique_constraint_name('tests_testmodel',
+                                          ['int_field1', 'char_field1'])
     ),
 
     'ignore_missing_indexes': (
         'CREATE UNIQUE INDEX %s'
         ' ON tests_testmodel ("char_field1", "char_field2");'
-        % generate_index_name('tests_testmodel',
-                              ['char_field1', 'char_field2'],
-                              default=False)
+        % generate_unique_constraint_name('tests_testmodel',
+                                          ['char_field1', 'char_field2'])
     ),
 
     'upgrade_from_v1_sig': (
         'CREATE UNIQUE INDEX %s'
         ' ON tests_testmodel ("int_field1", "char_field1");'
-        % generate_index_name('tests_testmodel',
-                              ['int_field1', 'char_field1'],
-                              default=False)
+        % generate_unique_constraint_name('tests_testmodel',
+                                          ['int_field1', 'char_field1'])
     ),
 }
 
