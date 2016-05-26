@@ -1,5 +1,8 @@
 from django_evolution.tests.utils import (generate_constraint_name,
-                                          generate_index_name)
+                                          make_generate_index_name)
+
+
+generate_index_name = make_generate_index_name('postgres')
 
 
 add_field = {
@@ -95,8 +98,9 @@ add_field = {
 
     'AddIndexedColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel" ADD COLUMN "add_field" integer NULL;',
-        'CREATE INDEX "tests_testmodel_add_field"'
-        ' ON "tests_testmodel" ("add_field");'
+
+        'CREATE INDEX "%s" ON "tests_testmodel" ("add_field");'
+        % generate_index_name('tests_testmodel', 'add_field')
     ]),
 
     'AddUniqueColumnModel': (
@@ -114,8 +118,9 @@ add_field = {
         ' ADD COLUMN "added_field_id" integer NULL REFERENCES'
         ' "tests_addanchor1" ("id")  DEFERRABLE INITIALLY DEFERRED;',
 
-        'CREATE INDEX "tests_testmodel_added_field_id"'
-        ' ON "tests_testmodel" ("added_field_id");'
+        'CREATE INDEX "%s" ON "tests_testmodel" ("added_field_id");'
+        % generate_index_name('tests_testmodel', 'added_field_id',
+                              'added_field'),
     ]),
 
     'AddManyToManyDatabaseTableModel': '\n'.join([
@@ -270,14 +275,15 @@ change_field = {
     ),
 
     "AddDBIndexChangeModel": (
-        'CREATE INDEX "tests_testmodel_int_field2"'
-        ' ON "tests_testmodel" ("int_field2");'
+        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field2");'
+        % generate_index_name('tests_testmodel', 'int_field2')
     ),
 
     'AddDBIndexNoOpChangeModel': '',
 
     "RemoveDBIndexChangeModel": (
-        'DROP INDEX "tests_testmodel_int_field1";'
+        'DROP INDEX "%s";'
+        % generate_index_name('tests_testmodel', 'int_field1')
     ),
 
     'RemoveDBIndexNoOpChangeModel': '',
@@ -624,38 +630,45 @@ index_together = {
     'setting_from_empty': '\n'.join([
         'CREATE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field1", "char_field1");'
-        % generate_index_name('tests_testmodel', ['int_field1', 'char_field1'])
+        % generate_index_name('tests_testmodel',
+                              ['int_field1', 'char_field1'],
+                              index_together=True)
     ]),
 
     'replace_list': '\n'.join([
         'DROP INDEX "%s";'
         % generate_index_name('tests_testmodel',
-                              ['int_field1', 'char_field1']),
+                              ['int_field1', 'char_field1'],
+                              index_together=True),
 
         'CREATE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field2", "char_field2");'
         % generate_index_name('tests_testmodel',
-                              ['int_field2', 'char_field2']),
+                              ['int_field2', 'char_field2'],
+                              index_together=True),
     ]),
 
     'append_list': '\n'.join([
         'CREATE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field2", "char_field2");'
         % generate_index_name('tests_testmodel',
-                              ['int_field2', 'char_field2']),
+                              ['int_field2', 'char_field2'],
+                              index_together=True),
     ]),
 
     'removing': '\n'.join([
         'DROP INDEX "%s";'
         % generate_index_name('tests_testmodel',
-                              ['int_field1', 'char_field1']),
+                              ['int_field1', 'char_field1'],
+                              index_together=True),
     ]),
 
     'ignore_missing_indexes': (
         'CREATE INDEX "%s"'
         ' ON "tests_testmodel" ("char_field1", "char_field2");'
         % generate_index_name('tests_testmodel',
-                              ['char_field1', 'char_field2'])
+                              ['char_field1', 'char_field2'],
+                              index_together=True)
     ),
 }
 
@@ -718,8 +731,9 @@ preprocessing = {
         ' ADD COLUMN "added_field_id" integer NULL REFERENCES'
         ' "tests_reffedpreprocmodel" ("id")  DEFERRABLE INITIALLY DEFERRED;',
 
-        'CREATE INDEX "tests_testmodel_added_field_id"'
-        ' ON "tests_testmodel" ("added_field_id");'
+        'CREATE INDEX "%s" ON "tests_testmodel" ("added_field_id");'
+        % generate_index_name('tests_testmodel', 'added_field_id',
+                              'added_field'),
     ]),
 
     'add_rename_field_rename_model': '\n'.join([
@@ -727,8 +741,9 @@ preprocessing = {
         ' ADD COLUMN "renamed_field_id" integer NULL REFERENCES'
         ' "tests_reffedpreprocmodel" ("id")  DEFERRABLE INITIALLY DEFERRED;',
 
-        'CREATE INDEX "tests_testmodel_renamed_field_id"'
-        ' ON "tests_testmodel" ("renamed_field_id");'
+        'CREATE INDEX "%s" ON "tests_testmodel" ("renamed_field_id");'
+        % generate_index_name('tests_testmodel', 'renamed_field_id',
+                              'renamed_field'),
     ]),
 
     'add_sql_delete': '\n'.join([

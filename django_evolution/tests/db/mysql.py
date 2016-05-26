@@ -1,5 +1,8 @@
 from django_evolution.tests.utils import (generate_constraint_name,
-                                          generate_index_name)
+                                          make_generate_index_name)
+
+
+generate_index_name = make_generate_index_name('mysql')
 
 
 add_field = {
@@ -621,7 +624,9 @@ index_together = {
     'setting_from_empty': '\n'.join([
         'CREATE INDEX `%s`'
         ' ON `tests_testmodel` (`int_field1`, `char_field1`);'
-        % generate_index_name('tests_testmodel', ['int_field1', 'char_field1'])
+        % generate_index_name('tests_testmodel',
+                              ['int_field1', 'char_field1'],
+                              index_together=True),
     ]),
 
     'replace_list': '\n'.join([
@@ -632,27 +637,31 @@ index_together = {
         'CREATE INDEX `%s`'
         ' ON `tests_testmodel` (`int_field2`, `char_field2`);'
         % generate_index_name('tests_testmodel',
-                              ['int_field2', 'char_field2']),
+                              ['int_field2', 'char_field2'],
+                              index_together=True),
     ]),
 
     'append_list': '\n'.join([
         'CREATE INDEX `%s`'
         ' ON `tests_testmodel` (`int_field2`, `char_field2`);'
         % generate_index_name('tests_testmodel',
-                              ['int_field2', 'char_field2']),
+                              ['int_field2', 'char_field2'],
+                              index_together=True),
     ]),
 
     'removing': '\n'.join([
         'DROP INDEX `%s` ON `tests_testmodel`;'
         % generate_index_name('tests_testmodel',
-                              ['int_field1', 'char_field1']),
+                              ['int_field1', 'char_field1'],
+                              index_together=True),
     ]),
 
     'ignore_missing_indexes': (
         'CREATE INDEX `%s`'
         ' ON `tests_testmodel` (`char_field1`, `char_field2`);'
         % generate_index_name('tests_testmodel',
-                              ['char_field1', 'char_field2'])
+                              ['char_field1', 'char_field2'],
+                              index_together=True)
     ),
 }
 
@@ -715,8 +724,9 @@ preprocessing = {
         ' ADD COLUMN `added_field_id` integer NULL'
         ' REFERENCES `tests_reffedpreprocmodel` (`id`);',
 
-        'CREATE INDEX `tests_testmodel_2d9d1ab4`'
-        ' ON `tests_testmodel` (`added_field_id`);',
+        'CREATE INDEX `%s` ON `tests_testmodel` (`added_field_id`);'
+        % generate_index_name('tests_testmodel', 'added_field_id',
+                              'added_field'),
     ]),
 
     'add_rename_field_rename_model': '\n'.join([
@@ -724,8 +734,9 @@ preprocessing = {
         ' ADD COLUMN `renamed_field_id` integer NULL'
         ' REFERENCES `tests_reffedpreprocmodel` (`id`);',
 
-        'CREATE INDEX `tests_testmodel_182b6181`'
-        ' ON `tests_testmodel` (`renamed_field_id`);',
+        'CREATE INDEX `%s` ON `tests_testmodel` (`renamed_field_id`);'
+        % generate_index_name('tests_testmodel', 'renamed_field_id',
+                              'renamed_field'),
     ]),
 
     'add_sql_delete': '\n'.join([
