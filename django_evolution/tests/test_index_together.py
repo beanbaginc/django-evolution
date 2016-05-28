@@ -1,5 +1,5 @@
 from django.db import models
-from django.utils.unittest import SkipTest
+from nose import SkipTest
 
 from django_evolution.mutations import ChangeMeta
 from django_evolution.tests.base_test_case import EvolutionTestCase

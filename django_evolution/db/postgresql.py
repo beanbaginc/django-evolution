@@ -1,3 +1,5 @@
+import django
+
 from django_evolution.compat.db import truncate_name
 from django_evolution.db.common import BaseEvolutionOperations
 from django_evolution.db.sql_result import AlterTableSQLResult
@@ -62,14 +64,21 @@ class EvolutionOperations(BaseEvolutionOperations):
             str:
             The name of the index.
         """
-        assert field.unique or field.db_index
+        if django.VERSION[:2] >= (1, 7):
+            # On Django 1.7+, the default behavior for the index name is used.
+            return super(EvolutionOperations, self).get_default_index_name(
+                table_name, field)
+        else:
+            # On Django < 1.7, a custom form of index name is used.
+            assert field.unique or field.db_index
 
-        if field.unique:
-            index_name = '%s_%s_key' % (table_name, field.column)
-        elif field.db_index:
-            index_name = '%s_%s' % (table_name, field.column)
+            if field.unique:
+                index_name = '%s_%s_key' % (table_name, field.column)
+            elif field.db_index:
+                index_name = '%s_%s' % (table_name, field.column)
 
-        return truncate_name(index_name, self.connection.ops.max_name_length())
+            return truncate_name(index_name,
+                                 self.connection.ops.max_name_length())
 
     def get_indexes_for_table(self, table_name):
         cursor = self.connection.cursor()

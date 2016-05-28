@@ -1,8 +1,31 @@
+import django
+from django.db.backends.sqlite3.creation import DatabaseCreation
+from django.db.backends.sqlite3.base import DatabaseWrapper
+
 from django_evolution.tests.utils import (generate_unique_constraint_name,
                                           make_generate_index_name)
 
 
 generate_index_name = make_generate_index_name('sqlite3')
+
+
+try:
+    # Django >= 1.8
+    data_types_suffix = DatabaseWrapper.data_types_suffix
+except AttributeError:
+    try:
+        # Django == 1.7
+        data_types_suffix = DatabaseCreation.data_types_suffix
+    except AttributeError:
+        # Django < 1.7
+        data_types_suffix = {}
+
+
+def get_field_suffix(field_type):
+    try:
+        return ' %s' % data_types_suffix[field_type]
+    except KeyError:
+        return ''
 
 
 add_field = {
@@ -464,35 +487,197 @@ add_field = {
         % generate_index_name('tests_testmodel', 'added_field_id',
                               'added_field'),
     ]),
-
-    'AddManyToManyDatabaseTableModel': '\n'.join([
-        'CREATE TABLE "tests_testmodel_added_field" (',
-        '    "id" integer NOT NULL PRIMARY KEY,',
-        '    "testmodel_id" integer NOT NULL,',
-        '    "addanchor1_id" integer NOT NULL,',
-        '    UNIQUE ("testmodel_id", "addanchor1_id")',
-        ')',
-        ';',
-    ]),
-    'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
-        'CREATE TABLE "tests_testmodel_added_field" (',
-        '    "id" integer NOT NULL PRIMARY KEY,',
-        '    "testmodel_id" integer NOT NULL,',
-        '    "addanchor2_id" integer NOT NULL,',
-        '    UNIQUE ("testmodel_id", "addanchor2_id")',
-        ')',
-        ';',
-    ]),
-    'AddManyToManySelf': '\n'.join([
-        'CREATE TABLE "tests_testmodel_added_field" (',
-        '    "id" integer NOT NULL PRIMARY KEY,',
-        '    "from_testmodel_id" integer NOT NULL,',
-        '    "to_testmodel_id" integer NOT NULL,',
-        '    UNIQUE ("from_testmodel_id", "to_testmodel_id")',
-        ')',
-        ';',
-    ]),
 }
+
+if django.VERSION[:2] >= (1, 9):
+    add_field.update({
+        'AddManyToManyDatabaseTableModel': '\n'.join([
+            'CREATE TABLE "tests_testmodel_added_field" '
+            '("id" integer NOT NULL PRIMARY KEY%s,'
+            ' "testmodel_id" integer NOT NULL'
+            ' REFERENCES "tests_testmodel" ("id"),'
+            ' "addanchor1_id" integer NOT NULL'
+            ' REFERENCES "tests_addanchor1" ("id")'
+            ');'
+            % get_field_suffix('AutoField'),
+
+            'CREATE UNIQUE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("testmodel_id", "addanchor1_id");'
+            % generate_unique_constraint_name(
+                'tests_testmodel_added_field',
+                ['testmodel_id', 'addanchor1_id']),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("testmodel_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'testmodel_id'),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("addanchor1_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'addanchor1_id'),
+        ]),
+
+        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+            'CREATE TABLE "tests_testmodel_added_field" '
+            '("id" integer NOT NULL PRIMARY KEY%s,'
+            ' "testmodel_id" integer NOT NULL'
+            ' REFERENCES "tests_testmodel" ("id"),'
+            ' "addanchor2_id" integer NOT NULL'
+            ' REFERENCES "custom_add_anchor_table" ("id")'
+            ');'
+            % get_field_suffix('AutoField'),
+
+            'CREATE UNIQUE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("testmodel_id", "addanchor2_id");'
+            % generate_unique_constraint_name(
+                'tests_testmodel_added_field',
+                ['testmodel_id', 'addanchor2_id']),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("testmodel_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'testmodel_id'),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("addanchor2_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'addanchor2_id'),
+        ]),
+
+        'AddManyToManySelf': '\n'.join([
+            'CREATE TABLE "tests_testmodel_added_field" '
+            '("id" integer NOT NULL PRIMARY KEY%s,'
+            ' "from_testmodel_id" integer NOT NULL'
+            ' REFERENCES "tests_testmodel" ("id"),'
+            ' "to_testmodel_id" integer NOT NULL'
+            ' REFERENCES "tests_testmodel" ("id")'
+            ');'
+            % get_field_suffix('AutoField'),
+
+            'CREATE UNIQUE INDEX "%s" ON "tests_testmodel_added_field"'
+            ' ("from_testmodel_id", "to_testmodel_id");'
+            % generate_unique_constraint_name(
+                'tests_testmodel_added_field',
+                ['from_testmodel_id', 'to_testmodel_id']),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("from_testmodel_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'from_testmodel_id'),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("to_testmodel_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'to_testmodel_id'),
+        ]),
+    })
+elif django.VERSION[:2] >= (1, 7):
+    add_field.update({
+        'AddManyToManyDatabaseTableModel': '\n'.join([
+            'CREATE TABLE "tests_testmodel_added_field" '
+            '("id" integer NOT NULL PRIMARY KEY%s,'
+            ' "testmodel_id" integer NOT NULL'
+            ' REFERENCES "tests_testmodel" ("id"),'
+            ' "addanchor1_id" integer NOT NULL'
+            ' REFERENCES "tests_addanchor1" ("id"),'
+            ' UNIQUE ("testmodel_id", "addanchor1_id")'
+            ');'
+            % get_field_suffix('AutoField'),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("testmodel_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'testmodel_id'),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("addanchor1_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'addanchor1_id'),
+        ]),
+
+        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+            'CREATE TABLE "tests_testmodel_added_field" '
+            '("id" integer NOT NULL PRIMARY KEY%s,'
+            ' "testmodel_id" integer NOT NULL'
+            ' REFERENCES "tests_testmodel" ("id"),'
+            ' "addanchor2_id" integer NOT NULL'
+            ' REFERENCES "custom_add_anchor_table" ("id"),'
+            ' UNIQUE ("testmodel_id", "addanchor2_id")'
+            ');'
+            % get_field_suffix('AutoField'),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("testmodel_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'testmodel_id'),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("addanchor2_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'addanchor2_id'),
+        ]),
+
+        'AddManyToManySelf': '\n'.join([
+            'CREATE TABLE "tests_testmodel_added_field" '
+            '("id" integer NOT NULL PRIMARY KEY%s,'
+            ' "from_testmodel_id" integer NOT NULL'
+            ' REFERENCES "tests_testmodel" ("id"),'
+            ' "to_testmodel_id" integer NOT NULL'
+            ' REFERENCES "tests_testmodel" ("id"),'
+            ' UNIQUE ("from_testmodel_id", "to_testmodel_id")'
+            ');'
+            % get_field_suffix('AutoField'),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("from_testmodel_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'from_testmodel_id'),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("to_testmodel_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'to_testmodel_id'),
+        ]),
+    })
+else:
+    add_field.update({
+        'AddManyToManyDatabaseTableModel': '\n'.join([
+            'CREATE TABLE "tests_testmodel_added_field" (',
+            '    "id" integer NOT NULL PRIMARY KEY%s,'
+            % get_field_suffix('AutoField'),
+
+            '    "testmodel_id" integer NOT NULL,',
+            '    "addanchor1_id" integer NOT NULL,',
+            '    UNIQUE ("testmodel_id", "addanchor1_id")',
+            ')',
+            ';',
+        ]),
+
+        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+            'CREATE TABLE "tests_testmodel_added_field" (',
+            '    "id" integer NOT NULL PRIMARY KEY%s,'
+            % get_field_suffix('AutoField'),
+
+            '    "testmodel_id" integer NOT NULL,',
+            '    "addanchor2_id" integer NOT NULL,',
+            '    UNIQUE ("testmodel_id", "addanchor2_id")',
+            ')',
+            ';',
+        ]),
+
+        'AddManyToManySelf': '\n'.join([
+            'CREATE TABLE "tests_testmodel_added_field" (',
+            '    "id" integer NOT NULL PRIMARY KEY%s,'
+            % get_field_suffix('AutoField'),
+
+            '    "from_testmodel_id" integer NOT NULL,',
+            '    "to_testmodel_id" integer NOT NULL,',
+            '    UNIQUE ("from_testmodel_id", "to_testmodel_id")',
+            ')',
+            ';',
+        ]),
+    })
 
 delete_field = {
     'DefaultNamedColumnModel': '\n'.join([

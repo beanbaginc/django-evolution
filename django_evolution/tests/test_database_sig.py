@@ -1,7 +1,6 @@
 from django.test.testcases import TestCase
 
 from django_evolution.db import EvolutionOperationsMulti
-from django_evolution.models import Evolution
 from django_evolution.signature import create_database_sig
 
 
@@ -25,14 +24,11 @@ class DatabaseSigTests(TestCase):
         self.assertTrue('indexes' in self.database_sig['django_evolution'])
 
         # Check the Evolution model
-        index_name = self.evolver.get_default_index_name(
-            Evolution._meta.db_table, Evolution._meta.get_field('version'))
         indexes = self.database_sig['django_evolution']['indexes']
 
-        self.assertTrue(index_name in indexes)
-        self.assertEqual(
-            indexes[index_name],
+        self.assertIn(
             {
                 'unique': False,
                 'columns': ['version_id'],
-            })
+            },
+            indexes.values())

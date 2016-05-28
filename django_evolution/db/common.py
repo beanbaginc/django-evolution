@@ -165,19 +165,18 @@ class BaseEvolutionOperations(object):
         sql_result.add(self.get_rename_table_sql(
             model, old_db_tablename, db_tablename))
 
-        if self.supports_constraints:
-            for relto in models:
-                for rel_class, f in refs[relto]:
-                    if rel_class._meta.db_table == old_db_tablename:
-                        rel_class._meta.db_table = db_tablename
+        for relto in models:
+            for rel_class, f in refs[relto]:
+                if rel_class._meta.db_table == old_db_tablename:
+                    rel_class._meta.db_table = db_tablename
 
-                    rel_class._meta.db_table = \
-                        truncate_name(rel_class._meta.db_table,
-                                      max_name_length)
+                rel_class._meta.db_table = \
+                    truncate_name(rel_class._meta.db_table,
+                                  max_name_length)
 
-                if self.supports_constraints:
-                    sql_result.add_post_sql(sql_add_constraints(
-                        self.connection, relto, refs))
+            if self.supports_constraints:
+                sql_result.add_post_sql(sql_add_constraints(
+                    self.connection, relto, refs))
 
         return sql_result
 

@@ -32,7 +32,7 @@ class AddBaseModel(models.Model):
     int_field = models.IntegerField()
 
 
-class CustomTableModel(models.Model):
+class CustomAddTableModel(models.Model):
     value = models.IntegerField()
     alt_value = models.CharField(max_length=20)
 
@@ -336,7 +336,7 @@ class AddFieldTests(EvolutionTestCase):
             class Meta:
                 db_table = 'custom_table_name'
 
-        self.set_base_model(CustomTableModel, name='CustomTableModel')
+        self.set_base_model(CustomAddTableModel, name='CustomTableModel')
 
         self.perform_evolution_tests(
             DestModel,

@@ -114,6 +114,9 @@ def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
 
     field.set_attributes_from_name(field_name)
 
+    # Needed in Django >= 1.7, for index building.
+    field.model = parent_model
+
     return field
 
 
@@ -133,6 +136,7 @@ class MockMeta(object):
             'has_auto_field': None,
             'db_tablespace': None,
             'swapped': False,
+            'index_together': [],
         }
         self.meta.update(model_sig['meta'])
         self._fields = OrderedDict()
@@ -166,6 +170,9 @@ class MockMeta(object):
                     self.pk = field
 
     def __getattr__(self, name):
+        if name == 'model_name':
+            return self.object_name
+
         return self.meta[name]
 
     def get_field(self, name):
@@ -763,8 +770,15 @@ class ChangeMeta(MutateModelField):
         self.new_value = new_value
 
     def __str__(self):
+        if self.prop_name in ('index_together', 'unique_together'):
+            # Make sure these always appear as lists and not tuples, for
+            # compatibility.
+            norm_value = list(self.new_value)
+        else:
+            norm_value = self.new_value
+
         return ("ChangeMeta('%s', '%s', %r)"
-                % (self.model_name, self.prop_name, self.new_value))
+                % (self.model_name, self.prop_name, norm_value))
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
         app_sig = proj_sig[app_label]

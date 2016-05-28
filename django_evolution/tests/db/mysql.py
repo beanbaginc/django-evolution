@@ -1,3 +1,6 @@
+import django
+from django.db import connection
+
 from django_evolution.tests.utils import (generate_unique_constraint_name,
                                           make_generate_constraint_name,
                                           make_generate_index_name)
@@ -5,6 +8,12 @@ from django_evolution.tests.utils import (generate_unique_constraint_name,
 
 generate_constraint_name = make_generate_constraint_name('mysql')
 generate_index_name = make_generate_index_name('mysql')
+
+
+if hasattr(connection, 'data_types'):
+    datetime_type = connection.data_types['DateTimeField']
+else:
+    datetime_type = 'datetime'
 
 
 add_field = {
@@ -53,8 +62,9 @@ add_field = {
 
     'AddDateColumnModel': '\n'.join([
         'ALTER TABLE `tests_testmodel`'
-        ' ADD COLUMN `added_field` datetime NOT NULL'
-        ' DEFAULT 2007-12-13 16:42:00;',
+        ' ADD COLUMN `added_field` %s NOT NULL'
+        ' DEFAULT 2007-12-13 16:42:00;'
+        % datetime_type,
 
         'ALTER TABLE `tests_testmodel`'
         ' ALTER COLUMN `added_field` DROP DEFAULT;',
@@ -125,79 +135,350 @@ add_field = {
         % generate_index_name('tests_testmodel', 'added_field_id',
                               'added_field'),
     ]),
-
-    'AddManyToManyDatabaseTableModel': '\n'.join([
-        'CREATE TABLE `tests_testmodel_added_field` (',
-        '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
-        '    `testmodel_id` integer NOT NULL,',
-        '    `addanchor1_id` integer NOT NULL,',
-        '    UNIQUE (`testmodel_id`, `addanchor1_id`)',
-        ')',
-        ';',
-
-        'ALTER TABLE `tests_testmodel_added_field`'
-        ' ADD CONSTRAINT `%s` FOREIGN KEY (`addanchor1_id`)'
-        ' REFERENCES `tests_addanchor1` (`id`);'
-        % generate_constraint_name('addanchor1_id', 'id',
-                                   'tests_testmodel_added_field',
-                                   'tests_addanchor1'),
-
-        'ALTER TABLE `tests_testmodel_added_field`'
-        ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
-        ' REFERENCES `tests_testmodel` (`id`);'
-        % generate_constraint_name('testmodel_id', 'id',
-                                   'tests_testmodel_added_field',
-                                   'tests_testmodel'),
-    ]),
-
-    'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
-        'CREATE TABLE `tests_testmodel_added_field` (',
-        '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
-        '    `testmodel_id` integer NOT NULL,',
-        '    `addanchor2_id` integer NOT NULL,',
-        '    UNIQUE (`testmodel_id`, `addanchor2_id`)',
-        ')',
-        ';',
-
-        'ALTER TABLE `tests_testmodel_added_field`'
-        ' ADD CONSTRAINT `%s` FOREIGN KEY (`addanchor2_id`)'
-        ' REFERENCES `custom_add_anchor_table` (`id`);'
-        % generate_constraint_name('addanchor2_id', 'id',
-                                   'tests_testmodel_added_field',
-                                   'custom_add_anchor_table'),
-
-        'ALTER TABLE `tests_testmodel_added_field`'
-        ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
-        ' REFERENCES `tests_testmodel` (`id`);'
-        % generate_constraint_name('testmodel_id', 'id',
-                                   'tests_testmodel_added_field',
-                                   'tests_testmodel'),
-    ]),
-
-    'AddManyToManySelf': '\n'.join([
-        'CREATE TABLE `tests_testmodel_added_field` (',
-        '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
-        '    `from_testmodel_id` integer NOT NULL,',
-        '    `to_testmodel_id` integer NOT NULL,',
-        '    UNIQUE (`from_testmodel_id`, `to_testmodel_id`)',
-        ')',
-        ';',
-
-        'ALTER TABLE `tests_testmodel_added_field`'
-        ' ADD CONSTRAINT `%s` FOREIGN KEY (`from_testmodel_id`)'
-        ' REFERENCES `tests_testmodel` (`id`);'
-        % generate_constraint_name('from_testmodel_id', 'id',
-                                   'tests_testmodel_added_field',
-                                   'tests_testmodel'),
-
-        'ALTER TABLE `tests_testmodel_added_field`'
-        ' ADD CONSTRAINT `%s` FOREIGN KEY (`to_testmodel_id`)'
-        ' REFERENCES `tests_testmodel` (`id`);'
-        % generate_constraint_name('to_testmodel_id', 'id',
-                                   'tests_testmodel_added_field',
-                                   'tests_testmodel'),
-    ]),
 }
+
+
+if django.VERSION[:2] >= (1, 9):
+    # Django 1.9+ no longer includes a UNIQUE keyword in the table creation,
+    # instead creating these through constraints.
+    add_field.update({
+        'AddManyToManyDatabaseTableModel': '\n'.join([
+            'CREATE TABLE `tests_testmodel_added_field` '
+            '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+            ' `testmodel_id` integer NOT NULL,'
+            ' `addanchor1_id` integer NOT NULL'
+            ');',
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`id`);'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`addanchor1_id`)'
+            ' REFERENCES `tests_addanchor1` (`id`);'
+            % generate_constraint_name('addanchor1_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_addanchor1'),
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` UNIQUE (`testmodel_id`, `addanchor1_id`);'
+            % generate_unique_constraint_name(
+                'tests_testmodel_added_field',
+                ['testmodel_id', 'addanchor1_id']),
+        ]),
+
+        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+            'CREATE TABLE `tests_testmodel_added_field` '
+            '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+            ' `testmodel_id` integer NOT NULL,'
+            ' `addanchor2_id` integer NOT NULL'
+            ');',
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`id`);'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`addanchor2_id`)'
+            ' REFERENCES `custom_add_anchor_table` (`id`);'
+            % generate_constraint_name('addanchor2_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'custom_add_anchor_table'),
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` UNIQUE (`testmodel_id`, `addanchor2_id`);'
+            % generate_unique_constraint_name(
+                'tests_testmodel_added_field',
+                ['testmodel_id', 'addanchor2_id']),
+        ]),
+
+        'AddManyToManySelf': '\n'.join([
+            'CREATE TABLE `tests_testmodel_added_field` '
+            '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+            ' `from_testmodel_id` integer NOT NULL,'
+            ' `to_testmodel_id` integer NOT NULL'
+            ');',
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`from_testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`id`);'
+            % generate_constraint_name('from_testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`to_testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`id`);'
+            % generate_constraint_name('to_testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` UNIQUE'
+            ' (`from_testmodel_id`, `to_testmodel_id`);'
+            % generate_unique_constraint_name(
+                'tests_testmodel_added_field',
+                ['from_testmodel_id', 'to_testmodel_id']),
+        ]),
+    })
+elif django.VERSION[:2] == (1, 8):
+    # Django 1.8+ no longer creates indexes for the ForeignKeys on the
+    # ManyToMany table.
+    add_field.update({
+        'AddManyToManyDatabaseTableModel': '\n'.join([
+            'CREATE TABLE `tests_testmodel_added_field` '
+            '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+            ' `testmodel_id` integer NOT NULL,'
+            ' `addanchor1_id` integer NOT NULL,'
+            ' UNIQUE (`testmodel_id`, `addanchor1_id`)'
+            ');',
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`id`);'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`addanchor1_id`)'
+            ' REFERENCES `tests_addanchor1` (`id`);'
+            % generate_constraint_name('addanchor1_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_addanchor1'),
+        ]),
+
+        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+            'CREATE TABLE `tests_testmodel_added_field` '
+            '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+            ' `testmodel_id` integer NOT NULL,'
+            ' `addanchor2_id` integer NOT NULL,'
+            ' UNIQUE (`testmodel_id`, `addanchor2_id`)'
+            ');',
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`id`);'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`addanchor2_id`)'
+            ' REFERENCES `custom_add_anchor_table` (`id`);'
+            % generate_constraint_name('addanchor2_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'custom_add_anchor_table'),
+        ]),
+
+        'AddManyToManySelf': '\n'.join([
+            'CREATE TABLE `tests_testmodel_added_field` '
+            '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+            ' `from_testmodel_id` integer NOT NULL,'
+            ' `to_testmodel_id` integer NOT NULL,'
+            ' UNIQUE (`from_testmodel_id`, `to_testmodel_id`)'
+            ');',
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`from_testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`id`);'
+            % generate_constraint_name('from_testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`to_testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`id`);'
+            % generate_constraint_name('to_testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
+        ]),
+    })
+elif django.VERSION[:2] == (1, 7):
+    # Django 1.7 introduced more condensed CREATE TABLE statements, and
+    # indexes for fields on the model. (The indexes were removed for MySQL
+    # in subsequent releases.)
+    add_field.update({
+        'AddManyToManyDatabaseTableModel': '\n'.join([
+            'CREATE TABLE `tests_testmodel_added_field` '
+            '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+            ' `testmodel_id` integer NOT NULL,'
+            ' `addanchor1_id` integer NOT NULL,'
+            ' UNIQUE (`testmodel_id`, `addanchor1_id`)'
+            ');',
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`id`);'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`addanchor1_id`)'
+            ' REFERENCES `tests_addanchor1` (`id`);'
+            % generate_constraint_name('addanchor1_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_addanchor1'),
+
+            'CREATE INDEX `%s` ON'
+            ' `tests_testmodel_added_field` (`testmodel_id`);'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'testmodel_id'),
+
+            'CREATE INDEX `%s` ON'
+            ' `tests_testmodel_added_field` (`addanchor1_id`);'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'addanchor1_id'),
+        ]),
+
+        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+            'CREATE TABLE `tests_testmodel_added_field` '
+            '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+            ' `testmodel_id` integer NOT NULL,'
+            ' `addanchor2_id` integer NOT NULL,'
+            ' UNIQUE (`testmodel_id`, `addanchor2_id`)'
+            ');',
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`id`);'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`addanchor2_id`)'
+            ' REFERENCES `custom_add_anchor_table` (`id`);'
+            % generate_constraint_name('addanchor2_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'custom_add_anchor_table'),
+
+            'CREATE INDEX `%s` ON'
+            ' `tests_testmodel_added_field` (`testmodel_id`);'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'testmodel_id'),
+
+            'CREATE INDEX `%s` ON'
+            ' `tests_testmodel_added_field` (`addanchor2_id`);'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'addanchor2_id'),
+        ]),
+
+        'AddManyToManySelf': '\n'.join([
+            'CREATE TABLE `tests_testmodel_added_field` '
+            '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+            ' `from_testmodel_id` integer NOT NULL,'
+            ' `to_testmodel_id` integer NOT NULL,'
+            ' UNIQUE (`from_testmodel_id`, `to_testmodel_id`)'
+            ');',
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`from_testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`id`);'
+            % generate_constraint_name('from_testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`to_testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`id`);'
+            % generate_constraint_name('to_testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
+
+            'CREATE INDEX `%s` ON'
+            ' `tests_testmodel_added_field` (`from_testmodel_id`);'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'from_testmodel_id'),
+
+            'CREATE INDEX `%s` ON'
+            ' `tests_testmodel_added_field` (`to_testmodel_id`);'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'to_testmodel_id'),
+        ]),
+    })
+else:
+    add_field.update({
+        'AddManyToManyDatabaseTableModel': '\n'.join([
+            'CREATE TABLE `tests_testmodel_added_field` (',
+            '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
+            '    `testmodel_id` integer NOT NULL,',
+            '    `addanchor1_id` integer NOT NULL,',
+            '    UNIQUE (`testmodel_id`, `addanchor1_id`)',
+            ')',
+            ';',
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`addanchor1_id`)'
+            ' REFERENCES `tests_addanchor1` (`id`);'
+            % generate_constraint_name('addanchor1_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_addanchor1'),
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`id`);'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
+        ]),
+
+        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+            'CREATE TABLE `tests_testmodel_added_field` (',
+            '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
+            '    `testmodel_id` integer NOT NULL,',
+            '    `addanchor2_id` integer NOT NULL,',
+            '    UNIQUE (`testmodel_id`, `addanchor2_id`)',
+            ')',
+            ';',
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`addanchor2_id`)'
+            ' REFERENCES `custom_add_anchor_table` (`id`);'
+            % generate_constraint_name('addanchor2_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'custom_add_anchor_table'),
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`id`);'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
+        ]),
+
+        'AddManyToManySelf': '\n'.join([
+            'CREATE TABLE `tests_testmodel_added_field` (',
+            '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
+            '    `from_testmodel_id` integer NOT NULL,',
+            '    `to_testmodel_id` integer NOT NULL,',
+            '    UNIQUE (`from_testmodel_id`, `to_testmodel_id`)',
+            ')',
+            ';',
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`from_testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`id`);'
+            % generate_constraint_name('from_testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE `tests_testmodel_added_field`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`to_testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`id`);'
+            % generate_constraint_name('to_testmodel_id', 'id',
+                                       'tests_testmodel_added_field',
+                                       'tests_testmodel'),
+        ]),
+    })
+
 
 delete_field = {
     'DefaultNamedColumnModel': (
@@ -573,24 +854,11 @@ unique_together = {
                                           ['int_field1', 'char_field1']),
     ]),
 
-    'replace_list': '\n'.join([
-        'DROP INDEX `int_field1` ON `tests_testmodel`;',
-
-        'CREATE UNIQUE INDEX %s'
-        ' ON tests_testmodel (`int_field2`, `char_field2`);'
-        % generate_unique_constraint_name('tests_testmodel',
-                                          ['int_field2', 'char_field2']),
-    ]),
-
     'append_list': '\n'.join([
         'CREATE UNIQUE INDEX %s'
         ' ON tests_testmodel (`int_field2`, `char_field2`);'
         % generate_unique_constraint_name('tests_testmodel',
                                           ['int_field2', 'char_field2']),
-    ]),
-
-    'removing': '\n'.join([
-        'DROP INDEX `int_field1` ON `tests_testmodel`;',
     ]),
 
     'set_remove': '\n'.join([
@@ -615,6 +883,46 @@ unique_together = {
     ),
 }
 
+if django.VERSION[:2] >= (1, 9):
+    # In Django >= 1.9, unique_together indexes are created specifically
+    # after table creation, using Django's generated constraint names.
+    unique_together.update({
+        'removing': (
+            'DROP INDEX `%s` ON `tests_testmodel`;'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field1', 'char_field1'])
+        ),
+
+        'replace_list': '\n'.join([
+            'DROP INDEX `%s` ON `tests_testmodel`;'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field1', 'char_field1']),
+
+            'CREATE UNIQUE INDEX %s'
+            ' ON tests_testmodel (`int_field2`, `char_field2`);'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field2', 'char_field2']),
+        ]),
+    })
+else:
+    # In Django < 1.9, unique_together indexes are created during table
+    # creation, using MySQL's default name scheme, instead of using a
+    # generated name, so we need to drop with those hard-coded names.
+    unique_together.update({
+        'removing': (
+            'DROP INDEX `int_field1` ON `tests_testmodel`;'
+        ),
+
+        'replace_list': '\n'.join([
+            'DROP INDEX `int_field1` ON `tests_testmodel`;',
+
+            'CREATE UNIQUE INDEX %s'
+            ' ON tests_testmodel (`int_field2`, `char_field2`);'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field2', 'char_field2']),
+        ]),
+    })
+
 index_together = {
     'setting_from_empty': '\n'.join([
         'CREATE INDEX `%s`'
@@ -627,7 +935,8 @@ index_together = {
     'replace_list': '\n'.join([
         'DROP INDEX `%s` ON `tests_testmodel`;'
         % generate_index_name('tests_testmodel',
-                              ['int_field1', 'char_field1']),
+                              ['int_field1', 'char_field1'],
+                              index_together=True),
 
         'CREATE INDEX `%s`'
         ' ON `tests_testmodel` (`int_field2`, `char_field2`);'

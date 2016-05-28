@@ -10,9 +10,32 @@ from contextlib import contextmanager
 import django
 from django.core.management import color, sql
 from django.db import connections, transaction
-from django.db.backends.util import truncate_name
 from django.db.utils import DEFAULT_DB_ALIAS
 
+try:
+    # Django >= 1.7
+    from django.apps.registry import apps
+    from django.db.backends.utils import truncate_name
+    from django.db.migrations.executor import MigrationExecutor
+except ImportError:
+    # Django < 1.7
+    from django.db.backends.util import truncate_name
+
+    apps = None
+    MigrationExecutor = None
+
+try:
+    # Django >= 1.8
+    from django.db.backends.base.schema import BaseDatabaseSchemaEditor
+except ImportError:
+    try:
+        # Django == 1.7
+        from django.db.backends.schema import BaseDatabaseSchemaEditor
+    except ImportError:
+        # Django < 1.7
+        BaseDatabaseSchemaEditor = None
+
+from django_evolution.compat.models import get_models
 from django_evolution.support import supports_index_together
 
 
@@ -69,7 +92,18 @@ def digest(connection, *args):
         str:
         The resulting digest hash.
     """
-    return connection.creation._digest(*args)
+    if (BaseDatabaseSchemaEditor and
+        hasattr(BaseDatabaseSchemaEditor, '_digest')):
+        # Django >= 1.8
+        #
+        # Note that _digest() is a classmethod that is common across all
+        # database backends. We don't need to worry about using a
+        # per-instance version. If that changes, we'll need to create a
+        # SchemaEditor.
+        return BaseDatabaseSchemaEditor._digest(*args)
+    else:
+        # Django < 1.8
+        return connection.creation._digest(*args)
 
 
 def sql_create(app, db_name=None):
@@ -91,10 +125,19 @@ def sql_create(app, db_name=None):
     """
     connection = connections[db_name or DEFAULT_DB_ALIAS]
 
-    style = color.no_style()
+    if BaseDatabaseSchemaEditor:
+        # Django >= 1.7
+        with connection.schema_editor(collect_sql=True) as schema_editor:
+            for model in get_models(app):
+                schema_editor.create_model(model)
 
-    return (sql.sql_create(app, style, connection) +
-            sql.sql_indexes(app, style, connection))
+        return schema_editor.collected_sql
+    else:
+        # Django < 1.7
+        style = color.no_style()
+
+        return (sql.sql_create(app, style, connection) +
+                sql.sql_indexes(app, style, connection))
 
 
 def _sql_delete_model(connection, schema_editor, model, deleted_models,
@@ -199,9 +242,30 @@ def sql_delete(app, db_name=None):
         The list of SQL statements for deleting the models and constraints.
     """
     connection = connections[db_name or DEFAULT_DB_ALIAS]
-    style = color.no_style()
 
-    return sql.sql_delete(app, style, connection)
+    if BaseDatabaseSchemaEditor:
+        # Django >= 1.7
+        all_table_names = set(connection.introspection.table_names())
+        constraints_sql = []
+        models_sql = []
+        deleted_models = set()
+        deleted_refs = set()
+
+        with connection.schema_editor(collect_sql=True) as schema_editor:
+            for model in get_models(app, include_auto_created=True):
+                temp_constraints_sql, temp_models_sql = \
+                    _sql_delete_model(connection, schema_editor, model,
+                                      deleted_models, deleted_refs,
+                                      all_table_names)
+                constraints_sql += temp_constraints_sql
+                models_sql += temp_models_sql
+
+        return constraints_sql + models_sql
+    else:
+        # Django < 1.7
+        style = color.no_style()
+
+        return sql.sql_delete(app, style, connection)
 
 
 def sql_create_for_many_to_many_field(connection, model, field):
@@ -223,30 +287,38 @@ def sql_create_for_many_to_many_field(connection, model, field):
         list:
         The list of SQL statements for creating the table and constraints.
     """
-    style = color.no_style()
+    if BaseDatabaseSchemaEditor:
+        # Django >= 1.7
+        with connection.schema_editor(collect_sql=True) as schema_editor:
+            schema_editor.create_model(field.rel.through)
 
-    if field.rel.through:
-        references = {}
-        pending_references = {}
-
-        sql, references = connection.creation.sql_create_model(
-            field.rel.through, style)
-
-        # Sort the list, in order to create consistency in the order of
-        # ALTER TABLEs. This is primarily needed for unit tests.
-        for refto, refs in sorted(references.iteritems(),
-                                  key=lambda i: repr(i)):
-            pending_references.setdefault(refto, []).extend(refs)
-            sql.extend(sql_add_constraints(connection, refto,
-                                           pending_references))
-
-        sql.extend(sql_add_constraints(connection, field.rel.through,
-                                       pending_references))
+        return schema_editor.collected_sql
     else:
-        sql = connection.creation.sql_for_many_to_many_field(
-            model, field, style)
+        # Django < 1.7
+        style = color.no_style()
 
-    return sql
+        if field.rel.through:
+            references = {}
+            pending_references = {}
+
+            sql, references = connection.creation.sql_create_model(
+                field.rel.through, style)
+
+            # Sort the list, in order to create consistency in the order of
+            # ALTER TABLEs. This is primarily needed for unit tests.
+            for refto, refs in sorted(references.iteritems(),
+                                      key=lambda i: repr(i)):
+                pending_references.setdefault(refto, []).extend(refs)
+                sql.extend(sql_add_constraints(connection, refto,
+                                               pending_references))
+
+            sql.extend(sql_add_constraints(connection, field.rel.through,
+                                           pending_references))
+        else:
+            sql = connection.creation.sql_for_many_to_many_field(
+                model, field, style)
+
+        return sql
 
 
 def sql_indexes_for_field(connection, model, field):
@@ -268,8 +340,21 @@ def sql_indexes_for_field(connection, model, field):
         list:
         The list of SQL statements for creating the indexes.
     """
-    return connection.creation.sql_indexes_for_field(model, field,
-                                                     color.no_style())
+    if BaseDatabaseSchemaEditor:
+        # Django >= 1.7
+        #
+        # Unlike sql_indexes_for_field(), _create_index_sql() won't be
+        # checking whether it *should* create an index for the given field.
+        # We have to check that here instead.
+        if not field.db_index or field.unique:
+            return []
+
+        with connection.schema_editor() as schema_editor:
+            return ['%s;' % schema_editor._create_index_sql(model, [field])]
+    else:
+        # Django < 1.7
+        return connection.creation.sql_indexes_for_field(model, field,
+                                                         color.no_style())
 
 
 def sql_indexes_for_fields(connection, model, fields, index_together=False):
@@ -294,8 +379,20 @@ def sql_indexes_for_fields(connection, model, fields, index_together=False):
         list:
         The list of SQL statements for creating the indexes.
     """
-    return connection.creation.sql_indexes_for_fields(model, fields,
-                                                      color.no_style())
+    if BaseDatabaseSchemaEditor:
+        # Django >= 1.7
+        if index_together:
+            suffix = '_idx'
+        else:
+            suffix = ''
+
+        with connection.schema_editor() as schema_editor:
+            return ['%s;' % schema_editor._create_index_sql(model, fields,
+                                                            suffix=suffix)]
+    else:
+        # Django < 1.7
+        return connection.creation.sql_indexes_for_fields(model, fields,
+                                                          color.no_style())
 
 
 def sql_indexes_for_model(connection, model):
@@ -314,8 +411,17 @@ def sql_indexes_for_model(connection, model):
         list:
         The list of SQL statements for creating the indexes.
     """
-    return connection.creation.sql_indexes_for_model(model,
-                                                     color.no_style())
+    if BaseDatabaseSchemaEditor:
+        # Django >= 1.7
+        with connection.schema_editor() as schema_editor:
+            return [
+                '%s;' % s
+                for s in schema_editor._model_indexes_sql(model)
+            ]
+    else:
+        # Django < 1.7
+        return connection.creation.sql_indexes_for_model(model,
+                                                         color.no_style())
 
 
 def sql_delete_constraints(connection, model, remove_refs):
@@ -341,8 +447,29 @@ def sql_delete_constraints(connection, model, remove_refs):
         list:
         The list of SQL statements for deleting constraints.
     """
-    return connection.creation.sql_remove_table_constraints(
-        model, remove_refs, color.no_style())
+    if BaseDatabaseSchemaEditor:
+        # Django >= 1.7
+        meta = model._meta
+
+        if not meta.managed or meta.swapped or meta.proxy:
+            return []
+
+        sql = []
+
+        with connection.schema_editor() as schema_editor:
+            for rel_class, f in remove_refs[model]:
+                fk_names = schema_editor._constraint_names(
+                    rel_class, [f.column], foreign_key=True)
+
+                for fk_name in fk_names:
+                    sql.append('%s;' % schema_editor._delete_constraint_sql(
+                        schema_editor.sql_delete_fk, rel_class, fk_name))
+
+        return sql
+    else:
+        # Django < 1.7
+        return connection.creation.sql_remove_table_constraints(
+            model, remove_refs, color.no_style())
 
 
 def sql_add_constraints(connection, model, refs):
@@ -368,8 +495,60 @@ def sql_add_constraints(connection, model, refs):
         list:
         The list of SQL statements for adding constraints.
     """
-    return connection.creation.sql_for_pending_references(
-        model, color.no_style(), refs)
+    if BaseDatabaseSchemaEditor:
+        # Django >= 1.7
+        meta = model._meta
+
+        if not meta.managed or meta.swapped:
+            return []
+
+        sql = []
+
+        if model in refs:
+            with connection.schema_editor() as schema_editor:
+                qn = schema_editor.quote_name
+
+                for rel_class, f in refs[model]:
+                    # Ideally, we would use schema_editor._create_fk_sql here,
+                    # but it depends on a lot more state than we have
+                    # available currently in our mocks. So we have to build
+                    # the SQL ourselves. It's not a lot of work, fortunately.
+                    #
+                    # For reference, this is what we'd ideally do:
+                    #
+                    #     sql.append('%s;' % schema_editor._create_fk_sql(
+                    #         rel_class, f,
+                    #         '_fk_%(to_table)s_%(to_column)s'))
+                    #
+                    rel_meta = rel_class._meta
+                    to_column = meta.get_field(f.rel.field_name).column
+
+                    suffix = '_fk_%(to_table)s_%(to_column)s' % {
+                        'to_table': meta.db_table,
+                        'to_column': to_column,
+                    }
+
+                    name = schema_editor._create_index_name(rel_class,
+                                                            [f.column],
+                                                            suffix=suffix)
+
+                    create_sql = schema_editor.sql_create_fk % {
+                        'table': qn(rel_meta.db_table),
+                        'name': qn(name),
+                        'column': qn(f.column),
+                        'to_table': qn(meta.db_table),
+                        'to_column': qn(to_column),
+                    }
+
+                    sql.append('%s;' % create_sql)
+
+            del refs[model]
+
+        return sql
+    else:
+        # Django < 1.7
+        return connection.creation.sql_for_pending_references(
+            model, color.no_style(), refs)
 
 
 def create_index_name(connection, table_name, field_names=[], col_names=[],
@@ -401,8 +580,24 @@ def create_index_name(connection, table_name, field_names=[], col_names=[],
         str:
         The generated index name for this version of Django.
     """
-    if django.VERSION[:2] >= (1, 5):
-        # Django >= 1.5
+    if BaseDatabaseSchemaEditor:
+        # Django >= 1.7
+        #
+        # Fake a table for the call. It only needs _meta.db_table.
+        class TempModel(object):
+            class _meta:
+                db_table = table_name
+
+        if unique:
+            assert not suffix
+            suffix = '_uniq'
+
+        with connection.schema_editor() as schema_editor:
+            return schema_editor._create_index_name(TempModel,
+                                                    col_names or field_names,
+                                                    suffix=suffix)
+    elif django.VERSION[:2] >= (1, 5):
+        # Django >= 1.5, < 1.7
         #
         # This comes from sql_indexes_for_fields().
         index_name = '%s_%s' % (table_name,
@@ -452,15 +647,23 @@ def create_index_together_name(connection, table_name, field_names):
         str:
         The generated index name for this version of Django.
     """
-    # Django < 1.7
-    #
-    # index_together was introduced in Django 1.5, and prior to 1.7, the
-    # format was identical to that of normal indexes.
-    assert django.VERSION[:2] >= (1, 5)
+    if BaseDatabaseSchemaEditor:
+        # Django >= 1.7
+        #
+        # Starting in 1.7, the index_together indexes were given a "_idx"
+        # suffix.
+        return create_index_name(connection, table_name, field_names,
+                                 field_names, suffix='_idx')
+    else:
+        # Django < 1.7
+        #
+        # index_together was introduced in Django 1.5, and prior to 1.7, the
+        # format was identical to that of normal indexes.
+        assert django.VERSION[:2] >= (1, 5)
 
-    index_name = '%s_%s' % (table_name, digest(connection, field_names))
+        index_name = '%s_%s' % (table_name, digest(connection, field_names))
 
-    return truncate_name(index_name, connection.ops.max_name_length())
+        return truncate_name(index_name, connection.ops.max_name_length())
 
 
 def create_constraint_name(connection, r_col, col, r_table, table):
@@ -488,9 +691,20 @@ def create_constraint_name(connection, r_col, col, r_table, table):
         str:
         The generated constraint name for this version of Django.
     """
-    return truncate_name(
-        '%s_refs_%s_%s' % (r_col, col, digest(connection, r_table, table)),
-        connection.ops.max_name_length())
+    if BaseDatabaseSchemaEditor:
+        suffix = '_fk_%(to_table)s_%(to_column)s' % {
+            'to_table': table,
+            'to_column': col,
+        }
+
+        # No need to truncate here, since create_index_name() will do it for
+        # us.
+        return create_index_name(connection, r_table, col_names=[r_col],
+                                 suffix=suffix)
+    else:
+        return truncate_name(
+            '%s_refs_%s_%s' % (r_col, col, digest(connection, r_table, table)),
+            connection.ops.max_name_length())
 
 
 __all__ = [

@@ -1,8 +1,10 @@
+import logging
 try:
     import cPickle as pickle
 except ImportError:
     import pickle as pickle
 
+import django
 from django.conf import settings
 from django.core.management.color import color_style
 from django.db.models import signals
@@ -140,4 +142,9 @@ def evolution(app, created_models, verbosity=1, **kwargs):
 
 
 if getattr(settings, 'DJANGO_EVOLUTION_ENABLED', True):
-    signals.post_syncdb.connect(evolution)
+    if hasattr(signals, 'post_syncdb'):
+        signals.post_syncdb.connect(evolution)
+    else:
+        logging.error('Django Evolution cannot automatically install '
+                      'baselines or evolve on Django %s',
+                      django.get_version())

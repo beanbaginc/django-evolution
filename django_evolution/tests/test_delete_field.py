@@ -32,7 +32,7 @@ class DeleteBaseModel(models.Model):
                                         db_table='non-default_m2m_table')
 
 
-class CustomTableModel(models.Model):
+class CustomDeleteTableModel(models.Model):
     value = models.IntegerField()
     alt_value = models.CharField(max_length=20)
 
@@ -207,7 +207,7 @@ class DeleteFieldTests(EvolutionTestCase):
             class Meta:
                 db_table = 'custom_table_name'
 
-        self.set_base_model(CustomTableModel, name='CustomTableModel')
+        self.set_base_model(CustomDeleteTableModel, name='CustomTableModel')
 
         self.perform_evolution_tests(
             DestModel,

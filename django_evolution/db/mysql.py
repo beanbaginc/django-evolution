@@ -1,6 +1,7 @@
 from django.core.management import color
 
 from django_evolution.compat.db import sql_delete_constraints
+from django_evolution.compat.models import get_rel_target_field
 from django_evolution.db.common import BaseEvolutionOperations
 from django_evolution.db.sql_result import AlterTableSQLResult, SQLResult
 
@@ -177,6 +178,41 @@ class EvolutionOperations(BaseEvolutionOperations):
             'RENAME TABLE %s TO %s;'
             % (qn(old_db_tablename), qn(db_tablename))
         ])
+
+    def get_default_index_name(self, table_name, field):
+        """Return a default index name for the database.
+
+        This will return an index name for the given field that matches what
+        the database or Django database backend would automatically generate
+        when marking a field as indexed or unique.
+
+        This can be overridden by subclasses if the database or Django
+        database backend provides different values.
+
+        Args:
+            table_name (str):
+                The name of the table for the index.
+
+            field (django.db.models.Field):
+                The field for the index.
+
+        Returns:
+            str:
+            The name of the index.
+        """
+        if (hasattr(self.connection, 'schema_editor') and
+            field.rel and field.db_constraint):
+            # Django >= 1.7
+            target_field = get_rel_target_field(field)
+
+            return self.connection.schema_editor()._create_index_name(
+                field.model,
+                [field.column],
+                suffix='_fk_%s_%s' % (target_field.model._meta.db_table,
+                                      target_field.column))
+
+        return super(EvolutionOperations, self).get_default_index_name(
+            table_name, field)
 
     def get_indexes_for_table(self, table_name):
         cursor = self.connection.cursor()

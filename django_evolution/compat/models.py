@@ -7,6 +7,8 @@ These translate to the various versions of Django that are supported.
 try:
     # Django >= 1.7
     from django.apps.registry import apps
+    from django.contrib.contenttypes.fields import (GenericForeignKey,
+                                                    GenericRelation)
 
     cache = None
     all_models = apps.all_models
@@ -40,7 +42,18 @@ def get_models(app_mod=None, include_auto_created=False):
     """
     if apps:
         # Django >= 1.7
-        raise NotImplementedError
+        if app_mod is None:
+            return apps.get_models(include_auto_created=include_auto_created)
+        else:
+            app_label = app_mod.__name__.split('.')[-2]
+
+            try:
+                app_config = apps.get_app_config(app_label)
+
+                return list(app_config.get_models(
+                    include_auto_created=include_auto_created))
+            except LookupError:
+                return []
     else:
         # Django < 1.7
         return _get_models(app_mod, include_auto_created=include_auto_created)

@@ -499,22 +499,40 @@ def generate_index_name(db_type, table, col_names, field_names=None,
 
     assert len(field_names) == len(col_names)
 
+    django_version = django.VERSION[:2]
+
     # Note that we're checking Django versions/engines specifically, since
     # we want to test that we're getting the right index names for the
     # right versions of Django, rather than asking Django for them.
-    if db_type == 'postgres' and not index_together:
+    #
+    # The order here matters.
+    if django_version >= (1, 7):
+        if len(col_names) == 1:
+            assert not index_together
+
+            # Django 1.7 went back to passing a single column name (and
+            # not a list as a single variable argument) when there's only
+            # one column.
+            name = digest(connection, col_names[0])
+        else:
+            assert index_together
+
+            index_unique_name = _generate_index_unique_name_hash(
+                connection, table, col_names)
+            name = '%s%s_idx' % (col_names[0], index_unique_name)
+    elif db_type == 'postgres' and not index_together:
         # Postgres computes the index names separately from the rest of
         # the engines. It just uses '<tablename>_<colname>", same as
         # Django < 1.2. We only do this for normal indexes, though, not
         # index_together.
         name = col_names[0]
-    elif django.VERSION >= (1, 5):
+    elif django_version >= (1, 5):
         # Django >= 1.5 computed the digest of the representation of a
         # list of either field names or column names. Note that digest()
         # takes variable positional arguments, which this is not passing.
         # This is due to a design bug in these versions.
         name = digest(connection, field_names or col_names)
-    elif django.VERSION >= (1, 2):
+    elif django_version >= (1, 2):
         # Django >= 1.2, < 1.7 used the digest of the name of the first
         # column. There was no index_together in these releases.
         name = digest(connection, col_names[0])
@@ -588,8 +606,27 @@ def generate_constraint_name(db_type, r_col, col, r_table, table):
         str:
         The expected name for a constraint.
     """
-    return '%s_refs_%s_%s' % (r_col, col,
-                              digest(connection, r_table, table))
+    if django.VERSION[:2] >= (1, 7):
+        # This is an approximation of what Django 1.7+ uses for constraint
+        # naming. It's actually the same as index naming, but for test
+        # purposes, we want to keep this distinct from the index naming above.
+        # It also doesn't cover all the cases that
+        # BaseDatabaseSchemaEditor._create_index_name covers, but they're not
+        # necessary for our tests (and we'll know if it all blows up somehow).
+        max_length = connection.ops.max_name_length() or 200
+        index_unique_name = _generate_index_unique_name_hash(
+            connection, r_table, [r_col])
+
+        name = '_%s%s_fk_%s_%s' % (r_col, index_unique_name, table, col)
+        full_name = '%s%s' % (r_table, name)
+
+        if len(full_name) > max_length:
+            full_name = '%s%s' % (r_table[:(max_length - len(name))], name)
+
+        return full_name
+    else:
+        return '%s_refs_%s_%s' % (r_col, col,
+                                  digest(connection, r_table, table))
 
 
 def make_generate_constraint_name(db_type):
@@ -628,7 +665,52 @@ def generate_unique_constraint_name(table, col_names):
     Returns:
         The expected constraint name for this version of Django.
     """
-    name = digest(connection, col_names)
+    if django.VERSION[:2] >= (1, 7):
+        max_length = connection.ops.max_name_length() or 200
+        index_unique_name = _generate_index_unique_name_hash(
+            connection, table, col_names)
+        name = '_%s%s_uniq' % (col_names[0], index_unique_name)
+        full_name = '%s%s' % (table, name)
 
-    return truncate_name('%s_%s' % (table, name),
-                         connection.ops.max_name_length())
+        if len(full_name) > max_length:
+            full_name = '%s%s' % (table[:(max_length - len(name))], name)
+
+        return full_name
+    else:
+        name = digest(connection, col_names)
+
+        return truncate_name('%s_%s' % (table, name),
+                             connection.ops.max_name_length())
+
+
+def _generate_index_unique_name_hash(connection, table, col_names):
+    """Return the hash for the unique part of an index name.
+
+    This is used on Django 1.7+ to generate a unique hash as part of an
+    index name.
+
+    Args:
+        connection (object):
+            The database connection.
+
+        table (str):
+            The name of the table.
+
+        col_names (list of str):
+            The list of column names for the index.
+
+    Returns:
+        str:
+        A hash for the unique part of an index.
+    """
+    assert isinstance(col_names, list)
+
+    if django.VERSION[:2] >= (1, 9):
+        # Django >= 1.9
+        #
+        # Django 1.9 introduced a new format for the unique index hashes,
+        # switching back to using digest() instead of hash().
+        return '_%s' % digest(connection, table, *col_names)
+    else:
+        # Django >= 1.7, < 1.9
+        return '_%x' % abs(hash((table, ','.join(col_names))))

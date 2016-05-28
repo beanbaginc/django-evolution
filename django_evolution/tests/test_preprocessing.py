@@ -6,7 +6,7 @@ from django_evolution.mutations import (AddField, ChangeField, DeleteField,
 from django_evolution.tests.base_test_case import EvolutionTestCase
 
 
-class BaseModel(models.Model):
+class PreprocBaseModel(models.Model):
     my_id = models.AutoField(primary_key=True)
     char_field = models.CharField(max_length=20)
 
@@ -18,7 +18,7 @@ class ReffedPreprocModel(models.Model):
 class PreprocessingTests(EvolutionTestCase):
     """Testing pre-processing of mutations."""
     sql_mapping_key = 'preprocessing'
-    default_base_model = BaseModel
+    default_base_model = PreprocBaseModel
 
     def test_add_delete_field(self):
         """Testing pre-processing AddField + DeleteField"""

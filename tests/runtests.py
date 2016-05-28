@@ -3,6 +3,8 @@ import nose
 import os
 import sys
 
+import django
+
 
 def run_tests(verbosity=1, interactive=False):
     from django.conf import settings
@@ -10,6 +12,10 @@ def run_tests(verbosity=1, interactive=False):
     from django.db import connections
     from django.test.utils import setup_test_environment, \
                                   teardown_test_environment
+
+    if hasattr(django, 'setup'):
+        # Django >= 1.7
+        django.setup()
 
     setup_test_environment()
     settings.DEBUG = False
@@ -23,8 +29,12 @@ def run_tests(verbosity=1, interactive=False):
         connection.creation.create_test_db(verbosity,
                                            autoclobber=not interactive)
 
-    management.call_command('syncdb', verbosity=verbosity,
-                            interactive=interactive)
+    if django.VERSION[:2] >= (1, 7):
+        management.call_command('migrate', verbosity=verbosity,
+                                interactive=interactive)
+    else:
+        management.call_command('syncdb', verbosity=verbosity,
+                                interactive=interactive)
 
     nose_argv = ['runtests.py', '-v',
                  '--with-coverage',

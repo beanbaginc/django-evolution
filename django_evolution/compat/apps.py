@@ -4,8 +4,12 @@ This provides functions for app registration and lookup. These functions
 translate to the various versions of Django that are supported.
 """
 
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
+
 try:
     # Django >= 1.7
+    from django.apps.config import AppConfig
     from django.apps.registry import apps
 
     cache = None
@@ -14,6 +18,7 @@ except ImportError:
     from django.db.models.loading import cache
 
     apps = None
+    AppConfig = None
 
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.models import all_models
@@ -48,7 +53,21 @@ def get_app(app_label, emptyOK=False):
     """
     if apps:
         # Django >= 1.7
-        return apps.get_app(app_label)
+        try:
+            models_module = apps.get_app_config(app_label).models_module
+        except LookupError as e:
+            # Convert this to an ImproperlyConfigured.
+            raise ImproperlyConfigured(*e.args)
+
+        if models_module is None:
+            if emptyOK:
+                raise LookupError('..')
+
+            raise ImproperlyConfigured(
+                'App with label %s is missing a models.py module.'
+                % app_label)
+
+        return models_module
     else:
         # Django < 1.7
         return cache.get_app(app_label, emptyOK)
@@ -57,14 +76,19 @@ def get_app(app_label, emptyOK=False):
 def get_apps():
     """Return the list of all installed apps with models.
 
-    This returns the apps from the old-style cache on Django < 1.7.
+    This returns the apps from the app registry on Django >= 1.7, and from
+    the old-style cache on Django < 1.7.
 
     Returns:
         list: A list of all the modules containing model classes.
     """
     if apps:
         # Django >= 1.7
-        raise NotImplementedError
+        return [
+            app.models_module
+            for app in apps.get_app_configs()
+            if app.models_module is not None
+        ]
     else:
         # Django < 1.7
         return cache.get_apps()
@@ -83,7 +107,7 @@ def is_app_registered(app):
     """
     if apps:
         # Django >= 1.7
-        raise NotImplementedError
+        return apps.is_installed(app.__name__)
     else:
         # Django < 1.7
         return app in cache.app_store
@@ -103,7 +127,10 @@ def register_app(app_label, app):
     """
     if apps:
         # Django >= 1.7
-        raise NotImplementedError
+        app_config = AppConfig(app.__name__, app)
+        app_config.label = app_label
+
+        apps.set_installed_apps(settings.INSTALLED_APPS + [app_config])
     else:
         # Django < 1.7
         cache.app_store[app] = len(cache.app_store)
@@ -121,6 +148,13 @@ def unregister_app(app_label):
         app_label (str):
             The label of the app to register.
     """
+    if apps:
+        # Django >= 1.7
+        #
+        # We need to balance the ``set_installed_apps`` from
+        # :py:func:`register_app` here.
+        apps.unset_installed_apps()
+
     all_models[app_label].clear()
     clear_app_cache()
 
@@ -141,6 +175,9 @@ def register_app_models(app_label, model_infos, reset=False):
             If set, the old list will be overwritten with the new list.
     """
     if app_label not in all_models:
+        # This isn't really needed for Django 1.7+ (which uses defaultdict
+        # with OrderedDict), but it's needed for earlier versions, so do it
+        # explicitly.
         all_models[app_label] = OrderedDict()
 
     model_dict = all_models[app_label]
@@ -176,7 +213,15 @@ def clear_app_cache():
     """
     if apps:
         # Django >= 1.7
-        raise NotImplementedError
+        apps.clear_cache()
     elif hasattr(cache, '_get_models_cache'):
         # Django >= 1.2, < 1.7
         cache._get_models_cache.clear()
+
+
+__all__ = [
+    'apps',
+    'clear_app_cache',
+    'get_app',
+    'get_apps',
+]
