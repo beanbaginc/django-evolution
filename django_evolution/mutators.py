@@ -763,7 +763,17 @@ class AppMutator(object):
                             # have in the baseline (due to having installed a
                             # baseline schema for this model just previously),
                             # we can skip this mutation entirely.
-                            if new_model_name in self.proj_sig[self.app_label]:
+                            #
+                            # Note that we may have the model in there due to
+                            # a new baseline being created, but still have the
+                            # old model in the signature. In this case, we
+                            # still want the rename included in the mutations,
+                            # so we need to check to make sure only the new
+                            # model name is in there.
+                            app_sig = self.proj_sig[self.app_label]
+
+                            if (new_model_name in app_sig and
+                                old_model_name not in app_sig):
                                 remove_mutation = True
                     elif isinstance(mutation, ChangeMeta):
                         if (mutation.prop_name == 'unique_together' and
