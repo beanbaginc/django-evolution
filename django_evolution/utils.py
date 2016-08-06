@@ -29,21 +29,29 @@ def execute_sql(cursor, sql, database):
     parameters as required
     """
     evolver = EvolutionOperationsMulti(database).get_evolver()
+    statement = None
 
-    for statement in sql:
-        if isinstance(statement, tuple):
-            statement = (statement[0].strip(), statement[1])
+    try:
+        for statement in sql:
+            if isinstance(statement, tuple):
+                statement = (statement[0].strip(), statement[1])
 
-            if statement[0] and not statement[0].startswith('--'):
-                cursor.execute(statement[0], tuple(
-                    evolver.normalize_value(s)
-                    for s in statement[1]
-                ))
-        else:
-            statement = statement.strip()
+                if statement[0] and not statement[0].startswith('--'):
+                    cursor.execute(statement[0], tuple(
+                        evolver.normalize_value(s)
+                        for s in statement[1]
+                    ))
+            else:
+                statement = statement.strip()
 
-            if statement and not statement.startswith('--'):
-                cursor.execute(statement)
+                if statement and not statement.startswith('--'):
+                    cursor.execute(statement)
+    except Exception, e:
+        # Augment the exception so that callers can get the SQL statement
+        # that failed.
+        e.last_sql_statement = statement
+
+        raise
 
 
 def get_database_for_model_name(app_name, model_name):

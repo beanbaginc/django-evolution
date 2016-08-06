@@ -122,11 +122,17 @@ class Command(BaseCommand):
 
         try:
             for app in app_list:
-                sql.extend(self.evolve_app(app))
+                app_sql = self.evolve_app(app)
+
+                if app_sql:
+                    sql.append((app.__name__.split('.')[-2], app_sql))
 
             # Process the purged applications if requested to do so.
             if self.purge:
-                sql.extend(self.purge_apps())
+                purge_sql = self.purge_apps()
+
+                if purge_sql:
+                    sql.append((None, purge_sql))
         except EvolutionException, e:
             raise CommandError(str(e))
 
@@ -277,6 +283,8 @@ and data currently in the %r database, and may result in
 IRREVERSABLE DATA LOSS. Evolutions should be *thoroughly* reviewed
 prior to execution.
 
+MAKE A BACKUP OF YOUR DATABASE BEFORE YOU CONTINUE!
+
 Are you sure you want to execute the evolutions?
 
 Type 'yes' to continue, or 'no' to cancel: """ % self.database)
@@ -289,10 +297,23 @@ Type 'yes' to continue, or 'no' to cancel: """ % self.database)
                 transaction.managed(flag=True, **self.using_args)
 
                 cursor = connections[self.database].cursor()
+                app_label = None
+
+                self.stdout.write(
+                    '\n'
+                    'This may take a while. Please be patient, and do not '
+                    'cancel the upgrade!\n'
+                    '\n')
 
                 try:
                     # Perform the SQL
-                    execute_sql(cursor, sql, self.database)
+                    for app_label, app_sql in sql:
+                        if app_label and self.verbosity > 0:
+                            self.stdout.write(
+                                'Applying database evolutions for %s...\n'
+                                % app_label)
+
+                        execute_sql(cursor, app_sql, self.database)
 
                     # Now update the evolution table
                     version = Version(signature=self.current_signature)
@@ -303,10 +324,24 @@ Type 'yes' to continue, or 'no' to cancel: """ % self.database)
                         evolution.save(**self.using_args)
 
                     transaction.commit(**self.using_args)
-                except Exception, ex:
+                except Exception, e:
                     transaction.rollback(**self.using_args)
-                    raise CommandError('Error applying evolution: %s'
-                                       % str(ex))
+
+                    self.stdout.write(
+                        self.style.ERROR('Database evolutions for %s failed!'
+                                         % app_label))
+
+                    if hasattr(e, 'last_sql_statement'):
+                        self.stdout.write(
+                            self.style.ERROR('The SQL statement was: %s'
+                                             % e.last_sql_statement))
+
+                    self.stdout.write(
+                        self.style.ERROR('The database error was: %s\n'
+                                         % e))
+
+                    raise CommandError('Error applying evolution for %s: %s'
+                                       % (app_label, e))
 
                 transaction.leave_transaction_management(**self.using_args)
 
