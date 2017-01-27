@@ -12,13 +12,14 @@ from django_evolution.diff import Diff
 from django_evolution.evolve import (get_evolution_sequence,
                                      get_unapplied_evolutions)
 from django_evolution.signature import create_project_sig
+from django_evolution.utils import get_app_label
 
 
 style = color_style()
 
 
 def install_baseline(app, latest_version, using_args, verbosity):
-    app_label = app.__name__.split('.')[-2]
+    app_label = get_app_label(app)
     sequence = get_evolution_sequence(app)
 
     if sequence:
@@ -66,7 +67,7 @@ def evolution(app, created_models, verbosity=1, **kwargs):
 
     if unapplied:
         print style.NOTICE('There are unapplied evolutions for %s.'
-                           % app.__name__.split('.')[-2])
+                           % get_app_label(app))
 
     # Evolutions are checked over the entire project, so we only need to check
     # once. We do this check when Django Evolutions itself is synchronized.

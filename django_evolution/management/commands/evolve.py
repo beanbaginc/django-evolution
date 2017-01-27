@@ -18,7 +18,7 @@ from django_evolution.models import Version, Evolution
 from django_evolution.mutations import AddField, DeleteApplication
 from django_evolution.mutators import AppMutator
 from django_evolution.signature import create_database_sig, create_project_sig
-from django_evolution.utils import write_sql, execute_sql
+from django_evolution.utils import execute_sql, get_app_label, write_sql
 
 
 class Command(BaseCommand):
@@ -125,7 +125,7 @@ class Command(BaseCommand):
                 app_sql = self.evolve_app(app)
 
                 if app_sql:
-                    sql.append((app.__name__.split('.')[-2], app_sql))
+                    sql.append((get_app_label(app), app_sql))
 
             # Process the purged applications if requested to do so.
             if self.purge:
@@ -144,7 +144,7 @@ class Command(BaseCommand):
             self.stdout.write('No evolution required.\n')
 
     def evolve_app(self, app):
-        app_label = app.__name__.split('.')[-2]
+        app_label = get_app_label(app)
         sql = []
 
         if self.hint:

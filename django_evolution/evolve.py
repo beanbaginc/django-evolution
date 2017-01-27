@@ -7,11 +7,12 @@ from django_evolution.models import Evolution, Version
 from django_evolution.mutations import RenameModel, SQLMutation
 from django_evolution.signature import (has_unique_together_changed,
                                         create_project_sig)
+from django_evolution.utils import get_app_label, get_app_name
 
 
 def get_evolution_sequence(app):
     "Obtain the full evolution sequence for an application"
-    app_name = '.'.join(app.__name__.split('.')[:-1])
+    app_name = get_app_name(app)
 
     if app_name in BUILTIN_SEQUENCES:
         return BUILTIN_SEQUENCES[app_name]
@@ -26,7 +27,7 @@ def get_evolution_sequence(app):
 def get_unapplied_evolutions(app, database):
     "Obtain the list of unapplied evolutions for an application"
     sequence = get_evolution_sequence(app)
-    app_label = app.__name__.split('.')[-2]
+    app_label = get_app_label(app)
 
     evolutions = Evolution.objects.filter(app_label=app_label).using(database)
     applied = [evo.label for evo in evolutions]
@@ -41,7 +42,7 @@ def get_mutations(app, evolution_labels, database):
     # For each item in the evolution sequence. Check each item to see if it is
     # a python file or an sql file.
     try:
-        app_name = '.'.join(app.__name__.split('.')[:-1])
+        app_name = get_app_name(app)
 
         if app_name in BUILTIN_SEQUENCES:
             module_name = 'django_evolution.builtin_evolutions'
@@ -89,7 +90,7 @@ def get_mutations(app, evolution_labels, database):
 
     latest_version = Version.objects.current_version(using=database)
 
-    app_label = app.__name__.split('.')[-2]
+    app_label = get_app_label(app)
     old_proj_sig = pickle.loads(str(latest_version.signature))
     proj_sig = create_project_sig(database)
 

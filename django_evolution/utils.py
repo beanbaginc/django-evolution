@@ -62,3 +62,29 @@ def get_database_for_model_name(app_name, model_name):
     will go through any custom routers that understand that type of model.
     """
     return router.db_for_write(get_model(app_name, model_name))
+
+
+def get_app_name(app):
+    """Return the name of an app.
+
+    Args:
+        app (module):
+            The app.
+
+    Returns:
+        bytes: The name of the app.
+    """
+    return b'.'.join(app.__name__.split(b'.')[:-1])
+
+
+def get_app_label(app):
+    """Return the label of an app.
+
+    Args:
+        app (module):
+            The app.
+
+    Returns:
+        bytes: The label of the app.
+    """
+    return app.__name__.split(b'.')[-2]
