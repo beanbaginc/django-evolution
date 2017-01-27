@@ -1,3 +1,5 @@
+import os
+
 from django.db import router
 from django.db.models import get_model
 
@@ -88,3 +90,43 @@ def get_app_label(app):
         bytes: The label of the app.
     """
     return app.__name__.split(b'.')[-2]
+
+
+def get_evolutions_module(app):
+    """Return the evolutions module for an app.
+
+    Args:
+        app (module):
+            The app.
+
+    Returns:
+        module:
+        The evolutions module for the app, or ``None`` if it could not be
+        found.
+    """
+    app_name = get_app_name(app)
+
+    try:
+        return __import__(app_name + b'.evolutions', {}, {}, [b''])
+    except:
+        return None
+
+
+def get_evolutions_path(app):
+    """Return the evolutions path for an app.
+
+    Args:
+        app (module):
+            The app.
+
+    Returns:
+        bytes:
+        The path to the evolutions module for the app, or ``None`` if it
+        could not be found.
+    """
+    module = get_evolutions_module(app)
+
+    if module:
+        return os.path.dirname(module.__file__)
+
+    return None

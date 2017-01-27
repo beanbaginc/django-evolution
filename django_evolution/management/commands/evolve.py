@@ -1,4 +1,5 @@
 import logging
+import os
 from optparse import make_option
 try:
     import cPickle as pickle
@@ -18,7 +19,8 @@ from django_evolution.models import Version, Evolution
 from django_evolution.mutations import AddField, DeleteApplication
 from django_evolution.mutators import AppMutator
 from django_evolution.signature import create_database_sig, create_project_sig
-from django_evolution.utils import execute_sql, get_app_label, write_sql
+from django_evolution.utils import (execute_sql, get_app_label,
+                                    get_evolutions_path, write_sql)
 
 
 class Command(BaseCommand):
@@ -37,6 +39,15 @@ class Command(BaseCommand):
             '--sql', action='store_true', dest='compile_sql',
             default=False,
             help='Compile a Django evolution script into SQL.'),
+        make_option(
+            '-w',
+            '--write',
+            metavar='EVOLUTION_NAME',
+            action='store',
+            dest='write_evolution_name',
+            default=None,
+            help='Write the generated evolutions to files with the given '
+                 'evolution name in each affected app\'s "evolutions" paths.'),
         make_option(
             '-x', '--execute', action='store_true', dest='execute',
             default=False,
@@ -71,7 +82,7 @@ class Command(BaseCommand):
 
     def evolve(self, *app_labels, **options):
         self.hint = options['hint']
-
+        self.write_evolution_name = options.get('write_evolution_name')
         self.verbosity = int(options['verbosity'])
         self.interactive = options['interactive']
         self.execute = options['execute']
@@ -81,6 +92,9 @@ class Command(BaseCommand):
 
         if not self.database:
             self.database = DEFAULT_DB_ALIAS
+
+        if self.write_evolution_name and not self.hint:
+            raise CommandError('--write cannot be used without --hint.')
 
         self.using_args = {
             'using': self.database
@@ -103,6 +117,7 @@ class Command(BaseCommand):
         self.evolution_required = False
         self.simulated = True
         self.new_evolutions = []
+        self.written_hint_files = []
 
         self.database_sig = create_database_sig(self.database)
         self.current_proj_sig = create_project_sig(self.database)
@@ -184,8 +199,21 @@ class Command(BaseCommand):
                 if self.compile_sql:
                     write_sql(app_sql, self.database)
                 else:
-                    self.stdout.write(
-                        '%s\n' % self.generate_hint(app, app_label, mutations))
+                    hinted_evolution = (
+                        '%s\n'
+                        % self.generate_hint(app, app_label, mutations)
+                    )
+
+                    if self.hint and self.write_evolution_name:
+                        evolutions_filename = \
+                            os.path.join(get_evolutions_path(app),
+                                         self.write_evolution_name + '.py')
+                        assert evolutions_filename
+
+                        self.written_hint_files.append((evolutions_filename,
+                                                        hinted_evolution))
+                    else:
+                        self.stdout.write(hinted_evolution)
 
             sql.extend(app_sql)
         else:
@@ -349,15 +377,31 @@ Type 'yes' to continue, or 'no' to cancel: """ % self.database)
                     self.stdout.write('Evolution successful.\n')
             else:
                 self.stdout.write(self.style.ERROR('Evolution cancelled.\n'))
-        elif not self.compile_sql:
-            if self.verbosity > 0:
-                if self.simulated:
-                    self.stdout.write('Trial evolution successful.\n')
+        elif not self.compile_sql and self.verbosity > 0 and self.simulated:
+            self.stdout.write('Trial evolution successful.\n')
 
-                    if not self.hint:
-                        self.stdout.write(
-                            "Run './manage.py evolve --execute' to "
-                            "apply evolution.\n")
+            if self.hint:
+                if self.write_evolution_name:
+                    self.stdout.write(
+                        '\n'
+                        'The following evolution files were written. '
+                        'Verify the contents and add them\n'
+                        'to the SEQUENCE lists in each __init__.py.\n\n')
+
+                    for filename, hinted_evolution in self.written_hint_files:
+                        evolutions_dir = os.path.dirname(filename)
+
+                        if not os.path.exists(evolutions_dir):
+                            os.mkdir(evolutions_dir, 0755)
+
+                        with open(filename, 'w') as fp:
+                            fp.write(hinted_evolution)
+
+                        self.stdout.write('  * %s\n'
+                                          % os.path.relpath(filename))
+            else:
+                self.stdout.write("Run './manage.py evolve --execute' to "
+                                  "apply evolution.\n")
 
     def generate_hint(self, app, app_label, mutations):
         imports = set()
@@ -383,12 +427,18 @@ Type 'yes' to continue, or 'no' to cancel: """ % self.database)
                     else:
                         imports.add(import_str)
 
-        lines = [
-            '#----- Evolution for %s' % app_label,
-            'from django_evolution.mutations import %s'
-            % ', '.join(sorted(mutation_types)),
+        lines = []
+
+        if not self.write_evolution_name:
+            lines.append('#----- Evolution for %s' % app_label)
+
+        lines += [
+            'from __future__ import unicode_literals',
+            '',
         ]
 
+        lines.append('from django_evolution.mutations import %s'
+                     % ', '.join(sorted(mutation_types)))
         lines += sorted(imports)
 
         if project_imports:
@@ -398,9 +448,11 @@ Type 'yes' to continue, or 'no' to cancel: """ % self.database)
             '',
             '',
             'MUTATIONS = [',
-            '    ' + ',\n    '.join(unicode(m) for m in mutations),
+        ] + ['    %s,' % mutation for mutation in mutations] + [
             ']',
-            '#----------------------',
         ]
+
+        if not self.write_evolution_name:
+            lines.append('#----------------------')
 
         return '\n'.join(lines)
