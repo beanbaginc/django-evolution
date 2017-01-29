@@ -6,6 +6,7 @@ from django_evolution.compat.apps import get_apps
 from django_evolution.compat.models import GenericRelation, get_models
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.db import EvolutionOperationsMulti
+from django_evolution.utils import get_app_label
 
 
 ATTRIBUTE_DEFAULTS = {
@@ -119,7 +120,7 @@ def create_project_sig(database):
     }
 
     for app in get_apps():
-        proj_sig[app.__name__.split('.')[-2]] = create_app_sig(app, database)
+        proj_sig[get_app_label(app)] = create_app_sig(app, database)
 
     return proj_sig
 
