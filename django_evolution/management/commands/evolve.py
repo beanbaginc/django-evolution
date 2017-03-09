@@ -1,6 +1,5 @@
 import logging
 import os
-from optparse import make_option
 try:
     import cPickle as pickle
 except ImportError:
@@ -8,11 +7,12 @@ except ImportError:
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import CommandError
 from django.db import connections, transaction
 from django.db.utils import DEFAULT_DB_ALIAS
 
 from django_evolution.compat.apps import get_apps, get_app
+from django_evolution.compat.commands import BaseCommand
 from django_evolution.diff import Diff
 from django_evolution.errors import EvolutionException
 from django_evolution.evolve import get_unapplied_evolutions, get_mutations
@@ -25,22 +25,43 @@ from django_evolution.utils import (execute_sql, get_app_label,
 
 
 class Command(BaseCommand):
-    option_list = BaseCommand.option_list + (
-        make_option(
-            '--noinput', action='store_false', dest='interactive',
+    help = 'Evolve the models in a Django project.'
+    args = '<appname appname ...>'
+
+    requires_model_validation = False
+
+    def add_arguments(self, parser):
+        """Add arguments to the command.
+
+        Args:
+            parser (object):
+                The argument parser to add to.
+        """
+        parser.add_argument(
+            '--noinput',
+            action='store_false',
+            dest='interactive',
             default=True,
-            help='Tells Django to NOT prompt the user for input of any kind.'),
-        make_option(
-            '--hint', action='store_true', dest='hint', default=False,
-            help='Generate an evolution script that would update the app.'),
-        make_option(
-            '--purge', action='store_true', dest='purge', default=False,
-            help='Generate evolutions to delete stale applications.'),
-        make_option(
-            '--sql', action='store_true', dest='compile_sql',
+            help='Tells Django to NOT prompt the user for input of any kind.')
+        parser.add_argument(
+            '--hint',
+            action='store_true',
+            dest='hint',
             default=False,
-            help='Compile a Django evolution script into SQL.'),
-        make_option(
+            help='Generate an evolution script that would update the app.')
+        parser.add_argument(
+            '--purge',
+            action='store_true',
+            dest='purge',
+            default=False,
+            help='Generate evolutions to delete stale applications.')
+        parser.add_argument(
+            '--sql',
+            action='store_true',
+            dest='compile_sql',
+            default=False,
+            help='Compile a Django evolution script into SQL.')
+        parser.add_argument(
             '-w',
             '--write',
             metavar='EVOLUTION_NAME',
@@ -48,29 +69,19 @@ class Command(BaseCommand):
             dest='write_evolution_name',
             default=None,
             help='Write the generated evolutions to files with the given '
-                 'evolution name in each affected app\'s "evolutions" paths.'),
-        make_option(
-            '-x', '--execute', action='store_true', dest='execute',
+                 'evolution name in each affected app\'s "evolutions" paths.')
+        parser.add_argument(
+            '-x',
+            '--execute',
+            action='store_true',
+            dest='execute',
             default=False,
-            help='Apply the evolution to the database.'),
-        make_option(
-            '--database', action='store', dest='database',
-            help='Nominates a database to synchronize.'),
-    )
-
-    if '--verbosity' not in [opt.get_opt_string()
-                             for opt in BaseCommand.option_list]:
-        option_list += make_option(
-            '-v', '--verbosity', action='store',
-            dest='verbosity', default='1',
-            type='choice', choices=['0', '1', '2'],
-            help='Verbosity level; 0=minimal output, 1=normal output, '
-                 '2=all output'),
-
-    help = 'Evolve the models in a Django project.'
-    args = '<appname appname ...>'
-
-    requires_model_validation = False
+            help='Apply the evolution to the database.')
+        parser.add_argument(
+            '--database',
+            action='store',
+            dest='database',
+            help='Nominates a database to synchronize.')
 
     def handle(self, *app_labels, **options):
         try:
@@ -327,57 +338,52 @@ Type 'yes' to continue, or 'no' to cancel: """ % self.database)
 
             if confirm.lower() == 'yes':
                 # Begin Transaction
-                transaction.enter_transaction_management(**self.using_args)
-                transaction.managed(flag=True, **self.using_args)
-
-                cursor = connections[self.database].cursor()
-                app_label = None
-
-                self.stdout.write(
-                    '\n'
-                    'This may take a while. Please be patient, and do not '
-                    'cancel the upgrade!\n'
-                    '\n')
-
-                try:
-                    # Perform the SQL
-                    for app_label, app_sql in sql:
-                        if app_label and self.verbosity > 0:
-                            self.stdout.write(
-                                'Applying database evolutions for %s...\n'
-                                % app_label)
-
-                        execute_sql(cursor, app_sql, self.database)
-
-                    # Now update the evolution table
-                    version = Version(signature=self.current_signature)
-                    version.save(**self.using_args)
-
-                    for evolution in self.new_evolutions:
-                        evolution.version = version
-                        evolution.save(**self.using_args)
-
-                    transaction.commit(**self.using_args)
-                except Exception, e:
-                    transaction.rollback(**self.using_args)
+                with transaction.atomic(**self.using_args):
+                    # TODO: Close the cursor when this succeeds/fails.
+                    cursor = connections[self.database].cursor()
+                    app_label = None
 
                     self.stdout.write(
-                        self.style.ERROR('Database evolutions for %s failed!'
-                                         % app_label))
+                        '\n'
+                        'This may take a while. Please be patient, and do not '
+                        'cancel the upgrade!\n'
+                        '\n')
 
-                    if hasattr(e, 'last_sql_statement'):
+                    try:
+                        # Perform the SQL
+                        for app_label, app_sql in sql:
+                            if app_label and self.verbosity > 0:
+                                self.stdout.write(
+                                    'Applying database evolutions for %s...\n'
+                                    % app_label)
+
+                            execute_sql(cursor, app_sql, self.database)
+
+                        # Now update the evolution table
+                        version = Version(signature=self.current_signature)
+                        version.save(**self.using_args)
+
+                        for evolution in self.new_evolutions:
+                            evolution.version = version
+                            evolution.save(**self.using_args)
+                    except Exception, e:
                         self.stdout.write(
-                            self.style.ERROR('The SQL statement was: %s'
-                                             % e.last_sql_statement))
+                            self.style.ERROR(
+                                'Database evolutions for %s failed!'
+                                % app_label))
 
-                    self.stdout.write(
-                        self.style.ERROR('The database error was: %s\n'
-                                         % e))
+                        if hasattr(e, 'last_sql_statement'):
+                            self.stdout.write(
+                                self.style.ERROR('The SQL statement was: %s'
+                                                 % e.last_sql_statement))
 
-                    raise CommandError('Error applying evolution for %s: %s'
-                                       % (app_label, e))
+                        self.stdout.write(
+                            self.style.ERROR('The database error was: %s\n'
+                                             % e))
 
-                transaction.leave_transaction_management(**self.using_args)
+                        raise CommandError(
+                            'Error applying evolution for %s: %s'
+                            % (app_label, e))
 
                 if self.verbosity > 0:
                     self.stdout.write('Evolution successful.\n')

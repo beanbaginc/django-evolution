@@ -1,12 +1,12 @@
-from django.core.management.base import BaseCommand
-
 from django_evolution.compat.apps import get_apps
+from django_evolution.compat.commands import BaseCommand
 from django_evolution.models import Evolution
 from django_evolution.utils import get_app_label
 
 
 class Command(BaseCommand):
     """Lists the applied evolutions for one or more apps."""
+
     def handle(self, *app_labels, **options):
         if not app_labels:
             app_labels = [get_app_label(app) for app in get_apps()]

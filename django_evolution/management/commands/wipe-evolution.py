@@ -1,8 +1,7 @@
-from optparse import make_option
-
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import CommandError
 from django.db.models import Q
 
+from django_evolution.compat.commands import BaseCommand
 from django_evolution.models import Evolution
 
 
@@ -12,15 +11,25 @@ class Command(BaseCommand):
     This is a very dangerous operation, and should only be done after a
     full database backup.
     """
-    option_list = BaseCommand.option_list + (
-        make_option(
-            '--noinput', action='store_false', dest='interactive',
+
+    def add_arguments(self, parser):
+        """Add arguments to the command.
+
+        Args:
+            parser (object):
+                The argument parser to add to.
+        """
+        parser.add_argument(
+            '--noinput',
+            action='store_false',
+            dest='interactive',
             default=True,
-            help='Tells Django to NOT prompt the user for input of any kind.'),
-        make_option(
-            '--app-label', action='store', dest='app_label',
-            help='The app label the evolution label applies to.'),
-    )
+            help='Tells Django to NOT prompt the user for input of any kind.')
+        parser.add_argument(
+            '--app-label',
+            action='store',
+            dest='app_label',
+            help='The app label the evolution label applies to.')
 
     def handle(self, *evolution_labels, **options):
         if not evolution_labels:
