@@ -1,4 +1,4 @@
-version 0.7.7 (TBD):
+version 0.7.7 (25-May-2017):
 	* New Features:
 		* Added a note about backing up the database and not cancelling before
 		  executing an evolution.
