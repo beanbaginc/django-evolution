@@ -22,52 +22,85 @@ from django_evolution.utils import get_app_label
 style = color_style()
 
 
-def install_baseline(app, latest_version, using_args, verbosity):
+def _install_baseline(app, latest_version, using, verbosity):
+    """Install baselines for an app.
+
+    This goes through the entire evolution sequence for an app and records
+    each evolution as being applied, creating a baseline for any apps that
+    are newly-added whose models have just been created (or existed prior to
+    using Django Evolution).
+
+    Args:
+        app (module):
+            The app models module.
+
+        latest_version (django_evolution.models.Version):
+            The latest version, which the evolutions will be associated with.
+
+        using (str):
+            The database being updated.
+
+        verbosity (int):
+            The verbosity used to control output.
+    """
     app_label = get_app_label(app)
     sequence = get_evolution_sequence(app)
 
-    if sequence:
-        if verbosity > 0:
-            print 'Evolutions in %s baseline:' % app_label, \
-                  ', '.join(sequence)
+    if sequence and verbosity > 0:
+        print 'Evolutions in %s baseline:' % app_label, \
+              ', '.join(sequence)
 
     for evo_label in sequence:
         evolution = django_evolution.Evolution(app_label=app_label,
                                                label=evo_label,
                                                version=latest_version)
-        evolution.save(**using_args)
+        evolution.save(using=using)
 
 
-def evolution(app, created_models, verbosity=1, **kwargs):
+def _on_app_models_updated(app, verbosity=1, using=DEFAULT_DB_ALIAS, **kwargs):
+    """Handler for when an app's models were updated.
+
+    This is called in response to a syncdb or migrate operation for an app.
+    It will install baselines for any new models, record the changes in the
+    evolution history, and notify the user if any of the changes require an
+    evolution.
+
+    Args:
+        app (module):
+            The app models module that was updated.
+
+        verbosity (int, optional):
+            The verbosity used to control output. This will have been provided
+            by the syncdb or migrate command.
+
+        using (str, optional):
+            The database being updated.
+
+        **kwargs (dict):
+            Additional keyword arguments provided by the signal handler for
+            the syncdb or migrate operation.
     """
-    A hook into syncdb's post_syncdb signal, that is used to notify the user
-    if a model evolution is necessary.
-    """
-    default_db = DEFAULT_DB_ALIAS
-
-    db = kwargs.get('db', default_db)
-    proj_sig = create_project_sig(db)
+    proj_sig = create_project_sig(using)
     signature = pickle.dumps(proj_sig)
-
-    using_args = {
-        'using': db,
-    }
 
     try:
         latest_version = \
-            django_evolution.Version.objects.current_version(using=db)
+            django_evolution.Version.objects.current_version(using=using)
     except django_evolution.Version.DoesNotExist:
         # We need to create a baseline version.
         if verbosity > 0:
             print "Installing baseline version"
 
         latest_version = django_evolution.Version(signature=signature)
-        latest_version.save(**using_args)
+        latest_version.save(using=using)
 
         for a in get_apps():
-            install_baseline(a, latest_version, using_args, verbosity)
+            _install_baseline(app=a,
+                              latest_version=latest_version,
+                              using=using,
+                              verbosity=verbosity)
 
-    unapplied = get_unapplied_evolutions(app, db)
+    unapplied = get_unapplied_evolutions(app, using)
 
     if unapplied:
         print style.NOTICE('There are unapplied evolutions for %s.'
@@ -111,14 +144,16 @@ def evolution(app, created_models, verbosity=1, **kwargs):
 
             latest_version = \
                 django_evolution.Version(signature=pickle.dumps(old_proj_sig))
-            latest_version.save(**using_args)
+            latest_version.save(using=using)
 
             for app_name in new_apps:
                 app = get_app(app_name, True)
 
                 if app:
-                    install_baseline(app, latest_version, using_args,
-                                     verbosity)
+                    _install_baseline(app=app,
+                                      latest_version=latest_version,
+                                      using=using,
+                                      verbosity=verbosity)
 
         # TODO: Model introspection step goes here.
         # # If the current database state doesn't match the last
@@ -142,9 +177,46 @@ def evolution(app, created_models, verbosity=1, **kwargs):
                 print diff
 
 
+def _on_post_syncdb(app, **kwargs):
+    """Handler to install baselines after syncdb has completed.
+
+    This will install baselines for any new apps, once syncdb has completed
+    for the app, and will notify the user if any evolutions are required.
+
+    Args:
+        app (module):
+            The app whose models were migrated.
+
+        **kwargs (dict):
+            Keyword arguments passed to the signal handler.
+    """
+    _on_app_models_updated(app=app,
+                           using=kwargs.get('db', DEFAULT_DB_ALIAS),
+                           **kwargs)
+
+
+def _on_post_migrate(app_config, **kwargs):
+    """Handler to install baselines after app migration has completed.
+
+    This works like the syncdb handler to install baselines for any new apps,
+    once the app's model migration has completed, and to notify if any
+    evolutions are required.
+
+    Args:
+        app_config (django.apps.AppConfig):
+            The configuration for the app whose models were migrated.
+
+        **kwargs (dict):
+            Keyword arguments passed to the signal handler.
+    """
+    _on_app_models_updated(app=app_config.models_module, **kwargs)
+
+
 if getattr(settings, 'DJANGO_EVOLUTION_ENABLED', True):
     if hasattr(signals, 'post_syncdb'):
-        signals.post_syncdb.connect(evolution)
+        signals.post_syncdb.connect(_on_post_syncdb)
+    elif hasattr(signals, 'post_migrate'):
+        signals.post_migrate.connect(_on_post_migrate)
     else:
         logging.error('Django Evolution cannot automatically install '
                       'baselines or evolve on Django %s',
