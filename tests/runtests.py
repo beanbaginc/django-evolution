@@ -47,12 +47,17 @@ def run_tests(verbosity=1, interactive=False):
     if len(sys.argv) > 2:
         nose_argv += sys.argv[2:]
 
-    nose.run(argv=nose_argv)
+    result = nose.main(argv=nose_argv, exit=False)
 
     for connection, name in old_db_names:
         connection.creation.destroy_test_db(name, verbosity=0)
 
     teardown_test_environment()
+
+    if result.success:
+        return 0
+    else:
+        return 1
 
 
 if __name__ == "__main__":
@@ -63,4 +68,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         os.environ['DJANGO_EVOLUTION_TEST_DB'] = sys.argv[1]
 
-    run_tests()
+    sys.exit(run_tests())
