@@ -3,8 +3,9 @@ import logging
 
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.errors import CannotSimulate
+from django_evolution.mock_models import MockModel
 from django_evolution.mutations import (AddField, ChangeField, ChangeMeta,
-                                        DeleteField, DeleteModel, MockModel,
+                                        DeleteField, DeleteModel,
                                         MonoBaseMutation, MutateModelField,
                                         RenameField, RenameModel)
 from django_evolution.utils import get_database_for_model_name
