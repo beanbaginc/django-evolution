@@ -16,10 +16,9 @@ class DatabaseSigTests(TestCase):
 
         # Check that a few known tables are in the list, to make sure
         # the scan worked.
-        self.assertTrue('auth_permission' in tables)
-        self.assertTrue('auth_user' in tables)
-        self.assertTrue('django_evolution' in tables)
-        self.assertTrue('django_project_version' in tables)
+        self.assertIn('django_content_type', tables)
+        self.assertIn('django_evolution', tables)
+        self.assertIn('django_project_version', tables)
 
         self.assertTrue('indexes' in self.database_sig['django_evolution'])
 
