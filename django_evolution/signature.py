@@ -1,10 +1,11 @@
-from django.db import router
 from django.db.models.fields.related import ForeignKey
 from django.conf import global_settings
 
 from django_evolution.compat.apps import get_apps
 from django_evolution.compat.models import GenericRelation, get_models
 from django_evolution.compat.datastructures import OrderedDict
+from django_evolution.compat.db import (db_router_allows_migrate,
+                                        db_router_allows_syncdb)
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.utils import get_app_label
 
@@ -98,14 +99,12 @@ def create_app_sig(app, database):
         # Only include those models that can be synced.
         #
         # On Django 1.7 and up, we need to check if the model allows for
-        # migrations (using allow_migrate_model).
+        # migrations (using Router.allow_migrate).
         #
         # On older versions of Django, we check if the model allows for
-        # synchronization to the database (allow_syncdb).
-        if ((hasattr(router, 'allow_syncdb') and
-             router.allow_syncdb(database, model.__class__)) or
-            (hasattr(router, 'allow_migrate_model') and
-             router.allow_migrate_model(database, model))):
+        # synchronization to the database (Router.allow_syncdb).
+        if (db_router_allows_migrate(database, get_app_label(app), model) or
+            db_router_allows_syncdb(database, model)):
             app_sig[model._meta.object_name] = create_model_sig(model)
 
     return app_sig

@@ -9,7 +9,7 @@ from contextlib import contextmanager
 
 import django
 from django.core.management import color, sql
-from django.db import connections, transaction
+from django.db import connections, router, transaction
 from django.db.utils import DEFAULT_DB_ALIAS
 
 try:
@@ -707,12 +707,64 @@ def create_constraint_name(connection, r_col, col, r_table, table):
             connection.ops.max_name_length())
 
 
+def db_router_allows_syncdb(database, model_cls):
+    """Return whether a database router allows syncdb operations for a model.
+
+    This will only return ``True`` for Django 1.6 and older and if the
+    router allows syncdb operations.
+
+    Args:
+        database (unicode):
+            The name of the database.
+
+        model_cls (type):
+            The model class.
+
+    Returns:
+        bool:
+        ``True`` if routers allow syncdb for this model.
+    """
+    return (django.VERSION[:2] <= (1, 6) and
+            router.allow_syncdb(database, model_cls))
+
+
+def db_router_allows_migrate(database, app_label, model_cls):
+    """Return whether a database router allows migrate operations for a model.
+
+    This will only return ``True`` for Django 1.7 and newer and if the
+    router allows migrate operations. This is compatible with both the
+    Django 1.7 and 1.8+ versions of ``allow_migrate``.
+
+    Args:
+        database (unicode):
+            The name of the database.
+
+        app_label (unicode):
+            The application label.
+
+        model_cls (type):
+            The model class.
+
+    Returns:
+        bool:
+        ``True`` if routers allow migrate for this model.
+    """
+    if django.VERSION[:2] >= (1, 8):
+        return router.allow_migrate_model(database, model_cls)
+    elif django.VERSION[:2] == (1, 7):
+        return router.allow_migrate(database, model_cls)
+    else:
+        return False
+
+
 __all__ = [
     'atomic',
     'create_constraint_name',
     'create_index_name',
     'create_index_together_name',
     'digest',
+    'db_router_allows_syncdb',
+    'db_router_allows_migrate',
     'sql_add_constraints',
     'sql_delete_constraints',
     'sql_create',
