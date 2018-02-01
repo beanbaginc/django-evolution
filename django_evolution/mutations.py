@@ -416,6 +416,30 @@ class BaseMutation(object):
     mutations to a database signature.
     """
 
+    def generate_hint(self):
+        """Return a hinted evolution for the mutation.
+
+        This will generate a line that will be used in a hinted evolution
+        file. This method generally should not be overridden. Instead, use
+        :py:meth:`get_hint_params`.
+
+        Returns:
+            unicode:
+            A hinted evolution statement for this mutation.
+        """
+        return '%s(%s)' % (self.__class__.__name__,
+                           ', '.join(self.get_hint_params()))
+
+    def get_hint_params(self):
+        """Return parameters for the mutation's hinted evolution.
+
+        Returns:
+            list of unicode:
+            A list of parameter strings to pass to the mutation's constructor
+            in a hinted evolution.
+        """
+        return []
+
     def simulate(self, app_label, proj_sig, database_sig, database=None):
         """Simulate a mutation for an application.
 
@@ -535,6 +559,15 @@ class BaseMutation(object):
         """
         return '%s=%s' % (attr_name, self.serialize_value(attr_value))
 
+    def __str__(self):
+        """Return a hinted evolution for the mutation.
+
+        Returns:
+            unicode:
+            The hinted evolution.
+        """
+        return self.generate_hint()
+
     def __repr__(self):
         """Return a string representation of the mutation.
 
@@ -624,16 +657,15 @@ class SQLMutation(BaseMutation):
         self.sql = sql
         self.update_func = update_func
 
-    def __str__(self):
-        """Return a string representing this database mutation.
-
-        This will be written to the evolution file when generating a hint.
+    def get_hint_params(self):
+        """Return parameters for the mutation's hinted evolution.
 
         Returns:
-            unicode:
-            A string representing the mutation.
+            list of unicode:
+            A list of parameter strings to pass to the mutation's constructor
+            in a hinted evolution.
         """
-        return "SQLMutation('%s')" % self.tag
+        return [self.tag]
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
         """Simulate a mutation for an application.
@@ -750,16 +782,18 @@ class DeleteField(MutateModelField):
         super(DeleteField, self).__init__(model_name)
         self.field_name = field_name
 
-    def __str__(self):
-        """Return a string representing this database mutation.
-
-        This will be written to the evolution file when generating a hint.
+    def get_hint_params(self):
+        """Return parameters for the mutation's hinted evolution.
 
         Returns:
-            unicode:
-            A string representing the mutation.
+            list of unicode:
+            A list of parameter strings to pass to the mutation's constructor
+            in a hinted evolution.
         """
-        return "DeleteField('%s', '%s')" % (self.model_name, self.field_name)
+        return [
+            self.serialize_value(self.model_name),
+            self.serialize_value(self.field_name),
+        ]
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
         """Simulate the mutation.
@@ -902,14 +936,13 @@ class AddField(MutateModelField):
         self.field_attrs = field_attrs
         self.initial = initial
 
-    def __str__(self):
-        """Return a string representing this database mutation.
-
-        This will be written to the evolution file when generating a hint.
+    def get_hint_params(self):
+        """Return parameters for the mutation's hinted evolution.
 
         Returns:
-            unicode:
-            A string representing the mutation.
+            list of unicode:
+            A list of parameter strings to pass to the mutation's constructor
+            in a hinted evolution.
         """
         if self.field_type.__module__.startswith('django.db.models'):
             field_prefix = 'models.'
@@ -930,7 +963,7 @@ class AddField(MutateModelField):
             for key, value in six.iteritems(self.field_attrs)
         ]
 
-        return 'AddField(%s)' % ', '.join(params)
+        return params
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
         """Simulate the mutation.
@@ -1090,14 +1123,13 @@ class RenameField(MutateModelField):
         self.db_column = db_column
         self.db_table = db_table
 
-    def __str__(self):
-        """Return a string representing this database mutation.
-
-        This will be written to the evolution file when generating a hint.
+    def get_hint_params(self):
+        """Return parameters for the mutation's hinted evolution.
 
         Returns:
-            unicode:
-            A string representing the mutation.
+            list of unicode:
+            A list of parameter strings to pass to the mutation's constructor
+            in a hinted evolution.
         """
         params = [
             self.serialize_value(self.model_name),
@@ -1111,7 +1143,7 @@ class RenameField(MutateModelField):
         if self.db_table:
             params.append(self.serialize_attr('db_table', self.db_table))
 
-        return 'RenameField(%s)' % ', '.join(params)
+        return params
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
         """Simulate the mutation.
@@ -1258,16 +1290,15 @@ class ChangeField(MutateModelField):
         self.field_attrs = field_attrs
         self.initial = initial
 
-    def __str__(self):
-        """Return a string representing this database mutation.
-
-        This will be written to the evolution file when generating a hint.
+    def get_hint_params(self):
+        """Return parameters for the mutation's hinted evolution.
 
         Returns:
-            unicode:
-            A string representing the mutation.
+            list of unicode:
+            A list of parameter strings to pass to the mutation's constructor
+            in a hinted evolution.
         """
-        params = [
+        return [
             self.serialize_value(self.model_name),
             self.serialize_value(self.field_name),
             self.serialize_attr('initial', self.initial),
@@ -1275,8 +1306,6 @@ class ChangeField(MutateModelField):
             self.serialize_attr(attr_name, attr_value)
             for attr_name, attr_value in six.iteritems(self.field_attrs)
         ]
-
-        return 'ChangeField(%s)' % ', '.join(params)
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
         """Simulate the mutation.
@@ -1401,14 +1430,13 @@ class RenameModel(MutateModelField):
         self.new_model_name = new_model_name
         self.db_table = db_table
 
-    def __str__(self):
-        """Return a string representing this database mutation.
-
-        This will be written to the evolution file when generating a hint.
+    def get_hint_params(self):
+        """Return parameters for the mutation's hinted evolution.
 
         Returns:
-            unicode:
-            A string representing the mutation.
+            list of unicode:
+            A list of parameter strings to pass to the mutation's constructor
+            in a hinted evolution.
         """
         params = [
             self.serialize_value(self.old_model_name),
@@ -1418,7 +1446,7 @@ class RenameModel(MutateModelField):
         if self.db_table:
             params.append(self.serialize_attr('db_table', self.db_table)),
 
-        return 'RenameModel(%s)' % ', '.join(params)
+        return params
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
         """Simulate the mutation.
@@ -1515,16 +1543,15 @@ class RenameModel(MutateModelField):
 class DeleteModel(MutateModelField):
     """A mutation that deletes a model."""
 
-    def __str__(self):
-        """Return a string representing this database mutation.
-
-        This will be written to the evolution file when generating a hint.
+    def get_hint_params(self):
+        """Return parameters for the mutation's hinted evolution.
 
         Returns:
-            unicode:
-            A string representing the mutation.
+            list of unicode:
+            A list of parameter strings to pass to the mutation's constructor
+            in a hinted evolution.
         """
-        return 'DeleteModel(%s)' % self.serialize_value(self.model_name)
+        return [self.serialize_value(self.model_name)]
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
         """Simulate the mutation.
@@ -1596,17 +1623,6 @@ class DeleteModel(MutateModelField):
 
 class DeleteApplication(BaseMutation):
     """A mutation that deletes an application."""
-
-    def __str__(self):
-        """Return a string representing this database mutation.
-
-        This will be written to the evolution file when generating a hint.
-
-        Returns:
-            unicode:
-            A string representing the mutation.
-        """
-        return 'DeleteApplication()'
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
         """Simulate the mutation.
@@ -1722,14 +1738,13 @@ class ChangeMeta(MutateModelField):
         self.prop_name = prop_name
         self.new_value = new_value
 
-    def __str__(self):
-        """Return a string representing this database mutation.
-
-        This will be written to the evolution file when generating a hint.
+    def get_hint_params(self):
+        """Return parameters for the mutation's hinted evolution.
 
         Returns:
-            unicode:
-            A string representing the mutation.
+            list of unicode:
+            A list of parameter strings to pass to the mutation's constructor
+            in a hinted evolution.
         """
         if self.prop_name in ('index_together', 'unique_together'):
             # Make sure these always appear as lists and not tuples, for
@@ -1738,13 +1753,11 @@ class ChangeMeta(MutateModelField):
         else:
             norm_value = self.new_value
 
-        params = [
+        return [
             self.serialize_value(self.model_name),
             self.serialize_value(self.prop_name),
             repr(norm_value),
         ]
-
-        return 'ChangeMeta(%s)' % ', '.join(params)
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
         """Simulate the mutation.
