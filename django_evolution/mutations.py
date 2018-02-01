@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import copy
 
 from django.db import models
@@ -5,6 +7,7 @@ from django.db.models.base import ModelState
 from django.db.models.fields import AutoField, FieldDoesNotExist
 from django.db.models.fields.related import (ForeignKey, ManyToManyField,
                                              RECURSIVE_RELATIONSHIP_CONSTANT)
+from django.utils import six
 from django.utils.functional import curry
 
 from django_evolution.compat.datastructures import OrderedDict
@@ -266,6 +269,51 @@ class BaseMutation(object):
         """
         return False
 
+    def serialize_value(self, value):
+        """Serialize a value for use in a mutation statement.
+
+        This will attempt to represent the value as something Python can
+        execute, across Python versions. The string representation of the
+        value is used by default. If that representation is of a Unicode
+        string, and that string include a ``u`` prefix, it will be stripped.
+
+        Args:
+            value (object):
+                The value to serialize.
+
+        Returns:
+            unicode:
+            The serialized string.
+        """
+        if isinstance(value, six.string_types):
+            value = six.text_type(value)
+
+        value_repr = repr(value)
+
+        if isinstance(value, six.text_type) and value_repr.startswith('u'):
+            value_repr = value_repr[1:]
+
+        return value_repr
+
+    def serialize_attr(self, attr_name, attr_value):
+        """Serialize an attribute for use in a mutation statement.
+
+        This will create a ``name=value`` string, with the value serialized
+        using :py:meth:`serialize_value`.
+
+        Args:
+            attr_name (unicode):
+                The attribute's name.
+
+            attr_value (object):
+                The attribute's value.
+
+        Returns:
+            unicode:
+            The serialized attribute string.
+        """
+        return '%s=%s' % (attr_name, self.serialize_value(attr_value))
+
     def __repr__(self):
         return '<%s>' % str(self)
 
@@ -404,24 +452,21 @@ class AddField(MutateModelField):
         else:
             field_prefix = ''
 
-        str_output = ["'%(model_name)s', '%(field_name)s', %(field_type)s" % {
-            'model_name': self.model_name,
-            'field_name': self.field_name,
-            'field_type': field_prefix + self.field_type.__name__
-        }]
+        params = [
+            self.serialize_value(self.model_name),
+            self.serialize_value(self.field_name),
+            field_prefix + self.field_type.__name__,
+        ]
 
         if self.initial is not None:
-            if isinstance(self.initial, basestring):
-                value = unicode(self.initial)
-            else:
-                value = self.initial
+            params.append(self.serialize_attr('initial', self.initial))
 
-            str_output.append('initial=%s' % repr(value))
+        params += [
+            self.serialize_attr(key, value)
+            for key, value in six.iteritems(self.field_attrs)
+        ]
 
-        for key, value in self.field_attrs.iteritems():
-            str_output.append("%s=%s" % (key, repr(value)))
-
-        return 'AddField(' + ', '.join(str_output) + ')'
+        return 'AddField(%s)' % ', '.join(params)
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
         app_sig = proj_sig[app_label]
@@ -496,15 +541,19 @@ class RenameField(MutateModelField):
         self.db_table = db_table
 
     def __str__(self):
-        params = "'%s', '%s', '%s'" % (self.model_name, self.old_field_name,
-                                       self.new_field_name)
+        params = [
+            self.serialize_value(self.model_name),
+            self.serialize_value(self.old_field_name),
+            self.serialize_value(self.new_field_name),
+        ]
 
         if self.db_column:
-            params = params + ", db_column='%s'" % (self.db_column)
-        if self.db_table:
-            params = params + ", db_table='%s'" % (self.db_table)
+            params.append(self.serialize_attr('db_column', self.db_column))
 
-        return "RenameField(%s)" % params
+        if self.db_table:
+            params.append(self.serialize_attr('db_table', self.db_table))
+
+        return 'RenameField(%s)' % ', '.join(params)
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
         app_sig = proj_sig[app_label]
@@ -581,20 +630,16 @@ class ChangeField(MutateModelField):
         self.initial = initial
 
     def __str__(self):
-        params = (self.model_name, self.field_name)
-        str_output = ["'%s', '%s'" % params]
+        params = [
+            self.serialize_value(self.model_name),
+            self.serialize_value(self.field_name),
+            self.serialize_attr('initial', self.initial),
+        ] + [
+            self.serialize_attr(attr_name, attr_value)
+            for attr_name, attr_value in six.iteritems(self.field_attrs)
+        ]
 
-        str_output.append('initial=%s' % repr(self.initial))
-
-        for attr_name, attr_value in self.field_attrs.items():
-            if str == type(attr_value):
-                str_attr_value = "'%s'" % attr_value
-            else:
-                str_attr_value = str(attr_value)
-
-            str_output.append('%s=%s' % (attr_name, str_attr_value,))
-
-        return 'ChangeField(' + ', '.join(str_output) + ')'
+        return 'ChangeField(%s)' % ', '.join(params)
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
         app_sig = proj_sig[app_label]
@@ -618,7 +663,7 @@ class ChangeField(MutateModelField):
         field_sig = mutator.model_sig['fields'][self.field_name]
         field = model._meta.get_field(self.field_name)
 
-        for attr_name in self.field_attrs.iterkeys():
+        for attr_name in six.iterkeys(self.field_attrs):
             if attr_name not in mutator.evolver.supported_change_attrs:
                 raise EvolutionNotImplementedError(
                     "ChangeField does not support modifying the '%s' "
@@ -627,7 +672,7 @@ class ChangeField(MutateModelField):
 
         new_field_attrs = {}
 
-        for attr_name, attr_value in self.field_attrs.iteritems():
+        for attr_name, attr_value in six.iteritems(self.field_attrs):
             old_attr_value = field_sig.get(attr_name,
                                            ATTRIBUTE_DEFAULTS[attr_name])
 
@@ -650,12 +695,15 @@ class RenameModel(MutateModelField):
         self.db_table = db_table
 
     def __str__(self):
-        params = "'%s', '%s'" % (self.old_model_name, self.new_model_name)
+        params = [
+            self.serialize_value(self.old_model_name),
+            self.serialize_value(self.new_model_name),
+        ]
 
         if self.db_table:
-            params += ", db_table='%s'" % self.db_table
+            params.append(self.serialize_attr('db_table', self.db_table)),
 
-        return 'RenameModel(%s)' % params
+        return 'RenameModel(%s)' % ', '.join(params)
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
         app_sig = proj_sig[app_label]
@@ -674,12 +722,12 @@ class RenameModel(MutateModelField):
         old_related_model = '%s.%s' % (app_label, self.old_model_name)
         new_related_model = '%s.%s' % (app_label, self.new_model_name)
 
-        for app_sig in proj_sig.itervalues():
+        for app_sig in six.itervalues(proj_sig):
             if not isinstance(app_sig, dict):
                 continue
 
-            for model_sig in app_sig.itervalues():
-                for field in model_sig['fields'].itervalues():
+            for model_sig in six.itervalues(app_sig):
+                for field in six.itervalues(model_sig['fields']):
                     if ('related_model' in field and
                         field['related_model'] == old_related_model):
                         field['related_model'] = new_related_model
@@ -704,7 +752,7 @@ class RenameModel(MutateModelField):
 
 class DeleteModel(MutateModelField):
     def __str__(self):
-        return "DeleteModel(%r)" % self.model_name
+        return 'DeleteModel(%s)' % self.serialize_value(self.model_name)
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
         app_sig = proj_sig[app_label]
@@ -777,8 +825,13 @@ class ChangeMeta(MutateModelField):
         else:
             norm_value = self.new_value
 
-        return ("ChangeMeta('%s', '%s', %r)"
-                % (self.model_name, self.prop_name, norm_value))
+        params = [
+            self.serialize_value(self.model_name),
+            self.serialize_value(self.prop_name),
+            repr(norm_value),
+        ]
+
+        return 'ChangeMeta(%s)' % ', '.join(params)
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
         app_sig = proj_sig[app_label]

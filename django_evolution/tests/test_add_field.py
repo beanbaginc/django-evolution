@@ -219,7 +219,7 @@ class AddFieldTests(EvolutionTestCase):
             self.DIFF_TEXT,
             [
                 "AddField('TestModel', 'added_field', models.CharField,"
-                " initial=u'', max_length=10)"
+                " initial='', max_length=10)"
             ],
             'AddBlankStringColumnModel')
 
@@ -301,7 +301,7 @@ class AddFieldTests(EvolutionTestCase):
             self.DIFF_TEXT,
             [
                 "AddField('TestModel', 'added_field', models.CharField,"
-                " initial=u'', max_length=20)",
+                " initial='', max_length=20)",
             ],
             'AddEmptyStringDefaultColumnModel')
 
