@@ -1,5 +1,6 @@
 from django.db import models
 
+from django_evolution.errors import SimulationFailure
 from django_evolution.mutations import RenameField
 from django_evolution.tests.base_test_case import EvolutionTestCase
 
@@ -49,6 +50,49 @@ class RenameFieldTests(EvolutionTestCase):
         ('RenameAnchor2', RenameAnchor2),
         ('RenameAnchor3', RenameAnchor3),
     ]
+
+    def test_with_bad_app(self):
+        """Testing RenameField with application not in signature"""
+        mutation = RenameField('TestModel', 'char_field1', 'char_field2')
+
+        self.assertRaisesMessage(
+            SimulationFailure,
+            ('Cannot rename the field "char_field1" on model '
+             '"badapp.TestModel". The application could not be found in the '
+             'signature.'),
+            lambda: mutation.simulate('badapp', {}, {}))
+
+    def test_with_bad_model(self):
+        """Testing RenameField with model not in signature"""
+        mutation = RenameField('TestModel', 'char_field1', 'char_field2')
+        proj_sig = {
+            'tests': {},
+        }
+
+        self.assertRaisesMessage(
+            SimulationFailure,
+            ('Cannot rename the field "char_field1" on model '
+             '"tests.TestModel". The model could not be found in the '
+             'signature.'),
+            lambda: mutation.simulate('tests', proj_sig, {}))
+
+    def test_with_bad_field(self):
+        """Testing RenameField with field not in signature"""
+        mutation = RenameField('TestModel', 'char_field1', 'char_field2')
+        proj_sig = {
+            'tests': {
+                'TestModel': {
+                    'fields': {},
+                },
+            },
+        }
+
+        self.assertRaisesMessage(
+            SimulationFailure,
+            ('Cannot rename the field "char_field1" on model '
+             '"tests.TestModel". The field could not be found in the '
+             'signature.'),
+            lambda: mutation.simulate('tests', proj_sig, {}))
 
     def test_rename(self):
         """Testing RenameField"""

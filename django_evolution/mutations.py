@@ -788,8 +788,36 @@ class DeleteField(MutateModelField):
                 The simulation failed. The reason is in the exception's
                 message.
         """
-        app_sig = proj_sig[app_label]
-        model_sig = app_sig[self.model_name]
+        try:
+            app_sig = proj_sig[app_label]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot delete the field "%s" on model "%s.%s". The '
+                'application could not be found in the signature.'
+                % (self.field_name, app_label, self.model_name))
+
+        try:
+            model_sig = app_sig[self.model_name]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot delete the field "%s" on model "%s.%s". The model '
+                'could not be found in the signature.'
+                % (self.field_name, app_label, self.model_name))
+
+        try:
+            fields_sig = model_sig['fields']
+            field = fields_sig[self.field_name]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot delete the field "%s" on model "%s.%s". The field '
+                'could not be found in the signature.'
+                % (self.field_name, app_label, self.model_name))
+
+        if field.get('primary_key', False):
+            raise SimulationFailure(
+                'The field "%s" on model "%s.%s" is the primary key, and '
+                'cannot be deleted.'
+                % (self.field_name, app_label, self.model_name))
 
         # If the field was used in the unique_together attribute, update it.
         unique_together = model_sig['meta']['unique_together']
@@ -809,15 +837,8 @@ class DeleteField(MutateModelField):
 
         model_sig['meta']['unique_together'] = tuple(unique_together_list)
 
-        if model_sig['fields'][self.field_name].get('primary_key', False):
-            raise SimulationFailure('Cannot delete a primary key.')
-
         # Simulate the deletion of the field.
-        try:
-            model_sig['fields'].pop(self.field_name)
-        except KeyError:
-            raise SimulationFailure('Cannot find the field named "%s".'
-                                    % self.field_name)
+        del fields_sig[self.field_name]
 
     def mutate(self, mutator, model):
         """Schedule a field deletion on the mutator.
@@ -934,20 +955,33 @@ class AddField(MutateModelField):
                 The simulation failed. The reason is in the exception's
                 message.
         """
-        app_sig = proj_sig[app_label]
-        model_sig = app_sig[self.model_name]
+        try:
+            app_sig = proj_sig[app_label]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot add the field "%s" to model "%s.%s". The application '
+                'could not be found in the signature.'
+                % (self.field_name, app_label, self.model_name))
+
+        try:
+            model_sig = app_sig[self.model_name]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot add the field "%s" to model "%s.%s". The model could '
+                'not be found in the signature.'
+                % (self.field_name, app_label, self.model_name))
 
         if self.field_name in model_sig['fields']:
             raise SimulationFailure(
-                "Model '%s.%s' already has a field named '%s'"
+                'The model "%s.%s" already has a field named "%s".'
                 % (app_label, self.model_name, self.field_name))
 
         if (self.field_type is not models.ManyToManyField and
             not self.field_attrs.get('null', ATTRIBUTE_DEFAULTS['null'])
             and self.initial is None):
             raise SimulationFailure(
-                "Cannot create new column '%s' on '%s.%s' without a "
-                "non-null initial value."
+                'Cannot create new field "%s" on model "%s.%s". A non-null '
+                'initial value must be specified in the mutation.'
                 % (self.field_name, app_label, self.model_name))
 
         model_sig['fields'][self.field_name] = {
@@ -1102,10 +1136,30 @@ class RenameField(MutateModelField):
                 The simulation failed. The reason is in the exception's
                 message.
         """
-        app_sig = proj_sig[app_label]
-        model_sig = app_sig[self.model_name]
-        field_dict = model_sig['fields']
-        field_sig = field_dict[self.old_field_name]
+        try:
+            app_sig = proj_sig[app_label]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot rename the field "%s" on model "%s.%s". The '
+                'application could not be found in the signature.'
+                % (self.old_field_name, app_label, self.model_name))
+
+        try:
+            model_sig = app_sig[self.model_name]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot rename the field "%s" on model "%s.%s". The model '
+                'could not be found in the signature.'
+                % (self.old_field_name, app_label, self.model_name))
+
+        try:
+            field_dict = model_sig['fields']
+            field_sig = field_dict[self.old_field_name]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot rename the field "%s" on model "%s.%s". The field '
+                'could not be found in the signature.'
+                % (self.old_field_name, app_label, self.model_name))
 
         if models.ManyToManyField == field_sig['field_type']:
             if self.db_table:
@@ -1248,9 +1302,29 @@ class ChangeField(MutateModelField):
                 The simulation failed. The reason is in the exception's
                 message.
         """
-        app_sig = proj_sig[app_label]
-        model_sig = app_sig[self.model_name]
-        field_sig = model_sig['fields'][self.field_name]
+        try:
+            app_sig = proj_sig[app_label]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot change the field "%s" on model "%s.%s". The '
+                'application could not be found in the signature.'
+                % (self.field_name, app_label, self.model_name))
+
+        try:
+            model_sig = app_sig[self.model_name]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot change the field "%s" on model "%s.%s". The model '
+                'could not be found in the signature.'
+                % (self.field_name, app_label, self.model_name))
+
+        try:
+            field_sig = model_sig['fields'][self.field_name]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot change the field "%s" on model "%s.%s". The field '
+                'could not be found in the signature.'
+                % (self.field_name, app_label, self.model_name))
 
         # Catch for no-op changes.
         for field_attr, attr_value in self.field_attrs.items():
@@ -1261,8 +1335,8 @@ class ChangeField(MutateModelField):
             not self.field_attrs['null'] and
             self.initial is None):
             raise SimulationFailure(
-                "Cannot change column '%s' on '%s.%s' without a "
-                "non-null initial value."
+                'Cannot change the field "%s" on model "%s.%s". A non-null '
+                'initial value needs to be specified in the mutation.'
                 % (self.field_name, app_label, self.model_name))
 
     def mutate(self, mutator, model):
@@ -1369,8 +1443,21 @@ class RenameModel(MutateModelField):
                 The simulation failed. The reason is in the exception's
                 message.
         """
-        app_sig = proj_sig[app_label]
-        model_sig = app_sig[self.old_model_name]
+        try:
+            app_sig = proj_sig[app_label]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot rename the model "%s.%s". The application could '
+                'not be found in the signature.'
+                % (app_label, self.old_model_name))
+
+        try:
+            model_sig = app_sig[self.old_model_name]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot rename the model "%s.%s". The model could not be '
+                'found in the signature.'
+                % (app_label, self.old_model_name))
 
         if self.db_table:
             model_sig['meta']['db_table'] = self.db_table
@@ -1462,10 +1549,22 @@ class DeleteModel(MutateModelField):
                 The simulation failed. The reason is in the exception's
                 message.
         """
-        app_sig = proj_sig[app_label]
+        try:
+            app_sig = proj_sig[app_label]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot delete the model "%s.%s". The application could '
+                'not be found in the signature.'
+                % (app_label, self.model_name))
 
         # Simulate the deletion of the model.
-        del app_sig[self.model_name]
+        try:
+            del app_sig[self.model_name]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot delete the model "%s.%s". The model could not be '
+                'found in the signature.'
+                % (app_label, self.model_name))
 
     def mutate(self, mutator, model):
         """Schedule a model deletion on the mutator.
@@ -1533,16 +1632,31 @@ class DeleteApplication(BaseMutation):
                 The simulation failed. The reason is in the exception's
                 message.
         """
-        if database:
+        if not database:
+            return
+
+        try:
             app_sig = proj_sig[app_label]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot delete the application "%s". It could not be found '
+                'in the signature.'
+                % app_label)
 
-            # Simulate the deletion of the models.
-            for model_name in app_sig.keys():
-                mutation = DeleteModel(model_name)
+        # Simulate the deletion of the models.
+        for model_name in app_sig.keys():
+            mutation = DeleteModel(model_name)
 
-                if mutation.is_mutable(app_label, proj_sig, database_sig,
-                                       database):
+            if mutation.is_mutable(app_label, proj_sig, database_sig,
+                                   database):
+                try:
                     del app_sig[model_name]
+                except KeyError:
+                    raise SimulationFailure(
+                        'Cannot delete the model "%s.%s" when deleting the '
+                        'application. The model was not found in the '
+                        'signature.'
+                        % (app_label, model_name))
 
     def mutate(self, mutator):
         """Schedule an application deletion on the mutator.
@@ -1656,8 +1770,30 @@ class ChangeMeta(MutateModelField):
                 The simulation failed. The reason is in the exception's
                 message.
         """
-        app_sig = proj_sig[app_label]
-        model_sig = app_sig[self.model_name]
+        try:
+            app_sig = proj_sig[app_label]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot change a meta property on model "%s.%s". The '
+                'application could not be found in the signature.'
+                % (app_label, self.model_name))
+
+        try:
+            model_sig = app_sig[self.model_name]
+        except KeyError:
+            raise SimulationFailure(
+                'Cannot change a meta property on model "%s.%s". The model '
+                'could not be found in the signature.'
+                % (app_label, self.model_name))
+
+        evolver = \
+            EvolutionOperationsMulti(database, database_sig).get_evolver()
+
+        if self.prop_name not in evolver.supported_change_meta:
+            raise SimulationFailure(
+                'ChangeMeta does not support modifying the "%s" '
+                'attribute on "%s".'
+                % (self.prop_name, self.model_name))
 
         model_sig['meta'][self.prop_name] = self.new_value
 
@@ -1678,10 +1814,4 @@ class ChangeMeta(MutateModelField):
             model (MockModel):
                 The model being mutated.
         """
-        if self.prop_name not in mutator.evolver.supported_change_meta:
-            raise EvolutionNotImplementedError(
-                "ChangeMeta does not support modifying the '%s' "
-                "attribute on '%s'."
-                % (self.prop_name, self.model_name))
-
         mutator.change_meta(self, self.prop_name, self.new_value)

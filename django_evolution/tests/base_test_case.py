@@ -31,6 +31,7 @@ class EvolutionTestCase(TransactionTestCase):
         self.start_sig = None
         self.database_sig = None
         self.test_database_sig = None
+        self._models_registered = False
 
         if self.default_base_model:
             self.set_base_model(self.default_base_model,
@@ -38,7 +39,8 @@ class EvolutionTestCase(TransactionTestCase):
                                 extra_models=self.default_extra_models)
 
     def tearDown(self):
-        deregister_models()
+        if self._models_registered:
+            deregister_models()
 
     def shortDescription(self):
         """Returns the description of the current test.
@@ -201,6 +203,8 @@ class EvolutionTestCase(TransactionTestCase):
         return test_sql_mapping(self.sql_mapping_key, db_name)[name]
 
     def register_model(self, model, name, db_name=None, **kwargs):
+        self._models_registered = True
+
         db_name = db_name or self.default_database_name
 
         models = self.pre_extra_models + [(name, model)] + self.extra_models

@@ -44,6 +44,49 @@ class ChangeFieldTests(EvolutionTestCase):
         ('ChangeAnchor1', ChangeAnchor1),
     ]
 
+    def test_with_bad_app(self):
+        """Testing ChangeField with application not in signature"""
+        mutation = ChangeField('TestModel', 'char_field1')
+
+        self.assertRaisesMessage(
+            SimulationFailure,
+            ('Cannot change the field "char_field1" on model '
+             '"badapp.TestModel". The application could not be found in the '
+             'signature.'),
+            lambda: mutation.simulate('badapp', {}, {}))
+
+    def test_with_bad_model(self):
+        """Testing ChangeField with model not in signature"""
+        mutation = ChangeField('TestModel', 'char_field1')
+        proj_sig = {
+            'tests': {},
+        }
+
+        self.assertRaisesMessage(
+            SimulationFailure,
+            ('Cannot change the field "char_field1" on model '
+             '"tests.TestModel". The model could not be found in the '
+             'signature.'),
+            lambda: mutation.simulate('tests', proj_sig, {}))
+
+    def test_with_bad_field(self):
+        """Testing ChangeField with field not in signature"""
+        mutation = ChangeField('TestModel', 'char_field1')
+        proj_sig = {
+            'tests': {
+                'TestModel': {
+                    'fields': {},
+                },
+            },
+        }
+
+        self.assertRaisesMessage(
+            SimulationFailure,
+            ('Cannot change the field "char_field1" on model '
+             '"tests.TestModel". The field could not be found in the '
+             'signature.'),
+            lambda: mutation.simulate('tests', proj_sig, {}))
+
     def test_set_null_false_without_initial_value_raises_exception(self):
         """Testing ChangeField with setting null=False without initial value"""
         class DestModel(models.Model):
@@ -62,8 +105,9 @@ class ChangeFieldTests(EvolutionTestCase):
 
         self.assertRaisesMessage(
             SimulationFailure,
-            ("Cannot change column 'char_field1' on 'tests.TestModel'"
-             " without a non-null initial value"),
+            ('Cannot change the field "char_field1" on model '
+             '"tests.TestModel". A non-null initial value needs to be '
+             'specified in the mutation.'),
             lambda: self.perform_evolution_tests(
                 DestModel,
                 [
@@ -97,8 +141,9 @@ class ChangeFieldTests(EvolutionTestCase):
 
         self.assertRaisesMessage(
             SimulationFailure,
-            ("Cannot change column 'char_field1' on 'tests.TestModel'"
-             " without a non-null initial value"),
+            ('Cannot change the field "char_field1" on model '
+             '"tests.TestModel". A non-null initial value needs to be '
+             'specified in the mutation.'),
             lambda: self.perform_evolution_tests(
                 DestModel,
                 [

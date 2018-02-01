@@ -1,5 +1,6 @@
 from django.db import models
 
+from django_evolution.errors import SimulationFailure
 from django_evolution.mutations import DeleteModel
 from django_evolution.tests.base_test_case import EvolutionTestCase
 
@@ -11,6 +12,29 @@ class DeleteModelAnchor(models.Model):
 class DeleteModelTests(EvolutionTestCase):
     """Testing DeleteModel mutations."""
     sql_mapping_key = 'delete_model'
+
+    def test_with_bad_app(self):
+        """Testing DeleteModel with application not in signature"""
+        mutation = DeleteModel('TestModel')
+
+        self.assertRaisesMessage(
+            SimulationFailure,
+            ('Cannot delete the model "badapp.TestModel". The application '
+             'could not be found in the signature.'),
+            lambda: mutation.simulate('badapp', {}, {}))
+
+    def test_with_bad_model(self):
+        """Testing DeleteModel with model not in signature"""
+        mutation = DeleteModel('TestModel')
+        proj_sig = {
+            'tests': {},
+        }
+
+        self.assertRaisesMessage(
+            SimulationFailure,
+            ('Cannot delete the model "tests.TestModel". The model could '
+             'not be found in the signature.'),
+            lambda: mutation.simulate('tests', proj_sig, {}))
 
     def test_delete_model(self):
         """Testing DeleteModel"""

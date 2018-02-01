@@ -1,6 +1,7 @@
 from django.db import models
 
 from django_evolution.diff import Diff
+from django_evolution.errors import SimulationFailure
 from django_evolution.mutations import DeleteApplication
 from django_evolution.mutators import AppMutator
 from django_evolution.tests.base_test_case import EvolutionTestCase
@@ -41,6 +42,16 @@ class DeleteAppTests(EvolutionTestCase):
         ('AppDeleteAnchor2', AppDeleteAnchor2),
         ('CustomTestModel', AppDeleteCustomTableModel),
     ]
+
+    def test_with_bad_app(self):
+        """Testing DeleteApplication with application not in signature"""
+        mutation = DeleteApplication()
+
+        self.assertRaisesMessage(
+            SimulationFailure,
+            ('Cannot delete the application "badapp". It could not be found '
+             'in the signature.'),
+            lambda: mutation.simulate('badapp', {}, {}, database='default'))
 
     def test_delete_app(self):
         """Testing DeleteApplication"""

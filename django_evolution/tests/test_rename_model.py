@@ -1,5 +1,6 @@
 from django.db import models
 
+from django_evolution.errors import SimulationFailure
 from django_evolution.mutations import RenameModel
 from django_evolution.tests.base_test_case import EvolutionTestCase
 
@@ -13,6 +14,31 @@ class RenameModelTests(EvolutionTestCase):
     """Unit tests for RenameModel mutations."""
     sql_mapping_key = 'rename_model'
     default_base_model = RenameModelBaseModel
+
+    def test_with_bad_app(self):
+        """Testing RenameModel with application not in signature"""
+        mutation = RenameModel('TestModel', 'DestModel',
+                               db_table='tests_destmodel')
+
+        self.assertRaisesMessage(
+            SimulationFailure,
+            ('Cannot rename the model "badapp.TestModel". The application '
+             'could not be found in the signature.'),
+            lambda: mutation.simulate('badapp', {}, {}))
+
+    def test_with_bad_model(self):
+        """Testing RenameModel with model not in signature"""
+        mutation = RenameModel('TestModel', 'DestModel',
+                               db_table='tests_destmodel')
+        proj_sig = {
+            'tests': {},
+        }
+
+        self.assertRaisesMessage(
+            SimulationFailure,
+            ('Cannot rename the model "tests.TestModel". The model could '
+             'not be found in the signature.'),
+            lambda: mutation.simulate('tests', proj_sig, {}))
 
     def test_rename(self):
         """Testing RenameModel with changed db_table"""
