@@ -1,3 +1,5 @@
+"""Support for schema mutation operations and hint output."""
+
 from __future__ import unicode_literals
 
 import copy
@@ -26,9 +28,30 @@ FK_INTEGER_TYPES = [
 
 
 def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
-    """
-    Create an instance of a field from a field signature. This is useful for
-    accessing all the database property mechanisms built into fields.
+    """Create a Django field instance for the given signature data.
+
+    This creates a field in a way that's compatible with a variety of versions
+    of Django. It takes in data such as the field's name and attributes
+    and creates an instance that can be used like any field found on a model.
+
+    Args:
+        field_name (unicode):
+            The name of the field.
+
+        field_type (cls):
+            The class for the type of field being constructed. This must be a
+            subclass of :py:class:`django.db.models.Field`.
+
+        field_attrs (dict):
+            Attributes to set on the field.
+
+        parent_model (cls):
+            The parent model that would own this field. This must be a
+            subclass of :py:class:`django.db.models.Model`.
+
+    Returns:
+        django.db.models.Field:
+        A new field instance matching the provided data.
     """
     # related_model isn't a valid field attribute, so it must be removed
     # prior to instantiating the field, but it must be restored
@@ -124,14 +147,28 @@ def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
 
 
 class MockMeta(object):
-    """
-    A mockup of a models Options object, based on the model signature.
+    """A mock of a models Options object, based on the model signature.
 
-    The stub argument is used to circumvent recursive relationships. If
-    'stub' is provided, the constructed model will only be a stub -
-    it will only have a primary key field.
+    This emulates the standard Meta class for a model, storing data and
+    providing mock functions for setting up fields from a signature.
     """
+
     def __init__(self, proj_sig, app_name, model_name, model_sig):
+        """Initialize the meta instance.
+
+        Args:
+            proj_sig (dict):
+                The project's schema signature.
+
+            app_name (unicode):
+                The name of the Django application owning the model.
+
+            model_name (unicode):
+                The name of the model.
+
+            model_sig (dict):
+                The model's schema signature.
+        """
         self.object_name = model_name
         self.app_label = app_name
         self.meta = {
@@ -151,6 +188,25 @@ class MockMeta(object):
         self._proj_sig = proj_sig
 
     def setup_fields(self, model, stub=False):
+        """Set up the fields listed in the model's signature.
+
+        For each field in the model signature's list of fields, a field
+        instance will be created and stored in :py:attr:`_fields` or
+        :py:attr:`_many_to_many` (depending on the type of field).
+
+        Some fields (for instance, a field representing a primary key) may
+        also influence the attributes on this model.
+
+        Args:
+            model (cls):
+                The model class owning this meta instance. This must be a
+                subclass of :py:class:`django.db.models.Model`.
+
+            stub (bool, optional):
+                If provided, only a primary key will be set up. This is used
+                internally when creating relationships between models and
+                fields in order to prevent recursive relationships.
+        """
         for field_name, field_sig in self._model_sig['fields'].items():
             if not stub or field_sig.get('primary_key', False):
                 field_type = field_sig.pop('field_type')
@@ -173,12 +229,39 @@ class MockMeta(object):
                     self.pk = field
 
     def __getattr__(self, name):
+        """Return an attribute from the meta class.
+
+        This will look up the attribute from the correct location, depending
+        on the attribute being accessed.
+
+        Args:
+            name (unicode):
+                The attribute name.
+
+        Returns:
+            object:
+            The attribute value.
+        """
         if name == 'model_name':
             return self.object_name
 
         return self.meta[name]
 
     def get_field(self, name):
+        """Return a field with the given name.
+
+        Args:
+            name (unicode):
+                The name of the field.
+
+        Returns:
+            django.db.models.Field:
+            The field with the given name.
+
+        Raises:
+            django.db.models.fields.FieldDoesNotExist:
+                The field could not be found.
+        """
         try:
             return self._fields[name]
         except KeyError:
@@ -189,6 +272,31 @@ class MockMeta(object):
                                         (self.object_name, name))
 
     def get_field_by_name(self, name):
+        """Return information on a field with the given name.
+
+        This is a stub that provides only basic functionality. It will
+        return information for a field with the given name, with most
+        data hard-coded.
+
+        Args:
+            name (unicode):
+                The name of the field.
+
+        Returns:
+            tuple:
+            A tuple of information for the following:
+
+            * The field instance (:py:class:`django.db.models.Field`)
+            * The model (hard-coded as ``None``)
+            * Whether this field is owned by this model (hard-coded as
+              ``True``)
+            * Whether this is for a many-to-many relationship (hard-coded as
+             ``None``)
+
+        Raises:
+            django.db.models.fields.FieldDoesNotExist:
+                The field could not be found.
+        """
         return (self.get_field(name), None, True, None)
 
     def get_fields(self):
@@ -203,13 +311,38 @@ class MockMeta(object):
 
 
 class MockModel(object):
+    """A mock model.
+
+    This replicates some of the state and functionality of a model for
+    use when generating, reading, or mutating signatures.
     """
-    A mockup of a model object, providing sufficient detail
-    to derive database column and table names using the standard
-    Django fields.
-    """
+
     def __init__(self, proj_sig, app_name, model_name, model_sig, stub=False,
                  db_name=None):
+        """Initialize the model.
+
+        Args:
+            proj_sig (dict):
+                The project's schema signature.
+
+            app_name (unicode):
+                The name of the Django app that owns the model.
+
+            model_name (unicode):
+                The name of the model.
+
+            model_sig (dict):
+                The model's schema signature.
+
+            stub (bool, optional):
+                Whether this is a stub model. This is used internally to
+                create models that only contain a primary key field and no
+                others, for use when dealing with circular relationships.
+
+            db_name (unicode, optional):
+                The name of the database where the model would be read from or
+                written to.
+        """
         self.app_name = app_name
         self.model_name = model_name
         self._meta = MockMeta(proj_sig, app_name, model_name, model_sig)
@@ -217,9 +350,28 @@ class MockModel(object):
         self._state = ModelState(db_name)
 
     def __repr__(self):
+        """Return a string representation of the model.
+
+        Returns:
+            unicode:
+            A string representation of the model.
+        """
         return '<MockModel for %s.%s>' % (self.app_name, self.model_name)
 
     def __eq__(self, other):
+        """Return whether two mock models are equal.
+
+        Both are considered equal if they're both mock models with the same
+        app name and model name.
+
+        Args:
+            other (MockModel):
+                The other mock model to compare to.
+
+        Returns:
+            bool:
+            ``True`` if both are equal. ``False` if they are not.
+        """
         # For our purposes, we don't want to appear equal to "self".
         # Really, Django 1.2 should be checking if this is a string before
         # doing this comparison,
@@ -229,12 +381,26 @@ class MockModel(object):
 
 
 class MockRelated(object):
+    """A mock RelatedObject for relation fields.
+
+    This replicates some of the state and functionality of
+    :py:class:`django.db.models.related.RelatedObject`, used for generating
+    signatures and applying mutations.
     """
-    A mockup of django.db.models.related.RelatedObject, providing
-    sufficient detail to derive database column and table names using
-    the standard Django fields.
-    """
+
     def __init__(self, related_model, model, field):
+        """Initialize the object.
+
+        Args:
+            related_model (MockModel):
+                The mock model on the other end of the relation.
+
+            model (MockModel):
+                The mock model on this end of the relation.
+
+            field (django.db.models.Field):
+                The field owning the relation.
+        """
         self.parent_model = related_model
         self.model = model
         self.opts = model._meta
@@ -244,28 +410,83 @@ class MockRelated(object):
 
 
 class BaseMutation(object):
-    def __init__(self):
-        pass
+    """Base class for a schema mutation.
 
-    def mutate(self, mutator):
-        """
-        Performs the mutation on the database. Database changes will occur
-        after this function is invoked.
-        """
-        raise NotImplementedError()
+    These are responsible for simulating schema mutations and applying actual
+    mutations to a database signature.
+    """
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
+        """Simulate a mutation for an application.
+
+        This will attempt to perform a mutation on the database signature,
+        modifying it to match the state described to the mutation. This allows
+        Django Evolution to test evolutions before they hit the database.
+
+        Args:
+            app_label (unicode):
+                The label for the Django application being mutated.
+
+            proj_sig (dict):
+                The project's schema signature.
+
+            database_sig (dict):
+                The database's schema signature.
+
+            database (unicode, optional):
+                The name of the database the operation is being performed on.
+
+        Raises:
+            django_evolution.errors.CannotSimulate:
+                The simulation cannot be executed for this mutation. The
+                reason is in the exception's message.
+
+            django_evolution.errors.SimulationFailure:
+                The simulation failed. The reason is in the exception's
+                message.
         """
-        Performs a simulation of the mutation to be performed. The purpose of
-        the simulate function is to ensure that after all mutations have
-        occured the database will emerge in a state consistent with the
-        currently loaded models file.
+        raise NotImplementedError
+
+    def mutate(self, mutator):
+        """Schedule a database mutation on the mutator.
+
+        This will instruct the mutator to perform one or more database
+        mutations for an app. Those will be scheduled and later executed on the
+        database, if not optimized out.
+
+        Args:
+            mutator (django_evolution.mutators.AppMutator):
+                The mutator to perform an operation on.
+
+        Raises:
+            django_evolution.errors.EvolutionNotImplementedError:
+                The configured mutation is not supported on this type of
+                database.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def is_mutable(self, app_label, proj_sig, database_sig, database):
-        """
-        test if the current mutation could be applied to the given database
+        """Return whether the mutation can be applied to the database.
+
+        This should check if the database or parts of the signature matches
+        the attributes provided to the mutation.
+
+        Args:
+            app_label (unicode):
+                The label for the Django application to be mutated.
+
+            proj_sig (dict):
+                The project's schema signature.
+
+            database_sig (dict):
+                The database's schema signature.
+
+            database (unicode):
+                The name of the database the operation would be performed on.
+
+        Returns:
+            bool:
+            ``True`` if the mutation can run. ``False`` if it cannot.
         """
         return False
 
@@ -315,13 +536,25 @@ class BaseMutation(object):
         return '%s=%s' % (attr_name, self.serialize_value(attr_value))
 
     def __repr__(self):
-        return '<%s>' % str(self)
+        """Return a string representation of the mutation.
+
+        Returns:
+            unicode:
+            A string representation of the mutation.
+        """
+        return '<%s>' % self
 
 
 class MonoBaseMutation(BaseMutation):
-    # introducting model_name at this stage will prevent subclasses to be
-    # cross databases
-    def __init__(self, model_name=None):
+    """Base class for a mutation affecting a single model."""
+
+    def __init__(self, model_name):
+        """Initialize the mutation.
+
+        Args:
+            model_name (unicode):
+                The name of the model being mutated.
+        """
         super(MonoBaseMutation, self).__init__()
         self.model_name = model_name
 
@@ -333,60 +566,228 @@ class MonoBaseMutation(BaseMutation):
         return EvolutionOperationsMulti(database, database_sig).get_evolver()
 
     def is_mutable(self, app_label, proj_sig, database_sig, database):
+        """Return whether the mutation can be applied to the database.
+
+        This will if the database matches that of the model.
+
+        Args:
+            app_label (unicode):
+                The label for the Django application to be mutated.
+
+            proj_sig (dict, unused):
+                The project's schema signature.
+
+            database_sig (dict, unused):
+                The database's schema signature.
+
+            database (unicode):
+                The name of the database the operation would be performed on.
+
+        Returns:
+            bool:
+            ``True`` if the mutation can run. ``False`` if it cannot.
+        """
         db_name = (database or
                    get_database_for_model_name(app_label, self.model_name))
         return db_name and db_name == database
 
 
 class SQLMutation(BaseMutation):
+    """A mutation that executes SQL on the database.
+
+    Unlike most mutations, this one is largely database-dependent. It allows
+    arbitrary SQL to be executed. It's recommended that the execution does
+    not modify the schema of a table (unless it's highly database-specific with
+    no counterpart in Django Evolution), but rather is limited to things like
+    populating data.
+
+    SQL statements cannot be optimized. Any scheduled database operations
+    prior to the SQL statement will be executed without any further
+    optimization. This can lead to longer database evolution times.
+    """
+
     def __init__(self, tag, sql, update_func=None):
+        """Initialize the mutation.
+
+        Args:
+            tag (unicode):
+                A unique tag identifying this SQL operation.
+
+            sql (unicode):
+                The SQL to execute.
+
+            update_func (callable, optional):
+                A function to call to simulate updating the database signature.
+                This is required for :py:meth:`simulate` to work.
+        """
         self.tag = tag
         self.sql = sql
         self.update_func = update_func
 
     def __str__(self):
+        """Return a string representing this database mutation.
+
+        This will be written to the evolution file when generating a hint.
+
+        Returns:
+            unicode:
+            A string representing the mutation.
+        """
         return "SQLMutation('%s')" % self.tag
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
-        """SQL mutations cannot be simulated unless an update function is
-        provided"""
+        """Simulate a mutation for an application.
 
+        This will run the :py:attr:`update_func` provided when instantiating
+        the mutation, passing it ``app_label`` and ``proj_sig``. It should
+        then modify the signature to match what the SQL statement would do.
+
+        Args:
+            app_label (unicode):
+                The label for the Django application being mutated.
+
+            proj_sig (dict):
+                The project's schema signature.
+
+            database_sig (dict):
+                The database's schema signature.
+
+            database (unicode, optional):
+                The name of the database the operation is being performed on.
+
+        Raises:
+            django_evolution.errors.CannotSimulate:
+                :py:attr:`update_func` was not provided or was not a function.
+
+            django_evolution.errors.SimulationFailure:
+                The simulation failed. The reason is in the exception's
+                message. This would be run by :py:attr:`update_func`.
+        """
         if callable(self.update_func):
             self.update_func(app_label, proj_sig)
         else:
             raise CannotSimulate('Cannot simulate SQLMutations')
 
     def mutate(self, mutator):
-        "The mutation of an SQL mutation returns the raw SQL"
+        """Schedule a database mutation on the mutator.
+
+        This will instruct the mutator to execute the SQL for an app.
+
+        Args:
+            mutator (django_evolution.mutators.AppMutator):
+                The mutator to perform an operation on.
+
+        Raises:
+            django_evolution.errors.EvolutionNotImplementedError:
+                The configured mutation is not supported on this type of
+                database.
+        """
         mutator.add_sql(self, self.sql)
 
-    def is_mutable(self, app_label, proj_sig, database_sig, database):
+    def is_mutable(self, *args, **kwargs):
+        """Return whether the mutation can be applied to the database.
+
+        Args:
+            *args (tuple, unused):
+                Unused positional arguments.
+
+            **kwargs (tuple, unused):
+                Unused positional arguments.
+
+        Returns:
+            bool:
+            ``True``, always.
+        """
         return True
 
 
 class MutateModelField(MonoBaseMutation):
     """Base class for any fields that mutate a model.
 
-    This is used for classes that perform any mutation on a model.
-    Such mutations will be provided a model they can work with.
+    This is used for classes that perform any mutation on a model. Such
+    mutations will be provided a model they can work with.
 
-    Operations added to the mutator by this field will be associated with
-    that model. That will allow the operations backend to perform any
-    optimizations to improve evolution time for the model.
+    Operations added to the mutator by this field will be associated with that
+    model. That will allow the operations backend to perform any optimizations
+    to improve evolution time for the model.
     """
+
     def mutate(self, mutator, model):
+        """Schedule a model mutation on the mutator.
+
+        This will instruct the mutator to perform one or more database
+        mutations for a model. Those will be scheduled and later executed on
+        the database, if not optimized out.
+
+        Args:
+            mutator (django_evolution.mutators.ModelMutator):
+                The mutator to perform an operation on.
+
+            model (MockModel):
+                The model being mutated.
+
+        Raises:
+            django_evolution.errors.EvolutionNotImplementedError:
+                The configured mutation is not supported on this type of
+                database.
+        """
         raise NotImplementedError
 
 
 class DeleteField(MutateModelField):
+    """A mutation that deletes a field from a model."""
+
     def __init__(self, model_name, field_name):
+        """Initialize the mutation.
+
+        Args:
+            model_name (unicode):
+                The name of the model containing the field.
+
+            field_name (unicode):
+                The name of the field to delete.
+        """
         super(DeleteField, self).__init__(model_name)
         self.field_name = field_name
 
     def __str__(self):
+        """Return a string representing this database mutation.
+
+        This will be written to the evolution file when generating a hint.
+
+        Returns:
+            unicode:
+            A string representing the mutation.
+        """
         return "DeleteField('%s', '%s')" % (self.model_name, self.field_name)
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
+        """Simulate the mutation.
+
+        This will alter the database schema to remove the specified field,
+        modifying meta fields (``unique_together``) if necessary.
+
+        It will also check to make sure this is not a primary key and that
+        the field exists.
+
+        Args:
+            app_label (unicode):
+                The label for the Django application being mutated.
+
+            proj_sig (dict):
+                The project's schema signature.
+
+            database_sig (dict):
+                The database's schema signature.
+
+            database (unicode, optional):
+                The name of the database the operation is being performed on.
+
+        Raises:
+            django_evolution.errors.SimulationFailure:
+                The simulation failed. The reason is in the exception's
+                message.
+        """
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
 
@@ -419,6 +820,19 @@ class DeleteField(MutateModelField):
                                     % self.field_name)
 
     def mutate(self, mutator, model):
+        """Schedule a field deletion on the mutator.
+
+        This will instruct the mutator to perform a deletion of a field on
+        a model. It will be scheduled and later executed on the database, if
+        not optimized out.
+
+        Args:
+            mutator (django_evolution.mutators.ModelMutator):
+                The mutator to perform an operation on.
+
+            model (MockModel):
+                The model being mutated.
+        """
         field_sig = mutator.model_sig['fields'][self.field_name]
 
         # Temporarily remove field_type from the field signature
@@ -438,15 +852,44 @@ class DeleteField(MutateModelField):
 
 
 class AddField(MutateModelField):
-    def __init__(self, model_name, field_name, field_type,
-                 initial=None, **kwargs):
+    """A mutation that adds a field to a model."""
+
+    def __init__(self, model_name, field_name, field_type, initial=None,
+                 **field_attrs):
+        """Initialize the mutation.
+
+        Args:
+            model_name (unicode):
+                The name of the model to add the field to.
+
+            field_name (unicode):
+                The name of the new field.
+
+            field_type (cls):
+                The field class to use. This must be a subclass of
+                :py:class:`django.db.models.Field`.
+
+            initial (object, optional):
+                The initial value for the field. This is required if non-null.
+
+            **field_attrs (dict):
+                Attributes to set on the field.
+        """
         super(AddField, self).__init__(model_name)
         self.field_name = field_name
         self.field_type = field_type
-        self.field_attrs = kwargs
+        self.field_attrs = field_attrs
         self.initial = initial
 
     def __str__(self):
+        """Return a string representing this database mutation.
+
+        This will be written to the evolution file when generating a hint.
+
+        Returns:
+            unicode:
+            A string representing the mutation.
+        """
         if self.field_type.__module__.startswith('django.db.models'):
             field_prefix = 'models.'
         else:
@@ -469,6 +912,28 @@ class AddField(MutateModelField):
         return 'AddField(%s)' % ', '.join(params)
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
+        """Simulate the mutation.
+
+        This will alter the database schema to add the specified field.
+
+        Args:
+            app_label (unicode):
+                The label for the Django application being mutated.
+
+            proj_sig (dict):
+                The project's schema signature.
+
+            database_sig (dict):
+                The database's schema signature.
+
+            database (unicode, optional):
+                The name of the database the operation is being performed on.
+
+        Raises:
+            django_evolution.errors.SimulationFailure:
+                The simulation failed. The reason is in the exception's
+                message.
+        """
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
 
@@ -492,18 +957,48 @@ class AddField(MutateModelField):
         model_sig['fields'][self.field_name].update(self.field_attrs)
 
     def mutate(self, mutator, model):
+        """Schedule a field addition on the mutator.
+
+        This will instruct the mutator to add a new field on a model. It will
+        be scheduled and later executed on the database, if not optimized out.
+
+        Args:
+            mutator (django_evolution.mutators.ModelMutator):
+                The mutator to perform an operation on.
+
+            model (MockModel):
+                The model being mutated.
+        """
         if self.field_type is models.ManyToManyField:
             self.add_m2m_table(mutator, model)
         else:
             self.add_column(mutator, model)
 
     def add_column(self, mutator, model):
+        """Add a standard column to the model.
+
+        Args:
+            mutator (django_evolution.mutators.ModelMutator):
+                The mutator to perform an operation on.
+
+            model (MockModel):
+                The model being mutated.
+        """
         field = create_field(mutator.proj_sig, self.field_name,
                              self.field_type, self.field_attrs, model)
 
         mutator.add_column(self, field, self.initial)
 
     def add_m2m_table(self, mutator, model):
+        """Add a ManyToMany column to the model and an accompanying table.
+
+        Args:
+            mutator (django_evolution.mutators.ModelMutator):
+                The mutator to perform an operation on.
+
+            model (MockModel):
+                The model being mutated.
+        """
         field = create_field(mutator.proj_sig, self.field_name,
                              self.field_type, self.field_attrs, model)
 
@@ -532,8 +1027,29 @@ class AddField(MutateModelField):
 
 
 class RenameField(MutateModelField):
+    """A mutation that renames a field on a model."""
+
     def __init__(self, model_name, old_field_name, new_field_name,
                  db_column=None, db_table=None):
+        """Initialize the mutation.
+
+        Args:
+            model_name (unicode):
+                The name of the model to add the field to.
+
+            old_field_name (unicode):
+                The old (existing) name of the field.
+
+            new_field_name (unicode):
+                The new name for the field.
+
+            db_column (unicode, optional):
+                The explicit column name to set for the field.
+
+            db_table (object, optional):
+                The explicit table name to use, if specifying a
+                :py:class:`~django.db.models.ManyToManyField`.
+        """
         super(RenameField, self).__init__(model_name)
         self.old_field_name = old_field_name
         self.new_field_name = new_field_name
@@ -541,6 +1057,14 @@ class RenameField(MutateModelField):
         self.db_table = db_table
 
     def __str__(self):
+        """Return a string representing this database mutation.
+
+        This will be written to the evolution file when generating a hint.
+
+        Returns:
+            unicode:
+            A string representing the mutation.
+        """
         params = [
             self.serialize_value(self.model_name),
             self.serialize_value(self.old_field_name),
@@ -556,6 +1080,28 @@ class RenameField(MutateModelField):
         return 'RenameField(%s)' % ', '.join(params)
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
+        """Simulate the mutation.
+
+        This will alter the database schema to rename the specified field.
+
+        Args:
+            app_label (unicode):
+                The label for the Django application being mutated.
+
+            proj_sig (dict):
+                The project's schema signature.
+
+            database_sig (dict):
+                The database's schema signature.
+
+            database (unicode, optional):
+                The name of the database the operation is being performed on.
+
+        Raises:
+            django_evolution.errors.SimulationFailure:
+                The simulation failed. The reason is in the exception's
+                message.
+        """
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
         field_dict = model_sig['fields']
@@ -578,13 +1124,25 @@ class RenameField(MutateModelField):
         field_dict[self.new_field_name] = field_dict.pop(self.old_field_name)
 
     def mutate(self, mutator, model):
+        """Schedule a field rename on the mutator.
+
+        This will instruct the mutator to rename a field on a model. It will be
+        scheduled and later executed on the database, if not optimized out.
+
+        Args:
+            mutator (django_evolution.mutators.ModelMutator):
+                The mutator to perform an operation on.
+
+            model (MockModel):
+                The model being mutated.
+        """
         old_field_sig = mutator.model_sig['fields'][self.old_field_name]
 
         # Temporarily remove the field type so that we can create mock field
-        # instances
+        # instances.
         field_type = old_field_sig.pop('field_type')
 
-        # Duplicate the old field sig, and apply the table/column changes
+        # Duplicate the old field sig, and apply the table/column changes.
         new_field_sig = copy.copy(old_field_sig)
 
         if field_type is models.ManyToManyField:
@@ -623,13 +1181,38 @@ class RenameField(MutateModelField):
 
 
 class ChangeField(MutateModelField):
-    def __init__(self, model_name, field_name, initial=None, **kwargs):
+    """A mutation that changes attributes on a field on a model."""
+
+    def __init__(self, model_name, field_name, initial=None, **field_attrs):
+        """Initialize the mutation.
+
+        Args:
+            model_name (unicode):
+                The name of the model containing the field to change.
+
+            field_name (unicode):
+                The name of the field to change.
+
+            initial (object, optional):
+                The initial value for the field. This is required if non-null.
+
+            **field_attrs (dict):
+                Attributes to set on the field.
+        """
         super(ChangeField, self).__init__(model_name)
         self.field_name = field_name
-        self.field_attrs = kwargs
+        self.field_attrs = field_attrs
         self.initial = initial
 
     def __str__(self):
+        """Return a string representing this database mutation.
+
+        This will be written to the evolution file when generating a hint.
+
+        Returns:
+            unicode:
+            A string representing the mutation.
+        """
         params = [
             self.serialize_value(self.model_name),
             self.serialize_value(self.field_name),
@@ -642,6 +1225,29 @@ class ChangeField(MutateModelField):
         return 'ChangeField(%s)' % ', '.join(params)
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
+        """Simulate the mutation.
+
+        This will alter the database schema to change attributes for the
+        specified field.
+
+        Args:
+            app_label (unicode):
+                The label for the Django application being mutated.
+
+            proj_sig (dict):
+                The project's schema signature.
+
+            database_sig (dict):
+                The database's schema signature.
+
+            database (unicode, optional):
+                The name of the database the operation is being performed on.
+
+        Raises:
+            django_evolution.errors.SimulationFailure:
+                The simulation failed. The reason is in the exception's
+                message.
+        """
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
         field_sig = model_sig['fields'][self.field_name]
@@ -660,6 +1266,19 @@ class ChangeField(MutateModelField):
                 % (self.field_name, app_label, self.model_name))
 
     def mutate(self, mutator, model):
+        """Schedule a field change on the mutator.
+
+        This will instruct the mutator to change attributes on a field on a
+        model. It will be scheduled and later executed on the database, if not
+        optimized out.
+
+        Args:
+            mutator (django_evolution.mutators.ModelMutator):
+                The mutator to perform an operation on.
+
+            model (MockModel):
+                The model being mutated.
+        """
         field_sig = mutator.model_sig['fields'][self.field_name]
         field = model._meta.get_field(self.field_name)
 
@@ -688,13 +1307,35 @@ class ChangeField(MutateModelField):
 
 
 class RenameModel(MutateModelField):
+    """A mutation that renames a model."""
+
     def __init__(self, old_model_name, new_model_name, db_table):
+        """Initialize the mutation.
+
+        Args:
+            old_model_name (unicode):
+                The old (existing) name of the model to rename.
+
+            new_model_name (unicode):
+                The new name for the model.
+
+            db_table (unicode):
+                The table name in the database for this model.
+        """
         super(RenameModel, self).__init__(old_model_name)
         self.old_model_name = old_model_name
         self.new_model_name = new_model_name
         self.db_table = db_table
 
     def __str__(self):
+        """Return a string representing this database mutation.
+
+        This will be written to the evolution file when generating a hint.
+
+        Returns:
+            unicode:
+            A string representing the mutation.
+        """
         params = [
             self.serialize_value(self.old_model_name),
             self.serialize_value(self.new_model_name),
@@ -706,6 +1347,28 @@ class RenameModel(MutateModelField):
         return 'RenameModel(%s)' % ', '.join(params)
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
+        """Simulate the mutation.
+
+        This will alter the database schema to rename the specified model.
+
+        Args:
+            app_label (unicode):
+                The label for the Django application being mutated.
+
+            proj_sig (dict):
+                The project's schema signature.
+
+            database_sig (dict):
+                The database's schema signature.
+
+            database (unicode, optional):
+                The name of the database the operation is being performed on.
+
+        Raises:
+            django_evolution.errors.SimulationFailure:
+                The simulation failed. The reason is in the exception's
+                message.
+        """
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.old_model_name]
 
@@ -733,6 +1396,18 @@ class RenameModel(MutateModelField):
                         field['related_model'] = new_related_model
 
     def mutate(self, mutator, model):
+        """Schedule a model rename on the mutator.
+
+        This will instruct the mutator to rename a model. It will be scheduled
+        and later executed on the database, if not optimized out.
+
+        Args:
+            mutator (django_evolution.mutators.ModelMutator):
+                The mutator to perform an operation on.
+
+            model (MockModel):
+                The model being mutated.
+        """
         old_model_sig = mutator.model_sig
         new_model_sig = copy.deepcopy(old_model_sig)
 
@@ -751,16 +1426,60 @@ class RenameModel(MutateModelField):
 
 
 class DeleteModel(MutateModelField):
+    """A mutation that deletes a model."""
+
     def __str__(self):
+        """Return a string representing this database mutation.
+
+        This will be written to the evolution file when generating a hint.
+
+        Returns:
+            unicode:
+            A string representing the mutation.
+        """
         return 'DeleteModel(%s)' % self.serialize_value(self.model_name)
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
+        """Simulate the mutation.
+
+        This will alter the database schema to delete the specified model.
+
+        Args:
+            app_label (unicode):
+                The label for the Django application being mutated.
+
+            proj_sig (dict):
+                The project's schema signature.
+
+            database_sig (dict):
+                The database's schema signature.
+
+            database (unicode, optional):
+                The name of the database the operation is being performed on.
+
+        Raises:
+            django_evolution.errors.SimulationFailure:
+                The simulation failed. The reason is in the exception's
+                message.
+        """
         app_sig = proj_sig[app_label]
 
         # Simulate the deletion of the model.
         del app_sig[self.model_name]
 
     def mutate(self, mutator, model):
+        """Schedule a model deletion on the mutator.
+
+        This will instruct the mutator to delete a model. It will be scheduled
+        and later executed on the database, if not optimized out.
+
+        Args:
+            mutator (django_evolution.mutators.ModelMutator):
+                The mutator to perform an operation on.
+
+            model (MockModel):
+                The model being mutated.
+        """
         sql_result = SQLResult()
 
         # Remove any many to many tables.
@@ -777,10 +1496,43 @@ class DeleteModel(MutateModelField):
 
 
 class DeleteApplication(BaseMutation):
+    """A mutation that deletes an application."""
+
     def __str__(self):
+        """Return a string representing this database mutation.
+
+        This will be written to the evolution file when generating a hint.
+
+        Returns:
+            unicode:
+            A string representing the mutation.
+        """
         return 'DeleteApplication()'
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
+        """Simulate the mutation.
+
+        This will alter the database schema to delete the specified
+        application.
+
+        Args:
+            app_label (unicode):
+                The label for the Django application being mutated.
+
+            proj_sig (dict):
+                The project's schema signature.
+
+            database_sig (dict):
+                The database's schema signature.
+
+            database (unicode, optional):
+                The name of the database the operation is being performed on.
+
+        Raises:
+            django_evolution.errors.SimulationFailure:
+                The simulation failed. The reason is in the exception's
+                message.
+        """
         if database:
             app_sig = proj_sig[app_label]
 
@@ -793,6 +1545,16 @@ class DeleteApplication(BaseMutation):
                     del app_sig[model_name]
 
     def mutate(self, mutator):
+        """Schedule an application deletion on the mutator.
+
+        This will instruct the mutator to delete an application, if it exists.
+        It will be scheduled and later executed on the database, if not
+        optimized out.
+
+        Args:
+            mutator (django_evolution.mutators.AppMutator):
+                The mutator to perform an operation on.
+        """
         # This test will introduce a regression, but we can't afford to remove
         # all models at a same time if they aren't owned by the same database
         if mutator.database:
@@ -806,18 +1568,55 @@ class DeleteApplication(BaseMutation):
                                        mutator.database):
                     mutator.run_mutation(mutation)
 
-    def is_mutable(self, app_label, proj_sig, database_sig, database):
-        # the test is done in the mutate method above. We can return True
+    def is_mutable(self, *args, **kwargs):
+        """Return whether the mutation can be applied to the database.
+
+        This will always return true. The mutation will safely handle the
+        application no longer being around.
+
+        Args:
+            *args (tuple, unused):
+                Positional arguments passed to the function.
+
+            **kwargs (dict, unused):
+                Keyword arguments passed to the function.
+
+        Returns:
+            bool:
+            ``True``, always.
+        """
         return True
 
 
 class ChangeMeta(MutateModelField):
+    """A mutation that changes meta proeprties on a model."""
+
     def __init__(self, model_name, prop_name, new_value):
+        """Initialize the mutation.
+
+        Args:
+            model_name (unicode):
+                The name of the model to change meta properties on.
+
+            prop_name (unicode):
+                The name of the property to change.
+
+            new_value (object):
+                The new value for the property.
+        """
         super(ChangeMeta, self).__init__(model_name)
         self.prop_name = prop_name
         self.new_value = new_value
 
     def __str__(self):
+        """Return a string representing this database mutation.
+
+        This will be written to the evolution file when generating a hint.
+
+        Returns:
+            unicode:
+            A string representing the mutation.
+        """
         if self.prop_name in ('index_together', 'unique_together'):
             # Make sure these always appear as lists and not tuples, for
             # compatibility.
@@ -834,6 +1633,29 @@ class ChangeMeta(MutateModelField):
         return 'ChangeMeta(%s)' % ', '.join(params)
 
     def simulate(self, app_label, proj_sig, database_sig, database=None):
+        """Simulate the mutation.
+
+        This will alter the database schema to change metadata on the specified
+        model.
+
+        Args:
+            app_label (unicode):
+                The label for the Django application being mutated.
+
+            proj_sig (dict):
+                The project's schema signature.
+
+            database_sig (dict):
+                The database's schema signature.
+
+            database (unicode, optional):
+                The name of the database the operation is being performed on.
+
+        Raises:
+            django_evolution.errors.SimulationFailure:
+                The simulation failed. The reason is in the exception's
+                message.
+        """
         app_sig = proj_sig[app_label]
         model_sig = app_sig[self.model_name]
 
@@ -843,6 +1665,19 @@ class ChangeMeta(MutateModelField):
             record_unique_together_applied(model_sig)
 
     def mutate(self, mutator, model):
+        """Schedule a model meta property change on the mutator.
+
+        This will instruct the mutator to change a meta property on a model. It
+        will be scheduled and later executed on the database, if not optimized
+        out.
+
+        Args:
+            mutator (django_evolution.mutators.ModelMutator):
+                The mutator to perform an operation on.
+
+            model (MockModel):
+                The model being mutated.
+        """
         if self.prop_name not in mutator.evolver.supported_change_meta:
             raise EvolutionNotImplementedError(
                 "ChangeMeta does not support modifying the '%s' "
