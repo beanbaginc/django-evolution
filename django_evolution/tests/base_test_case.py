@@ -6,14 +6,15 @@ from django.db import ConnectionRouter, router
 from django.test.testcases import TransactionTestCase
 from django.test.utils import override_settings
 
+from django_evolution.compat.apps import unregister_app
 from django_evolution.diff import Diff
 from django_evolution.mutators import AppMutator
-from django_evolution.signature import create_database_sig
-from django_evolution.tests.utils import (create_test_proj_sig,
-                                          deregister_models,
+from django_evolution.signature import (create_database_sig,
+                                        rescan_indexes_for_database_sig)
+from django_evolution.tests.utils import (create_test_project_sig,
                                           execute_test_sql,
-                                          register_models_multi,
-                                          test_sql_mapping)
+                                          get_sql_mappings,
+                                          register_models)
 
 
 class EvolutionTestCase(TransactionTestCase):
@@ -47,7 +48,7 @@ class EvolutionTestCase(TransactionTestCase):
 
     def tearDown(self):
         if self._models_registered:
-            deregister_models()
+            unregister_app('tests')
 
     def shortDescription(self):
         """Returns the description of the current test.
@@ -70,7 +71,7 @@ class EvolutionTestCase(TransactionTestCase):
         db_name = db_name or self.default_database_name
 
         if self.base_model:
-            deregister_models()
+            unregister_app('tests')
 
         self.base_model = model
         self.pre_extra_models = pre_extra_models
@@ -158,6 +159,10 @@ class EvolutionTestCase(TransactionTestCase):
     def perform_mutations(self, evolutions, end, end_sig, sql_name,
                           rescan_indexes=True, db_name=None):
         def run_mutations():
+            if rescan_indexes:
+                rescan_indexes_for_database_sig(self.test_database_sig,
+                                                db_name)
+
             app_mutator = AppMutator('tests', test_sig, self.test_database_sig,
                                      db_name)
             app_mutator.run_mutations(evolutions)
@@ -169,13 +174,8 @@ class EvolutionTestCase(TransactionTestCase):
         self.test_database_sig = self.copy_sig(self.database_sig)
         test_sig = self.copy_sig(self.start_sig)
 
-        sql = execute_test_sql(
-            self.start, end,
-            run_mutations,
-            database_sig=self.test_database_sig,
-            rescan_indexes=rescan_indexes,
-            return_sql=True,
-            database=db_name)
+        sql = execute_test_sql(self.start, end, run_mutations,
+                               database=db_name)
 
         if sql_name is not None:
             # Normalize the generated and expected SQL so that we are
@@ -209,23 +209,25 @@ class EvolutionTestCase(TransactionTestCase):
     def get_sql_mapping(self, name, db_name=None):
         db_name = db_name or self.default_database_name
 
-        return test_sql_mapping(self.sql_mapping_key, db_name)[name]
+        return get_sql_mappings(self.sql_mapping_key, db_name)[name]
 
     def register_model(self, model, name, db_name=None, **kwargs):
         self._models_registered = True
 
-        db_name = db_name or self.default_database_name
-
         models = self.pre_extra_models + [(name, model)] + self.extra_models
 
-        return register_models_multi(self.database_sig, 'tests',
-                                     db_name, *models, **kwargs)
+        return register_models(database_sig=self.database_sig,
+                               models=models,
+                               new_app_label='tests',
+                               db_name=db_name or self.default_database_name,
+                               **kwargs)
 
     def create_test_proj_sig(self, model, name, extra_models=[],
                              pre_extra_models=[]):
-        return create_test_proj_sig(*(
+        return create_test_project_sig(models=(
             self.pre_extra_models + pre_extra_models + [(name, model)] +
-            extra_models + self.extra_models))
+            extra_models + self.extra_models
+        ))
 
     def copy_sig(self, sig):
         return copy.deepcopy(sig)
