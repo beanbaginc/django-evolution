@@ -1,7 +1,10 @@
 import copy
 import re
+from contextlib import contextmanager
 
+from django.db import ConnectionRouter, router
 from django.test.testcases import TransactionTestCase
+from django.test.utils import override_settings
 
 from django_evolution.diff import Diff
 from django_evolution.mutators import AppMutator
@@ -22,6 +25,10 @@ class EvolutionTestCase(TransactionTestCase):
     default_extra_models = []
 
     ws_re = re.compile(r'\s+')
+
+    # Allow for diffs for large dictionary structures, to help debug
+    # signature failures.
+    maxDiff = 10000
 
     def setUp(self):
         self.base_model = None
@@ -225,3 +232,27 @@ class EvolutionTestCase(TransactionTestCase):
 
     def copy_models(self, models):
         return copy.deepcopy(models)
+
+    @contextmanager
+    def override_db_routers(self, routers):
+        """Override database routers for a test.
+
+        This clears the router cache before and after the test, allowing
+        custom routers to be used during unit tests.
+
+        Args:
+            routers (list):
+                The list of router class paths or instances.
+
+        Yields:
+            The context.
+        """
+        with override_settings(DATABASE_ROUTERS=routers):
+            self.clear_routers_cache()
+            yield
+
+        self.clear_routers_cache()
+
+    def clear_routers_cache(self):
+        """Clear the router cache."""
+        router.routers = ConnectionRouter().routers
