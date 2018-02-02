@@ -20,6 +20,7 @@ DATABASES = {
 }
 
 TEST_DATABASES = {
+    'default': {},
     'sqlite3': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': 'django_evolution_test.db',

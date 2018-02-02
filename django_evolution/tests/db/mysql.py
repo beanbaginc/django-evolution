@@ -1,13 +1,16 @@
 import django
-from django.db import connection
 
-from django_evolution.tests.utils import (generate_unique_constraint_name,
-                                          make_generate_constraint_name,
-                                          make_generate_index_name)
+from django_evolution.tests.utils import (make_generate_constraint_name,
+                                          make_generate_index_name,
+                                          make_generate_unique_constraint_name,
+                                          test_connections)
 
 
-generate_constraint_name = make_generate_constraint_name('mysql')
-generate_index_name = make_generate_index_name('mysql')
+connection = test_connections['mysql_innodb']
+generate_constraint_name = make_generate_constraint_name(connection)
+generate_index_name = make_generate_index_name(connection)
+generate_unique_constraint_name = \
+    make_generate_unique_constraint_name(connection)
 
 
 if hasattr(connection, 'data_types'):

@@ -1,21 +1,23 @@
 import django
-from django.db.backends.sqlite3.creation import DatabaseCreation
-from django.db.backends.sqlite3.base import DatabaseWrapper
 
-from django_evolution.tests.utils import (generate_unique_constraint_name,
-                                          make_generate_index_name)
+from django_evolution.tests.utils import (make_generate_index_name,
+                                          make_generate_unique_constraint_name,
+                                          test_connections)
 
 
-generate_index_name = make_generate_index_name('sqlite3')
+connection = test_connections['sqlite3']
+generate_index_name = make_generate_index_name(connection)
+generate_unique_constraint_name = \
+    make_generate_unique_constraint_name(connection)
 
 
 try:
     # Django >= 1.8
-    data_types_suffix = DatabaseWrapper.data_types_suffix
+    data_types_suffix = connection.data_types_suffix
 except AttributeError:
     try:
         # Django == 1.7
-        data_types_suffix = DatabaseCreation.data_types_suffix
+        data_types_suffix = connection.creation.data_types_suffix
     except AttributeError:
         # Django < 1.7
         data_types_suffix = {}

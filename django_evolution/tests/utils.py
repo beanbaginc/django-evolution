@@ -5,8 +5,8 @@ from functools import partial
 
 import django
 from django.conf import settings
-from django.db import connection, connections
-from django.db.utils import DEFAULT_DB_ALIAS
+from django.db import connections
+from django.db.utils import ConnectionHandler, DEFAULT_DB_ALIAS
 from django.utils import six
 
 from django_evolution.compat.apps import (is_app_registered, register_app,
@@ -23,6 +23,9 @@ from django_evolution.signature import (add_index_to_database_sig,
                                         create_model_sig)
 from django_evolution.tests import models as evo_test
 from django_evolution.utils import execute_sql, write_sql
+
+
+test_connections = ConnectionHandler(settings.TEST_DATABASES)
 
 
 def register_models(database_sig, models, register_indexes=False,
@@ -348,7 +351,7 @@ def get_sql_mappings(mapping_key, db_name):
     return getattr(sql_for_engine, mapping_key)
 
 
-def generate_index_name(db_type, table, col_names, field_names=None,
+def generate_index_name(connection, table, col_names, field_names=None,
                         index_together=False):
     """Generate a suitable index name to test against.
 
@@ -357,9 +360,8 @@ def generate_index_name(db_type, table, col_names, field_names=None,
     with the naming Django provides in its own functions.
 
     Args:
-        db_type (unicode):
-            The database type for the index. Currently, only "postgres"
-            does anything special.
+        connection (django.db.backends.base.base.BaseDatabaseWrapper):
+            The database connection.
 
         table (unicode):
             The name of the table the index refers to.
@@ -420,7 +422,7 @@ def generate_index_name(db_type, table, col_names, field_names=None,
             index_unique_name = _generate_index_unique_name_hash(
                 connection, table, col_names)
             name = '%s%s_idx' % (col_names[0], index_unique_name)
-    elif db_type == 'postgres' and not index_together:
+    elif connection.vendor == 'postgresql' and not index_together:
         # Postgres computes the index names separately from the rest of
         # the engines. It just uses '<tablename>_<colname>", same as
         # Django < 1.2. We only do this for normal indexes, though, not
@@ -444,24 +446,23 @@ def generate_index_name(db_type, table, col_names, field_names=None,
                          connection.ops.max_name_length())
 
 
-def make_generate_index_name(db_type):
+def make_generate_index_name(connection):
     """Return an index generation function for the given database type.
 
     This is used by the test data modules as a convenience to allow
     for a local version of :py:func:`generate_index_name` that doesn't need
-    to be passed a database type on every call.
+    to be passed a database connection on every call.
 
     Args:
-        db_type (unicode):
-            The database type to use. Currently, only "postgres" does anything
-            special.
+        connection (django.db.backends.base.base.BaseDatabaseWrapper):
+            The database connection.
 
     Returns:
         callable:
         A version of :py:func:`generate_index_name` that doesn't need the
         ``db_type`` parameter.
     """
-    return partial(generate_index_name, db_type)
+    return partial(generate_index_name, connection)
 
 
 def has_index_with_columns(database_sig, table_name, columns, unique=False):
@@ -496,15 +497,15 @@ def has_index_with_columns(database_sig, table_name, columns, unique=False):
     )
 
 
-def generate_constraint_name(db_type, r_col, col, r_table, table):
+def generate_constraint_name(connection, r_col, col, r_table, table):
     """Return the expected name for a constraint.
 
     This will generate a constraint name for the current version of Django,
     for comparison purposes.
 
     Args:
-        db_type (unicode):
-            The type of database.
+        connection (django.db.backends.base.base.BaseDatabaseWrapper):
+            The database connection.
 
         r_col (unicode):
             The column name for the source of the relation.
@@ -545,32 +546,35 @@ def generate_constraint_name(db_type, r_col, col, r_table, table):
                                   digest(connection, r_table, table))
 
 
-def make_generate_constraint_name(db_type):
+def make_generate_constraint_name(connection):
     """Return a constraint generation function for the given database type.
 
     This is used by the test data modules as a convenience to allow
     for a local version of :py:func:`generate_constraint_name` that doesn't
-    need to be passed a database type on every call.
+    need to be passed a database connection on every call.
 
     Args:
-        db_type (unicode):
-            The database type to use.
+        connection (django.db.backends.base.base.BaseDatabaseWrapper):
+            The database connection.
 
     Returns:
         callable:
         A version of :py:func:`generate_constraint_name` that doesn't need the
         ``db_type`` parameter.
     """
-    return partial(generate_constraint_name, db_type)
+    return partial(generate_constraint_name, connection)
 
 
-def generate_unique_constraint_name(table, col_names):
+def generate_unique_constraint_name(connection, table, col_names):
     """Return the expected name for a unique constraint.
 
     This will generate a constraint name for the current version of Django,
     for comparison purposes.
 
     Args:
+        connection (django.db.backends.base.base.BaseDatabaseWrapper):
+            The database connection.
+
         table (unicode):
             The table name.
 
@@ -599,14 +603,30 @@ def generate_unique_constraint_name(table, col_names):
                              connection.ops.max_name_length())
 
 
+def make_generate_unique_constraint_name(connection):
+    """Return a constraint generation function for the given database type.
+
+    This is used by the test data modules as a convenience to allow
+    for a local version of :py:func:`generate_constraint_name` that doesn't
+    need to be passed a database connection on every call.
+
+    Args:
+        connection (django.db.backends.base.base.BaseDatabaseWrapper):
+            The database connection.
+
+    Returns:
+        callable:
+        A version of :py:func:`generate_constraint_name` that doesn't need the
+        ``db_type`` parameter.
+    """
+    return partial(generate_unique_constraint_name, connection)
+
+
 def _generate_index_unique_name_hash(connection, table, col_names):
     """Return the hash for the unique part of an index name.
 
-    This is used on Django 1.7+ to generate a unique hash as part of an
-    index name.
-
     Args:
-        connection (object):
+        connection (django.db.backends.base.base.BaseDatabaseWrapper):
             The database connection.
 
         table (unicode):

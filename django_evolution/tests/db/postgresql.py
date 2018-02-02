@@ -1,12 +1,18 @@
 import django
 
-from django_evolution.tests.utils import (generate_unique_constraint_name,
-                                          make_generate_constraint_name,
-                                          make_generate_index_name)
+from django_evolution.tests.utils import (make_generate_constraint_name,
+                                          make_generate_index_name,
+                                          make_generate_unique_constraint_name,
+                                          test_connections)
 
 
-generate_constraint_name = make_generate_constraint_name('postgres')
-generate_index_name = make_generate_index_name('postgres')
+django_version = django.VERSION[:2]
+
+connection = test_connections['postgres']
+generate_constraint_name = make_generate_constraint_name(connection)
+generate_index_name = make_generate_index_name(connection)
+generate_unique_constraint_name = \
+    make_generate_unique_constraint_name(connection)
 
 
 add_field = {
