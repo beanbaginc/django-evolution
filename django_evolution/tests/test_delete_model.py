@@ -21,7 +21,9 @@ class DeleteModelTests(EvolutionTestCase):
             SimulationFailure,
             ('Cannot delete the model "badapp.TestModel". The application '
              'could not be found in the signature.'),
-            lambda: mutation.simulate('badapp', {}, {}))
+            lambda: mutation.run_simulation(app_label='badapp',
+                                            project_sig={},
+                                            database_sig={}))
 
     def test_with_bad_model(self):
         """Testing DeleteModel with model not in signature"""
@@ -34,7 +36,9 @@ class DeleteModelTests(EvolutionTestCase):
             SimulationFailure,
             ('Cannot delete the model "tests.TestModel". The model could '
              'not be found in the signature.'),
-            lambda: mutation.simulate('tests', proj_sig, {}))
+            lambda: mutation.run_simulation(app_label='tests',
+                                            project_sig=proj_sig,
+                                            database_sig={}))
 
     def test_delete_model(self):
         """Testing DeleteModel"""

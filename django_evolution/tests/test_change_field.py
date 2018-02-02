@@ -53,7 +53,9 @@ class ChangeFieldTests(EvolutionTestCase):
             ('Cannot change the field "char_field1" on model '
              '"badapp.TestModel". The application could not be found in the '
              'signature.'),
-            lambda: mutation.simulate('badapp', {}, {}))
+            lambda: mutation.run_simulation(app_label='badapp',
+                                            project_sig={},
+                                            database_sig={}))
 
     def test_with_bad_model(self):
         """Testing ChangeField with model not in signature"""
@@ -67,7 +69,9 @@ class ChangeFieldTests(EvolutionTestCase):
             ('Cannot change the field "char_field1" on model '
              '"tests.TestModel". The model could not be found in the '
              'signature.'),
-            lambda: mutation.simulate('tests', proj_sig, {}))
+            lambda: mutation.run_simulation(app_label='tests',
+                                            project_sig=proj_sig,
+                                            database_sig={}))
 
     def test_with_bad_field(self):
         """Testing ChangeField with field not in signature"""
@@ -85,7 +89,9 @@ class ChangeFieldTests(EvolutionTestCase):
             ('Cannot change the field "char_field1" on model '
              '"tests.TestModel". The field could not be found in the '
              'signature.'),
-            lambda: mutation.simulate('tests', proj_sig, {}))
+            lambda: mutation.run_simulation(app_label='tests',
+                                            project_sig=proj_sig,
+                                            database_sig={}))
 
     def test_set_null_false_without_initial_value_raises_exception(self):
         """Testing ChangeField with setting null=False without initial value"""

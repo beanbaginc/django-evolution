@@ -28,7 +28,7 @@ class ModelMutator(object):
     ModelMutator only works with mutations that are instances of
     BaseModelFieldMutation. It is also intended for internal use by AppMutator.
     """
-    def __init__(self, app_mutator, model_name, app_label, proj_sig,
+    def __init__(self, app_mutator, model_name, app_label, project_sig,
                  database_sig, database):
         self.app_mutator = app_mutator
         self.model_name = model_name
@@ -45,8 +45,8 @@ class ModelMutator(object):
         self.evolver = evolution_ops.get_evolver()
 
     @property
-    def proj_sig(self):
-        return self.app_mutator.proj_sig
+    def project_sig(self):
+        return self.app_mutator.project_sig
 
     @property
     def database_sig(self):
@@ -54,7 +54,7 @@ class ModelMutator(object):
 
     @property
     def model_sig(self):
-        return self.proj_sig[self.app_label][self.model_name]
+        return self.project_sig[self.app_label][self.model_name]
 
     def create_model(self):
         """Creates a mock model instance with the stored information.
@@ -63,7 +63,7 @@ class ModelMutator(object):
         and passing a model instance, but can also be called whenever
         a new instance of the model is needed for any lookups.
         """
-        return MockModel(self.proj_sig, self.app_label, self.model_name,
+        return MockModel(self.project_sig, self.app_label, self.model_name,
                          self.model_sig, db_name=self.database)
 
     def add_column(self, mutation, field, initial):
@@ -168,8 +168,10 @@ class ModelMutator(object):
 
     def run_simulation(self, mutation):
         try:
-            mutation.simulate(self.app_label, self.proj_sig,
-                              self.database_sig, self.database)
+            mutation.run_simulation(app_label=self.app_label,
+                                    project_sig=self.project_sig,
+                                    database_sig=self.database_sig,
+                                    database=self.database)
         except CannotSimulate:
             self.can_simulate = False
 
@@ -200,8 +202,10 @@ class ModelMutator(object):
         mutation = op['mutation']
 
         try:
-            mutation.simulate(self.app_label, self.proj_sig,
-                              self.database_sig, self.database)
+            mutation.run_simulation(app_label=self.app_label,
+                                    project_sig=self.project_sig,
+                                    database_sig=self.database_sig,
+                                    database=self.database)
         except CannotSimulate:
             self.can_simulate = False
 
@@ -231,16 +235,16 @@ class AppMutator(object):
     to get the SQL statements needed to apply those operations. Once called,
     the mutator is finalized, and new operations cannot be added.
     """
-    def __init__(self, app_label, proj_sig, database_sig, database=None):
+    def __init__(self, app_label, project_sig, database_sig, database=None):
         self.app_label = app_label
-        self.proj_sig = proj_sig
+        self.project_sig = project_sig
         self.database_sig = database_sig
         self.database = database
         self.can_simulate = True
         self._last_model_mutator = None
         self._mutators = []
         self._finalized = False
-        self._orig_proj_sig = copy.deepcopy(self.proj_sig)
+        self._orig_project_sig = copy.deepcopy(self.project_sig)
         self._orig_database_sig = copy.deepcopy(self.database_sig)
 
     def run_mutation(self, mutation):
@@ -262,8 +266,8 @@ class AppMutator(object):
                 self._finalize_model_mutator()
 
                 model_mutator = ModelMutator(
-                    self, mutation.model_name, self.app_label, self.proj_sig,
-                    self.database_sig, self.database)
+                    self, mutation.model_name, self.app_label,
+                    self.project_sig, self.database_sig, self.database)
                 self._last_model_mutator = model_mutator
 
             model_mutator.run_mutation(mutation)
@@ -296,7 +300,7 @@ class AppMutator(object):
         # Finalize one last time.
         self._finalize_model_mutator()
 
-        self.proj_sig = self._orig_proj_sig
+        self.project_sig = self._orig_project_sig
         self.database_sig = self._orig_database_sig
 
         sql = []
@@ -771,7 +775,7 @@ class AppMutator(object):
                             # still want the rename included in the mutations,
                             # so we need to check to make sure only the new
                             # model name is in there.
-                            app_sig = self.proj_sig[self.app_label]
+                            app_sig = self.project_sig[self.app_label]
 
                             if (new_model_name in app_sig and
                                 old_model_name not in app_sig):

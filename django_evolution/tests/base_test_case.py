@@ -139,8 +139,10 @@ class EvolutionTestCase(TransactionTestCase):
         test_sig = self.copy_sig(self.start_sig)
 
         for mutation in evolutions:
-            mutation.simulate('tests', test_sig, self.test_database_sig,
-                              database=db_name)
+            mutation.run_simulation(app_label='tests',
+                                    project_sig=test_sig,
+                                    database_sig=self.test_database_sig,
+                                    database=db_name)
 
         # Check that the simulation's changes results in an empty diff.
         d = Diff(test_sig, end_sig)

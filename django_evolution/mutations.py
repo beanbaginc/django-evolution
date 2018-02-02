@@ -3,8 +3,10 @@
 from __future__ import unicode_literals
 
 import copy
+import inspect
 
 from django.db import models
+from django.db.utils import DEFAULT_DB_ALIAS
 from django.utils import six
 from django.utils.functional import curry
 
@@ -18,12 +20,153 @@ from django_evolution.signature import (ATTRIBUTE_DEFAULTS,
 from django_evolution.utils import get_database_for_model_name
 
 
+class Simulation(object):
+    """State for a database mutation simulation.
+
+    This provides state and utility functions for simulating a mutation on
+    a database signature. This is provided to :py:meth:`BaseMutation.simulate`
+    functions, given them access to all simulation state and a consistent way
+    of failing simulations.
+    """
+
+    def __init__(self, mutation, app_label, project_sig, database_sig,
+                 database=DEFAULT_DB_ALIAS):
+        """Initialize the simulation state.
+
+        Args:
+            mutation (BaseMutation):
+                The mutation this simulation applies to.
+
+            app_label (unicode):
+                The name of the application this simulation applies to.
+
+            project_sig (dict):
+                The project signature for the simulation to look up and
+                modify.
+
+            database_sig (dict):
+                The database signature for the simulation to look up and
+                modify.
+
+            database (unicode):
+                The registered database name in Django to simulate operating
+                on.
+        """
+        self.mutation = mutation
+        self.app_label = app_label
+        self.project_sig = project_sig
+        self.database_sig = database_sig
+        self.database = database
+
+    def get_evolver(self):
+        """Return an evolver for the database.
+
+        Returns:
+            django_evolution.db.EvolutionOperationsMulti:
+            The database evolver for this type of database.
+        """
+        return EvolutionOperationsMulti(self.database,
+                                        self.database_sig).get_evolver()
+
+    def get_app_sig(self):
+        """Return the current application signature.
+
+        Returns:
+            dict:
+            The application signature.
+
+        Raises:
+            django_evolution.errors.SimulationFailure:
+                A signature could not be found for the application.
+        """
+        try:
+            return self.project_sig[self.app_label]
+        except KeyError:
+            self.fail('The application could not be found in the signature.')
+
+    def get_model_sig(self, model_name):
+        """Return the signature for a model with the given name.
+
+        Args:
+            model_name (unicode):
+                The name of the model to fetch a signature for.
+
+        Returns:
+            django_evolution.errors.SimulationFailure:
+                A signature could not be found for the model or its parent
+                application.
+        """
+        try:
+            return self.get_app_sig()[model_name]
+        except KeyError:
+            self.fail('The model could not be found in the signature.',
+                      model_name=model_name)
+
+    def get_field_sig(self, model_name, field_name):
+        """Return the signature for a field with the given name.
+
+        Args:
+            model_name (unicode):
+                The name of the model containing the field.
+
+            field_name (unicode):
+                The name of the field to fetch a signature for.
+
+        Returns:
+            django_evolution.errors.SimulationFailure:
+                A signature could not be found for the field, its parent
+                model, or its parent application.
+        """
+        try:
+            return self.get_model_sig(model_name)['fields'][field_name]
+        except KeyError:
+            self.fail('The field could not be found in the signature.',
+                      model_name=model_name,
+                      field_name=field_name)
+
+    def fail(self, error, **error_vars):
+        """Fail the simulation.
+
+        This will end up raising a
+        :py:class:`~django_evolution.errors.SimulationFailure` with an error
+        message based on the mutation's simulation failed message an the
+        provided message.
+
+        Args:
+            error (unicode):
+                The error message for this particular failure.
+
+            **error_vars (dict):
+                Variables to include in the error message. These will
+                override any defaults for the mutation's error.
+
+        Raises:
+            django_evolution.errors.SimulationFailure:
+                The resulting simulation failure with the given error.
+        """
+        msg = '%s %s' % (self.mutation.simulation_failure_error, error)
+
+        error_dict = {
+            'app_label': self.app_label,
+        }
+        error_dict.update(
+            (key, getattr(self.mutation, value))
+            for key, value in six.iteritems(self.mutation.error_vars)
+        )
+        error_dict.update(error_vars)
+
+        raise SimulationFailure(msg % error_dict)
+
+
 class BaseMutation(object):
     """Base class for a schema mutation.
 
     These are responsible for simulating schema mutations and applying actual
     mutations to a database signature.
     """
+
+    simulation_failure_error = 'Cannot simulate the mutation.'
+    error_vars = {}
 
     def generate_hint(self):
         """Return a hinted evolution for the mutation.
@@ -49,25 +192,41 @@ class BaseMutation(object):
         """
         return []
 
-    def simulate(self, app_label, proj_sig, database_sig, database=None):
-        """Simulate a mutation for an application.
+    def run_simulation(self, **kwargs):
+        """Run a simulation for a mutation.
+
+        This will prepare and execute a simulation on this mutation,
+        constructing a :py:class:`Simulation` and passing it to
+        :py:meth:`simulate`. The simulation will apply a mutation on the
+        provided database signature, modifying it to match the state described
+        to the mutation. This allows Django Evolution to test evolutions before
+        they hit the database.
+
+        Args:
+            simulation (Simulation):
+                The state for the simulation.
+
+        Raises:
+            django_evolution.errors.CannotSimulate:
+                The simulation cannot be executed for this mutation. The
+                reason is in the exception's message.
+
+            django_evolution.errors.SimulationFailure:
+                The simulation failed. The reason is in the exception's
+                message.
+        """
+        self.simulate(Simulation(self, **kwargs))
+
+    def simulate(self, simulation):
+        """Perform a simulation of a mutation.
 
         This will attempt to perform a mutation on the database signature,
         modifying it to match the state described to the mutation. This allows
         Django Evolution to test evolutions before they hit the database.
 
         Args:
-            app_label (unicode):
-                The label for the Django application being mutated.
-
-            proj_sig (dict):
-                The project's schema signature.
-
-            database_sig (dict):
-                The database's schema signature.
-
-            database (unicode, optional):
-                The name of the database the operation is being performed on.
+            simulation (Simulation):
+                The state for the simulation.
 
         Raises:
             django_evolution.errors.CannotSimulate:
@@ -98,7 +257,7 @@ class BaseMutation(object):
         """
         raise NotImplementedError
 
-    def is_mutable(self, app_label, proj_sig, database_sig, database):
+    def is_mutable(self, app_label, project_sig, database_sig, database):
         """Return whether the mutation can be applied to the database.
 
         This should check if the database or parts of the signature matches
@@ -108,7 +267,7 @@ class BaseMutation(object):
             app_label (unicode):
                 The label for the Django application to be mutated.
 
-            proj_sig (dict):
+            project_sig (dict):
                 The project's schema signature.
 
             database_sig (dict):
@@ -190,6 +349,10 @@ class BaseMutation(object):
 class BaseModelMutation(BaseMutation):
     """Base class for a mutation affecting a single model."""
 
+    error_vars = dict({
+        'model_name': 'model_name',
+    }, **BaseMutation.error_vars)
+
     def __init__(self, model_name):
         """Initialize the mutation.
 
@@ -229,7 +392,7 @@ class BaseModelMutation(BaseMutation):
         """
         raise NotImplementedError
 
-    def is_mutable(self, app_label, proj_sig, database_sig, database):
+    def is_mutable(self, app_label, project_sig, database_sig, database):
         """Return whether the mutation can be applied to the database.
 
         This will if the database matches that of the model.
@@ -238,7 +401,7 @@ class BaseModelMutation(BaseMutation):
             app_label (unicode):
                 The label for the Django application to be mutated.
 
-            proj_sig (dict, unused):
+            project_sig (dict, unused):
                 The project's schema signature.
 
             database_sig (dict, unused):
@@ -267,6 +430,9 @@ class BaseModelFieldMutation(BaseModelMutation):
     to improve evolution time for the model.
     """
 
+    error_vars = dict({
+        'field_name': 'field_name',
+    }, **BaseModelMutation.error_vars)
 
     def __init__(self, model_name, field_name):
         """Initialize the mutation.
@@ -286,6 +452,11 @@ class BaseModelFieldMutation(BaseModelMutation):
 class DeleteField(BaseModelFieldMutation):
     """A mutation that deletes a field from a model."""
 
+    simulation_failure_error = (
+        'Cannot delete the field "%(field_name)s" on model '
+        '"%(app_label)s.%(model_name)s".'
+    )
+
     def get_hint_params(self):
         """Return parameters for the mutation's hinted evolution.
 
@@ -299,7 +470,7 @@ class DeleteField(BaseModelFieldMutation):
             self.serialize_value(self.field_name),
         ]
 
-    def simulate(self, app_label, proj_sig, database_sig, database=None):
+    def simulate(self, simulation):
         """Simulate the mutation.
 
         This will alter the database schema to remove the specified field,
@@ -309,53 +480,20 @@ class DeleteField(BaseModelFieldMutation):
         the field exists.
 
         Args:
-            app_label (unicode):
-                The label for the Django application being mutated.
-
-            proj_sig (dict):
-                The project's schema signature.
-
-            database_sig (dict):
-                The database's schema signature.
-
-            database (unicode, optional):
-                The name of the database the operation is being performed on.
+            simulation (Simulation):
+                The state for the simulation.
 
         Raises:
             django_evolution.errors.SimulationFailure:
                 The simulation failed. The reason is in the exception's
                 message.
         """
-        try:
-            app_sig = proj_sig[app_label]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot delete the field "%s" on model "%s.%s". The '
-                'application could not be found in the signature.'
-                % (self.field_name, app_label, self.model_name))
-
-        try:
-            model_sig = app_sig[self.model_name]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot delete the field "%s" on model "%s.%s". The model '
-                'could not be found in the signature.'
-                % (self.field_name, app_label, self.model_name))
-
-        try:
-            fields_sig = model_sig['fields']
-            field = fields_sig[self.field_name]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot delete the field "%s" on model "%s.%s". The field '
-                'could not be found in the signature.'
-                % (self.field_name, app_label, self.model_name))
+        model_sig = simulation.get_model_sig(self.model_name)
+        field = simulation.get_field_sig(self.model_name, self.field_name)
 
         if field.get('primary_key', False):
-            raise SimulationFailure(
-                'The field "%s" on model "%s.%s" is the primary key, and '
-                'cannot be deleted.'
-                % (self.field_name, app_label, self.model_name))
+            simulation.fail('The field is a primary key and cannot '
+                            'be deleted.')
 
         # If the field was used in the unique_together attribute, update it.
         unique_together = model_sig['meta']['unique_together']
@@ -376,7 +514,7 @@ class DeleteField(BaseModelFieldMutation):
         model_sig['meta']['unique_together'] = tuple(unique_together_list)
 
         # Simulate the deletion of the field.
-        del fields_sig[self.field_name]
+        del model_sig['fields'][self.field_name]
 
     def mutate(self, mutator, model):
         """Schedule a field deletion on the mutator.
@@ -397,7 +535,7 @@ class DeleteField(BaseModelFieldMutation):
         # Temporarily remove field_type from the field signature
         # so that we can create a field
         field_type = field_sig.pop('field_type')
-        field = create_field(mutator.proj_sig, self.field_name, field_type,
+        field = create_field(mutator.project_sig, self.field_name, field_type,
                              field_sig, model)
         field_sig['field_type'] = field_type
 
@@ -438,6 +576,8 @@ class SQLMutation(BaseMutation):
                 A function to call to simulate updating the database signature.
                 This is required for :py:meth:`simulate` to work.
         """
+        super(SQLMutation, self).__init__()
+
         self.tag = tag
         self.sql = sql
         self.update_func = update_func
@@ -452,25 +592,16 @@ class SQLMutation(BaseMutation):
         """
         return [self.tag]
 
-    def simulate(self, app_label, proj_sig, database_sig, database=None):
+    def simulate(self, simulation):
         """Simulate a mutation for an application.
 
         This will run the :py:attr:`update_func` provided when instantiating
-        the mutation, passing it ``app_label`` and ``proj_sig``. It should
+        the mutation, passing it ``app_label`` and ``project_sig``. It should
         then modify the signature to match what the SQL statement would do.
 
         Args:
-            app_label (unicode):
-                The label for the Django application being mutated.
-
-            proj_sig (dict):
-                The project's schema signature.
-
-            database_sig (dict):
-                The database's schema signature.
-
-            database (unicode, optional):
-                The name of the database the operation is being performed on.
+            simulation (Simulation):
+                The state for the simulation.
 
         Raises:
             django_evolution.errors.CannotSimulate:
@@ -481,9 +612,21 @@ class SQLMutation(BaseMutation):
                 message. This would be run by :py:attr:`update_func`.
         """
         if callable(self.update_func):
-            self.update_func(app_label, proj_sig)
-        else:
-            raise CannotSimulate('Cannot simulate SQLMutations')
+            argspec = inspect.getargspec(self.update_func)
+
+            if len(argspec.args) == 1 and argspec.args[0] == 'simulation':
+                # New-style simulation function.
+                self.update_func(simulation)
+                return
+            elif len(argspec.args) == 2:
+                # Legacy simulation function.
+                self.update_func(simulation.app_label, simulation.project_sig)
+                return
+
+        raise CannotSimulate(
+            'SQLMutations must provide an update_func(simulation) or '
+            'legacy update_func(app_label, project_sig) parameter '
+            'in order to be simulated.')
 
     def mutate(self, mutator):
         """Schedule a database mutation on the mutator.
@@ -520,6 +663,11 @@ class SQLMutation(BaseMutation):
 
 class AddField(BaseModelFieldMutation):
     """A mutation that adds a field to a model."""
+
+    simulation_failure_error = (
+        'Cannot add the field "%(field_name)s" to model '
+        '"%(app_label)s.%(model_name)s".'
+    )
 
     def __init__(self, model_name, field_name, field_type, initial=None,
                  **field_attrs):
@@ -577,63 +725,37 @@ class AddField(BaseModelFieldMutation):
 
         return params
 
-    def simulate(self, app_label, proj_sig, database_sig, database=None):
+    def simulate(self, simulation):
         """Simulate the mutation.
 
         This will alter the database schema to add the specified field.
 
         Args:
-            app_label (unicode):
-                The label for the Django application being mutated.
-
-            proj_sig (dict):
-                The project's schema signature.
-
-            database_sig (dict):
-                The database's schema signature.
-
-            database (unicode, optional):
-                The name of the database the operation is being performed on.
+            simulation (Simulation):
+                The state for the simulation.
 
         Raises:
             django_evolution.errors.SimulationFailure:
                 The simulation failed. The reason is in the exception's
                 message.
         """
-        try:
-            app_sig = proj_sig[app_label]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot add the field "%s" to model "%s.%s". The application '
-                'could not be found in the signature.'
-                % (self.field_name, app_label, self.model_name))
+        model_sig = simulation.get_model_sig(self.model_name)
+        fields_sig = model_sig['fields']
 
-        try:
-            model_sig = app_sig[self.model_name]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot add the field "%s" to model "%s.%s". The model could '
-                'not be found in the signature.'
-                % (self.field_name, app_label, self.model_name))
-
-        if self.field_name in model_sig['fields']:
-            raise SimulationFailure(
-                'The model "%s.%s" already has a field named "%s".'
-                % (app_label, self.model_name, self.field_name))
+        if self.field_name in fields_sig:
+            simulation.fail('A field with this name already exists.')
 
         if (self.field_type is not models.ManyToManyField and
             not self.field_attrs.get('null', ATTRIBUTE_DEFAULTS['null'])
             and self.initial is None):
-            raise SimulationFailure(
-                'Cannot create new field "%s" on model "%s.%s". A non-null '
-                'initial value must be specified in the mutation.'
-                % (self.field_name, app_label, self.model_name))
+            simulation.fail('A non-null initial value must be specified in '
+                            'the mutation.')
 
-        model_sig['fields'][self.field_name] = {
+        fields_sig[self.field_name] = {
             'field_type': self.field_type,
         }
 
-        model_sig['fields'][self.field_name].update(self.field_attrs)
+        fields_sig[self.field_name].update(self.field_attrs)
 
     def mutate(self, mutator, model):
         """Schedule a field addition on the mutator.
@@ -663,7 +785,7 @@ class AddField(BaseModelFieldMutation):
             model (MockModel):
                 The model being mutated.
         """
-        field = create_field(mutator.proj_sig, self.field_name,
+        field = create_field(mutator.project_sig, self.field_name,
                              self.field_type, self.field_attrs, model)
 
         mutator.add_column(self, field, self.initial)
@@ -678,13 +800,14 @@ class AddField(BaseModelFieldMutation):
             model (MockModel):
                 The model being mutated.
         """
-        field = create_field(mutator.proj_sig, self.field_name,
+        field = create_field(mutator.project_sig, self.field_name,
                              self.field_type, self.field_attrs, model)
 
         related_app_label, related_model_name = \
             self.field_attrs['related_model'].split('.')
-        related_sig = mutator.proj_sig[related_app_label][related_model_name]
-        related_model = MockModel(mutator.proj_sig, related_app_label,
+        related_sig = \
+            mutator.project_sig[related_app_label][related_model_name]
+        related_model = MockModel(mutator.project_sig, related_app_label,
                                   related_model_name, related_sig,
                                   mutator.database)
         related = MockRelated(related_model, model, field)
@@ -707,6 +830,11 @@ class AddField(BaseModelFieldMutation):
 
 class RenameField(BaseModelFieldMutation):
     """A mutation that renames a field on a model."""
+
+    simulation_failure_error = (
+        'Cannot rename the field "%(field_name)s" on model '
+        '"%(app_label)s.%(model_name)s".'
+    )
 
     def __init__(self, model_name, old_field_name, new_field_name,
                  db_column=None, db_table=None):
@@ -758,55 +886,26 @@ class RenameField(BaseModelFieldMutation):
 
         return params
 
-    def simulate(self, app_label, proj_sig, database_sig, database=None):
+    def simulate(self, simulation):
         """Simulate the mutation.
 
         This will alter the database schema to rename the specified field.
 
         Args:
-            app_label (unicode):
-                The label for the Django application being mutated.
-
-            proj_sig (dict):
-                The project's schema signature.
-
-            database_sig (dict):
-                The database's schema signature.
-
-            database (unicode, optional):
-                The name of the database the operation is being performed on.
+            simulation (Simulation):
+                The state for the simulation.
 
         Raises:
             django_evolution.errors.SimulationFailure:
                 The simulation failed. The reason is in the exception's
                 message.
         """
-        try:
-            app_sig = proj_sig[app_label]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot rename the field "%s" on model "%s.%s". The '
-                'application could not be found in the signature.'
-                % (self.old_field_name, app_label, self.model_name))
+        model_sig = simulation.get_model_sig(self.model_name)
+        field_sig = simulation.get_field_sig(self.model_name,
+                                             self.old_field_name)
+        fields_sig = model_sig['fields']
 
-        try:
-            model_sig = app_sig[self.model_name]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot rename the field "%s" on model "%s.%s". The model '
-                'could not be found in the signature.'
-                % (self.old_field_name, app_label, self.model_name))
-
-        try:
-            field_dict = model_sig['fields']
-            field_sig = field_dict[self.old_field_name]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot rename the field "%s" on model "%s.%s". The field '
-                'could not be found in the signature.'
-                % (self.old_field_name, app_label, self.model_name))
-
-        if models.ManyToManyField == field_sig['field_type']:
+        if field_sig['field_type'] is models.ManyToManyField:
             if self.db_table:
                 field_sig['db_table'] = self.db_table
             else:
@@ -820,7 +919,7 @@ class RenameField(BaseModelFieldMutation):
             # default name
             field_sig.pop('db_column', None)
 
-        field_dict[self.new_field_name] = field_dict.pop(self.old_field_name)
+        fields_sig[self.new_field_name] = fields_sig.pop(self.old_field_name)
 
     def mutate(self, mutator, model):
         """Schedule a field rename on the mutator.
@@ -855,15 +954,15 @@ class RenameField(BaseModelFieldMutation):
             new_field_sig.pop('db_column', None)
 
         # Create the mock field instances.
-        old_field = create_field(mutator.proj_sig, self.old_field_name,
+        old_field = create_field(mutator.project_sig, self.old_field_name,
                                  field_type, old_field_sig, None)
-        new_field = create_field(mutator.proj_sig, self.new_field_name,
+        new_field = create_field(mutator.project_sig, self.new_field_name,
                                  field_type, new_field_sig, None)
 
         # Restore the field type to the signature
         old_field_sig['field_type'] = field_type
 
-        new_model = MockModel(mutator.proj_sig, mutator.app_label,
+        new_model = MockModel(mutator.project_sig, mutator.app_label,
                               self.model_name, mutator.model_sig,
                               db_name=mutator.database)
         evolver = mutator.evolver
@@ -881,6 +980,11 @@ class RenameField(BaseModelFieldMutation):
 
 class ChangeField(BaseModelFieldMutation):
     """A mutation that changes attributes on a field on a model."""
+
+    simulation_failure_error = (
+        'Cannot change the field "%(field_name)s" on model '
+        '"%(app_label)s.%(model_name)s".'
+    )
 
     def __init__(self, model_name, field_name, initial=None, **field_attrs):
         """Initialize the mutation.
@@ -920,66 +1024,29 @@ class ChangeField(BaseModelFieldMutation):
             for attr_name, attr_value in six.iteritems(self.field_attrs)
         ]
 
-    def simulate(self, app_label, proj_sig, database_sig, database=None):
+    def simulate(self, simulation):
         """Simulate the mutation.
 
         This will alter the database schema to change attributes for the
         specified field.
 
         Args:
-            app_label (unicode):
-                The label for the Django application being mutated.
-
-            proj_sig (dict):
-                The project's schema signature.
-
-            database_sig (dict):
-                The database's schema signature.
-
-            database (unicode, optional):
-                The name of the database the operation is being performed on.
+            simulation (Simulation):
+                The state for the simulation.
 
         Raises:
             django_evolution.errors.SimulationFailure:
                 The simulation failed. The reason is in the exception's
                 message.
         """
-        try:
-            app_sig = proj_sig[app_label]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot change the field "%s" on model "%s.%s". The '
-                'application could not be found in the signature.'
-                % (self.field_name, app_label, self.model_name))
+        field_sig = simulation.get_field_sig(self.model_name, self.field_name)
+        field_sig.update(self.field_attrs)
 
-        try:
-            model_sig = app_sig[self.model_name]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot change the field "%s" on model "%s.%s". The model '
-                'could not be found in the signature.'
-                % (self.field_name, app_label, self.model_name))
-
-        try:
-            field_sig = model_sig['fields'][self.field_name]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot change the field "%s" on model "%s.%s". The field '
-                'could not be found in the signature.'
-                % (self.field_name, app_label, self.model_name))
-
-        # Catch for no-op changes.
-        for field_attr, attr_value in self.field_attrs.items():
-            field_sig[field_attr] = attr_value
-
-        if ('null' in self.field_attrs and
-            field_sig['field_type'] != models.ManyToManyField and
-            not self.field_attrs['null'] and
+        if ('null' in self.field_attrs and not self.field_attrs['null'] and
+            field_sig['field_type'] is not models.ManyToManyField and
             self.initial is None):
-            raise SimulationFailure(
-                'Cannot change the field "%s" on model "%s.%s". A non-null '
-                'initial value needs to be specified in the mutation.'
-                % (self.field_name, app_label, self.model_name))
+            simulation.fail('A non-null initial value needs to be specified '
+                            'in the mutation.')
 
     def mutate(self, mutator, model):
         """Schedule a field change on the mutator.
@@ -1025,6 +1092,9 @@ class ChangeField(BaseModelFieldMutation):
 class RenameModel(BaseModelMutation):
     """A mutation that renames a model."""
 
+    simulation_failure_error = \
+        'Cannot rename the model "%(app_label)s.%(model_name)s".'
+
     def __init__(self, old_model_name, new_model_name, db_table):
         """Initialize the mutation.
 
@@ -1062,66 +1132,46 @@ class RenameModel(BaseModelMutation):
 
         return params
 
-    def simulate(self, app_label, proj_sig, database_sig, database=None):
+    def simulate(self, simulation):
         """Simulate the mutation.
 
         This will alter the database schema to rename the specified model.
 
         Args:
-            app_label (unicode):
-                The label for the Django application being mutated.
-
-            proj_sig (dict):
-                The project's schema signature.
-
-            database_sig (dict):
-                The database's schema signature.
-
-            database (unicode, optional):
-                The name of the database the operation is being performed on.
+            simulation (Simulation):
+                The state for the simulation.
 
         Raises:
             django_evolution.errors.SimulationFailure:
                 The simulation failed. The reason is in the exception's
                 message.
         """
-        try:
-            app_sig = proj_sig[app_label]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot rename the model "%s.%s". The application could '
-                'not be found in the signature.'
-                % (app_label, self.old_model_name))
-
-        try:
-            model_sig = app_sig[self.old_model_name]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot rename the model "%s.%s". The model could not be '
-                'found in the signature.'
-                % (app_label, self.old_model_name))
+        app_sig = simulation.get_app_sig()
+        model_sig = simulation.get_model_sig(self.old_model_name)
+        meta_sig = model_sig['meta']
 
         if self.db_table:
-            model_sig['meta']['db_table'] = self.db_table
+            meta_sig['db_table'] = self.db_table
         else:
             # db_table was not specified. Clear the old value if one was set.
             # This amounts to resetting the column or table name to the Django
             # default name.
-            model_sig['meta'].pop('db_table', None)
+            meta_sig.pop('db_table', None)
 
         app_sig[self.new_model_name] = app_sig.pop(self.old_model_name)
 
-        old_related_model = '%s.%s' % (app_label, self.old_model_name)
-        new_related_model = '%s.%s' % (app_label, self.new_model_name)
+        old_related_model = '%s.%s' % (simulation.app_label,
+                                       self.old_model_name)
+        new_related_model = '%s.%s' % (simulation.app_label,
+                                       self.new_model_name)
 
-        for app_sig in six.itervalues(proj_sig):
+        for app_sig in six.itervalues(simulation.project_sig):
             if not isinstance(app_sig, dict):
                 continue
 
             for model_sig in six.itervalues(app_sig):
                 for field in six.itervalues(model_sig['fields']):
-                    if ('related_model' in field and
-                        field['related_model'] == old_related_model):
+                    if field.get('related_model') == old_related_model:
                         field['related_model'] = new_related_model
 
     def mutate(self, mutator, model):
@@ -1142,7 +1192,7 @@ class RenameModel(BaseModelMutation):
 
         new_model_sig['meta']['db_table'] = self.db_table
 
-        new_model = MockModel(mutator.proj_sig, mutator.app_label,
+        new_model = MockModel(mutator.project_sig, mutator.app_label,
                               self.new_model_name, new_model_sig,
                               db_name=mutator.database)
         evolver = mutator.evolver
@@ -1157,6 +1207,9 @@ class RenameModel(BaseModelMutation):
 class DeleteModel(BaseModelMutation):
     """A mutation that deletes a model."""
 
+    simulation_failure_error = \
+        'Cannot delete the model "%(app_label)s.%(model_name)s".'
+
     def get_hint_params(self):
         """Return parameters for the mutation's hinted evolution.
 
@@ -1167,45 +1220,25 @@ class DeleteModel(BaseModelMutation):
         """
         return [self.serialize_value(self.model_name)]
 
-    def simulate(self, app_label, proj_sig, database_sig, database=None):
+    def simulate(self, simulation):
         """Simulate the mutation.
 
         This will alter the database schema to delete the specified model.
 
         Args:
-            app_label (unicode):
-                The label for the Django application being mutated.
-
-            proj_sig (dict):
-                The project's schema signature.
-
-            database_sig (dict):
-                The database's schema signature.
-
-            database (unicode, optional):
-                The name of the database the operation is being performed on.
+            simulation (Simulation):
+                The state for the simulation.
 
         Raises:
             django_evolution.errors.SimulationFailure:
                 The simulation failed. The reason is in the exception's
                 message.
         """
-        try:
-            app_sig = proj_sig[app_label]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot delete the model "%s.%s". The application could '
-                'not be found in the signature.'
-                % (app_label, self.model_name))
+        app_sig = simulation.get_app_sig()
 
-        # Simulate the deletion of the model.
-        try:
-            del app_sig[self.model_name]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot delete the model "%s.%s". The model could not be '
-                'found in the signature.'
-                % (app_label, self.model_name))
+        # Check for the model first, and then delete it.
+        simulation.get_model_sig(self.model_name)
+        del app_sig[self.model_name]
 
     def mutate(self, mutator, model):
         """Schedule a model deletion on the mutator.
@@ -1238,55 +1271,40 @@ class DeleteModel(BaseModelMutation):
 class DeleteApplication(BaseMutation):
     """A mutation that deletes an application."""
 
-    def simulate(self, app_label, proj_sig, database_sig, database=None):
+    simulation_failure_error = \
+        'Cannot delete the application "%(app_label)s".'
+
+    def simulate(self, simulation):
         """Simulate the mutation.
 
         This will alter the database schema to delete the specified
         application.
 
         Args:
-            app_label (unicode):
-                The label for the Django application being mutated.
-
-            proj_sig (dict):
-                The project's schema signature.
-
-            database_sig (dict):
-                The database's schema signature.
-
-            database (unicode, optional):
-                The name of the database the operation is being performed on.
+            simulation (Simulation):
+                The state for the simulation.
 
         Raises:
             django_evolution.errors.SimulationFailure:
                 The simulation failed. The reason is in the exception's
                 message.
         """
-        if not database:
+        if not simulation.database:
             return
 
-        try:
-            app_sig = proj_sig[app_label]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot delete the application "%s". It could not be found '
-                'in the signature.'
-                % app_label)
+        app_sig = simulation.get_app_sig()
 
         # Simulate the deletion of the models.
-        for model_name in app_sig.keys():
+        for model_name in six.iterkeys(app_sig):
             mutation = DeleteModel(model_name)
 
-            if mutation.is_mutable(app_label, proj_sig, database_sig,
-                                   database):
-                try:
-                    del app_sig[model_name]
-                except KeyError:
-                    raise SimulationFailure(
-                        'Cannot delete the model "%s.%s" when deleting the '
-                        'application. The model was not found in the '
-                        'signature.'
-                        % (app_label, model_name))
+            if mutation.is_mutable(app_label=simulation.app_label,
+                                   project_sig=simulation.project_sig,
+                                   database_sig=simulation.database_sig,
+                                   database=simulation.database):
+                # Check for the model's existence, and then delete.
+                simulation.get_model_sig(model_name)
+                del app_sig[model_name]
 
     def mutate(self, mutator):
         """Schedule an application deletion on the mutator.
@@ -1302,12 +1320,12 @@ class DeleteApplication(BaseMutation):
         # This test will introduce a regression, but we can't afford to remove
         # all models at a same time if they aren't owned by the same database
         if mutator.database:
-            app_sig = mutator.proj_sig[mutator.app_label]
+            app_sig = mutator.project_sig[mutator.app_label]
 
             for model_name in app_sig.keys():
                 mutation = DeleteModel(model_name)
 
-                if mutation.is_mutable(mutator.app_label, mutator.proj_sig,
+                if mutation.is_mutable(mutator.app_label, mutator.project_sig,
                                        mutator.database_sig,
                                        mutator.database):
                     mutator.run_mutation(mutation)
@@ -1334,6 +1352,15 @@ class DeleteApplication(BaseMutation):
 
 class ChangeMeta(BaseModelMutation):
     """A mutation that changes meta proeprties on a model."""
+
+    simulation_failure_error = (
+        'Cannot change the "%(prop_name)s" meta property on model '
+        '"%(app_label)s.%(model_name)s".'
+    )
+
+    error_vars = dict({
+        'prop_name': 'prop_name',
+    }, **BaseModelMutation.error_vars)
 
     def __init__(self, model_name, prop_name, new_value):
         """Initialize the mutation.
@@ -1374,54 +1401,27 @@ class ChangeMeta(BaseModelMutation):
             repr(norm_value),
         ]
 
-    def simulate(self, app_label, proj_sig, database_sig, database=None):
+    def simulate(self, simulation):
         """Simulate the mutation.
 
         This will alter the database schema to change metadata on the specified
         model.
 
         Args:
-            app_label (unicode):
-                The label for the Django application being mutated.
-
-            proj_sig (dict):
-                The project's schema signature.
-
-            database_sig (dict):
-                The database's schema signature.
-
-            database (unicode, optional):
-                The name of the database the operation is being performed on.
+            simulation (Simulation):
+                The state for the simulation.
 
         Raises:
             django_evolution.errors.SimulationFailure:
                 The simulation failed. The reason is in the exception's
                 message.
         """
-        try:
-            app_sig = proj_sig[app_label]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot change a meta property on model "%s.%s". The '
-                'application could not be found in the signature.'
-                % (app_label, self.model_name))
-
-        try:
-            model_sig = app_sig[self.model_name]
-        except KeyError:
-            raise SimulationFailure(
-                'Cannot change a meta property on model "%s.%s". The model '
-                'could not be found in the signature.'
-                % (app_label, self.model_name))
-
-        evolver = \
-            EvolutionOperationsMulti(database, database_sig).get_evolver()
+        model_sig = simulation.get_model_sig(self.model_name)
+        evolver = simulation.get_evolver()
 
         if self.prop_name not in evolver.supported_change_meta:
-            raise SimulationFailure(
-                'ChangeMeta does not support modifying the "%s" '
-                'attribute on "%s".'
-                % (self.prop_name, self.model_name))
+            simulation.fail('The property cannot be modified on this '
+                            'database.')
 
         model_sig['meta'][self.prop_name] = self.new_value
 

@@ -23,34 +23,35 @@ class OrderingTests(EvolutionTestCase):
     sql_mapping_key = 'sql_mutation'
     default_base_model = SQLBaseModel
 
-    def test_add_fields_cannot_simulate(self):
-        """Testing SQLMutation and adding fields cannot be simulated"""
+    def test_add_fields_no_update_func(self):
+        """Testing SQLMutation and no update_func provided"""
+        mutation = SQLMutation('test', '')
+
         self.assertRaisesMessage(
             CannotSimulate,
-            'Cannot simulate SQLMutations',
-            lambda: self.perform_evolution_tests(
-                AddFieldsModel,
-                [
-                    SQLMutation('first-two-fields', [
-                        'ALTER TABLE "tests_testmodel" ADD COLUMN'
-                        ' "added_field1" integer NULL;',
+            ('SQLMutations must provide an update_func(simulation) or '
+             'legacy update_func(app_label, project_sig) parameter in '
+             'order to be simulated.'),
+            lambda: mutation.run_simulation(app_label='tests',
+                                            project_sig={},
+                                            database_sig={}))
 
-                        'ALTER TABLE "tests_testmodel" ADD COLUMN'
-                        ' "added_field2" integer NULL;'
-                    ]),
-                    SQLMutation('third-field', [
-                        'ALTER TABLE "tests_testmodel" ADD COLUMN'
-                        ' "added_field3" integer NULL;',
-                    ])
-                ],
-                ("In model tests.TestModel:\n"
-                 "    Field 'added_field1' has been added\n"
-                 "    Field 'added_field3' has been added\n"
-                 "    Field 'added_field2' has been added"),
-                perform_mutations=False))
+    def test_add_fields_bad_update_func_signature(self):
+        """Testing SQLMutation and bad update_func signature"""
+        mutation = SQLMutation('test', '', update_func=lambda a, b, c: None)
+
+        self.assertRaisesMessage(
+            CannotSimulate,
+            ('SQLMutations must provide an update_func(simulation) or '
+             'legacy update_func(app_label, project_sig) parameter in '
+             'order to be simulated.'),
+            lambda: mutation.run_simulation(app_label='tests',
+                                            project_sig={},
+                                            database_sig={}))
 
     def test_add_fields_simulation_functions(self):
         """Testing SQLMutation and adding fields with simulation functions"""
+        # Legacy simulation function.
         def update_first_two(app_label, proj_sig):
             app_sig = proj_sig[app_label]
             model_sig = app_sig['TestModel']
@@ -63,9 +64,9 @@ class OrderingTests(EvolutionTestCase):
                 'null': True
             }
 
-        def update_third(app_label, proj_sig):
-            app_sig = proj_sig[app_label]
-            model_sig = app_sig['TestModel']
+        # Modern simulation function.
+        def update_third(simulation):
+            model_sig = simulation.get_model_sig('TestModel')
             model_sig['fields']['added_field3'] = {
                 'field_type': models.IntegerField,
                 'null': True

@@ -24,7 +24,9 @@ class RenameModelTests(EvolutionTestCase):
             SimulationFailure,
             ('Cannot rename the model "badapp.TestModel". The application '
              'could not be found in the signature.'),
-            lambda: mutation.simulate('badapp', {}, {}))
+            lambda: mutation.run_simulation(app_label='badapp',
+                                            project_sig={},
+                                            database_sig={}))
 
     def test_with_bad_model(self):
         """Testing RenameModel with model not in signature"""
@@ -38,7 +40,9 @@ class RenameModelTests(EvolutionTestCase):
             SimulationFailure,
             ('Cannot rename the model "tests.TestModel". The model could '
              'not be found in the signature.'),
-            lambda: mutation.simulate('tests', proj_sig, {}))
+            lambda: mutation.run_simulation(app_label='tests',
+                                            project_sig=proj_sig,
+                                            database_sig={}))
 
     def test_rename(self):
         """Testing RenameModel with changed db_table"""

@@ -60,7 +60,9 @@ class RenameFieldTests(EvolutionTestCase):
             ('Cannot rename the field "char_field1" on model '
              '"badapp.TestModel". The application could not be found in the '
              'signature.'),
-            lambda: mutation.simulate('badapp', {}, {}))
+            lambda: mutation.run_simulation(app_label='badapp',
+                                            project_sig={},
+                                            database_sig={}))
 
     def test_with_bad_model(self):
         """Testing RenameField with model not in signature"""
@@ -74,7 +76,9 @@ class RenameFieldTests(EvolutionTestCase):
             ('Cannot rename the field "char_field1" on model '
              '"tests.TestModel". The model could not be found in the '
              'signature.'),
-            lambda: mutation.simulate('tests', proj_sig, {}))
+            lambda: mutation.run_simulation(app_label='tests',
+                                            project_sig=proj_sig,
+                                            database_sig={}))
 
     def test_with_bad_field(self):
         """Testing RenameField with field not in signature"""
@@ -92,7 +96,9 @@ class RenameFieldTests(EvolutionTestCase):
             ('Cannot rename the field "char_field1" on model '
              '"tests.TestModel". The field could not be found in the '
              'signature.'),
-            lambda: mutation.simulate('tests', proj_sig, {}))
+            lambda: mutation.run_simulation(app_label='tests',
+                                            project_sig=proj_sig,
+                                            database_sig={}))
 
     def test_rename(self):
         """Testing RenameField"""
