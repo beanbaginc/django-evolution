@@ -4,9 +4,9 @@ import logging
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.errors import CannotSimulate
 from django_evolution.mock_models import MockModel
-from django_evolution.mutations import (AddField, ChangeField, ChangeMeta,
+from django_evolution.mutations import (AddField, BaseModelMutation,
+                                        ChangeField, ChangeMeta,
                                         DeleteField, DeleteModel,
-                                        MonoBaseMutation, MutateModelField,
                                         RenameField, RenameModel)
 from django_evolution.utils import get_database_for_model_name
 
@@ -26,7 +26,7 @@ class ModelMutator(object):
     the mutator is finalized, and new operations cannot be added.
 
     ModelMutator only works with mutations that are instances of
-    MutateModelField. It is also intended for internal use by AppMutator.
+    BaseModelFieldMutation. It is also intended for internal use by AppMutator.
     """
     def __init__(self, app_mutator, model_name, app_label, proj_sig,
                  database_sig, database):
@@ -158,9 +158,9 @@ class ModelMutator(object):
         The mutation will be provided with a temporary mock instance of a
         model that can be used for field or meta lookups.
 
-        The mutation must be an instance of MutateModelField.
+        The mutation must be an instance of BaseModelMutation.
         """
-        assert isinstance(mutation, MutateModelField)
+        assert isinstance(mutation, BaseModelMutation)
         assert not self._finalized
 
         mutation.mutate(self, self.create_model())
@@ -251,7 +251,7 @@ class AppMutator(object):
         operated on the same model, then the previously created ModelMutator
         will be used. Otherwise, a new one will be created.
         """
-        if isinstance(mutation, MutateModelField):
+        if isinstance(mutation, BaseModelMutation):
             if (self._last_model_mutator and
                 mutation.model_name == self._last_model_mutator.model_name):
                 # We can continue to apply operations to the previous
@@ -365,7 +365,7 @@ class AppMutator(object):
         mutation_batches = [cur_mutation_batch]
 
         for mutation in mutations:
-            can_process = isinstance(mutation, MonoBaseMutation)
+            can_process = isinstance(mutation, BaseModelMutation)
 
             if can_process != cur_mutation_batch[0]:
                 cur_mutation_batch = (can_process, [])

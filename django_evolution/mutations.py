@@ -187,7 +187,7 @@ class BaseMutation(object):
         return '<%s>' % self
 
 
-class MonoBaseMutation(BaseMutation):
+class BaseModelMutation(BaseMutation):
     """Base class for a mutation affecting a single model."""
 
     def __init__(self, model_name):
@@ -197,7 +197,8 @@ class MonoBaseMutation(BaseMutation):
             model_name (unicode):
                 The name of the model being mutated.
         """
-        super(MonoBaseMutation, self).__init__()
+        super(BaseModelMutation, self).__init__()
+
         self.model_name = model_name
 
     def evolver(self, model, database_sig, database=None):
@@ -206,6 +207,27 @@ class MonoBaseMutation(BaseMutation):
                                                    model.model_name)
 
         return EvolutionOperationsMulti(database, database_sig).get_evolver()
+
+    def mutate(self, mutator, model):
+        """Schedule a model mutation on the mutator.
+
+        This will instruct the mutator to perform one or more database
+        mutations for a model. Those will be scheduled and later executed on
+        the database, if not optimized out.
+
+        Args:
+            mutator (django_evolution.mutators.ModelMutator):
+                The mutator to perform an operation on.
+
+            model (MockModel):
+                The model being mutated.
+
+        Raises:
+            django_evolution.errors.EvolutionNotImplementedError:
+                The configured mutation is not supported on this type of
+                database.
+        """
+        raise NotImplementedError
 
     def is_mutable(self, app_label, proj_sig, database_sig, database):
         """Return whether the mutation can be applied to the database.
@@ -234,115 +256,7 @@ class MonoBaseMutation(BaseMutation):
         return db_name and db_name == database
 
 
-class SQLMutation(BaseMutation):
-    """A mutation that executes SQL on the database.
-
-    Unlike most mutations, this one is largely database-dependent. It allows
-    arbitrary SQL to be executed. It's recommended that the execution does
-    not modify the schema of a table (unless it's highly database-specific with
-    no counterpart in Django Evolution), but rather is limited to things like
-    populating data.
-
-    SQL statements cannot be optimized. Any scheduled database operations
-    prior to the SQL statement will be executed without any further
-    optimization. This can lead to longer database evolution times.
-    """
-
-    def __init__(self, tag, sql, update_func=None):
-        """Initialize the mutation.
-
-        Args:
-            tag (unicode):
-                A unique tag identifying this SQL operation.
-
-            sql (unicode):
-                The SQL to execute.
-
-            update_func (callable, optional):
-                A function to call to simulate updating the database signature.
-                This is required for :py:meth:`simulate` to work.
-        """
-        self.tag = tag
-        self.sql = sql
-        self.update_func = update_func
-
-    def get_hint_params(self):
-        """Return parameters for the mutation's hinted evolution.
-
-        Returns:
-            list of unicode:
-            A list of parameter strings to pass to the mutation's constructor
-            in a hinted evolution.
-        """
-        return [self.tag]
-
-    def simulate(self, app_label, proj_sig, database_sig, database=None):
-        """Simulate a mutation for an application.
-
-        This will run the :py:attr:`update_func` provided when instantiating
-        the mutation, passing it ``app_label`` and ``proj_sig``. It should
-        then modify the signature to match what the SQL statement would do.
-
-        Args:
-            app_label (unicode):
-                The label for the Django application being mutated.
-
-            proj_sig (dict):
-                The project's schema signature.
-
-            database_sig (dict):
-                The database's schema signature.
-
-            database (unicode, optional):
-                The name of the database the operation is being performed on.
-
-        Raises:
-            django_evolution.errors.CannotSimulate:
-                :py:attr:`update_func` was not provided or was not a function.
-
-            django_evolution.errors.SimulationFailure:
-                The simulation failed. The reason is in the exception's
-                message. This would be run by :py:attr:`update_func`.
-        """
-        if callable(self.update_func):
-            self.update_func(app_label, proj_sig)
-        else:
-            raise CannotSimulate('Cannot simulate SQLMutations')
-
-    def mutate(self, mutator):
-        """Schedule a database mutation on the mutator.
-
-        This will instruct the mutator to execute the SQL for an app.
-
-        Args:
-            mutator (django_evolution.mutators.AppMutator):
-                The mutator to perform an operation on.
-
-        Raises:
-            django_evolution.errors.EvolutionNotImplementedError:
-                The configured mutation is not supported on this type of
-                database.
-        """
-        mutator.add_sql(self, self.sql)
-
-    def is_mutable(self, *args, **kwargs):
-        """Return whether the mutation can be applied to the database.
-
-        Args:
-            *args (tuple, unused):
-                Unused positional arguments.
-
-            **kwargs (tuple, unused):
-                Unused positional arguments.
-
-        Returns:
-            bool:
-            ``True``, always.
-        """
-        return True
-
-
-class MutateModelField(MonoBaseMutation):
+class BaseModelFieldMutation(BaseModelMutation):
     """Base class for any fields that mutate a model.
 
     This is used for classes that perform any mutation on a model. Such
@@ -353,30 +267,6 @@ class MutateModelField(MonoBaseMutation):
     to improve evolution time for the model.
     """
 
-    def mutate(self, mutator, model):
-        """Schedule a model mutation on the mutator.
-
-        This will instruct the mutator to perform one or more database
-        mutations for a model. Those will be scheduled and later executed on
-        the database, if not optimized out.
-
-        Args:
-            mutator (django_evolution.mutators.ModelMutator):
-                The mutator to perform an operation on.
-
-            model (MockModel):
-                The model being mutated.
-
-        Raises:
-            django_evolution.errors.EvolutionNotImplementedError:
-                The configured mutation is not supported on this type of
-                database.
-        """
-        raise NotImplementedError
-
-
-class DeleteField(MutateModelField):
-    """A mutation that deletes a field from a model."""
 
     def __init__(self, model_name, field_name):
         """Initialize the mutation.
@@ -386,10 +276,15 @@ class DeleteField(MutateModelField):
                 The name of the model containing the field.
 
             field_name (unicode):
-                The name of the field to delete.
+                The name of the field to mutate.
         """
-        super(DeleteField, self).__init__(model_name)
+        super(BaseModelFieldMutation, self).__init__(model_name)
+
         self.field_name = field_name
+
+
+class DeleteField(BaseModelFieldMutation):
+    """A mutation that deletes a field from a model."""
 
     def get_hint_params(self):
         """Return parameters for the mutation's hinted evolution.
@@ -515,7 +410,115 @@ class DeleteField(MutateModelField):
             mutator.delete_column(self, field)
 
 
-class AddField(MutateModelField):
+class SQLMutation(BaseMutation):
+    """A mutation that executes SQL on the database.
+
+    Unlike most mutations, this one is largely database-dependent. It allows
+    arbitrary SQL to be executed. It's recommended that the execution does
+    not modify the schema of a table (unless it's highly database-specific with
+    no counterpart in Django Evolution), but rather is limited to things like
+    populating data.
+
+    SQL statements cannot be optimized. Any scheduled database operations
+    prior to the SQL statement will be executed without any further
+    optimization. This can lead to longer database evolution times.
+    """
+
+    def __init__(self, tag, sql, update_func=None):
+        """Initialize the mutation.
+
+        Args:
+            tag (unicode):
+                A unique tag identifying this SQL operation.
+
+            sql (unicode):
+                The SQL to execute.
+
+            update_func (callable, optional):
+                A function to call to simulate updating the database signature.
+                This is required for :py:meth:`simulate` to work.
+        """
+        self.tag = tag
+        self.sql = sql
+        self.update_func = update_func
+
+    def get_hint_params(self):
+        """Return parameters for the mutation's hinted evolution.
+
+        Returns:
+            list of unicode:
+            A list of parameter strings to pass to the mutation's constructor
+            in a hinted evolution.
+        """
+        return [self.tag]
+
+    def simulate(self, app_label, proj_sig, database_sig, database=None):
+        """Simulate a mutation for an application.
+
+        This will run the :py:attr:`update_func` provided when instantiating
+        the mutation, passing it ``app_label`` and ``proj_sig``. It should
+        then modify the signature to match what the SQL statement would do.
+
+        Args:
+            app_label (unicode):
+                The label for the Django application being mutated.
+
+            proj_sig (dict):
+                The project's schema signature.
+
+            database_sig (dict):
+                The database's schema signature.
+
+            database (unicode, optional):
+                The name of the database the operation is being performed on.
+
+        Raises:
+            django_evolution.errors.CannotSimulate:
+                :py:attr:`update_func` was not provided or was not a function.
+
+            django_evolution.errors.SimulationFailure:
+                The simulation failed. The reason is in the exception's
+                message. This would be run by :py:attr:`update_func`.
+        """
+        if callable(self.update_func):
+            self.update_func(app_label, proj_sig)
+        else:
+            raise CannotSimulate('Cannot simulate SQLMutations')
+
+    def mutate(self, mutator):
+        """Schedule a database mutation on the mutator.
+
+        This will instruct the mutator to execute the SQL for an app.
+
+        Args:
+            mutator (django_evolution.mutators.AppMutator):
+                The mutator to perform an operation on.
+
+        Raises:
+            django_evolution.errors.EvolutionNotImplementedError:
+                The configured mutation is not supported on this type of
+                database.
+        """
+        mutator.add_sql(self, self.sql)
+
+    def is_mutable(self, *args, **kwargs):
+        """Return whether the mutation can be applied to the database.
+
+        Args:
+            *args (tuple, unused):
+                Unused positional arguments.
+
+            **kwargs (tuple, unused):
+                Unused positional arguments.
+
+        Returns:
+            bool:
+            ``True``, always.
+        """
+        return True
+
+
+class AddField(BaseModelFieldMutation):
     """A mutation that adds a field to a model."""
 
     def __init__(self, model_name, field_name, field_type, initial=None,
@@ -539,8 +542,8 @@ class AddField(MutateModelField):
             **field_attrs (dict):
                 Attributes to set on the field.
         """
-        super(AddField, self).__init__(model_name)
-        self.field_name = field_name
+        super(AddField, self).__init__(model_name, field_name)
+
         self.field_type = field_type
         self.field_attrs = field_attrs
         self.initial = initial
@@ -702,7 +705,7 @@ class AddField(MutateModelField):
         mutator.add_sql(self, mutator.evolver.add_m2m_table(model, field))
 
 
-class RenameField(MutateModelField):
+class RenameField(BaseModelFieldMutation):
     """A mutation that renames a field on a model."""
 
     def __init__(self, model_name, old_field_name, new_field_name,
@@ -726,7 +729,8 @@ class RenameField(MutateModelField):
                 The explicit table name to use, if specifying a
                 :py:class:`~django.db.models.ManyToManyField`.
         """
-        super(RenameField, self).__init__(model_name)
+        super(RenameField, self).__init__(model_name, old_field_name)
+
         self.old_field_name = old_field_name
         self.new_field_name = new_field_name
         self.db_column = db_column
@@ -875,7 +879,7 @@ class RenameField(MutateModelField):
         mutator.add_sql(self, sql)
 
 
-class ChangeField(MutateModelField):
+class ChangeField(BaseModelFieldMutation):
     """A mutation that changes attributes on a field on a model."""
 
     def __init__(self, model_name, field_name, initial=None, **field_attrs):
@@ -894,8 +898,8 @@ class ChangeField(MutateModelField):
             **field_attrs (dict):
                 Attributes to set on the field.
         """
-        super(ChangeField, self).__init__(model_name)
-        self.field_name = field_name
+        super(ChangeField, self).__init__(model_name, field_name)
+
         self.field_attrs = field_attrs
         self.initial = initial
 
@@ -1018,7 +1022,7 @@ class ChangeField(MutateModelField):
             mutator.change_column(self, field, new_field_attrs)
 
 
-class RenameModel(MutateModelField):
+class RenameModel(BaseModelMutation):
     """A mutation that renames a model."""
 
     def __init__(self, old_model_name, new_model_name, db_table):
@@ -1035,6 +1039,7 @@ class RenameModel(MutateModelField):
                 The table name in the database for this model.
         """
         super(RenameModel, self).__init__(old_model_name)
+
         self.old_model_name = old_model_name
         self.new_model_name = new_model_name
         self.db_table = db_table
@@ -1149,7 +1154,7 @@ class RenameModel(MutateModelField):
         mutator.add_sql(self, sql)
 
 
-class DeleteModel(MutateModelField):
+class DeleteModel(BaseModelMutation):
     """A mutation that deletes a model."""
 
     def get_hint_params(self):
@@ -1327,7 +1332,7 @@ class DeleteApplication(BaseMutation):
         return True
 
 
-class ChangeMeta(MutateModelField):
+class ChangeMeta(BaseModelMutation):
     """A mutation that changes meta proeprties on a model."""
 
     def __init__(self, model_name, prop_name, new_value):
@@ -1344,6 +1349,7 @@ class ChangeMeta(MutateModelField):
                 The new value for the property.
         """
         super(ChangeMeta, self).__init__(model_name)
+
         self.prop_name = prop_name
         self.new_value = new_value
 
