@@ -538,6 +538,7 @@ def sql_add_constraints(connection, model, refs):
                         'column': qn(f.column),
                         'to_table': qn(meta.db_table),
                         'to_column': qn(to_column),
+                        'deferrable': connection.ops.deferrable_sql(),
                     }
 
                     sql.append('%s;' % create_sql)
