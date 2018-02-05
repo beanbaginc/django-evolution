@@ -1,8 +1,11 @@
 import copy
 import logging
 
+import django
 from django.db import connection as default_connection
+from django.db import models
 
+from django_evolution import support
 from django_evolution.compat.db import (create_index_name,
                                         create_index_together_name,
                                         sql_add_constraints,
@@ -22,7 +25,13 @@ class BaseEvolutionOperations(object):
         'null', 'max_length', 'db_column', 'db_index', 'db_table', 'unique',
     )
 
-    supported_change_meta = ('index_together', 'unique_together')
+    # Build the list of ChangeMeta attributes that databases support by
+    # default.
+    supported_change_meta = {
+        'indexes': support.supports_indexes,
+        'index_together': support.supports_index_together,
+        'unique_together': True,
+    }
 
     supports_constraints = True
 
@@ -646,9 +655,28 @@ class BaseEvolutionOperations(object):
 
         return AlterTableSQLResult(self, model, [alter_table_item])
 
+    def get_drop_unique_constraint_sql(self, model, index_name):
+        return self.get_drop_index_sql(model, index_name)
+
     def change_meta_unique_together(self, model, old_unique_together,
                                     new_unique_together):
-        """Changes the unique_together constraints of a table."""
+        """Change the unique_together constraints of a table.
+
+        Args:
+            model (django.db.models.Model):
+                The model being changed.
+
+            old_unique_together (list):
+                The old value for ``unique_together``.
+
+            new_unique_together (list):
+                The new value for ``unique_together``.
+
+        Returns:
+            django_evolution.sql_result.SQLResult:
+            The SQL statements for changing the ``unique_together``
+            constraints.
+        """
         sql_result = SQLResult()
 
         old_unique_together = set(old_unique_together)
@@ -658,8 +686,8 @@ class BaseEvolutionOperations(object):
 
         for field_names in to_remove:
             fields = self.get_fields_for_names(model, field_names)
-            columns = self.get_column_names_for_fields(fields)
-            index_name = self.find_index_name(model, columns, unique=True)
+            index_name = self.find_index_name_for_fields(model, fields,
+                                                         unique=True)
 
             if index_name:
                 self.remove_recorded_index(model, index_name, unique=True)
@@ -668,10 +696,8 @@ class BaseEvolutionOperations(object):
 
         for field_names in new_unique_together:
             fields = self.get_fields_for_names(model, field_names)
-            columns = self.get_column_names_for_fields(fields)
-            index_name = self.find_index_name(model, columns, unique=True)
 
-            if not index_name:
+            if not self.find_index_name_for_fields(model, fields, unique=True):
                 # This doesn't exist in the database, so we want to add it.
                 index_name = self.get_new_index_name(model, fields,
                                                      unique=True)
@@ -679,9 +705,6 @@ class BaseEvolutionOperations(object):
                     self.create_unique_index(model, index_name, fields))
 
         return sql_result
-
-    def get_drop_unique_constraint_sql(self, model, index_name):
-        return self.get_drop_index_sql(model, index_name)
 
     def change_meta_index_together(self, model, old_index_together,
                                    new_index_together):
@@ -692,17 +715,16 @@ class BaseEvolutionOperations(object):
                 The model being changed.
 
             old_index_together (list):
-                The old value for the index_together.
+                The old value for ``index_together``.
 
             new_index_together (list):
-                The new value for the index_together.
+                The new value for ``index_together``.
 
         Returns:
-            list:
-            The list of SQL statements for changing the index_together
-            value.
+            django_evolution.sql_result.SQLResult:
+            The SQL statements for changing the ``index_together`` indexes.
         """
-        sql = []
+        sql_result = SQLResult()
 
         old_index_together = set(old_index_together or [])
         new_index_together = set(new_index_together)
@@ -711,25 +733,139 @@ class BaseEvolutionOperations(object):
 
         for field_names in to_remove:
             fields = self.get_fields_for_names(model, field_names)
-            columns = self.get_column_names_for_fields(fields)
-            index_name = self.find_index_name(model, columns)
+            index_name = self.find_index_name_for_fields(model, fields)
 
             if index_name:
-                sql.extend(self.drop_index_by_name(model, index_name).to_sql())
+                sql_result.add(self.drop_index_by_name(model, index_name))
 
         for field_names in new_index_together:
             fields = self.get_fields_for_names(model, field_names)
-            columns = self.get_column_names_for_fields(fields)
-            index_name = self.find_index_name(model, columns)
 
-            if not index_name:
+            if not self.find_index_name_for_fields(model, fields):
                 # This doesn't exist in the database, so we want to add it.
                 self.record_index(model, fields)
-                sql.extend(sql_indexes_for_fields(self.connection, model,
-                                                  fields,
-                                                  index_together=True))
+                sql_result.add(sql_indexes_for_fields(
+                    self.connection, model, fields, index_together=True))
 
-        return sql
+        return sql_result
+
+    def change_meta_indexes(self, model, old_indexes, new_indexes):
+        """Change the indexes of a table defined in a model's indexes list.
+
+        This will apply a set of indexes serialized from a
+        :py:attr:`Meta.indexes <django.db.models.options.Options.indexes>`
+        to the database. The serialized values are those passed to
+        :py:class:`~django_evolution.mutations.ChangeMeta`, in the form of::
+
+            [
+                {
+                    'name': 'optional-index-name',
+                    'fields': ['field1', '-field2_sorted_desc'],
+                },
+                ...
+            ]
+
+        Args:
+            model (django.db.models.Model):
+                The model being changed.
+
+            old_indexes (list):
+                The old serialized value for the indexes.
+
+            new_indexes (list):
+                The new serialized value for the indexes.
+
+        Returns:
+            django_evolution.sql_result.SQLResult:
+            The SQL statements for changing the indexes.
+        """
+        # The mutation should have failed before getting here on older
+        # versions of Django.
+        assert django.VERSION >= (1, 11)
+
+        if not old_indexes:
+            old_indexes = []
+
+        # We're working with dictionaries and lists, which we can't just pass
+        # into set() like we would for the other methods. We need to calculate
+        # an explicit, ordered list of indexes, so to do this, we're going to
+        # build a set of tuples representing the old values and the new
+        # values, and then calculate an ordered list of indexes to remove and
+        # to add based on values found in those sets.
+        def _make_index_tuple(index_info):
+            return (index_info.get('name'), tuple(index_info['fields']))
+
+        old_indexes_set = set(
+            _make_index_tuple(index_info)
+            for index_info in old_indexes
+        )
+
+        new_indexes_set = set(
+            _make_index_tuple(index_info)
+            for index_info in new_indexes
+        )
+
+        to_remove = [
+            index_info
+            for index_info in old_indexes
+            if _make_index_tuple(index_info) not in new_indexes_set
+        ]
+
+        to_add = [
+            index_info
+            for index_info in new_indexes
+            if _make_index_tuple(index_info) not in old_indexes_set
+        ]
+
+        sql_result = SQLResult()
+
+        with self.connection.schema_editor(collect_sql=True) as schema_editor:
+            for index_info in to_remove:
+                index_field_names = index_info['fields']
+                index_name = index_info.get('name')
+                fields = self.get_fields_for_names(model, index_field_names,
+                                                   allow_sort_prefixes=True)
+
+                if not index_name:
+                    # No explicit index name was given, so see if we can find
+                    # one that matches in the database.
+                    index_name = self.find_index_name_for_fields(model, fields)
+
+                if (index_name and
+                    self.is_index_name_in_database(model, index_name)):
+                    # We found a suitable index name, and a matching index
+                    # entry in the database. Remove it.
+                    index = models.Index(fields=list(index_field_names),
+                                         name=index_name)
+                    sql_result.add('%s;' % index.remove_sql(model,
+                                                            schema_editor))
+
+            for index_info in to_add:
+                index_field_names = index_info['fields']
+                index_name = index_info.get('name')
+                fields = self.get_fields_for_names(model, index_field_names,
+                                                   allow_sort_prefixes=True)
+
+                if not index_name:
+                    # No explicit index name was given, so see if we can find
+                    # one that matches in the database.
+                    index_name = self.find_index_name_for_fields(model, fields)
+
+                if (not index_name or
+                    not self.is_index_name_in_database(model, index_name)):
+                    # This is a new index not found in the database. We can
+                    # record it and proceed.
+                    index = models.Index(fields=list(index_field_names),
+                                         name=index_name)
+
+                    if not index_name:
+                        index.set_name_with_model(model)
+
+                    self.record_index(model, fields, index_name=index.name)
+                    sql_result.add('%s;' % index.create_sql(model,
+                                                            schema_editor))
+
+        return sql_result
 
     def find_index_name(self, model, column_names, unique=False):
         """Finds an index in the database matching the given criteria.
@@ -746,8 +882,7 @@ class BaseEvolutionOperations(object):
         if not isinstance(column_names, (list, tuple)):
             column_names = (column_names,)
 
-        opts = model._meta
-        table_name = opts.db_table
+        table_name = model._meta.db_table
 
         if table_name in self.database_sig:
             indexes = self.database_sig[table_name]['indexes']
@@ -759,12 +894,86 @@ class BaseEvolutionOperations(object):
 
         return None
 
-    def get_fields_for_names(self, model, field_names):
-        """Returns a list of fields for the given field names."""
-        return [
-            model._meta.get_field(field_name)
-            for field_name in field_names
-        ]
+    def find_index_name_for_fields(self, model, fields, unique=False):
+        """Return whether an index exists for the given fields.
+
+        This is a wrapper around :py:meth:`find_index_name` that will take
+        care of providing the column names for the fields passed to this
+        method.
+
+        Args:
+            model (django.db.models.Model):
+                The model the index would be on.
+
+            fields (list of django.db.models.Field):
+                The list of model fields that the index covers.
+
+            unique (bool, optional):
+                Whether this is a unique constraint.
+
+        Returns:
+            unicode:
+            The name of the index, if found, or ``None`` otherwise.
+        """
+        columns = self.get_column_names_for_fields(fields)
+
+        return self.find_index_name(model, columns, unique=unique)
+
+    def is_index_name_in_database(self, model, index_name):
+        """Return whether there's an index with a given naem in the database.
+
+        Args:
+            model (django.db.models.Model):
+                The model the index is on.
+
+            index_name (unicode):
+                The name of the index.
+
+        Returns:
+            bool:
+            ``True`` if an index with the given name was found, or
+            ``False`` if it was not found.
+        """
+        table_name = model._meta.db_table
+
+        try:
+            return index_name in self.database_sig[table_name]['indexes']
+        except KeyError:
+            return False
+
+    def get_fields_for_names(self, model, field_names,
+                             allow_sort_prefixes=False):
+        """Return the field instances for the given field names.
+
+        This will go through each of the provided field names, optionally
+        handling a sorting prefix (``-``, used by Django 1.11+'s
+        :py:class:`~django.db.models.Index` field lists), and return the
+        field instance for each.
+
+        Args:
+            model (django.db.models.Model):
+                The model to fetch fields from.
+
+            field_names (list of unicode):
+                The list of field names to fetch.
+
+            allow_sort_prefixes (bool, optional):
+                Whether to allow sorting prefixes in the field names.
+
+        Returns:
+            list of django.db.models.Field:
+            The resulting list of fields.
+        """
+        meta = model._meta
+        fields = []
+
+        for field_name in field_names:
+            if allow_sort_prefixes and field_name.startswith('-'):
+                field_name = field_name[1:]
+
+            fields.append(meta.get_field(field_name))
+
+        return fields
 
     def get_column_names_for_fields(self, fields):
         return [field.column for field in fields]

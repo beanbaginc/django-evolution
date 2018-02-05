@@ -3103,6 +3103,54 @@ index_together = {
     ),
 }
 
+indexes = {
+    'setting_from_empty': '\n'.join([
+        'CREATE INDEX "%s"'
+        ' ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel',
+                              ['int_field1'],
+                              model_meta_indexes=True),
+
+        'CREATE INDEX "my_custom_index"'
+        ' ON "tests_testmodel" ("char_field1", "char_field2" DESC);',
+    ]),
+
+    'replace_list': '\n'.join([
+        'DROP INDEX "%s";'
+        % generate_index_name('tests_testmodel', ['int_field1'],
+                              model_meta_indexes=True),
+
+        'DROP INDEX "my_custom_index";',
+
+        'CREATE INDEX "%s"'
+        ' ON "tests_testmodel" ("int_field2");'
+        % generate_index_name('tests_testmodel', ['int_field2'],
+                              model_meta_indexes=True),
+    ]),
+
+    'append_list': '\n'.join([
+        'CREATE INDEX "%s"'
+        ' ON "tests_testmodel" ("int_field2");'
+        % generate_index_name('tests_testmodel', ['int_field2'],
+                              model_meta_indexes=True),
+    ]),
+
+    'removing': '\n'.join([
+        'DROP INDEX "%s";'
+        % generate_index_name('tests_testmodel', ['int_field1'],
+                              model_meta_indexes=True),
+
+        'DROP INDEX "my_custom_index";',
+    ]),
+
+    'ignore_missing_indexes': (
+        'CREATE INDEX "%s"'
+        ' ON "tests_testmodel" ("int_field2");'
+        % generate_index_name('tests_testmodel', ['int_field2'],
+                              model_meta_indexes=True)
+    ),
+}
+
 preprocessing = {
     'add_change_field': '\n'.join([
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'

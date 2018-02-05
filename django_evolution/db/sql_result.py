@@ -1,3 +1,6 @@
+from django.utils import six
+
+
 class SQLResult(object):
     """Represents one or more SQL statements.
 
@@ -26,8 +29,13 @@ class SQLResult(object):
             self.pre_sql += sql_or_result.pre_sql
             self.sql += sql_or_result.sql
             self.post_sql += sql_or_result.post_sql
-        else:
+        elif isinstance(sql_or_result, list):
             self.sql += sql_or_result
+        elif isinstance(sql_or_result, six.string_types):
+            self.sql += [sql_or_result]
+        else:
+            raise ValueError('SQLResult.add got unexpected type %s (%r)'
+                             % (type(sql_or_result), sql_or_result))
 
     def add_pre_sql(self, sql_or_result):
         """Adds a list of SQL statements or an SQLResult to ``pre_sql`.
@@ -43,7 +51,7 @@ class SQLResult(object):
         If an SQLResult is passed, it will be converted into a list of SQL
         statements.
         """
-        self.sql += self.normalize_sql(sql_or_result)
+        self.add(self.normalize_sql(sql_or_result))
 
     def add_post_sql(self, sql_or_result):
         """Adds a list of SQL statements or an SQLResult to ``post_sql``.

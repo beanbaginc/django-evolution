@@ -162,6 +162,7 @@ class MockMeta(object):
             'db_tablespace': None,
             'swapped': False,
             'index_together': [],
+            'indexes': [],
         }
         self.meta.update(model_sig['meta'])
         self._fields = OrderedDict()

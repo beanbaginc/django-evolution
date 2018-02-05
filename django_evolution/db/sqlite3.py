@@ -105,6 +105,7 @@ class EvolutionOperations(BaseEvolutionOperations):
                 self.proxy = False
                 self.swapped = False
                 self.index_together = []
+                self.indexes = []
 
         class FakeModel(object):
             def __init__(self, table_name, field_list):

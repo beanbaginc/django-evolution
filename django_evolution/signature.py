@@ -79,6 +79,21 @@ def create_model_sig(model):
         'fields': {},
     }
 
+    if getattr(model._meta, 'indexes', None):
+        indexes_sig = []
+
+        for index in model._meta.original_attrs['indexes']:
+            index_sig = {
+                'fields': index.fields,
+            }
+
+            if index.name:
+                index_sig['name'] = index.name
+
+            indexes_sig.append(index_sig)
+
+        model_sig['meta']['indexes'] = indexes_sig
+
     for field in model._meta.local_fields + model._meta.local_many_to_many:
         # Special case - don't generate a signature for generic relations
         if not isinstance(field, GenericRelation):
@@ -200,6 +215,24 @@ def remove_index_from_database_sig(database_sig, model, index_name,
     assert unique == indexes[index_name]['unique']
 
     del indexes[index_name]
+
+
+def has_indexes_changed(old_model_sig, new_model_sig):
+    """Return whether indexes have changed between signatures.
+
+    Args:
+        old_model_sig (dict):
+            Old signature for the model.
+
+        new_model_sig (dict):
+            New signature for the model.
+
+    Returns:
+        bool:
+        ```True``` if there are any differences in indexes.
+    """
+    return (old_model_sig['meta'].get('indexes', []) !=
+            new_model_sig['meta'].get('indexes', []))
 
 
 def has_index_together_changed(old_model_sig, new_model_sig):

@@ -1398,7 +1398,7 @@ class ChangeMeta(BaseModelMutation):
         return [
             self.serialize_value(self.model_name),
             self.serialize_value(self.prop_name),
-            repr(norm_value),
+            self.serialize_value(norm_value),
         ]
 
     def simulate(self, simulation):
@@ -1419,7 +1419,7 @@ class ChangeMeta(BaseModelMutation):
         model_sig = simulation.get_model_sig(self.model_name)
         evolver = simulation.get_evolver()
 
-        if self.prop_name not in evolver.supported_change_meta:
+        if not evolver.supported_change_meta.get(self.prop_name):
             simulation.fail('The property cannot be modified on this '
                             'database.')
 

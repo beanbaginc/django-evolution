@@ -398,6 +398,7 @@ class AppMutator(object):
             noop_fields = set()
             model_names = set()
             unique_together = {}
+            model_meta_indexes = {}
             last_change_mutations = {}
             renames = {}
             model_renames = {}
@@ -573,6 +574,14 @@ class AppMutator(object):
                         # of the property.
                         unique_together[mutation.model_name] = \
                             mutation.new_value
+                    elif (mutation.prop_name == 'indexes' and
+                          mutation.model_name not in model_meta_indexes):
+                        # This is the most recent indexes change for this
+                        # model, which wins, since each ChangeMeta is
+                        # expected to contain the full resulting value of
+                        # the property.
+                        model_meta_indexes[mutation.model_name] = \
+                            mutation.new_value
 
                 if remove_mutation:
                     removed_mutations.add(mutation)
@@ -612,7 +621,8 @@ class AppMutator(object):
             #    case we're processing RenameModels for a model that was just
             #    introduced, so we don't attempt to rename a non-existing name
             #    to the current name.
-            if noop_fields or renames or model_renames or unique_together:
+            if (noop_fields or renames or model_renames or unique_together or
+                model_meta_indexes):
                 for mutation in mutations:
                     remove_mutation = False
 
@@ -788,6 +798,15 @@ class AppMutator(object):
                             # value from before. If not, we'll discard this
                             # mutation.
                             value = unique_together[mutation.model_name]
+
+                            if mutation.new_value != value:
+                                remove_mutation = True
+                        elif (mutation.prop_name == 'indexes' and
+                              mutation.model_name in model_meta_indexes):
+                            # This was a previously found indexes cange. We'll
+                            # check if the value matches the winning value from
+                            # before. If not, we'll discard this mutation.
+                            value = model_meta_indexes[mutation.model_name]
 
                             if mutation.new_value != value:
                                 remove_mutation = True

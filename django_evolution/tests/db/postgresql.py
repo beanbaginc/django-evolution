@@ -134,7 +134,7 @@ add_field = {
     ]),
 }
 
-if django.VERSION[:2] >= (1, 9):
+if django_version >= (1, 9):
     # Django 1.9+ no longer includes a UNIQUE keyword in the table creation,
     # instead creating these through constraints. It also brings back indexes.
     add_field.update({
@@ -259,7 +259,7 @@ if django.VERSION[:2] >= (1, 9):
                                   'to_testmodel_id'),
         ]),
     })
-elif django.VERSION[:2] == (1, 8):
+elif django_version == (1, 8):
     # Django 1.8+ no longer creates indexes for the ForeignKeys on the
     # ManyToMany table.
     add_field.update({
@@ -368,7 +368,7 @@ elif django.VERSION[:2] == (1, 8):
                                   'to_testmodel_id'),
         ]),
     })
-elif django.VERSION[:2] >= (1, 7):
+elif django_version >= (1, 7):
     # Django 1.7 introduced more condensed CREATE TABLE statements, and
     # indexes for fields on the model. (The indexes were removed for Postgres
     # in subsequent releases.)
@@ -685,26 +685,55 @@ change_field = {
         ' ALTER COLUMN "char_field" TYPE varchar(35)'
         ' USING CAST("char_field" as varchar(35));',
     ]),
-
-    "M2MDBTableChangeModel": '\n'.join([
-        'ALTER TABLE "change_field_non-default_m2m_table"'
-        ' DROP CONSTRAINT "%s";'
-        % generate_constraint_name('testmodel_id', 'my_id',
-                                   'change_field_non-default_m2m_table',
-                                   'tests_testmodel'),
-
-        'ALTER TABLE "change_field_non-default_m2m_table"'
-        ' RENAME TO "custom_m2m_db_table_name";',
-
-        'ALTER TABLE "custom_m2m_db_table_name"'
-        ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
-        ' REFERENCES "tests_testmodel" ("my_id")'
-        ' DEFERRABLE INITIALLY DEFERRED;'
-        % generate_constraint_name('testmodel_id', 'my_id',
-                                   'custom_m2m_db_table_name',
-                                   'tests_testmodel'),
-    ]),
 }
+
+if django_version >= (1, 11):
+    change_field.update({
+        'M2MDBTableChangeModel': '\n'.join([
+            'SET CONSTRAINTS "%(constraint)s" IMMEDIATE;'
+            ' ALTER TABLE "change_field_non-default_m2m_table"'
+            ' DROP CONSTRAINT "%(constraint)s";'
+            % {
+                'constraint': generate_constraint_name(
+                    'testmodel_id', 'my_id',
+                    'change_field_non-default_m2m_table',
+                    'tests_testmodel'),
+            },
+
+            'ALTER TABLE "change_field_non-default_m2m_table"'
+            ' RENAME TO "custom_m2m_db_table_name";',
+
+            'ALTER TABLE "custom_m2m_db_table_name"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("my_id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
+            % generate_constraint_name('testmodel_id', 'my_id',
+                                       'custom_m2m_db_table_name',
+                                       'tests_testmodel'),
+        ]),
+    })
+else:
+    change_field.update({
+        'M2MDBTableChangeModel': '\n'.join([
+            'ALTER TABLE "change_field_non-default_m2m_table"'
+            ' DROP CONSTRAINT "%s";'
+            % generate_constraint_name('testmodel_id', 'my_id',
+                                       'change_field_non-default_m2m_table',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE "change_field_non-default_m2m_table"'
+            ' RENAME TO "custom_m2m_db_table_name";',
+
+            'ALTER TABLE "custom_m2m_db_table_name"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("my_id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
+            % generate_constraint_name('testmodel_id', 'my_id',
+                                       'custom_m2m_db_table_name',
+                                       'tests_testmodel'),
+        ]),
+    })
+
 
 delete_model = {
     'BasicModel': (
@@ -788,92 +817,201 @@ rename_field = {
         'ALTER TABLE "custom_rename_table_name"'
         ' RENAME COLUMN "value" TO "renamed_field";'
     ),
-
-    'RenameNonDefaultManyToManyTableModel': '\n'.join([
-        'ALTER TABLE "non-default_db_table"'
-        ' DROP CONSTRAINT "%s";'
-        % generate_constraint_name('testmodel_id', 'id',
-                                   'non-default_db_table',
-                                   'tests_testmodel'),
-
-        'ALTER TABLE "non-default_db_table"'
-        ' RENAME TO "tests_testmodel_renamed_field";',
-
-        'ALTER TABLE "tests_testmodel_renamed_field"'
-        ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
-        ' REFERENCES "tests_testmodel" ("id")'
-        ' DEFERRABLE INITIALLY DEFERRED;'
-        % generate_constraint_name('testmodel_id', 'id',
-                                   'tests_testmodel_renamed_field',
-                                   'tests_testmodel'),
-    ]),
-
-    'RenamePrimaryKeyColumnModel': '\n'.join([
-        'ALTER TABLE "non-default_db_table"' ' DROP CONSTRAINT "%s";'
-        % generate_constraint_name('testmodel_id', 'id',
-                                   'non-default_db_table',
-                                   'tests_testmodel'),
-
-        'ALTER TABLE "tests_testmodel_m2m_field" DROP CONSTRAINT "%s";'
-        % generate_constraint_name('testmodel_id', 'id',
-                                   'tests_testmodel_m2m_field',
-                                   'tests_testmodel'),
-
-        'ALTER TABLE "tests_testmodel" RENAME COLUMN "id" TO "my_pk_id";',
-
-        'ALTER TABLE "non-default_db_table"'
-        ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
-        ' REFERENCES "tests_testmodel" ("my_pk_id")'
-        ' DEFERRABLE INITIALLY DEFERRED;'
-        % generate_constraint_name('testmodel_id', 'my_pk_id',
-                                   'non-default_db_table',
-                                   'tests_testmodel'),
-
-        'ALTER TABLE "tests_testmodel_m2m_field"'
-        ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
-        ' REFERENCES "tests_testmodel" ("my_pk_id")'
-        ' DEFERRABLE INITIALLY DEFERRED;'
-        % generate_constraint_name('testmodel_id', 'my_pk_id',
-                                   'tests_testmodel_m2m_field',
-                                   'tests_testmodel'),
-    ]),
-
-    'RenameManyToManyTableModel': '\n'.join([
-        'ALTER TABLE "tests_testmodel_m2m_field" DROP CONSTRAINT "%s";'
-        % generate_constraint_name('testmodel_id', 'id',
-                                   'tests_testmodel_m2m_field',
-                                   'tests_testmodel'),
-
-        'ALTER TABLE "tests_testmodel_m2m_field"'
-        ' RENAME TO "tests_testmodel_renamed_field";',
-
-        'ALTER TABLE "tests_testmodel_renamed_field"'
-        ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
-        ' REFERENCES "tests_testmodel" ("id")'
-        ' DEFERRABLE INITIALLY DEFERRED;'
-        % generate_constraint_name('testmodel_id', 'id',
-                                   'tests_testmodel_renamed_field',
-                                   'tests_testmodel'),
-    ]),
-
-    'RenameManyToManyTableWithColumnNameModel': '\n'.join([
-        'ALTER TABLE "tests_testmodel_m2m_field" DROP CONSTRAINT "%s";'
-        % generate_constraint_name('testmodel_id', 'id',
-                                   'tests_testmodel_m2m_field',
-                                   'tests_testmodel'),
-
-        'ALTER TABLE "tests_testmodel_m2m_field"'
-        ' RENAME TO "tests_testmodel_renamed_field";',
-
-        'ALTER TABLE "tests_testmodel_renamed_field"'
-        ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
-        ' REFERENCES "tests_testmodel" ("id")'
-        ' DEFERRABLE INITIALLY DEFERRED;'
-        % generate_constraint_name('testmodel_id', 'id',
-                                   'tests_testmodel_renamed_field',
-                                   'tests_testmodel'),
-    ]),
 }
+
+if django_version >= (1, 11):
+    rename_field.update({
+        'RenameNonDefaultManyToManyTableModel': '\n'.join([
+            'SET CONSTRAINTS "%(constraint)s" IMMEDIATE;'
+            ' ALTER TABLE "non-default_db_table"'
+            ' DROP CONSTRAINT "%(constraint)s";'
+            % {
+                'constraint': generate_constraint_name(
+                    'testmodel_id', 'id', 'non-default_db_table',
+                    'tests_testmodel'),
+            },
+
+            'ALTER TABLE "non-default_db_table"'
+            ' RENAME TO "tests_testmodel_renamed_field";',
+
+            'ALTER TABLE "tests_testmodel_renamed_field"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_renamed_field',
+                                       'tests_testmodel'),
+        ]),
+
+        'RenamePrimaryKeyColumnModel': '\n'.join([
+            'SET CONSTRAINTS "%(constraint)s" IMMEDIATE;'
+            ' ALTER TABLE "non-default_db_table"'
+            ' DROP CONSTRAINT "%(constraint)s";'
+            % {
+                'constraint': generate_constraint_name('testmodel_id', 'id',
+                                                       'non-default_db_table',
+                                                       'tests_testmodel'),
+            },
+
+            'SET CONSTRAINTS "%(constraint)s" IMMEDIATE;'
+            ' ALTER TABLE "tests_testmodel_m2m_field"'
+            ' DROP CONSTRAINT "%(constraint)s";'
+            % {
+                'constraint': generate_constraint_name(
+                    'testmodel_id', 'id', 'tests_testmodel_m2m_field',
+                    'tests_testmodel'),
+            },
+
+            'ALTER TABLE "tests_testmodel" RENAME COLUMN "id" TO "my_pk_id";',
+
+            'ALTER TABLE "non-default_db_table"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("my_pk_id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
+            % generate_constraint_name('testmodel_id', 'my_pk_id',
+                                       'non-default_db_table',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE "tests_testmodel_m2m_field"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("my_pk_id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
+            % generate_constraint_name('testmodel_id', 'my_pk_id',
+                                       'tests_testmodel_m2m_field',
+                                       'tests_testmodel'),
+        ]),
+
+        'RenameManyToManyTableModel': '\n'.join([
+            'SET CONSTRAINTS "%(constraint)s" IMMEDIATE;'
+            ' ALTER TABLE "tests_testmodel_m2m_field"'
+            ' DROP CONSTRAINT "%(constraint)s";'
+            % {
+                'constraint': generate_constraint_name(
+                    'testmodel_id', 'id', 'tests_testmodel_m2m_field',
+                    'tests_testmodel'),
+            },
+
+            'ALTER TABLE "tests_testmodel_m2m_field"'
+            ' RENAME TO "tests_testmodel_renamed_field";',
+
+            'ALTER TABLE "tests_testmodel_renamed_field"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_renamed_field',
+                                       'tests_testmodel'),
+        ]),
+
+        'RenameManyToManyTableWithColumnNameModel': '\n'.join([
+            'SET CONSTRAINTS "%(constraint)s" IMMEDIATE;'
+            ' ALTER TABLE "tests_testmodel_m2m_field"'
+            ' DROP CONSTRAINT "%(constraint)s";'
+            % {
+                'constraint': generate_constraint_name(
+                    'testmodel_id', 'id', 'tests_testmodel_m2m_field',
+                    'tests_testmodel'),
+            },
+
+            'ALTER TABLE "tests_testmodel_m2m_field"'
+            ' RENAME TO "tests_testmodel_renamed_field";',
+
+            'ALTER TABLE "tests_testmodel_renamed_field"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_renamed_field',
+                                       'tests_testmodel'),
+        ]),
+    })
+else:
+    rename_field.update({
+        'RenameNonDefaultManyToManyTableModel': '\n'.join([
+            'ALTER TABLE "non-default_db_table"'
+            ' DROP CONSTRAINT "%s";'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'non-default_db_table',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE "non-default_db_table"'
+            ' RENAME TO "tests_testmodel_renamed_field";',
+
+            'ALTER TABLE "tests_testmodel_renamed_field"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_renamed_field',
+                                       'tests_testmodel'),
+        ]),
+
+        'RenamePrimaryKeyColumnModel': '\n'.join([
+            'ALTER TABLE "non-default_db_table"' ' DROP CONSTRAINT "%s";'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'non-default_db_table',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE "tests_testmodel_m2m_field" DROP CONSTRAINT "%s";'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_m2m_field',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE "tests_testmodel" RENAME COLUMN "id" TO "my_pk_id";',
+
+            'ALTER TABLE "non-default_db_table"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("my_pk_id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
+            % generate_constraint_name('testmodel_id', 'my_pk_id',
+                                       'non-default_db_table',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE "tests_testmodel_m2m_field"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("my_pk_id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
+            % generate_constraint_name('testmodel_id', 'my_pk_id',
+                                       'tests_testmodel_m2m_field',
+                                       'tests_testmodel'),
+        ]),
+
+        'RenameManyToManyTableModel': '\n'.join([
+            'ALTER TABLE "tests_testmodel_m2m_field" DROP CONSTRAINT "%s";'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_m2m_field',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE "tests_testmodel_m2m_field"'
+            ' RENAME TO "tests_testmodel_renamed_field";',
+
+            'ALTER TABLE "tests_testmodel_renamed_field"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_renamed_field',
+                                       'tests_testmodel'),
+        ]),
+
+        'RenameManyToManyTableWithColumnNameModel': '\n'.join([
+            'ALTER TABLE "tests_testmodel_m2m_field" DROP CONSTRAINT "%s";'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_m2m_field',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE "tests_testmodel_m2m_field"'
+            ' RENAME TO "tests_testmodel_renamed_field";',
+
+            'ALTER TABLE "tests_testmodel_renamed_field"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
+            % generate_constraint_name('testmodel_id', 'id',
+                                       'tests_testmodel_renamed_field',
+                                       'tests_testmodel'),
+        ]),
+    })
 
 sql_mutation = {
     'AddFirstTwoFields': '\n'.join([
@@ -961,7 +1099,7 @@ unique_together = {
     ),
 }
 
-if django.VERSION[:2] >= (1, 9):
+if django_version >= (1, 9):
     # In Django >= 1.9, unique_together indexes are created specifically
     # after table creation, using Django's generated constraint names.
     unique_together.update({
@@ -1046,6 +1184,54 @@ index_together = {
         % generate_index_name('tests_testmodel',
                               ['char_field1', 'char_field2'],
                               index_together=True)
+    ),
+}
+
+indexes = {
+    'setting_from_empty': '\n'.join([
+        'CREATE INDEX "%s"'
+        ' ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel',
+                              ['int_field1'],
+                              model_meta_indexes=True),
+
+        'CREATE INDEX "my_custom_index"'
+        ' ON "tests_testmodel" ("char_field1", "char_field2" DESC);',
+    ]),
+
+    'replace_list': '\n'.join([
+        'DROP INDEX "%s";'
+        % generate_index_name('tests_testmodel', ['int_field1'],
+                              model_meta_indexes=True),
+
+        'DROP INDEX "my_custom_index";',
+
+        'CREATE INDEX "%s"'
+        ' ON "tests_testmodel" ("int_field2");'
+        % generate_index_name('tests_testmodel', ['int_field2'],
+                              model_meta_indexes=True),
+    ]),
+
+    'append_list': '\n'.join([
+        'CREATE INDEX "%s"'
+        ' ON "tests_testmodel" ("int_field2");'
+        % generate_index_name('tests_testmodel', ['int_field2'],
+                              model_meta_indexes=True),
+    ]),
+
+    'removing': '\n'.join([
+        'DROP INDEX "%s";'
+        % generate_index_name('tests_testmodel', ['int_field1'],
+                              model_meta_indexes=True),
+
+        'DROP INDEX "my_custom_index";',
+    ]),
+
+    'ignore_missing_indexes': (
+        'CREATE INDEX "%s"'
+        ' ON "tests_testmodel" ("int_field2");'
+        % generate_index_name('tests_testmodel', ['int_field2'],
+                              model_meta_indexes=True)
     ),
 }
 

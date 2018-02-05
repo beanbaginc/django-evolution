@@ -5,6 +5,7 @@ from django_evolution.errors import EvolutionException
 from django_evolution.mutations import (DeleteField, AddField, DeleteModel,
                                         ChangeField, ChangeMeta)
 from django_evolution.signature import (ATTRIBUTE_DEFAULTS,
+                                        has_indexes_changed,
                                         has_index_together_changed,
                                         has_unique_together_changed)
 
@@ -59,6 +60,7 @@ class Diff(object):
                         field: [ list of modified property names ]
                     },
                     'meta_changed': {
+                        'indexes': new value
                         'index_together': new value
                         'unique_together': new value
                     }
@@ -163,19 +165,26 @@ class Diff(object):
                             model_name, 'added')
                         items.append(field_name)
 
-                # Look for changes to unique_together
+                # Look for changes to unique_together.
                 if has_unique_together_changed(old_model_sig, new_model_sig):
                     items = self.chain_set_default(
                         self.changed, app_name, 'changed', model_name,
                         'meta_changed')
                     items.append('unique_together')
 
-                # Look for changes to index_together
+                # Look for changes to index_together.
                 if has_index_together_changed(old_model_sig, new_model_sig):
                     items = self.chain_set_default(
                         self.changed, app_name, 'changed', model_name,
                         'meta_changed')
                     items.append('index_together')
+
+                # Look for changes to indexes.
+                if has_indexes_changed(old_model_sig, new_model_sig):
+                    items = self.chain_set_default(
+                        self.changed, app_name, 'changed', model_name,
+                        'meta_changed')
+                    items.append('indexes')
 
     def is_empty(self, ignore_apps=True):
         """Is this an empty diff? i.e., is the source and target the same?
@@ -301,6 +310,12 @@ class Diff(object):
                             ChangeMeta(model_name,
                                        prop_name,
                                        model_sig['meta'][prop_name]))
+
+                if 'indexes' in meta_changed:
+                    mutations.setdefault(app_label, []).append(ChangeMeta(
+                        model_name,
+                        'indexes',
+                        model_sig['meta'].get('indexes', [])))
 
             for model_name in app_changes.get('deleted', {}):
                 mutations.setdefault(app_label, []).append(

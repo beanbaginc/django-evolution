@@ -144,6 +144,21 @@ def register_models(database_sig, models, register_indexes=False,
                 add_index_to_database_sig(evolver, database_sig, model, fields,
                                           index_name=new_index_name)
 
+            if getattr(meta, 'indexes', None):
+                # Django >= 1.11
+                for index, orig_index in zip(meta.indexes,
+                                             meta.original_attrs['indexes']):
+                    if not orig_index.name:
+                        # The name was auto-generated. We'll need to generate
+                        # it again for the new table name.
+                        index.set_name_with_model(model)
+
+                    fields = evolver.get_fields_for_names(
+                        model, index.fields, allow_sort_prefixes=True)
+                    add_index_to_database_sig(evolver, database_sig,
+                                              model, fields,
+                                              index_name=index.name)
+
         # ManyToManyFields have their own tables, which will also need to be
         # renamed. Go through each of them and figure out what changes need
         # to be made.
@@ -352,7 +367,7 @@ def get_sql_mappings(mapping_key, db_name):
 
 
 def generate_index_name(connection, table, col_names, field_names=None,
-                        index_together=False):
+                        index_together=False, model_meta_indexes=False):
     """Generate a suitable index name to test against.
 
     The returned index name is meant for use in the test data modules, and
@@ -386,6 +401,10 @@ def generate_index_name(connection, table, col_names, field_names=None,
 
             Defaults to ``False``.
 
+        model_meta_indexes (bool, optional):
+            The index comes from a
+            :py:class:`django.db.models.Options.indexes` entry.
+
     Returns:
         unicode:
         The resulting index name for the given criteria.
@@ -408,7 +427,31 @@ def generate_index_name(connection, table, col_names, field_names=None,
     # right versions of Django, rather than asking Django for them.
     #
     # The order here matters.
-    if django_version >= (1, 7):
+    if django_version >= (1, 11):
+        # Django 1.11+ changed the index format again, this time to include
+        # all relevant column names in the plain text part of the index
+        # (instead of just in the hash). Like with 1.7 through 1.10, the
+        # index_together entries have a "_idx" suffix. However, there's
+        # otherwise no difference in format between those and single-column
+        # indexes.
+        #
+        # It's also worth noting that with the introduction of
+        # Model._meta.indexes, there's *another* new index format. It's
+        # similar, but different enough, and needs to be handled specially.
+        if model_meta_indexes:
+            name = '%s_%s' % (
+                col_names[0][:7],
+                digest(connection, *([table] + col_names + ['idx']))[:6],
+            )
+            table = table[:11]
+        else:
+            index_unique_name = _generate_index_unique_name_hash(
+                connection, table, col_names)
+            name = '%s_%s' % ('_'.join(col_names), index_unique_name)
+
+        if model_meta_indexes or index_together:
+            name = '%s_idx' % name
+    elif django_version >= (1, 7):
         if len(col_names) == 1:
             assert not index_together
 
@@ -421,7 +464,7 @@ def generate_index_name(connection, table, col_names, field_names=None,
 
             index_unique_name = _generate_index_unique_name_hash(
                 connection, table, col_names)
-            name = '%s%s_idx' % (col_names[0], index_unique_name)
+            name = '%s_%s_idx' % (col_names[0], index_unique_name)
     elif connection.vendor == 'postgresql' and not index_together:
         # Postgres computes the index names separately from the rest of
         # the engines. It just uses '<tablename>_<colname>", same as
@@ -523,7 +566,29 @@ def generate_constraint_name(connection, r_col, col, r_table, table):
         unicode:
         The expected name for a constraint.
     """
-    if django.VERSION[:2] >= (1, 7):
+    django_version = django.VERSION[:2]
+
+    if django_version >= (1, 11):
+        # Django 1.11 changed how index names are generated and then
+        # shortened, choosing to shorten more preemptively. This does impact
+        # the tests, so we need to be sure to get the logic right.
+        max_length = connection.ops.max_name_length() or 200
+        index_unique_name = _generate_index_unique_name_hash(
+            connection, r_table, [r_col])
+        suffix = '%s_fk_%s_%s' % (index_unique_name, table, col)
+        full_name = '%s_%s_%s' % (r_table, r_col, suffix)
+
+        if len(full_name) > max_length:
+            if len(suffix) > (max_length // 3):
+                suffix = suffix[:max_length // 3]
+
+            part_lengths = (max_length - len(suffix)) // 2 - 1
+            full_name = '%s_%s_%s' % (r_table[:part_lengths],
+                                      r_col[:part_lengths],
+                                      suffix)
+
+        return full_name
+    elif django_version >= (1, 7):
         # This is an approximation of what Django 1.7+ uses for constraint
         # naming. It's actually the same as index naming, but for test
         # purposes, we want to keep this distinct from the index naming above.
@@ -534,7 +599,7 @@ def generate_constraint_name(connection, r_col, col, r_table, table):
         index_unique_name = _generate_index_unique_name_hash(
             connection, r_table, [r_col])
 
-        name = '_%s%s_fk_%s_%s' % (r_col, index_unique_name, table, col)
+        name = '_%s_%s_fk_%s_%s' % (r_col, index_unique_name, table, col)
         full_name = '%s%s' % (r_table, name)
 
         if len(full_name) > max_length:
@@ -585,11 +650,41 @@ def generate_unique_constraint_name(connection, table, col_names):
         unicode:
         The expected constraint name for this version of Django.
     """
-    if django.VERSION[:2] >= (1, 7):
+    django_version = django.VERSION[:2]
+
+    if django_version >= (1, 11):
+        # Django 1.11 changed how index names are generated and then
+        # shortened, choosing to shorten more preemptively. This does impact
+        # the tests, so we need to be sure to get the logic right.
         max_length = connection.ops.max_name_length() or 200
         index_unique_name = _generate_index_unique_name_hash(
             connection, table, col_names)
-        name = '_%s%s_uniq' % (col_names[0], index_unique_name)
+
+        suffix = '%s_uniq' % index_unique_name
+        col_names_part = '_'.join(col_names)
+        full_name = '%s_%s_%s' % (table, col_names_part, suffix)
+
+        if len(full_name) > max_length:
+            if len(suffix) > (max_length // 3):
+                suffix = suffix[:max_length // 3]
+
+            part_lengths = (max_length - len(suffix)) // 2 - 1
+            full_name = '%s_%s_%s' % (table[:part_lengths],
+                                      col_names_part[:part_lengths],
+                                      suffix)
+
+        return full_name
+    elif django_version >= (1, 7):
+        # Django versions >= 1.7 all use roughly the same format for unique
+        # constraint index names, but starting in Django 1.11, the format
+        # changed slightly. In 1.7 through 1.10, the name contained only the
+        # first column (if specifying more than one), but in 1.11, that
+        # changed to contain all column names (for unique_together).
+        max_length = connection.ops.max_name_length() or 200
+        index_unique_name = _generate_index_unique_name_hash(
+            connection, table, col_names)
+
+        name = '_%s_%s_uniq' % (col_names[0], index_unique_name)
         full_name = '%s%s' % (table, name)
 
         if len(full_name) > max_length:
@@ -646,7 +741,7 @@ def _generate_index_unique_name_hash(connection, table, col_names):
         #
         # Django 1.9 introduced a new format for the unique index hashes,
         # switching back to using digest() instead of hash().
-        return '_%s' % digest(connection, table, *col_names)
+        return digest(connection, table, *col_names)
     else:
         # Django >= 1.7, < 1.9
-        return '_%x' % abs(hash((table, ','.join(col_names))))
+        return '%x' % abs(hash((table, ','.join(col_names))))
