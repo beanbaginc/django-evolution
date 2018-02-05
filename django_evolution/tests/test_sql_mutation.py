@@ -88,6 +88,6 @@ class OrderingTests(EvolutionTestCase):
             ],
             ("In model tests.TestModel:\n"
              "    Field 'added_field1' has been added\n"
-             "    Field 'added_field3' has been added\n"
-             "    Field 'added_field2' has been added"),
+             "    Field 'added_field2' has been added\n"
+             "    Field 'added_field3' has been added"),
             sql_name='SQLMutationOutput')

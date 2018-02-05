@@ -692,32 +692,32 @@ rename_field = {
     ),
 
     'RenamePrimaryKeyColumnModel': '\n'.join([
-        'ALTER TABLE `non-default_db_table` DROP FOREIGN KEY `%s`;'
-        % generate_constraint_name('testmodel_id', 'id',
-                                   'non-default_db_table',
-                                   'tests_testmodel'),
-
         'ALTER TABLE `tests_testmodel_m2m_field` DROP FOREIGN KEY `%s`;'
         % generate_constraint_name('testmodel_id', 'id',
                                    'tests_testmodel_m2m_field',
+                                   'tests_testmodel'),
+
+        'ALTER TABLE `non-default_db_table` DROP FOREIGN KEY `%s`;'
+        % generate_constraint_name('testmodel_id', 'id',
+                                   'non-default_db_table',
                                    'tests_testmodel'),
 
         'ALTER TABLE `tests_testmodel`'
         ' DROP PRIMARY KEY, CHANGE COLUMN `id` `my_pk_id`'
         ' integer AUTO_INCREMENT NOT NULL PRIMARY KEY UNIQUE;',
 
-        'ALTER TABLE `non-default_db_table`'
-        ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
-        ' REFERENCES `tests_testmodel` (`my_pk_id`);'
-        % generate_constraint_name('testmodel_id', 'my_pk_id',
-                                   'non-default_db_table',
-                                   'tests_testmodel'),
-
         'ALTER TABLE `tests_testmodel_m2m_field`'
         ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
         ' REFERENCES `tests_testmodel` (`my_pk_id`);'
         % generate_constraint_name('testmodel_id', 'my_pk_id',
                                    'tests_testmodel_m2m_field',
+                                   'tests_testmodel'),
+
+        'ALTER TABLE `non-default_db_table`'
+        ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
+        ' REFERENCES `tests_testmodel` (`my_pk_id`);'
+        % generate_constraint_name('testmodel_id', 'my_pk_id',
+                                   'non-default_db_table',
                                    'tests_testmodel'),
     ]),
 

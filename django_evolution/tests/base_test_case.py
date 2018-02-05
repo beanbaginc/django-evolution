@@ -189,7 +189,8 @@ class EvolutionTestCase(TransactionTestCase):
             # differences.
 
             print
-            print "** Comparing SQL against '%s'" % sql_name
+            print "** Comparing SQL against '%s.%s'" % (self.sql_mapping_key,
+                                                        sql_name)
             print '** Generated:'
             print
 

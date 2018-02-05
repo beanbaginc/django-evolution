@@ -380,7 +380,7 @@ class ChangeFieldTests(EvolutionTestCase):
              "        Property 'db_column' has changed"),
             [
                 "ChangeField('TestModel', 'int_field',"
-                " initial=None, db_column='customised_db_column')",
+                " db_column='customised_db_column', initial=None)",
             ],
             'DBColumnChangeModel')
 
@@ -411,7 +411,7 @@ class ChangeFieldTests(EvolutionTestCase):
              "        Property 'db_table' has changed"),
             [
                 "ChangeField('TestModel', 'm2m_field1',"
-                " initial=None, db_table='custom_m2m_db_table_name')",
+                " db_table='custom_m2m_db_table_name', initial=None)",
             ],
             'M2MDBTableChangeModel')
 
@@ -444,8 +444,8 @@ class ChangeFieldTests(EvolutionTestCase):
              "    In field 'int_field2':\n"
              "        Property 'db_index' has changed"),
             [
-                "ChangeField('TestModel', 'int_field2', initial=None,"
-                " db_index=True)",
+                "ChangeField('TestModel', 'int_field2', db_index=True,"
+                " initial=None)",
             ],
             'AddDBIndexChangeModel')
 
@@ -495,8 +495,8 @@ class ChangeFieldTests(EvolutionTestCase):
              "    In field 'int_field2':\n"
              "        Property 'db_index' has changed"),
             [
-                "ChangeField('TestModel', 'int_field2', initial=None,"
-                " db_index=True)",
+                "ChangeField('TestModel', 'int_field2', db_index=True,"
+                " initial=None)",
             ],
             'AddDBIndexNoOpChangeModel',
             rescan_indexes=False)
@@ -533,8 +533,8 @@ class ChangeFieldTests(EvolutionTestCase):
              "    In field 'int_field1':\n"
              "        Property 'db_index' has changed"),
             [
-                "ChangeField('TestModel', 'int_field1', initial=None,"
-                " db_index=False)",
+                "ChangeField('TestModel', 'int_field1', db_index=False,"
+                " initial=None)",
             ],
             'RemoveDBIndexChangeModel')
 
@@ -574,8 +574,8 @@ class ChangeFieldTests(EvolutionTestCase):
              "    In field 'int_field1':\n"
              "        Property 'db_index' has changed"),
             [
-                "ChangeField('TestModel', 'int_field1', initial=None,"
-                " db_index=False)",
+                "ChangeField('TestModel', 'int_field1', db_index=False,"
+                " initial=None)",
             ],
             'RemoveDBIndexNoOpChangeModel',
             rescan_indexes=False)
@@ -688,21 +688,21 @@ class ChangeFieldTests(EvolutionTestCase):
                             max_length=35),
             ],
             ("In model tests.TestModel:\n"
-             "    In field 'char_field2':\n"
-             "        Property 'null' has changed\n"
              "    In field 'int_field':\n"
              "        Property 'db_column' has changed\n"
              "    In field 'char_field':\n"
-             "        Property 'max_length' has changed"),
+             "        Property 'max_length' has changed\n"
+             "    In field 'char_field2':\n"
+             "        Property 'null' has changed"),
             [
-                "ChangeField('TestModel', 'char_field2', initial=None,"
-                " null=True)",
-
-                "ChangeField('TestModel', 'int_field', initial=None,"
-                " db_column='custom_db_column2')",
+                "ChangeField('TestModel', 'int_field',"
+                " db_column='custom_db_column2', initial=None)",
 
                 "ChangeField('TestModel', 'char_field', initial=None,"
                 " max_length=35)",
+
+                "ChangeField('TestModel', 'char_field2', initial=None,"
+                " null=True)",
             ],
             'MultiAttrChangeModel')
 
@@ -766,21 +766,21 @@ class ChangeFieldTests(EvolutionTestCase):
                             max_length=35),
             ],
             ("In model tests.TestModel:\n"
-             "    In field 'char_field2':\n"
-             "        Property 'null' has changed\n"
              "    In field 'int_field':\n"
              "        Property 'db_column' has changed\n"
              "    In field 'char_field':\n"
-             "        Property 'max_length' has changed"),
+             "        Property 'max_length' has changed\n"
+             "    In field 'char_field2':\n"
+             "        Property 'null' has changed"),
             [
-                "ChangeField('TestModel', 'char_field2', initial=None,"
-                " null=True)",
-
-                "ChangeField('TestModel', 'int_field', initial=None,"
-                " db_column='custom_db_column3')",
+                "ChangeField('TestModel', 'int_field',"
+                " db_column='custom_db_column3', initial=None)",
 
                 "ChangeField('TestModel', 'char_field', initial=None,"
                 " max_length=35)",
+
+                "ChangeField('TestModel', 'char_field2', initial=None,"
+                " null=True)",
             ],
             'RedundantAttrsChangeModel')
 
@@ -885,16 +885,17 @@ class ChangeFieldTests(EvolutionTestCase):
 
         d = self.perform_diff_test(
             end_sig,
-            ("In model tests.TestModel:\n"
-             "    Field 'test_field' has been added\n"
-             "In model tests.OtherModel:\n"
+            ("In model tests.OtherModel:\n"
              "    In field 'test_field':\n"
-             "        Property 'null' has changed"),
+             "        Property 'null' has changed\n"
+             "In model tests.TestModel:\n"
+             "    Field 'test_field' has been added"),
             [
-                "AddField('TestModel', 'test_field', models.CharField,"
-                " initial=<<USER VALUE REQUIRED>>, max_length=32)",
                 "ChangeField('OtherModel', 'test_field',"
                 " initial=<<USER VALUE REQUIRED>>, null=False)",
+
+                "AddField('TestModel', 'test_field', models.CharField,"
+                " initial=<<USER VALUE REQUIRED>>, max_length=32)",
             ])
 
         test_sig = self.copy_sig(self.start_sig)
@@ -906,8 +907,8 @@ class ChangeFieldTests(EvolutionTestCase):
 
         self.assertEqual(
             str(d),
-            ("In model tests.TestModel:\n"
-             "    Field 'test_field' has been added\n"
-             "In model tests.OtherModel:\n"
+            ("In model tests.OtherModel:\n"
              "    In field 'test_field':\n"
-             "        Property 'null' has changed"))
+             "        Property 'null' has changed\n"
+             "In model tests.TestModel:\n"
+             "    Field 'test_field' has been added"))

@@ -274,7 +274,7 @@ class PreprocessingTests(EvolutionTestCase):
              "    Field 'renamed_field' has been added"),
             [
                 "AddField('TestModel', 'renamed_field', models.CharField,"
-                " max_length=50, null=True, db_column='added_field')",
+                " db_column='added_field', max_length=50, null=True)",
             ],
             'add_rename_field_with_db_column')
 

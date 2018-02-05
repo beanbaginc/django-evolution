@@ -10,6 +10,7 @@ from django.db.utils import DEFAULT_DB_ALIAS
 from django.utils import six
 from django.utils.functional import curry
 
+from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.db.sql_result import SQLResult
 from django_evolution.errors import (CannotSimulate, SimulationFailure,
@@ -723,20 +724,18 @@ class AddField(BaseModelFieldMutation):
             field_prefix = ''
 
         params = [
-            self.serialize_value(self.model_name),
-            self.serialize_value(self.field_name),
-            field_prefix + self.field_type.__name__,
+            self.serialize_attr(key, value)
+            for key, value in six.iteritems(self.field_attrs)
         ]
 
         if self.initial is not None:
             params.append(self.serialize_attr('initial', self.initial))
 
-        params += [
-            self.serialize_attr(key, value)
-            for key, value in six.iteritems(self.field_attrs)
-        ]
-
-        return params
+        return [
+            self.serialize_value(self.model_name),
+            self.serialize_value(self.field_name),
+            field_prefix + self.field_type.__name__,
+        ] + sorted(params)
 
     def simulate(self, simulation):
         """Simulate the mutation.
@@ -1028,14 +1027,17 @@ class ChangeField(BaseModelFieldMutation):
             A list of parameter strings to pass to the mutation's constructor
             in a hinted evolution.
         """
+        params = [
+            self.serialize_attr(attr_name, attr_value)
+            for attr_name, attr_value in six.iteritems(self.field_attrs)
+        ] + [
+            self.serialize_attr('initial', self.initial),
+        ]
+
         return [
             self.serialize_value(self.model_name),
             self.serialize_value(self.field_name),
-            self.serialize_attr('initial', self.initial),
-        ] + [
-            self.serialize_attr(attr_name, attr_value)
-            for attr_name, attr_value in six.iteritems(self.field_attrs)
-        ]
+        ] + sorted(params)
 
     def simulate(self, simulation):
         """Simulate the mutation.
@@ -1407,6 +1409,12 @@ class ChangeMeta(BaseModelMutation):
             # Make sure these always appear as lists and not tuples, for
             # compatibility.
             norm_value = list(self.new_value)
+        elif self.prop_name == 'indexes':
+            norm_value = [
+                OrderedDict(sorted(six.iteritems(index_data),
+                                   key=lambda pair: pair[0]))
+                for index_data in self.new_value
+            ]
         else:
             norm_value = self.new_value
 

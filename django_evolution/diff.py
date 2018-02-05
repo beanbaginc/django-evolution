@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 from django.db import models
 from django.utils import six
 
+from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.models import get_model
 from django_evolution.errors import EvolutionException
 from django_evolution.mutations import (DeleteField, AddField, DeleteModel,
@@ -144,8 +145,8 @@ class Diff(object):
         self.original_sig = original_sig
         self.current_sig = current_sig
 
-        self.changed = {}
-        self.deleted = {}
+        self.changed = OrderedDict()
+        self.deleted = OrderedDict()
 
         orig_version = self.original_sig.get('__version__')
         cur_version = current_sig.get('__version__')
@@ -173,7 +174,7 @@ class Diff(object):
                 continue
 
             deleted_models = []
-            changed_models = {}
+            changed_models = OrderedDict()
 
             # Process the models in the application, looking for changes to
             # fields and meta attributes.
@@ -190,7 +191,7 @@ class Diff(object):
 
                 # Go through all the fields, looking for changed and deleted
                 # fields.
-                changed_fields = {}
+                changed_fields = OrderedDict()
                 deleted_fields = []
 
                 for field_name, old_field_data in six.iteritems(old_fields):
@@ -227,7 +228,8 @@ class Diff(object):
                     if changed_field_attrs:
                         # There were attribute changes. Store those with the
                         # field.
-                        changed_fields[field_name] = changed_field_attrs
+                        changed_fields[field_name] = \
+                            sorted(changed_field_attrs)
 
                 # Go through the list of of added fields and add any that
                 # don't exist in the original field list.
@@ -250,7 +252,7 @@ class Diff(object):
                     meta_changed.append('indexes')
 
                 # Build the dictionary of changes for the model.
-                model_changes = dict(
+                model_changes = OrderedDict(
                     (key, value)
                     for key, value in (('added', added_fields),
                                        ('changed', changed_fields),
@@ -265,7 +267,7 @@ class Diff(object):
                     changed_models[model_name] = model_changes
 
             # Build the dictionary of changes for the app.
-            app_changes = dict(
+            app_changes = OrderedDict(
                 (key, value)
                 for key, value in (('changed', changed_models),
                                    ('deleted', deleted_models))
@@ -362,7 +364,7 @@ class Diff(object):
         attr_default_keys = set(six.iterkeys(ATTRIBUTE_DEFAULTS))
         null_default = ATTRIBUTE_DEFAULTS['null']
 
-        mutations = {}
+        mutations = OrderedDict()
 
         for app_label, app_changes in six.iteritems(self.changed):
             app_sig = self.current_sig[app_label]
@@ -411,7 +413,7 @@ class Diff(object):
 
                 for field_name, field_change in six.iteritems(field_changes):
                     field_sig = model_sig['fields'][field_name]
-                    changed_attrs = {}
+                    changed_attrs = OrderedDict()
 
                     for attr in field_change:
                         if attr == 'related_model':

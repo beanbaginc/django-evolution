@@ -514,7 +514,10 @@ class BaseEvolutionOperations(object):
         field = model._meta.get_field(field_name)
         attrs_sql_result = AlterTableSQLResult(self, model)
 
-        for attr_name, attr_info in six.iteritems(new_attrs):
+        new_attrs = sorted(six.iteritems(new_attrs),
+                           key=lambda pair: pair[0])
+
+        for attr_name, attr_info in new_attrs:
             method_name = 'change_column_attr_%s' % attr_name
             evolve_func = getattr(self, method_name)
 

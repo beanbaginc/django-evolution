@@ -283,8 +283,8 @@ class RenameFieldTests(EvolutionTestCase):
              "    Field 'int_field_named' has been deleted"),
             [
                 "AddField('TestModel', 'renamed_field', models.IntegerField,"
-                " initial=<<USER VALUE REQUIRED>>,"
-                " db_column='non-default_column_name')",
+                " db_column='non-default_column_name',"
+                " initial=<<USER VALUE REQUIRED>>)",
 
                 "DeleteField('TestModel', 'int_field_named')",
             ],
@@ -318,8 +318,8 @@ class RenameFieldTests(EvolutionTestCase):
              "    Field 'int_field_named' has been deleted"),
             [
                 "AddField('TestModel', 'renamed_field', models.IntegerField,"
-                " initial=<<USER VALUE REQUIRED>>,"
-                " db_column='non-default_column_name2')",
+                " db_column='non-default_column_name2',"
+                " initial=<<USER VALUE REQUIRED>>)",
 
                 "DeleteField('TestModel', 'int_field_named')",
             ],

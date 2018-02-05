@@ -41,9 +41,8 @@ ATTRIBUTE_ALIASES = {
 
 
 def create_field_sig(field):
-    field_sig = {
-        'field_type': field.__class__,
-    }
+    field_sig = OrderedDict()
+    field_sig['field_type'] = field.__class__
 
     for attrib in six.iterkeys(ATTRIBUTE_DEFAULTS):
         alias = ATTRIBUTE_ALIASES.get(attrib, attrib)
@@ -70,6 +69,8 @@ def create_field_sig(field):
 
 
 def create_model_sig(model):
+    fields = OrderedDict()
+
     model_sig = {
         'meta': {
             'unique_together': model._meta.unique_together,
@@ -79,7 +80,7 @@ def create_model_sig(model):
             'pk_column': str(model._meta.pk.column),
             '__unique_together_applied': True,
         },
-        'fields': {},
+        'fields': fields,
     }
 
     if getattr(model._meta, 'indexes', None):
@@ -100,7 +101,7 @@ def create_model_sig(model):
     for field in model._meta.local_fields + model._meta.local_many_to_many:
         # Special case - don't generate a signature for generic relations
         if not isinstance(field, GenericRelation):
-            model_sig['fields'][str(field.name)] = create_field_sig(field)
+            fields[str(field.name)] = create_field_sig(field)
 
     return model_sig
 

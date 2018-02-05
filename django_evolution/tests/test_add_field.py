@@ -373,7 +373,7 @@ class AddFieldTests(EvolutionTestCase):
             self.DIFF_TEXT,
             [
                 "AddField('TestModel', 'added_field', models.IntegerField,"
-                " null=True, db_column='non-default_column')",
+                " db_column='non-default_column', null=True)",
             ],
             'NonDefaultColumnModel')
 
@@ -455,7 +455,7 @@ class AddFieldTests(EvolutionTestCase):
              "    Field 'add_field' has been added"),
             [
                 "AddField('TestModel', 'add_field', models.IntegerField,"
-                " null=True, db_index=True)",
+                " db_index=True, null=True)",
             ],
             'AddIndexedColumnModel')
 
@@ -482,7 +482,7 @@ class AddFieldTests(EvolutionTestCase):
              "    Field 'added_field' has been added"),
             [
                 "AddField('TestModel', 'added_field', models.IntegerField,"
-                " unique=True, null=True)",
+                " null=True, unique=True)",
             ],
             'AddUniqueColumnModel')
 
@@ -511,7 +511,7 @@ class AddFieldTests(EvolutionTestCase):
              "    Field 'added_field' has been added"),
             [
                 "AddField('TestModel', 'added_field', models.IntegerField,"
-                " unique=True, null=True, db_index=True)",
+                " db_index=True, null=True, unique=True)",
             ],
             'AddUniqueIndexedModel')
 

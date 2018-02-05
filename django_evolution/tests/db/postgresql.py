@@ -847,15 +847,6 @@ if django_version >= (1, 11):
 
         'RenamePrimaryKeyColumnModel': '\n'.join([
             'SET CONSTRAINTS "%(constraint)s" IMMEDIATE;'
-            ' ALTER TABLE "non-default_db_table"'
-            ' DROP CONSTRAINT "%(constraint)s";'
-            % {
-                'constraint': generate_constraint_name('testmodel_id', 'id',
-                                                       'non-default_db_table',
-                                                       'tests_testmodel'),
-            },
-
-            'SET CONSTRAINTS "%(constraint)s" IMMEDIATE;'
             ' ALTER TABLE "tests_testmodel_m2m_field"'
             ' DROP CONSTRAINT "%(constraint)s";'
             % {
@@ -864,15 +855,16 @@ if django_version >= (1, 11):
                     'tests_testmodel'),
             },
 
-            'ALTER TABLE "tests_testmodel" RENAME COLUMN "id" TO "my_pk_id";',
+            'SET CONSTRAINTS "%(constraint)s" IMMEDIATE;'
+            ' ALTER TABLE "non-default_db_table"'
+            ' DROP CONSTRAINT "%(constraint)s";'
+            % {
+                'constraint': generate_constraint_name('testmodel_id', 'id',
+                                                       'non-default_db_table',
+                                                       'tests_testmodel'),
+            },
 
-            'ALTER TABLE "non-default_db_table"'
-            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
-            ' REFERENCES "tests_testmodel" ("my_pk_id")'
-            ' DEFERRABLE INITIALLY DEFERRED;'
-            % generate_constraint_name('testmodel_id', 'my_pk_id',
-                                       'non-default_db_table',
-                                       'tests_testmodel'),
+            'ALTER TABLE "tests_testmodel" RENAME COLUMN "id" TO "my_pk_id";',
 
             'ALTER TABLE "tests_testmodel_m2m_field"'
             ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
@@ -880,6 +872,14 @@ if django_version >= (1, 11):
             ' DEFERRABLE INITIALLY DEFERRED;'
             % generate_constraint_name('testmodel_id', 'my_pk_id',
                                        'tests_testmodel_m2m_field',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE "non-default_db_table"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("my_pk_id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
+            % generate_constraint_name('testmodel_id', 'my_pk_id',
+                                       'non-default_db_table',
                                        'tests_testmodel'),
         ]),
 
@@ -949,25 +949,17 @@ else:
         ]),
 
         'RenamePrimaryKeyColumnModel': '\n'.join([
-            'ALTER TABLE "non-default_db_table"' ' DROP CONSTRAINT "%s";'
-            % generate_constraint_name('testmodel_id', 'id',
-                                       'non-default_db_table',
-                                       'tests_testmodel'),
-
             'ALTER TABLE "tests_testmodel_m2m_field" DROP CONSTRAINT "%s";'
             % generate_constraint_name('testmodel_id', 'id',
                                        'tests_testmodel_m2m_field',
                                        'tests_testmodel'),
 
-            'ALTER TABLE "tests_testmodel" RENAME COLUMN "id" TO "my_pk_id";',
-
-            'ALTER TABLE "non-default_db_table"'
-            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
-            ' REFERENCES "tests_testmodel" ("my_pk_id")'
-            ' DEFERRABLE INITIALLY DEFERRED;'
-            % generate_constraint_name('testmodel_id', 'my_pk_id',
+            'ALTER TABLE "non-default_db_table"' ' DROP CONSTRAINT "%s";'
+            % generate_constraint_name('testmodel_id', 'id',
                                        'non-default_db_table',
                                        'tests_testmodel'),
+
+            'ALTER TABLE "tests_testmodel" RENAME COLUMN "id" TO "my_pk_id";',
 
             'ALTER TABLE "tests_testmodel_m2m_field"'
             ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
@@ -975,6 +967,14 @@ else:
             ' DEFERRABLE INITIALLY DEFERRED;'
             % generate_constraint_name('testmodel_id', 'my_pk_id',
                                        'tests_testmodel_m2m_field',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE "non-default_db_table"'
+            ' ADD CONSTRAINT "%s" FOREIGN KEY ("testmodel_id")'
+            ' REFERENCES "tests_testmodel" ("my_pk_id")'
+            ' DEFERRABLE INITIALLY DEFERRED;'
+            % generate_constraint_name('testmodel_id', 'my_pk_id',
+                                       'non-default_db_table',
                                        'tests_testmodel'),
         ]),
 
