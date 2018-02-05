@@ -1,3 +1,6 @@
+from __future__ import unicode_literals
+
+
 class EvolutionException(Exception):
     """Base class for a Django Evolution exception."""
     def __init__(self, msg):

@@ -4,6 +4,8 @@ This provides functions for working with models or importing moved fields.
 These translate to the various versions of Django that are supported.
 """
 
+from __future__ import unicode_literals
+
 try:
     # Django >= 1.7
     from django.apps.registry import apps

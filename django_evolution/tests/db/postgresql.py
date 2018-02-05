@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import django
 
 from django_evolution.tests.utils import (make_generate_constraint_name,

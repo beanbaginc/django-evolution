@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import django
 
 from django_evolution.compat.db import truncate_name

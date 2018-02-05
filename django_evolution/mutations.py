@@ -299,14 +299,27 @@ class BaseMutation(object):
             The serialized string.
         """
         if isinstance(value, six.string_types):
-            value = six.text_type(value)
+            value = repr(six.text_type(value))[1:]
+        elif isinstance(value, list):
+            value = '[%s]' % ', '.join(
+                self.serialize_value(item)
+                for item in value
+            )
+        elif isinstance(value, tuple):
+            value = '(%s)' % ', '.join(
+                self.serialize_value(item)
+                for item in value
+            )
+        elif isinstance(value, dict):
+            value = '{%s}' % ', '.join(
+                '%s: %s' % (self.serialize_value(dict_key),
+                            self.serialize_value(dict_value))
+                for dict_key, dict_value in six.iteritems(value)
+            )
+        else:
+            value = repr(value)
 
-        value_repr = repr(value)
-
-        if isinstance(value, six.text_type) and value_repr.startswith('u'):
-            value_repr = value_repr[1:]
-
-        return value_repr
+        return value
 
     def serialize_attr(self, attr_name, attr_value):
         """Serialize an attribute for use in a mutation statement.

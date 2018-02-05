@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.core.management import color
 
 from django_evolution.compat.db import sql_delete_constraints

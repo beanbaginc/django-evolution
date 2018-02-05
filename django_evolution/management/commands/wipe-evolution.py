@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.core.management.base import CommandError
 from django.db.models import Q
 

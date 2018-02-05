@@ -8,6 +8,7 @@ from django.conf import settings
 from django.db import connections
 from django.db.utils import ConnectionHandler, DEFAULT_DB_ALIAS
 from django.utils import six
+from django.utils.encoding import force_bytes
 
 from django_evolution.compat.apps import (is_app_registered, register_app,
                                           register_app_models,
@@ -476,7 +477,10 @@ def generate_index_name(connection, table, col_names, field_names=None,
         # list of either field names or column names. Note that digest()
         # takes variable positional arguments, which this is not passing.
         # This is due to a design bug in these versions.
-        name = digest(connection, field_names or col_names)
+        name = digest(connection, [
+            force_bytes(field_name)
+            for field_name in (field_names or col_names)
+        ])
     elif django_version >= (1, 2):
         # Django >= 1.2, < 1.7 used the digest of the name of the first
         # column. There was no index_together in these releases.
@@ -692,7 +696,10 @@ def generate_unique_constraint_name(connection, table, col_names):
 
         return full_name
     else:
-        name = digest(connection, col_names)
+        name = digest(connection, [
+            force_bytes(col_name)
+            for col_name in col_names
+        ])
 
         return truncate_name('%s_%s' % (table, name),
                              connection.ops.max_name_length())

@@ -1,3 +1,6 @@
+from __future__ import unicode_literals
+
+
 # The version of Django Evolution
 #
 # This is in the format of:

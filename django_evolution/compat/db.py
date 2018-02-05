@@ -5,6 +5,8 @@ generation, and more. These functions translate to the various versions of
 Django that are supported.
 """
 
+from __future__ import unicode_literals
+
 from contextlib import contextmanager
 
 import django

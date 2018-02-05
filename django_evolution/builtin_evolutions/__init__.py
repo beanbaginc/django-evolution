@@ -1,3 +1,6 @@
+from __future__ import unicode_literals
+
+
 BUILTIN_SEQUENCES = {
     'django.contrib.auth': [],
     'django.contrib.contenttypes': [],

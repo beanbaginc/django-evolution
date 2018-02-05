@@ -3,6 +3,9 @@
 This provides imports for data structures that are needed internally, to
 provide compatibility with different versions of Django.
 """
+
+from __future__ import unicode_literals
+
 try:
     from collections import OrderedDict
 except ImportError:

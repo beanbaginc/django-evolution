@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django_evolution.compat.apps import get_apps
 from django_evolution.compat.commands import BaseCommand
 from django_evolution.models import Evolution

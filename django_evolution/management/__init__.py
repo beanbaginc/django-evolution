@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import logging
 try:
     import cPickle as pickle

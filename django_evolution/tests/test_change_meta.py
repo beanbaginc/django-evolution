@@ -1,5 +1,7 @@
 """Unit tests for the ChangeMeta mutation."""
 
+from __future__ import unicode_literals
+
 from django.db import models
 from nose import SkipTest
 

@@ -7,6 +7,7 @@ from django.db.models.base import ModelState
 from django.db.models.fields import FieldDoesNotExist
 from django.db.models.fields.related import RECURSIVE_RELATIONSHIP_CONSTANT
 from django.utils import six
+from django.utils.encoding import force_bytes
 from django.utils.functional import curry
 
 from django_evolution.compat.datastructures import OrderedDict
@@ -38,6 +39,8 @@ def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
         django.db.models.Field:
         A new field instance matching the provided data.
     """
+    field_name = force_bytes(field_name)
+
     # related_model isn't a valid field attribute, so it must be removed
     # prior to instantiating the field, but it must be restored
     # to keep the signature consistent.

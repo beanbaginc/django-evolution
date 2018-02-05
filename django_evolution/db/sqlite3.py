@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.db import models
 
 from django_evolution.compat.db import sql_indexes_for_model
