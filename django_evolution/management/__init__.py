@@ -11,6 +11,7 @@ from django.conf import settings
 from django.core.management.color import color_style
 from django.db.models import signals
 from django.db.utils import DEFAULT_DB_ALIAS
+from django.utils import six
 
 from django_evolution import models as django_evolution
 from django_evolution.compat.apps import get_apps, get_app
@@ -118,7 +119,7 @@ def _on_app_models_updated(app, verbosity=1, using=DEFAULT_DB_ALIAS, **kwargs):
         changed = False
         new_apps = []
 
-        for app_name, new_app_sig in proj_sig.items():
+        for app_name, new_app_sig in six.iteritems(proj_sig):
             if app_name == '__version__':
                 # Ignore the __version__ tag
                 continue
@@ -131,7 +132,7 @@ def _on_app_models_updated(app, verbosity=1, using=DEFAULT_DB_ALIAS, **kwargs):
                 new_apps.append(app_name)
                 changed = True
             else:
-                for model_name, new_model_sig in new_app_sig.items():
+                for model_name, new_model_sig in six.iteritems(new_app_sig):
                     old_model_sig = old_app_sig.get(model_name, None)
 
                     if old_model_sig is None:

@@ -1269,7 +1269,9 @@ class DeleteModel(BaseModelMutation):
         sql_result = SQLResult()
 
         # Remove any many to many tables.
-        for field_name, field_sig in mutator.model_sig['fields'].items():
+        fields = mutator.model_sig['fields']
+
+        for field_name, field_sig in six.iteritems(fields):
             if field_sig['field_type'] is models.ManyToManyField:
                 field = model._meta.get_field(field_name)
                 m2m_table = field._get_m2m_db_table(model._meta)
@@ -1308,7 +1310,7 @@ class DeleteApplication(BaseMutation):
         app_sig = simulation.get_app_sig()
 
         # Simulate the deletion of the models.
-        for model_name in six.iterkeys(app_sig):
+        for model_name in list(six.iterkeys(app_sig)):
             mutation = DeleteModel(model_name)
 
             if mutation.is_mutable(app_label=simulation.app_label,
@@ -1335,7 +1337,7 @@ class DeleteApplication(BaseMutation):
         if mutator.database:
             app_sig = mutator.project_sig[mutator.app_label]
 
-            for model_name in app_sig.keys():
+            for model_name in six.iterkeys(app_sig):
                 mutation = DeleteModel(model_name)
 
                 if mutation.is_mutable(mutator.app_label, mutator.project_sig,

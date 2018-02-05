@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.db import models
+from django.utils import six
 
 from django_evolution.diff import Diff
 from django_evolution.errors import SimulationFailure
@@ -76,7 +77,7 @@ class DeleteAppTests(EvolutionTestCase):
         end_sig.pop('tests')
 
         d = Diff(self.start_sig, end_sig)
-        self.assertEqual(sorted(d.deleted.keys()), ['tests'])
+        self.assertEqual(sorted(six.iterkeys(d.deleted)), ['tests'])
         self.assertEqual(d.deleted['tests'],
                          ['TestModel', 'AppDeleteAnchor1', 'AppDeleteAnchor2',
                           'CustomTestModel'])

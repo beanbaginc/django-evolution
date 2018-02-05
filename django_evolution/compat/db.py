@@ -13,6 +13,7 @@ import django
 from django.core.management import color, sql
 from django.db import connections, router, transaction
 from django.db.utils import DEFAULT_DB_ALIAS
+from django.utils import six
 
 try:
     # Django >= 1.7
@@ -308,7 +309,7 @@ def sql_create_for_many_to_many_field(connection, model, field):
 
             # Sort the list, in order to create consistency in the order of
             # ALTER TABLEs. This is primarily needed for unit tests.
-            for refto, refs in sorted(references.iteritems(),
+            for refto, refs in sorted(six.iteritems(references),
                                       key=lambda i: repr(i)):
                 pending_references.setdefault(refto, []).extend(refs)
                 sql.extend(sql_add_constraints(connection, refto,

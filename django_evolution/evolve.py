@@ -3,6 +3,8 @@ from __future__ import unicode_literals
 import os
 import pickle
 
+from django.utils import six
+
 from django_evolution.builtin_evolutions import BUILTIN_SEQUENCES
 from django_evolution.errors import EvolutionException
 from django_evolution.models import Evolution, Version
@@ -112,7 +114,7 @@ def get_mutations(app, evolution_labels, database):
 
         # Find the list of models in the latest signature of this app
         # that aren't in the old signature.
-        for model_name, model_sig in app_sig.iteritems():
+        for model_name, model_sig in six.iteritems(app_sig):
             if (model_name not in old_app_sig or
                 old_app_sig[model_name] != model_sig or
                 has_unique_together_changed(old_app_sig[model_name],
@@ -121,7 +123,7 @@ def get_mutations(app, evolution_labels, database):
 
         # Now do the same for models in the old signature, in case the
         # model has been deleted.
-        for model_name, model_sig in old_app_sig.iteritems():
+        for model_name, model_sig in six.iteritems(old_app_sig):
             if model_name not in app_sig:
                 changed_models.add(model_name)
 

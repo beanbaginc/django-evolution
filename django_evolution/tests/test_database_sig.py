@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.test.testcases import TestCase
+from django.utils import six
 
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.signature import create_database_sig
@@ -14,7 +15,7 @@ class DatabaseSigTests(TestCase):
 
     def test_initial_state(self):
         """Testing initial state of database_sig"""
-        tables = self.database_sig.keys()
+        tables = list(six.iterkeys(self.database_sig))
 
         # Check that a few known tables are in the list, to make sure
         # the scan worked.
@@ -32,4 +33,4 @@ class DatabaseSigTests(TestCase):
                 'unique': False,
                 'columns': ['version_id'],
             },
-            indexes.values())
+            six.itervalues(indexes))

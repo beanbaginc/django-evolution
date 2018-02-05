@@ -1,7 +1,8 @@
 from __future__ import unicode_literals
 
-from django.db.models.fields.related import ForeignKey
 from django.conf import global_settings
+from django.db.models.fields.related import ForeignKey
+from django.utils import six
 
 from django_evolution.compat.apps import get_apps
 from django_evolution.compat.models import GenericRelation, get_models
@@ -44,7 +45,7 @@ def create_field_sig(field):
         'field_type': field.__class__,
     }
 
-    for attrib in ATTRIBUTE_DEFAULTS.keys():
+    for attrib in six.iterkeys(ATTRIBUTE_DEFAULTS):
         alias = ATTRIBUTE_ALIASES.get(attrib, attrib)
 
         if hasattr(field, alias):
@@ -179,7 +180,7 @@ def rescan_indexes_for_database_sig(database_sig, database):
         table_sig = create_empty_database_table_sig()
         indexes = evolver.get_indexes_for_table(table_name)
 
-        for index_name, index_info in indexes.iteritems():
+        for index_name, index_info in six.iteritems(indexes):
             table_sig['indexes'][index_name] = index_info
 
         database_sig[table_name] = table_sig

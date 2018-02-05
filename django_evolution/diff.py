@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.db import models
+from django.utils import six
 
 from django_evolution.compat.models import get_model
 from django_evolution.errors import EvolutionException
@@ -91,7 +92,7 @@ class Diff(object):
                 "Unknown version identifier in target signature: %s",
                 self.current_sig['__version__'])
 
-        for app_name, old_app_sig in original.items():
+        for app_name, old_app_sig in six.iteritems(original):
             if app_name == '__version__':
                 # Ignore the __version__ tag
                 continue
@@ -100,10 +101,10 @@ class Diff(object):
 
             if new_app_sig is None:
                 # App has been deleted
-                self.deleted[app_name] = old_app_sig.keys()
+                self.deleted[app_name] = list(six.iterkeys(old_app_sig))
                 continue
 
-            for model_name, old_model_sig in old_app_sig.items():
+            for model_name, old_model_sig in six.iteritems(old_app_sig):
                 new_model_sig = new_app_sig.get(model_name, None)
 
                 if new_model_sig is None:
@@ -117,7 +118,7 @@ class Diff(object):
                 new_fields = new_model_sig['fields']
 
                 # Look for deleted or modified fields
-                for field_name, old_field_data in old_fields.items():
+                for field_name, old_field_data in six.iteritems(old_fields):
                     new_field_data = new_fields.get(field_name, None)
 
                     if new_field_data is None:
@@ -128,8 +129,8 @@ class Diff(object):
                         items.append(field_name)
                         continue
 
-                    properties = set(old_field_data.keys())
-                    properties.update(new_field_data.keys())
+                    properties = set(six.iterkeys(old_field_data))
+                    properties.update(six.iterkeys(new_field_data))
 
                     for prop in properties:
                         old_value = old_field_data.get(
@@ -158,7 +159,7 @@ class Diff(object):
                 # Look for added fields
                 new_fields = new_model_sig['fields']
 
-                for field_name, new_field_data in new_fields.items():
+                for field_name, new_field_data in six.iteritems(new_fields):
                     old_field_data = old_fields.get(field_name, None)
 
                     if old_field_data is None:
@@ -207,14 +208,14 @@ class Diff(object):
         for app_label in self.deleted:
             lines.append('The application %s has been deleted' % app_label)
 
-        for app_label, app_changes in self.changed.items():
+        for app_label, app_changes in six.iteritems(self.changed):
             for model_name in app_changes.get('deleted', {}):
                 lines.append('The model %s.%s has been deleted'
                              % (app_label, model_name))
 
             app_changed = app_changes.get('changed', {})
 
-            for model_name, change in app_changed.iteritems():
+            for model_name, change in six.iteritems(app_changed):
                 lines.append('In model %s.%s:' % (app_label, model_name))
 
                 for field_name in change.get('added', []):
@@ -226,7 +227,7 @@ class Diff(object):
 
                 changed = change.get('changed', {})
 
-                for field_name, field_change in changed.iteritems():
+                for field_name, field_change in six.iteritems(changed):
                     lines.append("    In field '%s':" % field_name)
 
                     for prop in field_change:
@@ -243,10 +244,13 @@ class Diff(object):
 
     def evolution(self):
         "Generate an evolution that would neutralize the diff"
+        attr_default_keys = set(six.iterkeys(ATTRIBUTE_DEFAULTS))
         mutations = {}
 
-        for app_label, app_changes in self.changed.items():
-            for model_name, change in app_changes.get('changed', {}).items():
+        for app_label, app_changes in six.iteritems(self.changed):
+            model_changes = app_changes.get('changed', {})
+
+            for model_name, change in six.iteritems(model_changes):
                 model_sig = self.current_sig[app_label][model_name]
 
                 for field_name in change.get('added', {}):
@@ -255,8 +259,8 @@ class Diff(object):
 
                     add_params = [
                         (key, field_sig[key])
-                        for key in field_sig.keys()
-                        if key in ATTRIBUTE_DEFAULTS.keys()
+                        for key in six.iterkeys(field_sig)
+                        if key in attr_default_keys
                     ]
                     add_params.append(('field_type', field_type))
 
@@ -280,7 +284,7 @@ class Diff(object):
 
                 changed = change.get('changed', {})
 
-                for field_name, field_change in changed.iteritems():
+                for field_name, field_change in six.iteritems(changed):
                     changed_attrs = {}
                     current_field_sig = model_sig['fields'][field_name]
 

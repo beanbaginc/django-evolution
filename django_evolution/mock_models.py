@@ -208,7 +208,7 @@ class MockMeta(object):
                 internally when creating relationships between models and
                 fields in order to prevent recursive relationships.
         """
-        for field_name, field_sig in self._model_sig['fields'].items():
+        for field_name, field_sig in six.iteritems(self._model_sig['fields']):
             primary_key = field_sig.get('primary_key', False)
 
             if not stub or primary_key:
