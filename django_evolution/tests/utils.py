@@ -360,6 +360,11 @@ def get_sql_mappings(mapping_key, db_name):
     """
     engine = settings.DATABASES[db_name]['ENGINE'].split('.')[-1]
 
+    # Convert alternative database names to their proper test data module.
+    engine = {
+        'postgresql_psycopg2': 'postgresql',
+    }.get(engine, engine)
+
     sql_for_engine = __import__('django_evolution.tests.db.%s' % engine,
                                 {}, {}, [''])
 
