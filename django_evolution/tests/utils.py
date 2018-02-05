@@ -8,7 +8,6 @@ from django.conf import settings
 from django.db import connections
 from django.db.utils import ConnectionHandler, DEFAULT_DB_ALIAS
 from django.utils import six
-from django.utils.encoding import force_bytes
 
 from django_evolution.compat.apps import (is_app_registered, register_app,
                                           register_app_models,
@@ -477,8 +476,11 @@ def generate_index_name(connection, table, col_names, field_names=None,
         # list of either field names or column names. Note that digest()
         # takes variable positional arguments, which this is not passing.
         # This is due to a design bug in these versions.
+        #
+        # We convert each of the field names to Python's native string
+        # format, which is what the default name would normally be in.
         name = digest(connection, [
-            force_bytes(field_name)
+            str(field_name)
             for field_name in (field_names or col_names)
         ])
     elif django_version >= (1, 2):
@@ -696,8 +698,10 @@ def generate_unique_constraint_name(connection, table, col_names):
 
         return full_name
     else:
+        # Convert each of the field names to Python's native string format,
+        # which is what the default name would normally be in.
         name = digest(connection, [
-            force_bytes(col_name)
+            str(col_name)
             for col_name in col_names
         ])
 

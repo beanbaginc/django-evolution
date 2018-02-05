@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+from __future__ import print_function, unicode_literals
 
 from django_evolution.compat.apps import get_apps
 from django_evolution.compat.commands import BaseCommand
@@ -17,9 +17,9 @@ class Command(BaseCommand):
             evolutions = list(Evolution.objects.filter(app_label=app_label))
 
             if evolutions:
-                print "Applied evolutions for '%s':" % app_label
+                print("Applied evolutions for '%s':" % app_label)
 
                 for evolution in evolutions:
-                    print '    %s' % evolution.label
+                    print('    %s' % evolution.label)
 
-                print
+                print()

@@ -5,10 +5,10 @@ from django.db.models.fields.related import ForeignKey
 from django.utils import six
 
 from django_evolution.compat.apps import get_apps
-from django_evolution.compat.models import GenericRelation, get_models
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.db import (db_router_allows_migrate,
                                         db_router_allows_syncdb)
+from django_evolution.compat.models import GenericRelation, get_models
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.utils import get_app_label
 

@@ -4,8 +4,7 @@ import copy
 import logging
 
 import django
-from django.db import connection as default_connection
-from django.db import models
+from django.db import connection as default_connection, models
 from django.utils import six
 
 from django_evolution import support
@@ -119,8 +118,8 @@ class BaseEvolutionOperations(object):
 
     def quote_sql_param(self, param):
         "Add protective quoting around an SQL string parameter"
-        if isinstance(param, basestring):
-            return u"'%s'" % unicode(param).replace(u"'", ur"\'")
+        if isinstance(param, six.string_types):
+            return "'%s'" % six.text_type(param).replace("'", r"\'")
         else:
             return param
 
@@ -526,7 +525,7 @@ class BaseEvolutionOperations(object):
                                          attr_info['old_value'],
                                          attr_info['new_value'])
                 assert not sql_result or isinstance(sql_result, SQLResult)
-            except Exception, e:
+            except Exception as e:
                 logging.critical(
                     'Error running database evolver function %s: %s',
                     method_name, e,

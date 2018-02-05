@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+from __future__ import print_function, unicode_literals
 
 import copy
 import re
@@ -188,23 +188,22 @@ class EvolutionTestCase(TransactionTestCase):
             # Output the statements one-by-one, to help with diagnosing
             # differences.
 
-            print
-            print "** Comparing SQL against '%s.%s'" % (self.sql_mapping_key,
-                                                        sql_name)
-            print '** Generated:'
-            print
+            print()
+            print("** Comparing SQL against '%s'" % sql_name)
+            print('** Generated:')
+            print()
 
             for line in generated_sql:
-                print '    %s' % line
+                print('    %s' % line)
 
-            print
-            print '** Expected:'
-            print
+            print()
+            print('** Expected:')
+            print()
 
             for line in expected_sql:
-                print '    %s' % line
+                print('    %s' % line)
 
-            print
+            print()
 
             # Compare as lists, so that we can better spot inconsistencies.
             self.assertListEqual(generated_sql, expected_sql)

@@ -39,7 +39,9 @@ def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
         django.db.models.Field:
         A new field instance matching the provided data.
     """
-    field_name = force_bytes(field_name)
+    # Convert to the standard string format for each version of Python, to
+    # simulate what the format would be for the default name.
+    field_name = str(field_name)
 
     # related_model isn't a valid field attribute, so it must be removed
     # prior to instantiating the field, but it must be restored
@@ -186,7 +188,7 @@ class MockMeta(object):
     @property
     def local_many_to_many(self):
         """A list of all local Many-to-Many fields on the model."""
-        return self._many_to_many.values()
+        return list(six.itervalues(self._many_to_many))
 
     def setup_fields(self, model, stub=False):
         """Set up the fields listed in the model's signature.
@@ -350,6 +352,22 @@ class MockModel(object):
             A string representation of the model.
         """
         return '<MockModel for %s.%s>' % (self.app_name, self.model_name)
+
+    def __hash__(self):
+        """Return a hash of the model instance.
+
+        This is used to allow the model instance to be used as a key in a
+        dictionary.
+
+        Django would return a hash of the primary key's value, but that's not
+        necessary for our needs, and we don't have field values in most mock
+        models.
+
+        Returns:
+            int:
+            The hash of the model.
+        """
+        return hash(id(self))
 
     def __eq__(self, other):
         """Return whether two mock models are equal.

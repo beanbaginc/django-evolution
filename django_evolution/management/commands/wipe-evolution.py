@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+from __future__ import print_function, unicode_literals
 
 from django.core.management.base import CommandError
 from django.db.models import Q
@@ -86,4 +86,4 @@ Type 'yes' to continue, or 'no' to cancel: """ % len(to_wipe_ids))
             if confirm == 'yes':
                 Evolution.objects.filter(pk__in=to_wipe_ids).delete()
 
-                print '%s evolution(s) have been deleted.' % len(to_wipe_ids)
+                print('%s evolution(s) have been deleted.' % len(to_wipe_ids))

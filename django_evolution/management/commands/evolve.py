@@ -1,11 +1,7 @@
-from __future__ import unicode_literals
+from __future__ import print_function, unicode_literals
 
 import logging
 import os
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle as pickle
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -15,6 +11,7 @@ from django.db.utils import DEFAULT_DB_ALIAS
 
 from django_evolution.compat.apps import get_apps, get_app
 from django_evolution.compat.commands import BaseCommand
+from django_evolution.compat.py23 import pickle_dumps, pickle_loads
 from django_evolution.diff import Diff
 from django_evolution.errors import EvolutionException
 from django_evolution.evolve import get_unapplied_evolutions, get_mutations
@@ -90,7 +87,7 @@ class Command(BaseCommand):
             self.evolve(*app_labels, **options)
         except CommandError:
             raise
-        except Exception, e:
+        except Exception as e:
             logging.error('Unexpected error: %s' % e, exc_info=1)
             raise
 
@@ -126,7 +123,7 @@ class Command(BaseCommand):
                                    'executing evolutions.')
             try:
                 app_list = [get_app(app_label) for app_label in app_labels]
-            except (ImproperlyConfigured, ImportError), e:
+            except (ImproperlyConfigured, ImportError) as e:
                 raise CommandError("%s. Are you sure your INSTALLED_APPS "
                                    "setting is correct?" % e)
         else:
@@ -140,7 +137,7 @@ class Command(BaseCommand):
 
         self.database_sig = create_database_sig(self.database)
         self.current_proj_sig = create_project_sig(self.database)
-        self.current_signature = pickle.dumps(self.current_proj_sig)
+        self.current_signature = pickle_dumps(self.current_proj_sig)
 
         sql = []
 
@@ -148,7 +145,7 @@ class Command(BaseCommand):
             latest_version = \
                 Version.objects.current_version(using=self.database)
 
-            self.old_proj_sig = pickle.loads(str(latest_version.signature))
+            self.old_proj_sig = pickle_loads(str(latest_version.signature))
             self.diff = Diff(self.old_proj_sig, self.current_proj_sig)
         except Evolution.DoesNotExist:
             raise CommandError("Can't evolve yet. Need to set an "
@@ -167,7 +164,7 @@ class Command(BaseCommand):
 
                 if purge_sql:
                     sql.append((None, purge_sql))
-        except EvolutionException, e:
+        except EvolutionException as e:
             raise CommandError(str(e))
 
         self.check_simulation()
@@ -368,7 +365,7 @@ Type 'yes' to continue, or 'no' to cancel: """ % self.database)
                         for evolution in self.new_evolutions:
                             evolution.version = version
                             evolution.save(**self.using_args)
-                    except Exception, e:
+                    except Exception as e:
                         self.stdout.write(
                             self.style.ERROR(
                                 'Database evolutions for %s failed!'
@@ -406,7 +403,7 @@ Type 'yes' to continue, or 'no' to cancel: """ % self.database)
                         evolutions_dir = os.path.dirname(filename)
 
                         if not os.path.exists(evolutions_dir):
-                            os.mkdir(evolutions_dir, 0755)
+                            os.mkdir(evolutions_dir, 0o755)
 
                         with open(filename, 'w') as fp:
                             fp.write(hinted_evolution)

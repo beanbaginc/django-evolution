@@ -1,10 +1,6 @@
-from __future__ import unicode_literals
+from __future__ import print_function, unicode_literals
 
 import logging
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle as pickle
 
 import django
 from django.conf import settings
@@ -15,6 +11,7 @@ from django.utils import six
 
 from django_evolution import models as django_evolution
 from django_evolution.compat.apps import get_apps, get_app
+from django_evolution.compat.py23 import pickle_dumps, pickle_loads
 from django_evolution.diff import Diff
 from django_evolution.evolve import (get_evolution_sequence,
                                      get_unapplied_evolutions)
@@ -50,8 +47,8 @@ def _install_baseline(app, latest_version, using, verbosity):
     sequence = get_evolution_sequence(app)
 
     if sequence and verbosity > 0:
-        print 'Evolutions in %s baseline:' % app_label, \
-              ', '.join(sequence)
+        print('Evolutions in %s baseline: %s' % (app_label,
+                                                 ', '.join(sequence)))
 
     for evo_label in sequence:
         evolution = django_evolution.Evolution(app_label=app_label,
@@ -84,7 +81,7 @@ def _on_app_models_updated(app, verbosity=1, using=DEFAULT_DB_ALIAS, **kwargs):
             the syncdb or migrate operation.
     """
     proj_sig = create_project_sig(using)
-    signature = pickle.dumps(proj_sig)
+    signature = pickle_dumps(proj_sig)
 
     try:
         latest_version = \
@@ -92,7 +89,7 @@ def _on_app_models_updated(app, verbosity=1, using=DEFAULT_DB_ALIAS, **kwargs):
     except django_evolution.Version.DoesNotExist:
         # We need to create a baseline version.
         if verbosity > 0:
-            print "Installing baseline version"
+            print("Installing baseline version")
 
         latest_version = django_evolution.Version(signature=signature)
         latest_version.save(using=using)
@@ -106,13 +103,13 @@ def _on_app_models_updated(app, verbosity=1, using=DEFAULT_DB_ALIAS, **kwargs):
     unapplied = get_unapplied_evolutions(app, using)
 
     if unapplied:
-        print style.NOTICE('There are unapplied evolutions for %s.'
-                           % get_app_label(app))
+        print(style.NOTICE('There are unapplied evolutions for %s.'
+                           % get_app_label(app)))
 
     # Evolutions are checked over the entire project, so we only need to check
     # once. We do this check when Django Evolutions itself is synchronized.
     if app == django_evolution:
-        old_proj_sig = pickle.loads(str(latest_version.signature))
+        old_proj_sig = pickle_loads(latest_version.signature)
 
         # If any models or apps have been added, a baseline must be set
         # for those new models
@@ -143,10 +140,10 @@ def _on_app_models_updated(app, verbosity=1, using=DEFAULT_DB_ALIAS, **kwargs):
 
         if changed:
             if verbosity > 0:
-                print "Adding baseline version for new models"
+                print("Adding baseline version for new models")
 
             latest_version = \
-                django_evolution.Version(signature=pickle.dumps(old_proj_sig))
+                django_evolution.Version(signature=pickle_dumps(old_proj_sig))
             latest_version.save(using=using)
 
             for app_name in new_apps:
@@ -172,12 +169,12 @@ def _on_app_models_updated(app, verbosity=1, using=DEFAULT_DB_ALIAS, **kwargs):
         diff = Diff(old_proj_sig, proj_sig)
 
         if not diff.is_empty():
-            print style.NOTICE(
-                'Project signature has changed - an evolution is required')
+            print(style.NOTICE(
+                'Project signature has changed - an evolution is required'))
 
             if verbosity > 1:
-                old_proj_sig = pickle.loads(str(latest_version.signature))
-                print diff
+                old_proj_sig = pickle_loads(str(latest_version.signature))
+                print(diff)
 
 
 def _on_post_syncdb(app, **kwargs):

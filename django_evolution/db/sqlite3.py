@@ -128,8 +128,9 @@ class EvolutionOperations(BaseEvolutionOperations):
         output = [' '.join(create)]
         output.append('(')
         columns = []
+
         for field in field_list:
-            if not models.ManyToManyField == field.__class__:
+            if type(field) is not models.ManyToManyField:
                 column_name = qn(field.column)
                 column_type = field.db_type(connection=self.connection)
                 params = [column_name, column_type]

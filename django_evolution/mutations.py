@@ -300,7 +300,10 @@ class BaseMutation(object):
             The serialized string.
         """
         if isinstance(value, six.string_types):
-            value = repr(six.text_type(value))[1:]
+            value = repr(six.text_type(value))
+
+            if value.startswith('u'):
+                value = value[1:]
         elif isinstance(value, list):
             value = '[%s]' % ', '.join(
                 self.serialize_value(item)
@@ -1339,7 +1342,7 @@ class DeleteApplication(BaseMutation):
         if mutator.database:
             app_sig = mutator.project_sig[mutator.app_label]
 
-            for model_name in six.iterkeys(app_sig):
+            for model_name in list(six.iterkeys(app_sig)):
                 mutation = DeleteModel(model_name)
 
                 if mutation.is_mutable(mutator.app_label, mutator.project_sig,

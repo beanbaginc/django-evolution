@@ -1,3 +1,5 @@
+from __future__ import print_function, unicode_literals
+
 import os
 import sys
 
@@ -38,7 +40,7 @@ except ImportError:
 db_choice = os.getenv('DJANGO_EVOLUTION_TEST_DB', 'sqlite3')
 
 if db_choice in TEST_DATABASES:
-    print '*** Testing with %s' % db_choice
+    print('*** Testing with %s' % db_choice)
     DATABASES['default'] = TEST_DATABASES[db_choice]
 else:
     sys.stderr.write('*** Requested database type "%s" is not a valid '

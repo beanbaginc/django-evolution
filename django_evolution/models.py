@@ -1,10 +1,8 @@
-try:
-    from django.utils.timezone import now
-except ImportError:
-    from datetime import datetime
-    now = datetime.now
+from __future__ import unicode_literals
 
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
+from django.utils.timezone import now
 
 
 class VersionManager(models.Manager):
@@ -41,23 +39,25 @@ class VersionManager(models.Manager):
             raise self.model.DoesNotExist
 
 
+@python_2_unicode_compatible
 class Version(models.Model):
     signature = models.TextField()
     when = models.DateTimeField(default=now)
 
     objects = VersionManager()
 
-    def __unicode__(self):
+    def __str__(self):
         if not self.evolutions.count():
-            return u'Hinted version, updated on %s' % self.when
+            return 'Hinted version, updated on %s' % self.when
 
-        return u'Stored version, updated on %s' % self.when
+        return 'Stored version, updated on %s' % self.when
 
     class Meta:
         ordering = ('-when',)
         db_table = 'django_project_version'
 
 
+@python_2_unicode_compatible
 class Evolution(models.Model):
     version = models.ForeignKey(Version, related_name='evolutions')
     app_label = models.CharField(max_length=200)
@@ -66,5 +66,5 @@ class Evolution(models.Model):
     class Meta:
         db_table = 'django_evolution'
 
-    def __unicode__(self):
-        return u"Evolution %s, applied to %s" % (self.label, self.app_label)
+    def __str__(self):
+        return 'Evolution %s, applied to %s' % (self.label, self.app_label)

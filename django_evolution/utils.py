@@ -1,8 +1,9 @@
-from __future__ import unicode_literals
+from __future__ import print_function, unicode_literals
 
 import os
 
 from django.db import router
+from django.utils import six
 
 from django_evolution.compat.models import get_model
 from django_evolution.db import EvolutionOperationsMulti
@@ -16,12 +17,12 @@ def write_sql(sql, database):
 
     for statement in sql:
         if isinstance(statement, tuple):
-            statement = unicode(statement[0] % tuple(
+            statement = six.text_type(statement[0] % tuple(
                 qp(evolver.normalize_value(s))
                 for s in statement[1]
             ))
 
-        print statement
+        print(statement)
         out_sql.append(statement)
 
     return out_sql
@@ -50,7 +51,7 @@ def execute_sql(cursor, sql, database):
 
                 if statement and not statement.startswith('--'):
                     cursor.execute(statement)
-    except Exception, e:
+    except Exception as e:
         # Augment the exception so that callers can get the SQL statement
         # that failed.
         e.last_sql_statement = statement
@@ -78,7 +79,7 @@ def get_app_name(app):
     Returns:
         bytes: The name of the app.
     """
-    return b'.'.join(app.__name__.split(b'.')[:-1])
+    return '.'.join(app.__name__.split('.')[:-1])
 
 
 def get_app_label(app):
@@ -91,7 +92,7 @@ def get_app_label(app):
     Returns:
         bytes: The label of the app.
     """
-    return app.__name__.split(b'.')[-2]
+    return app.__name__.split('.')[-2]
 
 
 def get_evolutions_module(app):
@@ -109,7 +110,7 @@ def get_evolutions_module(app):
     app_name = get_app_name(app)
 
     try:
-        return __import__(app_name + b'.evolutions', {}, {}, [b''])
+        return __import__(app_name + '.evolutions', {}, {}, [''])
     except:
         return None
 
