@@ -26,13 +26,17 @@ def run_tests(verbosity=1, interactive=False):
     management.call_command('syncdb', verbosity=verbosity,
                             interactive=interactive)
 
-    nose_argv = ['runtests.py', '-v',
-                 '--with-coverage',
-                 '--with-doctest',
-                 '--doctest-extension=.txt',
-                 '--cover-package=django_evolution',
-                 '--match=tests[\/]*.py',
-                 '--match=^test']
+    nose_argv = [
+        'runtests.py',
+        '-v',
+        '--with-coverage',
+        '--with-doctest',
+        '--doctest-extension=.txt',
+        '--cover-package=django_evolution',
+        '--match=tests[\/]*.py',
+        '--match=^test',
+        '--exclude-dir=django_evolution/tests/db',
+    ]
 
     if len(sys.argv) > 2:
         nose_argv += sys.argv[2:]
