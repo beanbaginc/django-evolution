@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import os
 import pickle
+from importlib import import_module
 
 from django.utils import six
 
@@ -53,7 +54,7 @@ def get_mutations(app, evolution_labels, database):
         else:
             module_name = '%s.evolutions' % app_name
 
-        evolution_module = __import__(module_name, {}, {}, [''])
+        evolution_module = import_module(module_name)
     except ImportError:
         return []
 
