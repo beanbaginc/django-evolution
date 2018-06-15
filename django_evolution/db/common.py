@@ -365,7 +365,7 @@ class BaseEvolutionOperations(object):
 
         return SQLResult([
             'CREATE UNIQUE INDEX %s ON %s (%s);'
-            % (index_name, model._meta.db_table,
+            % (qn(index_name), qn(model._meta.db_table),
                ', '.join([qn(field.column) for field in fields])),
         ])
 
@@ -620,11 +620,11 @@ class BaseEvolutionOperations(object):
         if new_unique_value:
             alter_table_item = {
                 'sql': 'ADD CONSTRAINT %s UNIQUE(%s)'
-                       % (constraint_name, qn(field.column))
+                       % (qn(constraint_name), qn(field.column))
             }
         else:
             alter_table_item = {
-                'sql': 'DROP CONSTRAINT %s' % constraint_name
+                'sql': 'DROP CONSTRAINT %s' % qn(constraint_name)
             }
 
         return AlterTableSQLResult(self, model, [alter_table_item])
