@@ -1,3 +1,20 @@
+version 0.7.8 (14-June-2018):
+	* Packaging:
+		* Eggs and wheels are now built only for Python 2.7.
+
+		  Older versions of Python are no longer packaged. Source tarballs
+		  may work, but we recommend that anyone still on older versions of
+		  Python upgrade at their earliest convenience.
+
+	* Bug Fixes:
+		* Fixed an issue generating unique_together constraints on Postgres
+		  in some configurations.
+
+		  Depending on the table/index names, unique_together constraints
+		  could fail to generate on Posrgres, since the names weren't being
+		  escaped.
+
+
 version 0.7.7 (25-May-2017):
 	* New Features:
 		* Added a note about backing up the database and not cancelling before

@@ -648,13 +648,14 @@ change_field = {
     'RemoveDBIndexNoOpChangeModel': '',
 
     "AddUniqueChangeModel": (
-        'ALTER TABLE "tests_testmodel" ADD CONSTRAINT %s UNIQUE("int_field4");'
+        'ALTER TABLE "tests_testmodel"'
+        ' ADD CONSTRAINT "%s" UNIQUE("int_field4");'
         % generate_unique_constraint_name('tests_testmodel', ['int_field4'])
     ),
 
     "RemoveUniqueChangeModel": (
         'ALTER TABLE "tests_testmodel"'
-        ' DROP CONSTRAINT tests_testmodel_int_field3_key;'
+        ' DROP CONSTRAINT "tests_testmodel_int_field3_key";'
     ),
 
     "MultiAttrChangeModel": '\n'.join([
@@ -1066,36 +1067,36 @@ inheritance = {
 
 unique_together = {
     'setting_from_empty': (
-        'CREATE UNIQUE INDEX %s'
-        ' ON tests_testmodel ("int_field1", "char_field1");'
+        'CREATE UNIQUE INDEX "%s"'
+        ' ON "tests_testmodel" ("int_field1", "char_field1");'
         % generate_unique_constraint_name('tests_testmodel',
                                           ['int_field1', 'char_field1'])
     ),
 
     'append_list': (
-        'CREATE UNIQUE INDEX %s'
-        ' ON tests_testmodel ("int_field2", "char_field2");'
+        'CREATE UNIQUE INDEX "%s"'
+        ' ON "tests_testmodel" ("int_field2", "char_field2");'
         % generate_unique_constraint_name('tests_testmodel',
                                           ['int_field2', 'char_field2'])
     ),
 
     'set_remove': (
-        'CREATE UNIQUE INDEX %s'
-        ' ON tests_testmodel ("int_field1", "char_field1");'
+        'CREATE UNIQUE INDEX "%s"'
+        ' ON "tests_testmodel" ("int_field1", "char_field1");'
         % generate_unique_constraint_name('tests_testmodel',
                                           ['int_field1', 'char_field1'])
     ),
 
     'ignore_missing_indexes': (
-        'CREATE UNIQUE INDEX %s'
-        ' ON tests_testmodel ("char_field1", "char_field2");'
+        'CREATE UNIQUE INDEX "%s"'
+        ' ON "tests_testmodel" ("char_field1", "char_field2");'
         % generate_unique_constraint_name('tests_testmodel',
                                           ['char_field1', 'char_field2'])
     ),
 
     'upgrade_from_v1_sig': (
-        'CREATE UNIQUE INDEX %s'
-        ' ON tests_testmodel ("int_field1", "char_field1");'
+        'CREATE UNIQUE INDEX "%s"'
+        ' ON "tests_testmodel" ("int_field1", "char_field1");'
         % generate_unique_constraint_name('tests_testmodel',
                                           ['int_field1', 'char_field1'])
     ),
@@ -1106,18 +1107,18 @@ if django_version >= (1, 9):
     # after table creation, using Django's generated constraint names.
     unique_together.update({
         'removing': (
-            'ALTER TABLE "tests_testmodel" DROP CONSTRAINT %s;'
+            'ALTER TABLE "tests_testmodel" DROP CONSTRAINT "%s";'
             % generate_unique_constraint_name('tests_testmodel',
                                               ['int_field1', 'char_field1'])
         ),
 
         'replace_list': '\n'.join([
-            'ALTER TABLE "tests_testmodel" DROP CONSTRAINT %s;'
+            'ALTER TABLE "tests_testmodel" DROP CONSTRAINT "%s";'
             % generate_unique_constraint_name('tests_testmodel',
                                               ['int_field1', 'char_field1']),
 
-            'CREATE UNIQUE INDEX %s'
-            ' ON tests_testmodel ("int_field2", "char_field2");'
+            'CREATE UNIQUE INDEX "%s"'
+            ' ON "tests_testmodel" ("int_field2", "char_field2");'
             % generate_unique_constraint_name('tests_testmodel',
                                               ['int_field2', 'char_field2']),
         ]),
@@ -1129,15 +1130,15 @@ else:
     unique_together.update({
         'removing': (
             'ALTER TABLE "tests_testmodel"'
-            ' DROP CONSTRAINT tests_testmodel_int_field1_char_field1_key;'
+            ' DROP CONSTRAINT "tests_testmodel_int_field1_char_field1_key";'
         ),
 
         'replace_list': '\n'.join([
             'ALTER TABLE "tests_testmodel"'
-            ' DROP CONSTRAINT tests_testmodel_int_field1_char_field1_key;',
+            ' DROP CONSTRAINT "tests_testmodel_int_field1_char_field1_key";',
 
-            'CREATE UNIQUE INDEX %s'
-            ' ON tests_testmodel ("int_field2", "char_field2");'
+            'CREATE UNIQUE INDEX "%s"'
+            ' ON "tests_testmodel" ("int_field2", "char_field2");'
             % generate_unique_constraint_name('tests_testmodel',
                                               ['int_field2', 'char_field2']),
         ]),

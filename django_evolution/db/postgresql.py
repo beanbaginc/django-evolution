@@ -39,10 +39,12 @@ class EvolutionOperations(BaseEvolutionOperations):
         )
 
     def get_drop_unique_constraint_sql(self, model, index_name):
+        qn = self.connection.ops.quote_name
+
         return AlterTableSQLResult(
             self,
             model,
-            [{'sql': 'DROP CONSTRAINT %s' % index_name}]
+            [{'sql': 'DROP CONSTRAINT %s' % qn(index_name)}]
         )
 
     def get_default_index_name(self, table_name, field):
