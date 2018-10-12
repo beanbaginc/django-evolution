@@ -23,9 +23,9 @@ def get_evolution_sequence(app):
         return BUILTIN_SEQUENCES[app_name]
 
     try:
-        evolution_module = __import__(app_name + '.evolutions', {}, {}, [''])
+        evolution_module = import_module(app_name + '.evolutions')
         return evolution_module.SEQUENCE
-    except:
+    except Exception as e:
         return []
 
 
