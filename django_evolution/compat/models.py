@@ -52,8 +52,12 @@ def get_models(app_mod=None, include_auto_created=False):
             try:
                 app_config = apps.get_app_config(app_label)
 
-                return list(app_config.get_models(
-                    include_auto_created=include_auto_created))
+                return [
+                    model
+                    for model in app_config.get_models(
+                        include_auto_created=include_auto_created)
+                    if not model._meta.abstract
+                ]
             except LookupError:
                 return []
     else:
