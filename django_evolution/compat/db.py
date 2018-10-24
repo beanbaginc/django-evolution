@@ -218,12 +218,12 @@ def sql_create_for_many_to_many_field(connection, model, field):
         # Django < 1.7
         style = color.no_style()
 
-        if field.rel.through:
+        if through:
             references = {}
             pending_references = {}
 
             sql, references = connection.creation.sql_create_model(
-                field.rel.through, style)
+                through, style)
 
             # Sort the list, in order to create consistency in the order of
             # ALTER TABLEs. This is primarily needed for unit tests.
@@ -233,7 +233,7 @@ def sql_create_for_many_to_many_field(connection, model, field):
                 sql.extend(sql_add_constraints(connection, refto,
                                                pending_references))
 
-            sql.extend(sql_add_constraints(connection, field.rel.through,
+            sql.extend(sql_add_constraints(connection, through,
                                            pending_references))
         else:
             sql = connection.creation.sql_for_many_to_many_field(

@@ -29,7 +29,8 @@ class DeleteBaseModel(models.Model):
     int_field = models.IntegerField()
     int_field2 = models.IntegerField(db_column='non-default_db_column')
     int_field3 = models.IntegerField(unique=True)
-    fk_field1 = models.ForeignKey(DeleteAnchor1)
+    fk_field1 = models.ForeignKey(DeleteAnchor1,
+                                  on_delete=models.CASCADE)
     m2m_field1 = models.ManyToManyField(DeleteAnchor3)
     m2m_field2 = models.ManyToManyField(DeleteAnchor4,
                                         db_table='non-default_m2m_table')
@@ -110,7 +111,8 @@ class DeleteFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             int_field2 = models.IntegerField(db_column='non-default_db_column')
             int_field3 = models.IntegerField(unique=True)
-            fk_field1 = models.ForeignKey(DeleteAnchor1)
+            fk_field1 = models.ForeignKey(DeleteAnchor1,
+                                          on_delete=models.CASCADE)
             m2m_field1 = models.ManyToManyField(DeleteAnchor3)
             m2m_field2 = models.ManyToManyField(
                 DeleteAnchor4,
@@ -135,7 +137,8 @@ class DeleteFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             int_field3 = models.IntegerField(unique=True)
-            fk_field1 = models.ForeignKey(DeleteAnchor1)
+            fk_field1 = models.ForeignKey(DeleteAnchor1,
+                                          on_delete=models.CASCADE)
             m2m_field1 = models.ManyToManyField(DeleteAnchor3)
             m2m_field2 = models.ManyToManyField(
                 DeleteAnchor4,
@@ -160,7 +163,8 @@ class DeleteFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             int_field2 = models.IntegerField(db_column='non-default_db_column')
-            fk_field1 = models.ForeignKey(DeleteAnchor1)
+            fk_field1 = models.ForeignKey(DeleteAnchor1,
+                                          on_delete=models.CASCADE)
             m2m_field1 = models.ManyToManyField(DeleteAnchor3)
             m2m_field2 = models.ManyToManyField(
                 DeleteAnchor4,
@@ -186,7 +190,8 @@ class DeleteFieldTests(EvolutionTestCase):
             int_field = models.IntegerField()
             int_field2 = models.IntegerField(db_column='non-default_db_column')
             int_field3 = models.IntegerField(unique=True)
-            fk_field1 = models.ForeignKey(DeleteAnchor1)
+            fk_field1 = models.ForeignKey(DeleteAnchor1,
+                                          on_delete=models.CASCADE)
             m2m_field2 = models.ManyToManyField(
                 DeleteAnchor4,
                 db_table='non-default_m2m_table')
@@ -211,7 +216,8 @@ class DeleteFieldTests(EvolutionTestCase):
             int_field = models.IntegerField()
             int_field2 = models.IntegerField(db_column='non-default_db_column')
             int_field3 = models.IntegerField(unique=True)
-            fk_field1 = models.ForeignKey(DeleteAnchor1)
+            fk_field1 = models.ForeignKey(DeleteAnchor1,
+                                          on_delete=models.CASCADE)
             m2m_field1 = models.ManyToManyField(DeleteAnchor3)
 
         self.perform_evolution_tests(

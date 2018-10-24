@@ -56,6 +56,15 @@ def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
         to = MockModel(proj_sig, related_app_name, related_model_name,
                        related_model_sig, stub=True)
 
+        if (issubclass(field_type, models.ForeignKey) and
+            hasattr(models, 'CASCADE') and
+            'on_delete' not in field_attrs):
+            # Starting in Django 2.0, on_delete is a requirement for
+            # ForeignKeys. If not provided in the signature, we want to
+            # default this to CASCADE, which is the value that Django
+            # previously defaulted to.
+            field_attrs['on_delete'] = models.CASCADE
+
         field = field_type(to, name=field_name, **field_attrs)
         field_attrs['related_model'] = related_model
     else:

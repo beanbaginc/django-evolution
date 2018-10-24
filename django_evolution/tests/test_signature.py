@@ -27,7 +27,8 @@ class SignatureAnchor3(models.Model):
     value = models.IntegerField()
 
     # Host a generic key here, too.
-    content_type = models.ForeignKey(ContentType)
+    content_type = models.ForeignKey(ContentType,
+                                     on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField(db_index=True)
     content_object = GenericForeignKey('content_type', 'object_id')
 
@@ -38,18 +39,25 @@ class SignatureFullModel(models.Model):
     null_field = models.IntegerField(null=True, db_column='size_column')
     id_card = models.IntegerField(unique=True, db_index=True)
     dec_field = models.DecimalField(max_digits=10, decimal_places=4)
-    ref1 = models.ForeignKey(SignatureAnchor1)
-    ref2 = models.ForeignKey(SignatureAnchor1, related_name='other_sigmodel')
-    ref3 = models.ForeignKey(SignatureAnchor2, db_column='value',
-                             db_index=True)
-    ref4 = models.ForeignKey('self')
+    ref1 = models.ForeignKey(SignatureAnchor1,
+                             on_delete=models.CASCADE)
+    ref2 = models.ForeignKey(SignatureAnchor1,
+                             related_name='other_sigmodel',
+                             on_delete=models.CASCADE)
+    ref3 = models.ForeignKey(SignatureAnchor2,
+                             db_column='value',
+                             db_index=True,
+                             on_delete=models.CASCADE)
+    ref4 = models.ForeignKey('self',
+                             on_delete=models.CASCADE)
     ref5 = models.ManyToManyField(SignatureAnchor3)
     ref6 = models.ManyToManyField(SignatureAnchor3,
                                   related_name='other_sigmodel')
     ref7 = models.ManyToManyField('self')
 
     # Plus a generic foreign key - the Generic itself should be ignored.
-    content_type = models.ForeignKey(ContentType)
+    content_type = models.ForeignKey(ContentType,
+                                     on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField(db_index=True)
     content_object = GenericForeignKey('content_type', 'object_id')
 
@@ -61,7 +69,8 @@ class SignatureDefaultsModel(models.Model):
     char_field = models.CharField()
     dec_field = models.DecimalField()
     m2m_field = models.ManyToManyField('self')
-    fkey_field = models.ForeignKey(SignatureAnchor1)
+    fkey_field = models.ForeignKey(SignatureAnchor1,
+                                   on_delete=models.CASCADE)
 
 
 class SignatureParentModel(models.Model):

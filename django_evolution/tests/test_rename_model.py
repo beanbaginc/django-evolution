@@ -94,7 +94,8 @@ class RenameModelTests(EvolutionTestCase):
             int_field = models.IntegerField()
 
         class RefModel(models.Model):
-            my_ref = models.ForeignKey(RenameModelBaseModel)
+            my_ref = models.ForeignKey(RenameModelBaseModel,
+                                       on_delete=models.CASCADE)
 
         self.set_base_model(self.default_base_model,
                             pre_extra_models=[('RefModel', RefModel)])
@@ -134,7 +135,8 @@ class RenameModelTests(EvolutionTestCase):
                 db_table = 'tests_testmodel'
 
         class RefModel(models.Model):
-            my_ref = models.ForeignKey(RenameModelBaseModel)
+            my_ref = models.ForeignKey(RenameModelBaseModel,
+                                       on_delete=models.CASCADE)
 
         self.set_base_model(self.default_base_model,
                             pre_extra_models=[('RefModel', RefModel)])

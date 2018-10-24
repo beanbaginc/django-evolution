@@ -24,7 +24,8 @@ class AppDeleteAnchor2(models.Model):
 class AppDeleteBaseModel(models.Model):
     char_field = models.CharField(max_length=20)
     int_field = models.IntegerField()
-    anchor_fk = models.ForeignKey(AppDeleteAnchor1)
+    anchor_fk = models.ForeignKey(AppDeleteAnchor1,
+                                  on_delete=models.CASCADE)
     anchor_m2m = models.ManyToManyField(AppDeleteAnchor2)
 
 

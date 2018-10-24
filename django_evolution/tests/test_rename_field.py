@@ -29,7 +29,8 @@ class RenameFieldBaseModel(models.Model):
     int_field_named_indexed = models.IntegerField(
         db_column='custom_db_col_name_indexed',
         db_index=True)
-    fk_field = models.ForeignKey(RenameAnchor1)
+    fk_field = models.ForeignKey(RenameAnchor1,
+                                 on_delete=models.CASCADE)
     m2m_field = models.ManyToManyField(RenameAnchor2)
     m2m_field_named = models.ManyToManyField(
         RenameAnchor3, db_table='non-default_db_table')
@@ -111,7 +112,8 @@ class RenameFieldTests(EvolutionTestCase):
                 db_column='custom_db_col_name')
             int_field_named_indexed = models.IntegerField(
                 db_column='custom_db_col_name_indexed', db_index=True)
-            fk_field = models.ForeignKey(RenameAnchor1)
+            fk_field = models.ForeignKey(RenameAnchor1,
+                                         on_delete=models.CASCADE)
             m2m_field = models.ManyToManyField(RenameAnchor2)
             m2m_field_named = models.ManyToManyField(
                 RenameAnchor3, db_table='non-default_db_table')
@@ -143,7 +145,8 @@ class RenameFieldTests(EvolutionTestCase):
                 db_column='custom_db_col_name')
             int_field_named_indexed = models.IntegerField(
                 db_column='custom_db_col_name_indexed', db_index=True)
-            fk_field = models.ForeignKey(RenameAnchor1)
+            fk_field = models.ForeignKey(RenameAnchor1,
+                                         on_delete=models.CASCADE)
             m2m_field = models.ManyToManyField(RenameAnchor2)
             m2m_field_named = models.ManyToManyField(
                 RenameAnchor3, db_table='non-default_db_table')
@@ -175,7 +178,8 @@ class RenameFieldTests(EvolutionTestCase):
                 db_column='custom_db_col_name')
             int_field_named_indexed = models.IntegerField(
                 db_column='custom_db_col_name_indexed', db_index=True)
-            fk_field = models.ForeignKey(RenameAnchor1)
+            fk_field = models.ForeignKey(RenameAnchor1,
+                                         on_delete=models.CASCADE)
             m2m_field = models.ManyToManyField(RenameAnchor2)
             m2m_field_named = models.ManyToManyField(
                 RenameAnchor3, db_table='non-default_db_table')
@@ -205,7 +209,8 @@ class RenameFieldTests(EvolutionTestCase):
                 db_column='custom_db_col_name')
             int_field_named_indexed = models.IntegerField(
                 db_column='custom_db_col_name_indexed', db_index=True)
-            renamed_field = models.ForeignKey(RenameAnchor1)
+            renamed_field = models.ForeignKey(RenameAnchor1,
+                                              on_delete=models.CASCADE)
             m2m_field = models.ManyToManyField(RenameAnchor2)
             m2m_field_named = models.ManyToManyField(
                 RenameAnchor3, db_table='non-default_db_table')
@@ -235,7 +240,8 @@ class RenameFieldTests(EvolutionTestCase):
             renamed_field = models.IntegerField()
             int_field_named_indexed = models.IntegerField(
                 db_column='custom_db_col_name_indexed', db_index=True)
-            fk_field = models.ForeignKey(RenameAnchor1)
+            fk_field = models.ForeignKey(RenameAnchor1,
+                                         on_delete=models.CASCADE)
             m2m_field = models.ManyToManyField(RenameAnchor2)
             m2m_field_named = models.ManyToManyField(
                 RenameAnchor3, db_table='non-default_db_table')
@@ -267,7 +273,8 @@ class RenameFieldTests(EvolutionTestCase):
                 db_column='non-default_column_name')
             int_field_named_indexed = models.IntegerField(
                 db_column='custom_db_col_name_indexed', db_index=True)
-            fk_field = models.ForeignKey(RenameAnchor1)
+            fk_field = models.ForeignKey(RenameAnchor1,
+                                         on_delete=models.CASCADE)
             m2m_field = models.ManyToManyField(RenameAnchor2)
             m2m_field_named = models.ManyToManyField(
                 RenameAnchor3, db_table='non-default_db_table')
@@ -301,7 +308,8 @@ class RenameFieldTests(EvolutionTestCase):
                 db_column='non-default_column_name2')
             int_field_named_indexed = models.IntegerField(
                 db_column='custom_db_col_name_indexed', db_index=True)
-            fk_field = models.ForeignKey(RenameAnchor1)
+            fk_field = models.ForeignKey(RenameAnchor1,
+                                         on_delete=models.CASCADE)
             m2m_field = models.ManyToManyField(RenameAnchor2)
             m2m_field_named = models.ManyToManyField(
                 RenameAnchor3, db_table='non-default_db_table')
@@ -364,7 +372,8 @@ class RenameFieldTests(EvolutionTestCase):
                 db_column='custom_db_col_name')
             int_field_named_indexed = models.IntegerField(
                 db_column='custom_db_col_name_indexed', db_index=True)
-            fk_field = models.ForeignKey(RenameAnchor1)
+            fk_field = models.ForeignKey(RenameAnchor1,
+                                         on_delete=models.CASCADE)
             renamed_field = models.ManyToManyField(RenameAnchor2)
             m2m_field_named = models.ManyToManyField(
                 RenameAnchor3, db_table='non-default_db_table')
@@ -397,7 +406,8 @@ class RenameFieldTests(EvolutionTestCase):
                 db_column='custom_db_col_name')
             int_field_named_indexed = models.IntegerField(
                 db_column='custom_db_col_name_indexed', db_index=True)
-            fk_field = models.ForeignKey(RenameAnchor1)
+            fk_field = models.ForeignKey(RenameAnchor1,
+                                         on_delete=models.CASCADE)
             renamed_field = models.ManyToManyField(RenameAnchor2)
             m2m_field_named = models.ManyToManyField(
                 RenameAnchor3, db_table='non-default_db_table')
@@ -431,7 +441,8 @@ class RenameFieldTests(EvolutionTestCase):
                 db_column='custom_db_col_name')
             int_field_named_indexed = models.IntegerField(
                 db_column='custom_db_col_name_indexed', db_index=True)
-            fk_field = models.ForeignKey(RenameAnchor1)
+            fk_field = models.ForeignKey(RenameAnchor1,
+                                         on_delete=models.CASCADE)
             m2m_field = models.ManyToManyField(RenameAnchor2)
             renamed_field = models.ManyToManyField(
                 RenameAnchor3)

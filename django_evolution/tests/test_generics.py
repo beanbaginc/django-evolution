@@ -12,7 +12,8 @@ class GenericAnchor(models.Model):
     value = models.IntegerField()
 
     # Host a generic key here, too
-    content_type = models.ForeignKey(ContentType)
+    content_type = models.ForeignKey(ContentType,
+                                     on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField(db_index=True)
     content_object = GenericForeignKey('content_type', 'object_id')
 
@@ -22,7 +23,8 @@ class GenericBaseModel(models.Model):
     int_field = models.IntegerField()
 
     # Plus a generic foreign key - the Generic itself should be ignored
-    content_type = models.ForeignKey(ContentType)
+    content_type = models.ForeignKey(ContentType,
+                                     on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField(db_index=True)
     content_object = GenericForeignKey('content_type', 'object_id')
 
@@ -50,7 +52,8 @@ class GenericRelationsTests(EvolutionTestCase):
             int_field = models.IntegerField()
 
             # Plus a generic foreign key - the Generic itself should be ignored
-            content_type = models.ForeignKey(ContentType)
+            content_type = models.ForeignKey(ContentType,
+                                             on_delete=models.CASCADE)
             object_id = models.PositiveIntegerField(db_index=True)
             content_object = GenericForeignKey('content_type', 'object_id')
 

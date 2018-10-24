@@ -59,7 +59,9 @@ class Version(models.Model):
 
 @python_2_unicode_compatible
 class Evolution(models.Model):
-    version = models.ForeignKey(Version, related_name='evolutions')
+    version = models.ForeignKey(Version,
+                                related_name='evolutions',
+                                on_delete=models.CASCADE)
     app_label = models.CharField(max_length=200)
     label = models.CharField(max_length=100)
 

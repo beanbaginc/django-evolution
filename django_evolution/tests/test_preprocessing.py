@@ -290,7 +290,8 @@ class PreprocessingTests(EvolutionTestCase):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             added_field = models.ForeignKey(RenamedReffedPreprocModel,
-                                            null=True)
+                                            null=True,
+                                            on_delete=models.CASCADE)
 
         self.set_base_model(
             self.default_base_model,
@@ -340,7 +341,8 @@ class PreprocessingTests(EvolutionTestCase):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             renamed_field = models.ForeignKey(RenamedReffedPreprocModel,
-                                              null=True)
+                                              null=True,
+                                              on_delete=models.CASCADE)
 
         self.set_base_model(
             self.default_base_model,

@@ -20,7 +20,8 @@ class DiffAnchor3(models.Model):
     value = models.IntegerField()
 
     # Host a generic key here, too.
-    content_type = models.ForeignKey(ContentType)
+    content_type = models.ForeignKey(ContentType,
+                                     on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField(db_index=True)
     content_object = GenericForeignKey('content_type', 'object_id')
 
@@ -28,7 +29,8 @@ class DiffAnchor3(models.Model):
 class DiffBaseModel(models.Model):
     name = models.CharField(max_length=20)
     age = models.IntegerField()
-    ref = models.ForeignKey(DiffAnchor1)
+    ref = models.ForeignKey(DiffAnchor1,
+                            on_delete=models.CASCADE)
 
 
 class DiffTests(EvolutionTestCase):
@@ -46,7 +48,8 @@ class DiffTests(EvolutionTestCase):
         class DestModel(models.Model):
             name = models.CharField(max_length=20)
             age = models.IntegerField()
-            ref = models.ForeignKey(DiffAnchor1)
+            ref = models.ForeignKey(DiffAnchor1,
+                                    on_delete=models.CASCADE)
 
         end_sig = self.make_end_signatures(DestModel, 'TestModel')[1]
         d = Diff(self.start_sig, end_sig)

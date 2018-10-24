@@ -16,7 +16,8 @@ class OrderingTests(EvolutionTestCase):
 
         class Case41Model(models.Model):
             value = models.IntegerField()
-            ref = models.ForeignKey(Case41Anchor)
+            ref = models.ForeignKey(Case41Anchor,
+                                    on_delete=models.CASCADE)
 
         class UpdatedCase41Model(models.Model):
             value = models.IntegerField()

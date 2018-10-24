@@ -524,7 +524,9 @@ class AddFieldTests(EvolutionTestCase):
         class DestModel(models.Model):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
-            added_field = models.ForeignKey(AddAnchor1, null=True)
+            added_field = models.ForeignKey(AddAnchor1,
+                                            null=True,
+                                            on_delete=models.CASCADE)
 
         self.perform_evolution_tests(
             DestModel,
@@ -608,7 +610,9 @@ class AddFieldTests(EvolutionTestCase):
         class DestModel(models.Model):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
-            added_field = models.ForeignKey(AddAnchor1, null=True)
+            added_field = models.ForeignKey(AddAnchor1,
+                                            null=True,
+                                            on_delete=models.CASCADE)
 
         self.set_base_model(
             self.default_base_model,
