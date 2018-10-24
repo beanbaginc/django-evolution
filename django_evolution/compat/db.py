@@ -38,7 +38,7 @@ except ImportError:
         # Django < 1.7
         BaseDatabaseSchemaEditor = None
 
-from django_evolution.compat.models import get_models
+from django_evolution.compat.models import get_models, get_remote_field
 from django_evolution.support import supports_index_together
 
 
@@ -206,10 +206,12 @@ def sql_create_for_many_to_many_field(connection, model, field):
         list:
         The list of SQL statements for creating the table and constraints.
     """
+    through = get_remote_field(field).through
+
     if BaseDatabaseSchemaEditor:
         # Django >= 1.7
         with connection.schema_editor(collect_sql=True) as schema_editor:
-            schema_editor.create_model(field.rel.through)
+            schema_editor.create_model(through)
 
         return schema_editor.collected_sql
     else:
@@ -440,7 +442,10 @@ def sql_add_constraints(connection, model, refs):
                     #         '_fk_%(to_table)s_%(to_column)s'))
                     #
                     rel_meta = rel_class._meta
-                    to_column = meta.get_field(f.rel.field_name).column
+                    to_column = (
+                        meta.get_field(get_remote_field(f).field_name)
+                        .column
+                    )
 
                     suffix = '_fk_%(to_table)s_%(to_column)s' % {
                         'to_table': meta.db_table,

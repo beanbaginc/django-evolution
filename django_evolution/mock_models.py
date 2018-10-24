@@ -11,6 +11,8 @@ from django.utils.encoding import force_bytes
 from django.utils.functional import curry
 
 from django_evolution.compat.datastructures import OrderedDict
+from django_evolution.compat.models import (get_remote_field,
+                                            get_remote_field_model)
 
 
 def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
@@ -71,9 +73,12 @@ def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
             through_model_sig = proj_sig[through_app_name][through_model_name]
         elif hasattr(field, '_get_m2m_attr'):
             # Django >= 1.2
-            to = field.rel.to._meta.object_name.lower()
+            remote_field = get_remote_field(field)
+            remote_field_model = get_remote_field_model(remote_field)
 
-            if (field.rel.to == RECURSIVE_RELATIONSHIP_CONSTANT or
+            to = remote_field_model._meta.object_name.lower()
+
+            if (remote_field_model == RECURSIVE_RELATIONSHIP_CONSTANT or
                 to == parent_model._meta.object_name.lower()):
                 from_ = 'from_%s' % to
                 to = 'to_%s' % to
@@ -123,7 +128,7 @@ def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
         if through_model_sig:
             through = MockModel(proj_sig, through_app_name, through_model_name,
                                 through_model_sig)
-            field.rel.through = through
+            get_remote_field(field).through = through
 
         field.m2m_db_table = curry(field._get_m2m_db_table, parent_model._meta)
         field.set_attributes_from_rel()

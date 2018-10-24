@@ -8,7 +8,8 @@ from django_evolution.compat.apps import get_apps
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.db import (db_router_allows_migrate,
                                         db_router_allows_syncdb)
-from django_evolution.compat.models import GenericRelation, get_models
+from django_evolution.compat.models import (GenericRelation, get_models,
+                                            get_remote_field_model)
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.utils import get_app_label
 
@@ -30,13 +31,17 @@ ATTRIBUTE_DEFAULTS = {
     'db_table': None
 }
 
-# r7790 modified the unique attribute of the meta model to be
-# a property that combined an underlying _unique attribute with
-# the primary key attribute. We need the underlying property,
-# but we don't want to affect old signatures (plus the
-# underscore is ugly :-).
 ATTRIBUTE_ALIASES = {
-    'unique': '_unique'
+    # r7790 modified the unique attribute of the meta model to be
+    # a property that combined an underlying _unique attribute with
+    # the primary key attribute. We need the underlying property,
+    # but we don't want to affect old signatures (plus the
+    # underscore is ugly :-).
+    'unique': '_unique',
+
+    # Django 1.9 moved from 'rel' to 'remote_field' for relations, but
+    # for compatibility reasons we want to retain 'rel' in our signatures.
+    'rel': 'remote_field',
 }
 
 
@@ -45,25 +50,31 @@ def create_field_sig(field):
     field_sig['field_type'] = field.__class__
 
     for attrib in six.iterkeys(ATTRIBUTE_DEFAULTS):
-        alias = ATTRIBUTE_ALIASES.get(attrib, attrib)
+        alias = ATTRIBUTE_ALIASES.get(attrib)
 
-        if hasattr(field, alias):
+        if alias and hasattr(field, alias):
             value = getattr(field, alias)
+        elif hasattr(field, attrib):
+            value = getattr(field, attrib)
+        else:
+            continue
 
-            if isinstance(field, ForeignKey) and attrib == 'db_index':
-                default = True
-            else:
-                default = ATTRIBUTE_DEFAULTS[attrib]
+        if isinstance(field, ForeignKey) and attrib == 'db_index':
+            default = True
+        else:
+            default = ATTRIBUTE_DEFAULTS[attrib]
 
-            # only store non-default values
-            if default != value:
-                field_sig[attrib] = value
+        # only store non-default values
+        if default != value:
+            field_sig[attrib] = value
 
     rel = field_sig.pop('rel', None)
 
     if rel:
-        field_sig['related_model'] = str('.'.join([rel.to._meta.app_label,
-                                                   rel.to._meta.object_name]))
+        related_model = get_remote_field_model(rel)
+        field_sig['related_model'] = str('%s.%s' % (
+            related_model._meta.app_label,
+            related_model._meta.object_name))
 
     return field_sig
 

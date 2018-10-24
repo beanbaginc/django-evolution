@@ -120,6 +120,50 @@ def get_rel_target_field(field):
         return field.related_field
 
 
+def get_remote_field(field):
+    """Return the remote field for a relation.
+
+    This is equivalent to ``rel`` prior to Django 1.9 and ``remote_field``
+    in 1.9 onward.
+
+    Args:
+        field (django.db.models.Field):
+            The relation field.
+
+    Returns:
+        django.db.models.Field:
+        The remote field on the relation.
+    """
+    if hasattr(field, 'remote_field'):
+        # Django >= 1.9
+        return field.remote_field
+    else:
+        # Django < 1.9
+        return field.rel
+
+
+def get_remote_field_model(rel):
+    """Return the model a relation is pointing to.
+
+    This is equivalent to ``rel.to`` prior to Django 1.9 and
+    ``remote_field.model`` in 1.9 onward.
+
+    Args:
+        rel (object):
+            The relation object.
+
+    Returns:
+        type:
+        The model the relation points to.
+    """
+    if hasattr(rel, 'model'):
+        # Django >= 1.9
+        return rel.model
+    else:
+        # Django < 1.9
+        return rel.to
+
+
 __all__ = [
     'GenericForeignKey',
     'GenericRelation',
@@ -128,5 +172,7 @@ __all__ = [
     'get_models',
     'get_model_name',
     'get_rel_target_field',
+    'get_remote_field',
+    'get_remote_field_model',
     'set_model_name',
 ]

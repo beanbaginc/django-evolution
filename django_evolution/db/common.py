@@ -16,6 +16,8 @@ from django_evolution.compat.db import (create_index_name,
                                         sql_indexes_for_field,
                                         sql_indexes_for_fields,
                                         truncate_name)
+from django_evolution.compat.models import (get_remote_field,
+                                            get_remote_field_model)
 from django_evolution.db.sql_result import AlterTableSQLResult, SQLResult
 from django_evolution.errors import EvolutionNotImplementedError
 from django_evolution.signature import (add_index_to_database_sig,
@@ -154,17 +156,25 @@ class BaseEvolutionOperations(object):
         models = []
 
         for field in model._meta.local_many_to_many:
-            if (field.rel and
-                field.rel.through and
-                field.rel.through._meta.db_table == old_db_tablename):
+            remote_field = get_remote_field(field)
 
-                through = field.rel.through
+            if (remote_field and
+                remote_field.through and
+                remote_field.through._meta.db_table == old_db_tablename):
+
+                through = remote_field.through
 
                 for m2m_field in through._meta.local_fields:
-                    if m2m_field.rel and m2m_field.rel.to == model:
-                        models.append(m2m_field.rel.to)
-                        refs.setdefault(m2m_field.rel.to, []).append(
-                            (through, m2m_field))
+                    remote_m2m_field = get_remote_field(m2m_field)
+
+                    if remote_m2m_field:
+                        remote_m2m_field_model = get_remote_field_model(
+                            remote_m2m_field)
+
+                        if remote_m2m_field_model == model:
+                            models.append(remote_m2m_field_model)
+                            refs.setdefault(remote_m2m_field_model, []).append(
+                                (through, m2m_field))
 
         remove_refs = refs.copy()
 
@@ -228,7 +238,9 @@ class BaseEvolutionOperations(object):
         qn = self.connection.ops.quote_name
         sql_result = AlterTableSQLResult(self, model)
 
-        if f.rel:
+        remote_field = get_remote_field(f)
+
+        if remote_field:
             # it is a foreign key field
             # NOT NULL REFERENCES "django_evolution_addbasemodel"
             # ("id") DEFERRABLE INITIALLY DEFERRED
@@ -236,7 +248,7 @@ class BaseEvolutionOperations(object):
             # ALTER TABLE <tablename> ADD COLUMN <column name> NULL
             # REFERENCES <tablename1> ("<colname>") DEFERRABLE INITIALLY
             # DEFERRED
-            related_model = f.rel.to
+            related_model = get_remote_field_model(remote_field)
             related_table = related_model._meta.db_table
             related_pk_col = related_model._meta.pk.name
             constraints = ['%sNULL' % (not f.null and 'NOT ' or '')]
@@ -1025,16 +1037,25 @@ class BaseEvolutionOperations(object):
 
         if self.supports_constraints and field.primary_key:
             for f in opts.local_many_to_many:
-                if f.rel and f.rel.through:
-                    through = f.rel.through
+                remote_field = get_remote_field(f)
+
+                if remote_field and remote_field.through:
+                    through = remote_field.through
 
                     for m2m_f in through._meta.local_fields:
-                        if (m2m_f.rel and
-                            m2m_f.rel.to._meta.db_table == opts.db_table and
-                            m2m_f.rel.field_name == field.column):
+                        remote_m2m_f = get_remote_field(m2m_f)
 
-                            models.append(m2m_f.rel.to)
-                            refs.setdefault(m2m_f.rel.to, []).append(
+                        if not remote_m2m_f:
+                            continue
+
+                        remote_m2m_f_model = \
+                            get_remote_field_model(remote_m2m_f)
+
+                        if (remote_m2m_f.field_name == field.column and
+                            remote_m2m_f_model._meta.db_table ==
+                                opts.db_table):
+                            models.append(remote_m2m_f_model)
+                            refs.setdefault(remote_m2m_f_model, []).append(
                                 (through, m2m_f))
 
             remove_refs = refs.copy()
@@ -1052,7 +1073,7 @@ class BaseEvolutionOperations(object):
         if self.supports_constraints and old_field.primary_key:
             for relto in models:
                 for rel_class, f in refs[relto]:
-                    f.rel.field_name = new_field.column
+                    get_remote_field(f).field_name = new_field.column
 
                 del relto._meta._fields[old_field.name]
                 relto._meta._fields[new_field.name] = new_field

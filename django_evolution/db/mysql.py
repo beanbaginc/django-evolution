@@ -3,7 +3,9 @@ from __future__ import unicode_literals
 from django.core.management import color
 
 from django_evolution.compat.db import sql_delete_constraints
-from django_evolution.compat.models import get_rel_target_field
+from django_evolution.compat.models import (get_rel_target_field,
+                                            get_remote_field,
+                                            get_remote_field_model)
 from django_evolution.db.common import BaseEvolutionOperations
 from django_evolution.db.sql_result import AlterTableSQLResult, SQLResult
 
@@ -12,10 +14,15 @@ class EvolutionOperations(BaseEvolutionOperations):
     def delete_column(self, model, f):
         sql_result = AlterTableSQLResult(self, model)
 
-        if f.rel:
-            sql_result.add(sql_delete_constraints(self.connection,
-                                                  f.rel.to,
-                                                  {f.rel.to: [(model, f)]}))
+        remote_field = get_remote_field(f)
+
+        if remote_field:
+            remote_field_model = get_remote_field_model(remote_field)
+
+            sql_result.add(sql_delete_constraints(
+                self.connection,
+                remote_field_model,
+                {remote_field_model: [(model, f)]}))
 
         sql_result.add_sql(
             super(EvolutionOperations, self).delete_column(model, f))
@@ -82,14 +89,19 @@ class EvolutionOperations(BaseEvolutionOperations):
             field_output.append(self.connection.ops.tablespace_sql(
                 tablespace, inline=True))
 
-        if new_field.rel:
-            field_output.append(
-                style.SQL_KEYWORD('REFERENCES') + ' ' +
-                style.SQL_TABLE(qn(new_field.rel.to._meta.db_table)) + ' (' +
-                style.SQL_FIELD(qn(new_field.rel.to._meta.get_field(
-                    new_field.rel.field_name).column)) + ')' +
-                self.connection.ops.deferrable_sql()
-            )
+        new_remote_field = get_remote_field(new_field)
+
+        if new_remote_field:
+            new_remote_field_meta = \
+                get_remote_field_model(new_remote_field)._meta
+
+            field_output.append('%s %s (%s)%s' % (
+                style.SQL_KEYWORD('REFERENCES'),
+                style.SQL_TABLE(qn(new_remote_field_meta.db_table)),
+                style.SQL_FIELD(qn(new_remote_field_meta.get_field(
+                    new_remote_field.field_name).column)),
+                self.connection.ops.deferrable_sql(),
+            ))
 
         if old_field.primary_key:
             alter_table_item = 'DROP PRIMARY KEY, '
@@ -203,7 +215,7 @@ class EvolutionOperations(BaseEvolutionOperations):
             The name of the index.
         """
         if (hasattr(self.connection, 'schema_editor') and
-            field.rel and field.db_constraint):
+            get_remote_field(field) and field.db_constraint):
             # Django >= 1.7
             target_field = get_rel_target_field(field)
 

@@ -15,7 +15,10 @@ from django_evolution.compat.apps import (is_app_registered, register_app,
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.db import (atomic, create_index_name, digest,
                                         sql_create, sql_delete, truncate_name)
-from django_evolution.compat.models import (all_models, get_model_name,
+from django_evolution.compat.models import (all_models,
+                                            get_model_name,
+                                            get_remote_field,
+                                            get_remote_field_model,
                                             set_model_name)
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.signature import (add_index_to_database_sig,
@@ -163,10 +166,11 @@ def register_models(database_sig, models, register_indexes=False,
         # renamed. Go through each of them and figure out what changes need
         # to be made.
         for field in meta.local_many_to_many:
-            if not field.rel.through:
+            through = get_remote_field(field).through
+
+            if not through:
                 continue
 
-            through = field.rel.through
             through_meta = through._meta
             through_orig_model_name = get_model_name(through)
             through_new_model_name = through_orig_model_name
@@ -201,9 +205,12 @@ def register_models(database_sig, models, register_indexes=False,
 
             # Change each of the columns for the fields on the
             # ManyToManyField's model to reflect the new model names.
-            for field in through._meta.local_fields:
-                if field.rel and field.rel.to:
-                    column = field.column
+            for through_field in through._meta.local_fields:
+                through_remote_field = get_remote_field(through_field)
+
+                if (through_remote_field and
+                    get_remote_field_model(through_remote_field)):
+                    column = through_field.column
 
                     if (column.startswith((orig_model_name,
                                            'to_%s' % orig_model_name,
@@ -211,8 +218,8 @@ def register_models(database_sig, models, register_indexes=False,
                         # This is a field that references one end of the
                         # relation or another. Update the model naem in the
                         # field's column.
-                        field.column = column.replace(orig_model_name,
-                                                      new_model_name)
+                        through_field.column = column.replace(orig_model_name,
+                                                              new_model_name)
 
             # Replace the entry in the models cache for the through table,
             # removing the old name and adding the new one.
