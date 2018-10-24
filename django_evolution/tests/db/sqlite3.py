@@ -492,7 +492,96 @@ add_field = {
     ]),
 }
 
-if django.VERSION[:2] >= (1, 9):
+if django.VERSION[:2] >= (2, 0):
+    add_field.update({
+        'AddManyToManyDatabaseTableModel': '\n'.join([
+            'CREATE TABLE "tests_testmodel_added_field" '
+            '("id" integer NOT NULL PRIMARY KEY%s,'
+            ' "testmodel_id" integer NOT NULL'
+            ' REFERENCES "tests_testmodel" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED,'
+            ' "addanchor1_id" integer NOT NULL'
+            ' REFERENCES "tests_addanchor1" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED'
+            ');'
+            % get_field_suffix('AutoField'),
+
+            'CREATE UNIQUE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("testmodel_id", "addanchor1_id");'
+            % generate_unique_constraint_name(
+                'tests_testmodel_added_field',
+                ['testmodel_id', 'addanchor1_id']),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("testmodel_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'testmodel_id'),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("addanchor1_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'addanchor1_id'),
+        ]),
+
+        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+            'CREATE TABLE "tests_testmodel_added_field" '
+            '("id" integer NOT NULL PRIMARY KEY%s,'
+            ' "testmodel_id" integer NOT NULL'
+            ' REFERENCES "tests_testmodel" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED,'
+            ' "addanchor2_id" integer NOT NULL'
+            ' REFERENCES "custom_add_anchor_table" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED'
+            ');'
+            % get_field_suffix('AutoField'),
+
+            'CREATE UNIQUE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("testmodel_id", "addanchor2_id");'
+            % generate_unique_constraint_name(
+                'tests_testmodel_added_field',
+                ['testmodel_id', 'addanchor2_id']),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("testmodel_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'testmodel_id'),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("addanchor2_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'addanchor2_id'),
+        ]),
+
+        'AddManyToManySelf': '\n'.join([
+            'CREATE TABLE "tests_testmodel_added_field" '
+            '("id" integer NOT NULL PRIMARY KEY%s,'
+            ' "from_testmodel_id" integer NOT NULL'
+            ' REFERENCES "tests_testmodel" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED,'
+            ' "to_testmodel_id" integer NOT NULL'
+            ' REFERENCES "tests_testmodel" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED'
+            ');'
+            % get_field_suffix('AutoField'),
+
+            'CREATE UNIQUE INDEX "%s" ON "tests_testmodel_added_field"'
+            ' ("from_testmodel_id", "to_testmodel_id");'
+            % generate_unique_constraint_name(
+                'tests_testmodel_added_field',
+                ['from_testmodel_id', 'to_testmodel_id']),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("from_testmodel_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'from_testmodel_id'),
+
+            'CREATE INDEX "%s" ON'
+            ' "tests_testmodel_added_field" ("to_testmodel_id");'
+            % generate_index_name('tests_testmodel_added_field',
+                                  'to_testmodel_id'),
+        ]),
+    })
+elif django.VERSION[:2] >= (1, 9):
     add_field.update({
         'AddManyToManyDatabaseTableModel': '\n'.join([
             'CREATE TABLE "tests_testmodel_added_field" '
@@ -2327,17 +2416,6 @@ index_together = {
 }
 
 indexes = {
-    'setting_from_empty': '\n'.join([
-        'CREATE INDEX "%s"'
-        ' ON "tests_testmodel" ("int_field1");'
-        % generate_index_name('tests_testmodel',
-                              ['int_field1'],
-                              model_meta_indexes=True),
-
-        'CREATE INDEX "my_custom_index"'
-        ' ON "tests_testmodel" ("char_field1", "char_field2" DESC);',
-    ]),
-
     'replace_list': '\n'.join([
         'DROP INDEX "%s";'
         % generate_index_name('tests_testmodel', ['int_field1'],
@@ -2373,6 +2451,34 @@ indexes = {
                               model_meta_indexes=True)
     ),
 }
+
+if django.VERSION[:2] >= (2, 0):
+    indexes.update({
+        'setting_from_empty': '\n'.join([
+            'CREATE INDEX "%s"'
+            ' ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel',
+                                  ['int_field1'],
+                                  model_meta_indexes=True),
+
+            'CREATE INDEX "my_custom_index"'
+            ' ON "tests_testmodel" ("char_field1", "char_field2"DESC);',
+        ]),
+    })
+else:
+    indexes.update({
+        'setting_from_empty': '\n'.join([
+            'CREATE INDEX "%s"'
+            ' ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel',
+                                  ['int_field1'],
+                                  model_meta_indexes=True),
+
+            'CREATE INDEX "my_custom_index"'
+            ' ON "tests_testmodel" ("char_field1", "char_field2" DESC);',
+        ]),
+    })
+
 
 preprocessing = {
     'add_change_field': '\n'.join([
@@ -2757,7 +2863,7 @@ preprocessing = {
         'INSERT INTO "tests_testmodel" ("my_id")'
         ' SELECT "my_id" FROM "TEMP_TABLE";',
 
-        'DROP TABLE "TEMP_TABLE";'
+        'DROP TABLE "TEMP_TABLE";',
     ]),
 
     'rename_add_field': '\n'.join([

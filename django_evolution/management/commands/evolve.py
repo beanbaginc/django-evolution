@@ -336,10 +336,14 @@ Type 'yes' to continue, or 'no' to cancel: """ % self.database)
                 confirm = 'yes'
 
             if confirm.lower() == 'yes':
+                connection = connections[self.database]
+                connection.disable_constraint_checking()
+
                 # Begin Transaction
-                with transaction.atomic(**self.using_args):
+                with connection.constraint_checks_disabled(), \
+                     transaction.atomic(**self.using_args):
                     # TODO: Close the cursor when this succeeds/fails.
-                    cursor = connections[self.database].cursor()
+                    cursor = connection.cursor()
                     app_label = None
 
                     self.stdout.write(

@@ -17,10 +17,11 @@ def pickle_dumps(obj):
             The object to dump.
 
     Returns:
-        bytes:
-        The pickled representation of the object.
+        unicode:
+        The Unicode pickled representation of the object, safe for storing
+        in the database.
     """
-    return pickle.dumps(obj, protocol=0)
+    return pickle.dumps(obj, protocol=0).decode('latin1')
 
 
 def pickle_loads(pickled_str):

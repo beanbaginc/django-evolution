@@ -452,9 +452,10 @@ def sql_add_constraints(connection, model, refs):
                         'to_column': to_column,
                     }
 
-                    name = schema_editor._create_index_name(rel_class,
-                                                            [f.column],
-                                                            suffix=suffix)
+                    name = create_index_name(connection=connection,
+                                             table_name=rel_meta.db_table,
+                                             col_names=[f.column],
+                                             suffix=suffix)
 
                     create_sql = schema_editor.sql_create_fk % {
                         'table': qn(rel_meta.db_table),
@@ -507,18 +508,25 @@ def create_index_name(connection, table_name, field_names=[], col_names=[],
     """
     if BaseDatabaseSchemaEditor:
         # Django >= 1.7
-        #
-        # Fake a table for the call. It only needs _meta.db_table.
-        class TempModel(object):
-            class _meta:
-                db_table = table_name
-
         if unique:
             assert not suffix
             suffix = '_uniq'
 
         with connection.schema_editor() as schema_editor:
-            return schema_editor._create_index_name(TempModel,
+            if django.VERSION[0] >= 2:
+                # Django >= 2.0
+                table = table_name
+            else:
+                # Django >= 1.7, < 2.0
+                #
+                # Fake a table for the call. It only needs _meta.db_table.
+                class TempModel(object):
+                    class _meta:
+                        db_table = table_name
+
+                table = TempModel
+
+            return schema_editor._create_index_name(table,
                                                     col_names or field_names,
                                                     suffix=suffix)
     elif django.VERSION[:2] >= (1, 5):

@@ -317,7 +317,8 @@ def execute_test_sql(start_sig, end_sig, generate_sql_func, app_label='tests',
     """
     def _execute_transaction(sql):
         try:
-            with atomic(using=database):
+            with db_connection.constraint_checks_disabled(), \
+                 atomic(using=database):
                 execute_sql(db_connection.cursor(), sql, database)
         except Exception as e:
             logging.exception('Error executing SQL %s: %s', sql, e)

@@ -975,17 +975,6 @@ index_together = {
 }
 
 indexes = {
-    'setting_from_empty': '\n'.join([
-        'CREATE INDEX `%s`'
-        ' ON `tests_testmodel` (`int_field1`);'
-        % generate_index_name('tests_testmodel',
-                              ['int_field1'],
-                              model_meta_indexes=True),
-
-        'CREATE INDEX `my_custom_index`'
-        ' ON `tests_testmodel` (`char_field1`, `char_field2` DESC);',
-    ]),
-
     'replace_list': '\n'.join([
         'DROP INDEX `%s` ON `tests_testmodel`;'
         % generate_index_name('tests_testmodel', ['int_field1'],
@@ -1021,6 +1010,34 @@ indexes = {
                               model_meta_indexes=True)
     ),
 }
+
+if django.VERSION[:2] >= (2, 0):
+    indexes.update({
+        'setting_from_empty': '\n'.join([
+            'CREATE INDEX `%s`'
+            ' ON `tests_testmodel` (`int_field1`);'
+            % generate_index_name('tests_testmodel',
+                                  ['int_field1'],
+                                  model_meta_indexes=True),
+
+            'CREATE INDEX `my_custom_index`'
+            ' ON `tests_testmodel` (`char_field1`, `char_field2`DESC);',
+        ]),
+    })
+else:
+    indexes.update({
+        'setting_from_empty': '\n'.join([
+            'CREATE INDEX `%s`'
+            ' ON `tests_testmodel` (`int_field1`);'
+            % generate_index_name('tests_testmodel',
+                                  ['int_field1'],
+                                  model_meta_indexes=True),
+
+            'CREATE INDEX `my_custom_index`'
+            ' ON `tests_testmodel` (`char_field1`, `char_field2` DESC);',
+        ]),
+    })
+
 
 preprocessing = {
     'add_change_field': '\n'.join([

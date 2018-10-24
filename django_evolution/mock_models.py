@@ -361,7 +361,9 @@ class MockModel(object):
         self.model_name = model_name
         self._meta = MockMeta(proj_sig, app_name, model_name, model_sig)
         self._meta.setup_fields(self, stub)
-        self._state = ModelState(db_name)
+
+        self._state = ModelState()
+        self._state.db = db_name
 
     def __repr__(self):
         """Return a string representation of the model.
