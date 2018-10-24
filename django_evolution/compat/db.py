@@ -143,90 +143,6 @@ def sql_create(app, db_name=None):
                 sql.sql_indexes(app, style, connection))
 
 
-def _sql_delete_model(connection, schema_editor, model, deleted_models,
-                      deleted_refs, all_table_names,
-                      include_auto_created=False):
-    """Internal helper for returning SQL statements for deleting a model.
-
-    Args:
-        connection (object):
-            The database connection.
-
-        schema_editor (object):
-            The schema editor used to manipulate the database.
-
-        model (django.db.models.Model):
-            The model being deleted.
-
-        deleted_models (set):
-            A set used to store the models that have generated SQL statements.
-            This is used internally for nesting purposes.
-
-        deleted_refs (set):
-            A set used to store deleted references/constraint information
-            for generated SQL statements. This is used internally for
-            nesting purposes.
-
-        all_table_names (set):
-            A set of all the table names currently found on the database.
-
-        include_auto_created (bool, optional):
-            Whether to include auto-created models in the list of SQL
-            statements. Defaults to ``False``. This is used internally for
-            nesting purposes.
-
-    Returns:
-        tuple:
-        A tuple of two lists. The first list contains the SQL for deleting
-        constraints. The second contains the SQL for deleting models.
-    """
-    meta = model._meta
-
-    table_name = connection.introspection.table_name_converter(meta.db_table)
-
-    if table_name not in all_table_names:
-        return [], []
-
-    constraints_sql = []
-    models_sql = []
-
-    if (model not in deleted_models and
-        (not meta.auto_created or include_auto_created)):
-        deleted_models.add(model)
-        models_sql.append(schema_editor.sql_delete_table % {
-            'table': schema_editor.quote_name(meta.db_table),
-        })
-
-    for f in meta.local_fields:
-        if f.rel:
-            fk_names = schema_editor._constraint_names(
-                model, [f.column], foreign_key=True)
-
-            for fk_name in fk_names:
-                key = (model, fk_name)
-
-                if key not in deleted_refs:
-                    deleted_refs.add(key)
-                    constraints_sql.append(
-                        schema_editor._delete_constraint_sql(
-                            schema_editor.sql_delete_fk, model,
-                            fk_name))
-
-    for f in meta.local_many_to_many:
-        through = f.rel.through
-
-        if through._meta.auto_created or 1:
-            temp_constraints_sql, temp_models_sql = \
-                _sql_delete_model(connection, schema_editor, through,
-                                  deleted_models, deleted_refs,
-                                  all_table_names,
-                                  include_auto_created=True)
-            constraints_sql += temp_constraints_sql
-            models_sql += temp_models_sql
-
-    return constraints_sql, models_sql
-
-
 def sql_delete(app, db_name=None):
     """Return SQL statements for deleting all models in an app.
 
@@ -249,21 +165,21 @@ def sql_delete(app, db_name=None):
     if BaseDatabaseSchemaEditor:
         # Django >= 1.7
         all_table_names = set(connection.introspection.table_names())
-        constraints_sql = []
-        models_sql = []
         deleted_models = set()
-        deleted_refs = set()
+
+        introspection = connection.introspection
 
         with connection.schema_editor(collect_sql=True) as schema_editor:
-            for model in get_models(app, include_auto_created=True):
-                temp_constraints_sql, temp_models_sql = \
-                    _sql_delete_model(connection, schema_editor, model,
-                                      deleted_models, deleted_refs,
-                                      all_table_names)
-                constraints_sql += temp_constraints_sql
-                models_sql += temp_models_sql
+            for model in get_models(app):
+                table_name = introspection.table_name_converter(
+                    model._meta.db_table)
 
-        return constraints_sql + models_sql
+                if (table_name in all_table_names and
+                    model not in deleted_models):
+                    schema_editor.delete_model(model)
+                    deleted_models.add(model)
+
+        return schema_editor.collected_sql
     else:
         # Django < 1.7
         style = color.no_style()
