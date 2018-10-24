@@ -3,6 +3,8 @@ from __future__ import unicode_literals
 from django.db import models
 
 from django_evolution.compat.db import sql_indexes_for_model
+from django_evolution.compat.models import (get_remote_field,
+                                            get_remote_field_model)
 from django_evolution.db.common import BaseEvolutionOperations, SQLResult
 
 
@@ -148,6 +150,16 @@ class EvolutionOperations(BaseEvolutionOperations):
 
                 if field.primary_key:
                     params.append('PRIMARY KEY')
+
+                if not temporary and isinstance(field, models.ForeignKey):
+                    remote_field = get_remote_field(field)
+                    remote_field_model = get_remote_field_model(remote_field)
+
+                    params.append(
+                        'REFERENCES %s (%s) DEFERRABLE INITIALLY DEFERRED'
+                        % (qn(remote_field_model._meta.db_table),
+                           qn(remote_field_model._meta.get_field(
+                               remote_field.field_name).column)))
 
                 columns.append(' '.join(params))
 

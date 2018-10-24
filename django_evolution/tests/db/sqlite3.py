@@ -476,7 +476,8 @@ add_field = {
         '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NOT NULL,'
         ' "int_field" integer NOT NULL,'
-        ' "added_field_id" integer NULL);',
+        ' "added_field_id" integer NULL REFERENCES "tests_addanchor1" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED);',
 
         'INSERT INTO "tests_testmodel"'
         ' ("id", "char_field", "int_field", "added_field_id")'
@@ -704,7 +705,8 @@ delete_field = {
         ' "char_field" varchar(20) NOT NULL,'
         ' "non-default_db_column" integer NOT NULL,'
         ' "int_field3" integer NOT NULL UNIQUE,'
-        ' "fk_field1_id" integer NOT NULL);',
+        ' "fk_field1_id" integer NOT NULL REFERENCES "tests_deleteanchor1"'
+        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field1_id");'
         % generate_index_name('tests_testmodel', 'fk_field1_id',
@@ -741,7 +743,8 @@ delete_field = {
         ' "char_field" varchar(20) NOT NULL,'
         ' "int_field" integer NOT NULL,'
         ' "int_field3" integer NOT NULL UNIQUE,'
-        ' "fk_field1_id" integer NOT NULL);',
+        ' "fk_field1_id" integer NOT NULL REFERENCES "tests_deleteanchor1"'
+        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field1_id");'
         % generate_index_name('tests_testmodel', 'fk_field1_id',
@@ -778,7 +781,8 @@ delete_field = {
         ' "char_field" varchar(20) NOT NULL,'
         ' "int_field" integer NOT NULL,'
         ' "non-default_db_column" integer NOT NULL,'
-        ' "fk_field1_id" integer NOT NULL);',
+        ' "fk_field1_id" integer NOT NULL REFERENCES "tests_deleteanchor1"'
+        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field1_id");'
         % generate_index_name('tests_testmodel', 'fk_field1_id',
@@ -1727,7 +1731,8 @@ rename_field = {
         ' "renamed_field" integer NOT NULL,'
         ' "custom_db_col_name" integer NOT NULL,'
         ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL);',
+        ' "fk_field_id" integer NOT NULL REFERENCES "tests_renameanchor1"'
+        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
 
         'CREATE INDEX "%s" ON "tests_testmodel"'
         ' ("custom_db_col_name_indexed");'
@@ -1771,7 +1776,8 @@ rename_field = {
         ' "renamed_field" integer NOT NULL,'
         ' "custom_db_col_name" integer NOT NULL,'
         ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL);',
+        ' "fk_field_id" integer NOT NULL REFERENCES "tests_renameanchor1"'
+        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
 
         'CREATE INDEX "%s" ON "tests_testmodel"'
         ' ("custom_db_col_name_indexed");'
@@ -1815,7 +1821,8 @@ rename_field = {
         ' "int_field" integer NOT NULL,'
         ' "custom_db_col_name" integer NOT NULL,'
         ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL);',
+        ' "fk_field_id" integer NOT NULL REFERENCES "tests_renameanchor1"'
+        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
 
         'CREATE INDEX "%s" ON "tests_testmodel"'
         ' ("custom_db_col_name_indexed");'
@@ -1902,7 +1909,8 @@ rename_field = {
         ' "int_field" integer NOT NULL,'
         ' "renamed_field" integer NOT NULL,'
         ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL);',
+        ' "fk_field_id" integer NOT NULL REFERENCES "tests_renameanchor1"'
+        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
 
         'CREATE INDEX "%s" ON "tests_testmodel"'
         ' ("custom_db_col_name_indexed");'
@@ -1946,7 +1954,8 @@ rename_field = {
         ' "int_field" integer NOT NULL,'
         ' "non-default_column_name" integer NOT NULL,'
         ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL);',
+        ' "fk_field_id" integer NOT NULL REFERENCES "tests_renameanchor1"'
+        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
 
         'CREATE INDEX "%s" ON "tests_testmodel"'
         ' ("custom_db_col_name_indexed");'
@@ -1990,7 +1999,8 @@ rename_field = {
         ' "int_field" integer NOT NULL,'
         ' "non-default_column_name2" integer NOT NULL,'
         ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL);',
+        ' "fk_field_id" integer NOT NULL REFERENCES "tests_renameanchor1"'
+        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
 
         'CREATE INDEX "%s" ON "tests_testmodel"'
         ' ("custom_db_col_name_indexed");'
@@ -2095,7 +2105,8 @@ generics = {
         'CREATE TABLE "tests_testmodel"'
         '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "int_field" integer NOT NULL,'
-        ' "content_type_id" integer NOT NULL,'
+        ' "content_type_id" integer NOT NULL REFERENCES "django_content_type"'
+        ' ("id") DEFERRABLE INITIALLY DEFERRED,'
         ' "object_id" integer unsigned NOT NULL);',
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("content_type_id");'
@@ -2550,7 +2561,8 @@ preprocessing = {
         'CREATE TABLE "tests_testmodel"'
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NOT NULL,'
-        ' "added_field_id" integer NULL);',
+        ' "added_field_id" integer NULL REFERENCES "tests_reffedpreprocmodel"'
+        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
 
         'INSERT INTO "tests_testmodel"'
         ' ("my_id", "char_field", "added_field_id")'
@@ -2577,7 +2589,8 @@ preprocessing = {
         'CREATE TABLE "tests_testmodel"'
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NOT NULL,'
-        ' "renamed_field_id" integer NULL);',
+        ' "renamed_field_id" integer NULL REFERENCES'
+        ' "tests_reffedpreprocmodel" ("id") DEFERRABLE INITIALLY DEFERRED);',
 
         'INSERT INTO "tests_testmodel"'
         ' ("my_id", "char_field", "renamed_field_id")'
