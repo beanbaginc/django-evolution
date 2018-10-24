@@ -145,7 +145,7 @@ class Command(BaseCommand):
             latest_version = \
                 Version.objects.current_version(using=self.database)
 
-            self.old_proj_sig = pickle_loads(str(latest_version.signature))
+            self.old_proj_sig = pickle_loads(latest_version.signature)
             self.diff = Diff(self.old_proj_sig, self.current_proj_sig)
         except Evolution.DoesNotExist:
             raise CommandError("Can't evolve yet. Need to set an "

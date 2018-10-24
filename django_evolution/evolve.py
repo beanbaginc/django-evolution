@@ -7,6 +7,7 @@ from importlib import import_module
 from django.utils import six
 
 from django_evolution.builtin_evolutions import BUILTIN_SEQUENCES
+from django_evolution.compat.py23 import pickle_loads
 from django_evolution.errors import EvolutionException
 from django_evolution.models import Evolution, Version
 from django_evolution.mutations import RenameModel, SQLMutation
@@ -96,7 +97,7 @@ def get_mutations(app, evolution_labels, database):
     latest_version = Version.objects.current_version(using=database)
 
     app_label = get_app_label(app)
-    old_proj_sig = pickle.loads(str(latest_version.signature))
+    old_proj_sig = pickle_loads(latest_version.signature)
     proj_sig = create_project_sig(database)
 
     if app_label in old_proj_sig and app_label in proj_sig:

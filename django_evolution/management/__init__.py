@@ -173,7 +173,7 @@ def _on_app_models_updated(app, verbosity=1, using=DEFAULT_DB_ALIAS, **kwargs):
                 'Project signature has changed - an evolution is required'))
 
             if verbosity > 1:
-                old_proj_sig = pickle_loads(str(latest_version.signature))
+                old_proj_sig = pickle_loads(latest_version.signature)
                 print(diff)
 
 
