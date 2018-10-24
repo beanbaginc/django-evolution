@@ -428,7 +428,20 @@ class BaseEvolutionOperations(object):
         """
         qn = self.connection.ops.quote_name
 
-        return SQLResult(['DROP INDEX %s;' % qn(index_name)])
+        if hasattr(self.connection, 'SchemaEditorClass'):
+            # Django >= 1.7
+            delete_index_sql = (
+                self.connection.SchemaEditorClass.sql_delete_index
+                % {
+                    'name': qn(index_name),
+                    'table': qn(model._meta.db_table),
+                }
+            )
+        else:
+            # Django < 1.7
+            delete_index_sql = 'DROP INDEX %s' % qn(index_name)
+
+        return SQLResult(['%s;' % delete_index_sql])
 
     def get_new_index_name(self, model, fields, unique=False):
         """Return a newly generated index name.

@@ -17,6 +17,12 @@ generate_unique_constraint_name = \
     make_generate_unique_constraint_name(connection)
 
 
+if django_version >= (2, 0):
+    drop_index_sql = 'DROP INDEX IF EXISTS'
+else:
+    drop_index_sql = 'DROP INDEX'
+
+
 add_field = {
     'AddNonNullNonCallableColumnModel': '\n'.join([
         'ALTER TABLE "tests_testmodel"'
@@ -641,8 +647,9 @@ change_field = {
     'AddDBIndexNoOpChangeModel': '',
 
     "RemoveDBIndexChangeModel": (
-        'DROP INDEX "%s";'
-        % generate_index_name('tests_testmodel', 'int_field1')
+        '%s "%s";'
+        % (drop_index_sql,
+           generate_index_name('tests_testmodel', 'int_field1'))
     ),
 
     'RemoveDBIndexNoOpChangeModel': '',
@@ -1154,10 +1161,11 @@ index_together = {
     ]),
 
     'replace_list': '\n'.join([
-        'DROP INDEX "%s";'
-        % generate_index_name('tests_testmodel',
-                              ['int_field1', 'char_field1'],
-                              index_together=True),
+        '%s "%s";'
+        % (drop_index_sql,
+           generate_index_name('tests_testmodel',
+                               ['int_field1', 'char_field1'],
+                               index_together=True)),
 
         'CREATE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field2", "char_field2");'
@@ -1175,10 +1183,11 @@ index_together = {
     ]),
 
     'removing': '\n'.join([
-        'DROP INDEX "%s";'
-        % generate_index_name('tests_testmodel',
-                              ['int_field1', 'char_field1'],
-                              index_together=True),
+        '%s "%s";'
+        % (drop_index_sql,
+           generate_index_name('tests_testmodel',
+                               ['int_field1', 'char_field1'],
+                               index_together=True)),
     ]),
 
     'ignore_missing_indexes': (
@@ -1203,11 +1212,13 @@ indexes = {
     ]),
 
     'replace_list': '\n'.join([
-        'DROP INDEX "%s";'
-        % generate_index_name('tests_testmodel', ['int_field1'],
-                              model_meta_indexes=True),
+        '%s "%s";'
+        % (drop_index_sql,
+           generate_index_name('tests_testmodel', ['int_field1'],
+                               model_meta_indexes=True)),
 
-        'DROP INDEX "my_custom_index";',
+        '%s "my_custom_index";'
+        % drop_index_sql,
 
         'CREATE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field2");'
@@ -1223,11 +1234,13 @@ indexes = {
     ]),
 
     'removing': '\n'.join([
-        'DROP INDEX "%s";'
-        % generate_index_name('tests_testmodel', ['int_field1'],
-                              model_meta_indexes=True),
+        '%s "%s";'
+        % (drop_index_sql,
+           generate_index_name('tests_testmodel', ['int_field1'],
+                               model_meta_indexes=True)),
 
-        'DROP INDEX "my_custom_index";',
+        '%s "my_custom_index";'
+        % drop_index_sql,
     ]),
 
     'ignore_missing_indexes': (
