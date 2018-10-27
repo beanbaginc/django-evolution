@@ -66,7 +66,7 @@ class DeleteFieldTests(EvolutionTestCase):
              'signature.'),
             lambda: mutation.run_simulation(app_label='badapp',
                                             project_sig={},
-                                            database_sig={}))
+                                            database_state=None))
 
     def test_with_bad_model(self):
         """Testing DeleteField with model not in signature"""
@@ -82,7 +82,7 @@ class DeleteFieldTests(EvolutionTestCase):
              'signature.'),
             lambda: mutation.run_simulation(app_label='tests',
                                             project_sig=proj_sig,
-                                            database_sig={}))
+                                            database_state=None))
 
     def test_with_bad_field(self):
         """Testing DeleteField with field not in signature"""
@@ -102,7 +102,7 @@ class DeleteFieldTests(EvolutionTestCase):
              'signature.'),
             lambda: mutation.run_simulation(app_label='tests',
                                             project_sig=proj_sig,
-                                            database_sig={}))
+                                            database_state=None))
 
     def test_delete(self):
         """Testing DeleteField with a typical column"""

@@ -36,7 +36,7 @@ class OrderingTests(EvolutionTestCase):
              'order to be simulated.'),
             lambda: mutation.run_simulation(app_label='tests',
                                             project_sig={},
-                                            database_sig={}))
+                                            database_state=None))
 
     def test_add_fields_bad_update_func_signature(self):
         """Testing SQLMutation and bad update_func signature"""
@@ -49,7 +49,7 @@ class OrderingTests(EvolutionTestCase):
              'order to be simulated.'),
             lambda: mutation.run_simulation(app_label='tests',
                                             project_sig={},
-                                            database_sig={}))
+                                            database_state=None))
 
     def test_add_fields_simulation_functions(self):
         """Testing SQLMutation and adding fields with simulation functions"""

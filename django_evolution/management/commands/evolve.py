@@ -12,13 +12,14 @@ from django.db.utils import DEFAULT_DB_ALIAS
 from django_evolution.compat.apps import get_apps, get_app
 from django_evolution.compat.commands import BaseCommand
 from django_evolution.compat.py23 import pickle_dumps, pickle_loads
+from django_evolution.db.state import DatabaseState
 from django_evolution.diff import Diff
 from django_evolution.errors import EvolutionException
 from django_evolution.evolve import get_unapplied_evolutions, get_mutations
 from django_evolution.models import Version, Evolution
 from django_evolution.mutations import AddField, DeleteApplication
 from django_evolution.mutators import AppMutator
-from django_evolution.signature import create_database_sig, create_project_sig
+from django_evolution.signature import create_project_sig
 from django_evolution.utils import (execute_sql, get_app_label,
                                     get_evolutions_path, write_sql)
 
@@ -135,7 +136,7 @@ class Command(BaseCommand):
         self.new_evolutions = []
         self.written_hint_files = []
 
-        self.database_sig = create_database_sig(self.database)
+        self.database_state = DatabaseState(self.database)
         self.current_proj_sig = create_project_sig(self.database)
         self.current_signature = pickle_dumps(self.current_proj_sig)
 
@@ -189,7 +190,7 @@ class Command(BaseCommand):
         mutations = [
             mutation for mutation in temp_mutations
             if mutation.is_mutable(app_label, self.old_proj_sig,
-                                   self.database_sig, self.database)
+                                   self.database_state, self.database)
         ]
 
         if mutations:
@@ -197,7 +198,7 @@ class Command(BaseCommand):
             self.evolution_required = True
 
             app_mutator = AppMutator(app_label, self.old_proj_sig,
-                                     self.database_sig, self.database)
+                                     self.database_state, self.database)
             app_mutator.run_mutations(mutations)
             app_mutator_sql = app_mutator.to_sql()
 
@@ -248,10 +249,11 @@ class Command(BaseCommand):
 
             for app_label in self.diff.deleted:
                 if delete_app.is_mutable(app_label, self.old_proj_sig,
-                                         self.database_sig,
+                                         self.database_state,
                                          self.database):
                     app_mutator = AppMutator(app_label, self.old_proj_sig,
-                                             self.database_sig, self.database)
+                                             self.database_state,
+                                             self.database)
                     app_mutator.run_mutation(delete_app)
                     app_mutator_sql = app_mutator.to_sql()
 

@@ -20,3 +20,7 @@ class SimulationFailure(EvolutionException):
 
 class EvolutionNotImplementedError(EvolutionException, NotImplementedError):
     """An operation is not supported by the mutation or database backend."""
+
+
+class DatabaseStateError(EvolutionException):
+    """There was an issue working with database state."""

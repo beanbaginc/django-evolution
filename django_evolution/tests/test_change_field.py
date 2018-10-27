@@ -8,7 +8,6 @@ from django_evolution.errors import SimulationFailure
 from django_evolution.mutations import ChangeField
 from django_evolution.mutators import AppMutator
 from django_evolution.tests.base_test_case import EvolutionTestCase
-from django_evolution.tests.utils import has_index_with_columns
 
 
 class ChangeSequenceFieldInitial(object):
@@ -57,7 +56,7 @@ class ChangeFieldTests(EvolutionTestCase):
              'signature.'),
             lambda: mutation.run_simulation(app_label='badapp',
                                             project_sig={},
-                                            database_sig={}))
+                                            database_state=None))
 
     def test_with_bad_model(self):
         """Testing ChangeField with model not in signature"""
@@ -73,7 +72,7 @@ class ChangeFieldTests(EvolutionTestCase):
              'signature.'),
             lambda: mutation.run_simulation(app_label='tests',
                                             project_sig=proj_sig,
-                                            database_sig={}))
+                                            database_state=None))
 
     def test_with_bad_field(self):
         """Testing ChangeField with field not in signature"""
@@ -93,7 +92,7 @@ class ChangeFieldTests(EvolutionTestCase):
              'signature.'),
             lambda: mutation.run_simulation(app_label='tests',
                                             project_sig=proj_sig,
-                                            database_sig={}))
+                                            database_state=None))
 
     def test_set_null_false_without_initial_value_raises_exception(self):
         """Testing ChangeField with setting null=False without initial value"""
@@ -431,8 +430,9 @@ class ChangeFieldTests(EvolutionTestCase):
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
-        self.assertFalse(has_index_with_columns(
-            self.database_sig, 'tests_testmodel', ['int_field2']))
+        self.assertIsNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field2']))
 
         self.perform_evolution_tests(
             DestModel,
@@ -449,8 +449,9 @@ class ChangeFieldTests(EvolutionTestCase):
             ],
             'AddDBIndexChangeModel')
 
-        self.assertTrue(has_index_with_columns(
-            self.test_database_sig, 'tests_testmodel', ['int_field2']))
+        self.assertIsNotNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field2']))
 
     def test_set_db_index_true_and_existing_index(self):
         """Testing ChangeField with setting db_index=True and existing index
@@ -471,19 +472,18 @@ class ChangeFieldTests(EvolutionTestCase):
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
         evolver = EvolutionOperationsMulti('default',
-                                           self.database_sig).get_evolver()
+                                           self.database_state).get_evolver()
         index_name = evolver.get_default_index_name(
             'tests_testmodel', DestModel._meta.get_field('int_field2'))
 
-        self.database_sig['tests_testmodel']['indexes'] = {
-            index_name: {
-                'unique': False,
-                'columns': ['int_field2'],
-            }
-        }
+        self.database_state.add_index(table_name='tests_testmodel',
+                                      index_name=index_name,
+                                      columns=['int_field2'],
+                                      unique=False)
 
-        self.assertTrue(has_index_with_columns(
-            self.database_sig, 'tests_testmodel', ['int_field2']))
+        self.assertIsNotNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field2']))
 
         self.perform_evolution_tests(
             DestModel,
@@ -501,8 +501,9 @@ class ChangeFieldTests(EvolutionTestCase):
             'AddDBIndexNoOpChangeModel',
             rescan_indexes=False)
 
-        self.assertTrue(has_index_with_columns(
-            self.test_database_sig, 'tests_testmodel', ['int_field2']))
+        self.assertIsNotNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field2']))
 
     def test_set_db_index_false(self):
         """Testing ChangeField with setting db_index=False"""
@@ -520,8 +521,9 @@ class ChangeFieldTests(EvolutionTestCase):
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
-        self.assertTrue(has_index_with_columns(
-            self.database_sig, 'tests_testmodel', ['int_field1']))
+        self.assertIsNotNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field1']))
 
         self.perform_evolution_tests(
             DestModel,
@@ -538,8 +540,9 @@ class ChangeFieldTests(EvolutionTestCase):
             ],
             'RemoveDBIndexChangeModel')
 
-        self.assertFalse(has_index_with_columns(
-            self.test_database_sig, 'tests_testmodel', ['int_field1']))
+        self.assertIsNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field1']))
 
     def test_set_db_index_false_and_no_existing_index(self):
         """Testing ChangeField with setting db_index=False without an
@@ -559,10 +562,11 @@ class ChangeFieldTests(EvolutionTestCase):
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
-        self.database_sig['tests_testmodel']['indexes'] = {}
+        self.database_state.clear_indexes('tests_testmodel')
 
-        self.assertFalse(has_index_with_columns(
-            self.database_sig, 'tests_testmodel', ['int_field1']))
+        self.assertIsNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field1']))
 
         self.perform_evolution_tests(
             DestModel,
@@ -580,8 +584,9 @@ class ChangeFieldTests(EvolutionTestCase):
             'RemoveDBIndexNoOpChangeModel',
             rescan_indexes=False)
 
-        self.assertFalse(has_index_with_columns(
-            self.test_database_sig, 'tests_testmodel', ['int_field1']))
+        self.assertIsNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field1']))
 
     def test_set_unique_true(self):
         """Testing ChangeField with setting unique=True"""
@@ -599,8 +604,9 @@ class ChangeFieldTests(EvolutionTestCase):
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
-        self.assertFalse(has_index_with_columns(
-            self.database_sig, 'tests_testmodel', ['int_field4'],
+        self.assertIsNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field4'],
             unique=True))
 
         self.perform_evolution_tests(
@@ -618,8 +624,9 @@ class ChangeFieldTests(EvolutionTestCase):
             ],
             'AddUniqueChangeModel')
 
-        self.assertTrue(has_index_with_columns(
-            self.test_database_sig, 'tests_testmodel', ['int_field4'],
+        self.assertIsNotNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field4'],
             unique=True))
 
     def test_set_unique_false(self):
@@ -638,8 +645,9 @@ class ChangeFieldTests(EvolutionTestCase):
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
-        self.assertTrue(has_index_with_columns(
-            self.database_sig, 'tests_testmodel', ['int_field3'],
+        self.assertIsNotNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field3'],
             unique=True))
 
         self.perform_evolution_tests(
@@ -657,8 +665,9 @@ class ChangeFieldTests(EvolutionTestCase):
             ],
             'RemoveUniqueChangeModel')
 
-        self.assertFalse(has_index_with_columns(
-            self.test_database_sig, 'tests_testmodel', ['int_field3'],
+        self.assertIsNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field3'],
             unique=True))
 
     def test_change_multiple_attrs_multi_fields(self):
@@ -899,7 +908,7 @@ class ChangeFieldTests(EvolutionTestCase):
             ])
 
         test_sig = self.copy_sig(self.start_sig)
-        app_mutator = AppMutator('tests', test_sig, self.database_sig)
+        app_mutator = AppMutator('tests', test_sig, self.database_state)
         evolutions = d.evolution()['tests']
         app_mutator.run_mutations(evolutions)
 

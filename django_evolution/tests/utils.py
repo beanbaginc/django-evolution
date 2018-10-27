@@ -13,7 +13,8 @@ from django_evolution.compat.apps import (is_app_registered, register_app,
                                           register_app_models,
                                           unregister_app_model)
 from django_evolution.compat.datastructures import OrderedDict
-from django_evolution.compat.db import (atomic, create_index_name, digest,
+from django_evolution.compat.db import (atomic, create_index_name,
+                                        create_index_together_name, digest,
                                         sql_create, sql_delete, truncate_name)
 from django_evolution.compat.models import (all_models,
                                             get_model_name,
@@ -21,9 +22,7 @@ from django_evolution.compat.models import (all_models,
                                             get_remote_field_model,
                                             set_model_name)
 from django_evolution.db import EvolutionOperationsMulti
-from django_evolution.signature import (add_index_to_database_sig,
-                                        create_empty_database_table_sig,
-                                        create_model_sig)
+from django_evolution.signature import create_model_sig
 from django_evolution.tests import models as evo_test
 from django_evolution.utils import execute_sql, write_sql
 
@@ -31,13 +30,13 @@ from django_evolution.utils import execute_sql, write_sql
 test_connections = ConnectionHandler(settings.TEST_DATABASES)
 
 
-def register_models(database_sig, models, register_indexes=False,
+def register_models(database_state, models, register_indexes=False,
                     new_app_label='tests', db_name='default', app=evo_test):
     """Register models for testing purposes.
 
     Args:
-        database_sig (dict):
-            The database signature to populate with model information.
+        database_state (django_evolution.db.state.DatabaseState):
+            The database state to populate with model information.
 
         models (list of django.db.models.Model):
             The models to register.
@@ -61,7 +60,7 @@ def register_models(database_sig, models, register_indexes=False,
         the values are the models.
     """
     app_cache = OrderedDict()
-    evolver = EvolutionOperationsMulti(db_name, database_sig).get_evolver()
+    evolver = EvolutionOperationsMulti(db_name, database_state).get_evolver()
 
     db_connection = connections[db_name or DEFAULT_DB_ALIAS]
     max_name_length = db_connection.ops.max_name_length()
@@ -99,15 +98,15 @@ def register_models(database_sig, models, register_indexes=False,
         meta.object_name = new_object_name
         set_model_name(model, new_model_name)
 
-        # Add an entry for the table in database_sig, if it's not already
-        # there.
-        if new_db_table not in database_sig:
-            database_sig[new_db_table] = create_empty_database_table_sig()
+        # Add an entry for the table in the database state, if it's not
+        # already there.
+        if not database_state.has_table(new_db_table):
+            database_state.add_table(new_db_table)
 
         if register_indexes:
             # Now that we definitely have an entry, store the indexes for
-            # all the fields in database_sig, so that other operations can
-            # look up the index names.
+            # all the fields in the database state, so that other operations
+            # can look up the index names.
             for field in meta.local_fields:
                 if field.db_index or field.unique:
                     new_index_name = create_index_name(
@@ -117,35 +116,38 @@ def register_models(database_sig, models, register_indexes=False,
                         col_names=[field.column],
                         unique=field.unique)
 
-                    add_index_to_database_sig(
-                        evolver, database_sig, model, [field],
+                    database_state.add_index(
                         index_name=new_index_name,
+                        table_name=new_db_table,
+                        columns=[field.column],
                         unique=field.unique)
 
             for field_names in meta.unique_together:
+                fields = evolver.get_fields_for_names(model, field_names)
                 new_index_name = create_index_name(
                     db_connection,
                     new_db_table,
                     field_names=field_names,
                     unique=True)
 
-                add_index_to_database_sig(
-                    evolver, database_sig, model,
-                    evolver.get_fields_for_names(model, field_names),
+                database_state.add_index(
                     index_name=new_index_name,
+                    table_name=new_db_table,
+                    columns=[field.column for field in fields],
                     unique=True)
 
             for field_names in getattr(meta, 'index_together', []):
                 # Django >= 1.5
                 fields = evolver.get_fields_for_names(model, field_names)
-                new_index_name = create_index_name(
+                new_index_name = create_index_together_name(
                     db_connection,
                     new_db_table,
-                    field_names=[field.name for field in fields],
-                    col_names=[field.column for field in fields])
+                    field_names=[field.name for field in fields])
 
-                add_index_to_database_sig(evolver, database_sig, model, fields,
-                                          index_name=new_index_name)
+                database_state.add_index(
+                    index_name=new_index_name,
+                    table_name=new_db_table,
+                    columns=[field.column for field in fields])
 
             if getattr(meta, 'indexes', None):
                 # Django >= 1.11
@@ -158,9 +160,10 @@ def register_models(database_sig, models, register_indexes=False,
 
                     fields = evolver.get_fields_for_names(
                         model, index.fields, allow_sort_prefixes=True)
-                    add_index_to_database_sig(evolver, database_sig,
-                                              model, fields,
-                                              index_name=index.name)
+                    database_state.add_index(
+                        index_name=index.name,
+                        table_name=new_db_table,
+                        columns=[field.column for field in fields])
 
         # ManyToManyFields have their own tables, which will also need to be
         # renamed. Go through each of them and figure out what changes need
@@ -525,38 +528,6 @@ def make_generate_index_name(connection):
         ``db_type`` parameter.
     """
     return partial(generate_index_name, connection)
-
-
-def has_index_with_columns(database_sig, table_name, columns, unique=False):
-    """Return whether there's an index with the given criteria.
-
-    This looks in the database signature for an index for the given table,
-    column names, and with the given uniqueness flag.
-
-    Args:
-        database_sig (dict):
-            The database signature containing indexes.
-
-        table_name (unicode):
-            The name of the table the indexes would be on.
-
-        columns (list of unicode):
-            The list of column names the index spans.
-
-        unique (bool, optional):
-            Whether this is a unique constraint.
-
-    Returns:
-        bool:
-        ``True`` if an index is found matching the provided criteria.
-        ``False`` if it was not found.
-    """
-    assert table_name in database_sig
-
-    return any(
-        index_info['columns'] == columns and index_info['unique'] == unique
-        for index_info in six.itervalues(database_sig[table_name]['indexes'])
-    )
 
 
 def generate_constraint_name(connection, r_col, col, r_table, table):

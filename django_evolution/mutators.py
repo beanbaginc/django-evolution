@@ -31,7 +31,7 @@ class ModelMutator(object):
     BaseModelFieldMutation. It is also intended for internal use by AppMutator.
     """
     def __init__(self, app_mutator, model_name, app_label, project_sig,
-                 database_sig, database):
+                 database_state, database):
         self.app_mutator = app_mutator
         self.model_name = model_name
         self.app_label = app_label
@@ -43,7 +43,7 @@ class ModelMutator(object):
 
         assert self.database
         evolution_ops = EvolutionOperationsMulti(self.database,
-                                                 self.database_sig)
+                                                 self.database_state)
         self.evolver = evolution_ops.get_evolver()
 
     @property
@@ -51,8 +51,8 @@ class ModelMutator(object):
         return self.app_mutator.project_sig
 
     @property
-    def database_sig(self):
-        return self.app_mutator.database_sig
+    def database_state(self):
+        return self.app_mutator.database_state
 
     @property
     def model_sig(self):
@@ -172,7 +172,7 @@ class ModelMutator(object):
         try:
             mutation.run_simulation(app_label=self.app_label,
                                     project_sig=self.project_sig,
-                                    database_sig=self.database_sig,
+                                    database_state=self.database_state,
                                     database=self.database)
         except CannotSimulate:
             self.can_simulate = False
@@ -206,7 +206,7 @@ class ModelMutator(object):
         try:
             mutation.run_simulation(app_label=self.app_label,
                                     project_sig=self.project_sig,
-                                    database_sig=self.database_sig,
+                                    database_state=self.database_state,
                                     database=self.database)
         except CannotSimulate:
             self.can_simulate = False
@@ -237,17 +237,17 @@ class AppMutator(object):
     to get the SQL statements needed to apply those operations. Once called,
     the mutator is finalized, and new operations cannot be added.
     """
-    def __init__(self, app_label, project_sig, database_sig, database=None):
+    def __init__(self, app_label, project_sig, database_state, database=None):
         self.app_label = app_label
         self.project_sig = project_sig
-        self.database_sig = database_sig
+        self.database_state = database_state
         self.database = database
         self.can_simulate = True
         self._last_model_mutator = None
         self._mutators = []
         self._finalized = False
         self._orig_project_sig = copy.deepcopy(self.project_sig)
-        self._orig_database_sig = copy.deepcopy(self.database_sig)
+        self._orig_database_state = self.database_state.clone()
 
     def run_mutation(self, mutation):
         """Runs a mutation that applies to this app.
@@ -269,7 +269,7 @@ class AppMutator(object):
 
                 model_mutator = ModelMutator(
                     self, mutation.model_name, self.app_label,
-                    self.project_sig, self.database_sig, self.database)
+                    self.project_sig, self.database_state, self.database)
                 self._last_model_mutator = model_mutator
 
             model_mutator.run_mutation(mutation)
@@ -303,7 +303,7 @@ class AppMutator(object):
         self._finalize_model_mutator()
 
         self.project_sig = self._orig_project_sig
-        self.database_sig = self._orig_database_sig
+        self.database_state = self._orig_database_state
 
         sql = []
 

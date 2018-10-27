@@ -9,10 +9,9 @@ from django.test.testcases import TransactionTestCase
 from django.test.utils import override_settings
 
 from django_evolution.compat.apps import unregister_app
+from django_evolution.db.state import DatabaseState
 from django_evolution.diff import Diff
 from django_evolution.mutators import AppMutator
-from django_evolution.signature import (create_database_sig,
-                                        rescan_indexes_for_database_sig)
 from django_evolution.tests.utils import (create_test_project_sig,
                                           execute_test_sql,
                                           get_sql_mappings,
@@ -39,8 +38,8 @@ class EvolutionTestCase(TransactionTestCase):
         self.extra_models = []
         self.start = None
         self.start_sig = None
-        self.database_sig = None
-        self.test_database_sig = None
+        self.database_state = None
+        self.test_database_state = None
         self._models_registered = False
 
         if self.default_base_model:
@@ -78,7 +77,7 @@ class EvolutionTestCase(TransactionTestCase):
         self.base_model = model
         self.pre_extra_models = pre_extra_models
         self.extra_models = extra_models
-        self.database_sig = create_database_sig(db_name)
+        self.database_state = DatabaseState(db_name)
 
         self.start = self.register_model(model, name,
                                          register_indexes=True,
@@ -145,13 +144,13 @@ class EvolutionTestCase(TransactionTestCase):
                             db_name=None):
         db_name = db_name or self.default_database_name
 
-        self.test_database_sig = self.copy_sig(self.database_sig)
+        self.test_database_state = self.database_state.clone()
         test_sig = self.copy_sig(self.start_sig)
 
         for mutation in evolutions:
             mutation.run_simulation(app_label='tests',
                                     project_sig=test_sig,
-                                    database_sig=self.test_database_sig,
+                                    database_state=self.test_database_state,
                                     database=db_name)
 
         # Check that the simulation's changes results in an empty diff.
@@ -162,10 +161,11 @@ class EvolutionTestCase(TransactionTestCase):
                           rescan_indexes=True, db_name=None):
         def run_mutations():
             if rescan_indexes:
-                rescan_indexes_for_database_sig(self.test_database_sig,
-                                                db_name)
+                self.test_database_state.rescan_indexes()
 
-            app_mutator = AppMutator('tests', test_sig, self.test_database_sig,
+            app_mutator = AppMutator('tests',
+                                     test_sig,
+                                     self.test_database_state,
                                      db_name)
             app_mutator.run_mutations(evolutions)
 
@@ -173,7 +173,7 @@ class EvolutionTestCase(TransactionTestCase):
 
         db_name = db_name or self.default_database_name
 
-        self.test_database_sig = self.copy_sig(self.database_sig)
+        self.test_database_state = self.database_state.clone()
         test_sig = self.copy_sig(self.start_sig)
 
         sql = execute_test_sql(self.start, end, run_mutations,
@@ -218,7 +218,7 @@ class EvolutionTestCase(TransactionTestCase):
 
         models = self.pre_extra_models + [(name, model)] + self.extra_models
 
-        return register_models(database_sig=self.database_sig,
+        return register_models(database_state=self.database_state,
                                models=models,
                                new_app_label='tests',
                                db_name=db_name or self.default_database_name,

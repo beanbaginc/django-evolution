@@ -57,7 +57,7 @@ class DeleteAppTests(EvolutionTestCase):
              'not be found in the signature.'),
             lambda: mutation.run_simulation(app_label='badapp',
                                             project_sig={},
-                                            database_sig={}))
+                                            database_state=None))
 
     def test_delete_app(self):
         """Testing DeleteApplication"""
@@ -87,10 +87,10 @@ class DeleteAppTests(EvolutionTestCase):
         self.perform_simulations([mutation], end_sig, ignore_apps=True,
                                  db_name=database)
 
-        test_database_sig = self.copy_sig(self.database_sig)
+        test_database_state = self.database_state.clone()
         test_sig = self.copy_sig(self.start_sig)
 
-        app_mutator = AppMutator('tests', test_sig, test_database_sig,
+        app_mutator = AppMutator('tests', test_sig, test_database_state,
                                  database)
         app_mutator.run_mutation(mutation)
         sql = app_mutator.to_sql()

@@ -30,7 +30,7 @@ class Simulation(object):
     of failing simulations.
     """
 
-    def __init__(self, mutation, app_label, project_sig, database_sig,
+    def __init__(self, mutation, app_label, project_sig, database_state,
                  database=DEFAULT_DB_ALIAS):
         """Initialize the simulation state.
 
@@ -45,9 +45,8 @@ class Simulation(object):
                 The project signature for the simulation to look up and
                 modify.
 
-            database_sig (dict):
-                The database signature for the simulation to look up and
-                modify.
+            database_state (django_evolution.db.state.DatabaseState):
+                The database state for the simulation to look up and modify.
 
             database (unicode):
                 The registered database name in Django to simulate operating
@@ -56,7 +55,7 @@ class Simulation(object):
         self.mutation = mutation
         self.app_label = app_label
         self.project_sig = project_sig
-        self.database_sig = database_sig
+        self.database_state = database_state
         self.database = database
 
     def get_evolver(self):
@@ -67,7 +66,7 @@ class Simulation(object):
             The database evolver for this type of database.
         """
         return EvolutionOperationsMulti(self.database,
-                                        self.database_sig).get_evolver()
+                                        self.database_state).get_evolver()
 
     def get_app_sig(self):
         """Return the current application signature.
@@ -258,7 +257,7 @@ class BaseMutation(object):
         """
         raise NotImplementedError
 
-    def is_mutable(self, app_label, project_sig, database_sig, database):
+    def is_mutable(self, app_label, project_sig, database_state, database):
         """Return whether the mutation can be applied to the database.
 
         This should check if the database or parts of the signature matches
@@ -271,7 +270,7 @@ class BaseMutation(object):
             project_sig (dict):
                 The project's schema signature.
 
-            database_sig (dict):
+            database_state (django_evolution.db.state.DatabaseState):
                 The database's schema signature.
 
             database (unicode):
@@ -381,12 +380,12 @@ class BaseModelMutation(BaseMutation):
 
         self.model_name = model_name
 
-    def evolver(self, model, database_sig, database=None):
+    def evolver(self, model, database_state, database=None):
         if database is None:
             database = get_database_for_model_name(model.app_label,
                                                    model.model_name)
 
-        return EvolutionOperationsMulti(database, database_sig).get_evolver()
+        return EvolutionOperationsMulti(database, database_state).get_evolver()
 
     def mutate(self, mutator, model):
         """Schedule a model mutation on the mutator.
@@ -409,7 +408,7 @@ class BaseModelMutation(BaseMutation):
         """
         raise NotImplementedError
 
-    def is_mutable(self, app_label, project_sig, database_sig, database):
+    def is_mutable(self, app_label, project_sig, database_state, database):
         """Return whether the mutation can be applied to the database.
 
         This will if the database matches that of the model.
@@ -421,8 +420,8 @@ class BaseModelMutation(BaseMutation):
             project_sig (dict, unused):
                 The project's schema signature.
 
-            database_sig (dict, unused):
-                The database's schema signature.
+            database_state (django_evolution.db.state.DatabaseState, unused):
+                The database state.
 
             database (unicode):
                 The name of the database the operation would be performed on.
@@ -1320,7 +1319,7 @@ class DeleteApplication(BaseMutation):
 
             if mutation.is_mutable(app_label=simulation.app_label,
                                    project_sig=simulation.project_sig,
-                                   database_sig=simulation.database_sig,
+                                   database_state=simulation.database_state,
                                    database=simulation.database):
                 # Check for the model's existence, and then delete.
                 simulation.get_model_sig(model_name)
@@ -1346,7 +1345,7 @@ class DeleteApplication(BaseMutation):
                 mutation = DeleteModel(model_name)
 
                 if mutation.is_mutable(mutator.app_label, mutator.project_sig,
-                                       mutator.database_sig,
+                                       mutator.database_state,
                                        mutator.database):
                     mutator.run_mutation(mutation)
 

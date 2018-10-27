@@ -248,10 +248,9 @@ class ChangeMetaIndexesTests(EvolutionTestCase):
 
         self.set_base_model(ChangeMetaIndexesBaseModel)
 
-        # Remove the indexes from the database signature, to simulate
-        # the indexes not being found in the database. The evolution
-        # should still work.
-        self.database_sig['tests_testmodel']['indexes'] = {}
+        # Remove the indexes from the database state, to simulate the indexes
+        # not being found in the database. The evolution should still work.
+        self.database_state.clear_indexes('tests_testmodel')
 
         self.perform_evolution_tests(
             DestModel,
@@ -419,10 +418,9 @@ class ChangeMetaIndexTogetherTests(EvolutionTestCase):
 
         self.set_base_model(ChangeMetaIndexTogetherBaseModel)
 
-        # Remove the indexes from the database signature, to simulate
-        # the indexes not being found in the database. The evolution
-        # should still work.
-        self.database_sig['tests_testmodel']['indexes'] = {}
+        # Remove the indexes from the database state, to simulate the indexes
+        # not being found in the database. The evolution should still work.
+        self.database_state.clear_indexes('tests_testmodel')
 
         self.perform_evolution_tests(
             DestModel,
@@ -612,10 +610,9 @@ class ChangeMetaUniqueTogetherTests(EvolutionTestCase):
 
         self.set_base_model(ChangeMetaUniqueTogetherBaseModel)
 
-        # Remove the indexes from the database signature, to simulate
-        # the indexes not being found in the database. The evolution
-        # should still work.
-        self.database_sig['tests_testmodel']['indexes'] = {}
+        # Remove the indexes from the database state, to simulate the indexes
+        # not being found in the database. The evolution should still work.
+        self.database_state.clear_indexes('tests_testmodel')
 
         self.perform_evolution_tests(
             DestModel,

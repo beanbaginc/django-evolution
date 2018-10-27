@@ -4,8 +4,19 @@ from django.conf import settings
 
 
 class EvolutionOperationsMulti(object):
-    def __init__(self, db_name, database_sig=None):
-        database_sig = database_sig or {}
+    def __init__(self, db_name, database_state=None):
+        """Initialize the instance.
+
+        Args:
+            db_name (unicode):
+                The name of the database.
+
+            database_state (django_evolution.db.state.DatabaseState):
+                The database state to track information through.
+        """
+        if database_state is None:
+            from django_evolution.db.state import DatabaseState
+            database_state = DatabaseState(db_name, scan=False)
 
         try:
             from django.db import connections
@@ -13,12 +24,13 @@ class EvolutionOperationsMulti(object):
             connection = connections[db_name]
             module_name = ['django_evolution.db', engine]
             module = __import__('.'.join(module_name), {}, {}, [''])
-            self.evolver = module.EvolutionOperations(database_sig, connection)
+            self.evolver = module.EvolutionOperations(database_state,
+                                                      connection)
         except ImportError:
             if hasattr(settings, 'DATABASE_ENGINE'):
                 module_name = ['django_evolution.db', settings.DATABASE_ENGINE]
                 module = __import__('.'.join(module_name), {}, {}, [''])
-                self.evolver = module.EvolutionOperations(database_sig)
+                self.evolver = module.EvolutionOperations(database_state)
             else:
                 raise
 

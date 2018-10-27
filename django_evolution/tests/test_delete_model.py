@@ -25,7 +25,7 @@ class DeleteModelTests(EvolutionTestCase):
              'could not be found in the signature.'),
             lambda: mutation.run_simulation(app_label='badapp',
                                             project_sig={},
-                                            database_sig={}))
+                                            database_state=None))
 
     def test_with_bad_model(self):
         """Testing DeleteModel with model not in signature"""
@@ -40,7 +40,7 @@ class DeleteModelTests(EvolutionTestCase):
              'not be found in the signature.'),
             lambda: mutation.run_simulation(app_label='tests',
                                             project_sig=proj_sig,
-                                            database_sig={}))
+                                            database_state=None))
 
     def test_delete_model(self):
         """Testing DeleteModel"""

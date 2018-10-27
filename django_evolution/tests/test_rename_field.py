@@ -65,7 +65,7 @@ class RenameFieldTests(EvolutionTestCase):
              'signature.'),
             lambda: mutation.run_simulation(app_label='badapp',
                                             project_sig={},
-                                            database_sig={}))
+                                            database_state=None))
 
     def test_with_bad_model(self):
         """Testing RenameField with model not in signature"""
@@ -81,7 +81,7 @@ class RenameFieldTests(EvolutionTestCase):
              'signature.'),
             lambda: mutation.run_simulation(app_label='tests',
                                             project_sig=proj_sig,
-                                            database_sig={}))
+                                            database_state=None))
 
     def test_with_bad_field(self):
         """Testing RenameField with field not in signature"""
@@ -101,7 +101,7 @@ class RenameFieldTests(EvolutionTestCase):
              'signature.'),
             lambda: mutation.run_simulation(app_label='tests',
                                             project_sig=proj_sig,
-                                            database_sig={}))
+                                            database_state=None))
 
     def test_rename(self):
         """Testing RenameField"""

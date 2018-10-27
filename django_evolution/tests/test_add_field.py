@@ -7,7 +7,6 @@ from django.db import connection, models
 from django_evolution.errors import EvolutionException, SimulationFailure
 from django_evolution.mutations import AddField, DeleteField
 from django_evolution.tests.base_test_case import EvolutionTestCase
-from django_evolution.tests.utils import has_index_with_columns
 
 
 class AddSequenceFieldInitial(object):
@@ -66,7 +65,7 @@ class AddFieldTests(EvolutionTestCase):
              'The application could not be found in the signature.'),
             lambda: mutation.run_simulation(app_label='badapp',
                                             project_sig={},
-                                            database_sig={}))
+                                            database_state=None))
 
     def test_with_bad_model(self):
         """Testing AddField with model not in signature"""
@@ -81,7 +80,7 @@ class AddFieldTests(EvolutionTestCase):
              'The model could not be found in the signature.'),
             lambda: mutation.run_simulation(app_label='tests',
                                             project_sig=proj_sig,
-                                            database_sig={}))
+                                            database_state=None))
 
     def test_with_bad_field(self):
         """Testing AddField with field already in signature"""
@@ -102,7 +101,7 @@ class AddFieldTests(EvolutionTestCase):
              'A field with this name already exists.'),
             lambda: mutation.run_simulation(app_label='tests',
                                             project_sig=proj_sig,
-                                            database_sig={}))
+                                            database_state=None))
 
     def test_add_non_null_column_no_initial_hinted_raises_exception(self):
         """Testing AddField with non-NULL column, no initial value and
@@ -442,8 +441,9 @@ class AddFieldTests(EvolutionTestCase):
             int_field = models.IntegerField()
             add_field = models.IntegerField(db_index=True, null=True)
 
-        self.assertFalse(has_index_with_columns(
-            self.database_sig, 'tests_testmodel', ['add_field']))
+        self.assertIsNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['add_field']))
 
         self.perform_evolution_tests(
             DestModel,
@@ -459,8 +459,9 @@ class AddFieldTests(EvolutionTestCase):
             ],
             'AddIndexedColumnModel')
 
-        self.assertTrue(has_index_with_columns(
-            self.test_database_sig, 'tests_testmodel', ['add_field']))
+        self.assertIsNotNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['add_field']))
 
     def test_add_unique_column(self):
         """Testing AddField with unique column"""
@@ -469,8 +470,9 @@ class AddFieldTests(EvolutionTestCase):
             int_field = models.IntegerField()
             added_field = models.IntegerField(unique=True, null=True)
 
-        self.assertFalse(has_index_with_columns(
-            self.database_sig, 'tests_testmodel', ['added_field']))
+        self.assertIsNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['added_field']))
 
         self.perform_evolution_tests(
             DestModel,
@@ -486,8 +488,9 @@ class AddFieldTests(EvolutionTestCase):
             ],
             'AddUniqueColumnModel')
 
-        self.assertTrue(has_index_with_columns(
-            self.test_database_sig, 'tests_testmodel', ['added_field']))
+        self.assertIsNotNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['added_field']))
 
     def test_add_unique_indexed_column(self):
         """Testing AddField with unique indexed column"""
@@ -497,8 +500,9 @@ class AddFieldTests(EvolutionTestCase):
             added_field = models.IntegerField(unique=True, db_index=True,
                                               null=True)
 
-        self.assertFalse(has_index_with_columns(
-            self.database_sig, 'tests_testmodel', ['added_field'],
+        self.assertIsNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['added_field'],
             unique=True))
 
         self.perform_evolution_tests(
@@ -515,8 +519,9 @@ class AddFieldTests(EvolutionTestCase):
             ],
             'AddUniqueIndexedModel')
 
-        self.assertTrue(has_index_with_columns(
-            self.test_database_sig, 'tests_testmodel', ['added_field'],
+        self.assertIsNotNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['added_field'],
             unique=True))
 
     def test_add_foreign_key(self):

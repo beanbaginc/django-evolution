@@ -295,7 +295,7 @@ class EvolutionOperations(BaseEvolutionOperations):
         for row in list(cursor.fetchall()):
             index_name = row[1]
             indexes[index_name] = {
-                'unique': row[2],
+                'unique': bool(row[2]),
                 'columns': []
             }
 
