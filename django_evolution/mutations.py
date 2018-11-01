@@ -558,7 +558,7 @@ class DeleteField(BaseModelFieldMutation):
                              parent_model=model)
         field_sig['field_type'] = field_type
 
-        if field_type is models.ManyToManyField:
+        if isinstance(field, models.ManyToManyField):
             mutator.add_sql(
                 self,
                 mutator.evolver.delete_table(
@@ -787,7 +787,7 @@ class AddField(BaseModelFieldMutation):
             model (MockModel):
                 The model being mutated.
         """
-        if self.field_type is models.ManyToManyField:
+        if issubclass(self.field_type, models.ManyToManyField):
             self.add_m2m_table(mutator, model)
         else:
             self.add_column(mutator, model)
@@ -944,7 +944,7 @@ class RenameField(BaseModelFieldMutation):
                                              self.old_field_name)
         fields_sig = model_sig['fields']
 
-        if field_sig['field_type'] is models.ManyToManyField:
+        if issubclass(field_sig['field_type'], models.ManyToManyField):
             if self.db_table:
                 field_sig['db_table'] = self.db_table
             else:
@@ -982,7 +982,7 @@ class RenameField(BaseModelFieldMutation):
         # Duplicate the old field sig, and apply the table/column changes.
         new_field_sig = copy.copy(old_field_sig)
 
-        if field_type is models.ManyToManyField:
+        if issubclass(field_type, models.ManyToManyField):
             if self.db_table:
                 new_field_sig['db_table'] = self.db_table
             else:
@@ -1014,7 +1014,7 @@ class RenameField(BaseModelFieldMutation):
                               db_name=mutator.database)
         evolver = mutator.evolver
 
-        if field_type is models.ManyToManyField:
+        if issubclass(field_type, models.ManyToManyField):
             old_m2m_table = old_field._get_m2m_db_table(new_model._meta)
             new_m2m_table = new_field._get_m2m_db_table(new_model._meta)
 
@@ -1093,7 +1093,7 @@ class ChangeField(BaseModelFieldMutation):
         field_sig.update(self.field_attrs)
 
         if ('null' in self.field_attrs and not self.field_attrs['null'] and
-            field_sig['field_type'] is not models.ManyToManyField and
+            not issubclass(field_sig['field_type'], models.ManyToManyField) and
             self.initial is None):
             simulation.fail('A non-null initial value needs to be specified '
                             'in the mutation.')
@@ -1311,7 +1311,7 @@ class DeleteModel(BaseModelMutation):
         fields = mutator.model_sig['fields']
 
         for field_name, field_sig in six.iteritems(fields):
-            if field_sig['field_type'] is models.ManyToManyField:
+            if issubclass(field_sig['field_type'], models.ManyToManyField):
                 field = model._meta.get_field(field_name)
                 m2m_table = field._get_m2m_db_table(model._meta)
                 sql_result.add(mutator.evolver.delete_table(m2m_table))

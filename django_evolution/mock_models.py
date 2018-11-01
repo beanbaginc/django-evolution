@@ -79,7 +79,8 @@ def create_field(project_sig, field_name, field_type, field_attrs,
     else:
         field = field_type(name=field_name, **field_attrs)
 
-    if field_type is models.ManyToManyField and parent_model is not None:
+    if (issubclass(field_type, models.ManyToManyField) and
+        parent_model is not None):
         # Starting in Django 1.2, a ManyToManyField must have a through
         # model defined. This will be set internally to an auto-created
         # model if one isn't specified. We have to fake that model.
@@ -247,11 +248,11 @@ class MockMeta(object):
                                      parent_model=model)
                 field_sig['field_type'] = field_type
 
-                if type(field) is models.AutoField:
+                if isinstance(field, models.AutoField):
                     self.meta['has_auto_field'] = True
                     self.meta['auto_field'] = field
 
-                if type(field) is models.ManyToManyField:
+                if isinstance(field, models.ManyToManyField):
                     self._many_to_many[field.name] = field
                 else:
                     self._fields[field.name] = field

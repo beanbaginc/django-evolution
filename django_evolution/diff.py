@@ -349,7 +349,7 @@ class Diff(object):
                     add_params = field_sig.field_attrs.copy()
                     add_params['field_type'] = field_type
 
-                    if (field_type is not models.ManyToManyField and
+                    if (not issubclass(field_type, models.ManyToManyField) and
                         not field_sig.get_attr_value('null')):
                         # This field requires an initial value. Inject either
                         # a suitable initial value or a placeholder that must
@@ -386,7 +386,8 @@ class Diff(object):
 
                     if ('null' in changed_attrs and
                         not field_sig.get_attr_value('null') and
-                        field_sig.field_type is not models.ManyToManyField):
+                        not issubclass(field_sig.field_type,
+                                       models.ManyToManyField)):
                         # The field no longer allows null values, meaning an
                         # initial value is required. Inject either a suitable
                         # initial value or a placeholder that must be filled
