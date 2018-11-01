@@ -2,8 +2,12 @@
 
 from __future__ import unicode_literals
 
+import io
+
 from django.utils import six
 from django.utils.six.moves import cPickle as pickle
+
+from django_evolution.compat.picklers import DjangoCompatUnpickler
 
 
 def pickle_dumps(obj):
@@ -38,4 +42,10 @@ def pickle_loads(pickled_str):
     if isinstance(pickled_str, six.text_type):
         pickled_str = pickled_str.encode('latin1')
 
-    return pickle.loads(pickled_str)
+    try:
+        return pickle.loads(pickled_str)
+    except AttributeError:
+        # We failed to load something from the pickled data. We have to try
+        # again with our own unpickler, which unfortunately won't benefit from
+        # cPickle, but it at least lets us remap things.
+        return DjangoCompatUnpickler(io.BytesIO(pickled_str)).load()
