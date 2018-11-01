@@ -32,9 +32,6 @@ def get_app(app_label, emptyOK=False):
     This returns the app from the app registry on Django >= 1.7, and from
     the old-style cache on Django < 1.7.
 
-    The ``emptyOK`` argument is ignored for Django >= 1.7.
-
-    Args:
         app_label (str):
             The label for the app containing the models.
 
@@ -45,13 +42,15 @@ def get_app(app_label, emptyOK=False):
         module:
         The app module, if available.
 
-        If not available, and ``emptyOK`` is set, this will return ``None``.
-        If ``emptyOK`` is not set, it will raise
+        If the app module is available, but the models module is not and
+        ``emptyOK`` is set, this will return ``None``. Otherwise, if modules
+        are not available, this will raise
         :py:exc:`~django.core.exceptions.ImproperlyConfigured`.
 
     Raises:
         django.core.exceptions.ImproperlyConfigured:
-            The app module was not found, and ``emptyOK`` was ``False``.
+            The app module was not found, or it was found but a models module
+            was not and ``emptyOK`` was ``False``.
     """
     if apps:
         # Django >= 1.7
@@ -61,10 +60,8 @@ def get_app(app_label, emptyOK=False):
             # Convert this to an ImproperlyConfigured.
             raise ImproperlyConfigured(*e.args)
 
-        if models_module is None:
-            if emptyOK:
-                raise LookupError('..')
-
+        if models_module is None and not emptyOK:
+            # This is the exact error that Django 1.6 provided.
             raise ImproperlyConfigured(
                 'App with label %s is missing a models.py module.'
                 % app_label)

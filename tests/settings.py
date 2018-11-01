@@ -104,4 +104,5 @@ TEMPLATE_DIRS = (
 INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django_evolution',
+    'django_evolution.tests.no_models_app',  # Needed for some tests.
 ]

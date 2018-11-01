@@ -18,7 +18,28 @@ from django_evolution.tests.utils import (create_test_project_sig,
                                           register_models)
 
 
-class EvolutionTestCase(TransactionTestCase):
+class TestCase(TransactionTestCase):
+    """Base class for all Django Evolution test cases."""
+
+    def shortDescription(self):
+        """Returns the description of the current test.
+
+        This changes the default behavior to replace all newlines with spaces,
+        allowing a test description to span lines. It should still be kept
+        short, though.
+        """
+        doc = self._testMethodDoc
+
+        if doc is not None:
+            doc = doc.split('\n\n', 1)[0]
+            doc = self.ws_re.sub(' ', doc).strip()
+
+        return doc
+
+
+class EvolutionTestCase(TestCase):
+    """Base class for test cases that need to evolve the database."""
+
     sql_mapping_key = None
     default_database_name = 'default'
     default_model_name = 'TestModel'
@@ -50,21 +71,6 @@ class EvolutionTestCase(TransactionTestCase):
     def tearDown(self):
         if self._models_registered:
             unregister_app('tests')
-
-    def shortDescription(self):
-        """Returns the description of the current test.
-
-        This changes the default behavior to replace all newlines with spaces,
-        allowing a test description to span lines. It should still be kept
-        short, though.
-        """
-        doc = self._testMethodDoc
-
-        if doc is not None:
-            doc = doc.split('\n\n', 1)[0]
-            doc = self.ws_re.sub(' ', doc).strip()
-
-        return doc
 
     def set_base_model(self, model, name=None, extra_models=[],
                        pre_extra_models=[], db_name=None):
