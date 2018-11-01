@@ -551,8 +551,11 @@ class DeleteField(BaseModelFieldMutation):
         # Temporarily remove field_type from the field signature
         # so that we can create a field
         field_type = field_sig.pop('field_type')
-        field = create_field(mutator.project_sig, self.field_name, field_type,
-                             field_sig, model)
+        field = create_field(project_sig=mutator.project_sig,
+                             field_name=self.field_name,
+                             field_type=field_type,
+                             field_attrs=field_sig,
+                             parent_model=model)
         field_sig['field_type'] = field_type
 
         if field_type is models.ManyToManyField:
@@ -799,8 +802,7 @@ class AddField(BaseModelFieldMutation):
             model (MockModel):
                 The model being mutated.
         """
-        field = create_field(mutator.project_sig, self.field_name,
-                             self.field_type, self.field_attrs, model)
+        field = self._create_field(mutator, model)
 
         mutator.add_column(self, field, self.initial)
 
@@ -814,17 +816,20 @@ class AddField(BaseModelFieldMutation):
             model (MockModel):
                 The model being mutated.
         """
-        field = create_field(mutator.project_sig, self.field_name,
-                             self.field_type, self.field_attrs, model)
+        field = self._create_field(mutator, model)
 
         related_app_label, related_model_name = \
             self.field_attrs['related_model'].split('.')
         related_sig = \
             mutator.project_sig[related_app_label][related_model_name]
-        related_model = MockModel(mutator.project_sig, related_app_label,
-                                  related_model_name, related_sig,
-                                  mutator.database)
-        related = MockRelated(related_model, model, field)
+        related_model = MockModel(project_sig=mutator.project_sig,
+                                  app_name=related_app_label,
+                                  model_name=related_model_name,
+                                  model_sig=related_sig,
+                                  db_name=mutator.database)
+        related = MockRelated(related_model=related_model,
+                              model=model,
+                              field=field)
 
         if hasattr(field, '_get_m2m_column_name'):
             # Django < 1.2
@@ -840,6 +845,26 @@ class AddField(BaseModelFieldMutation):
                                            related, 'column')
 
         mutator.add_sql(self, mutator.evolver.add_m2m_table(model, field))
+
+    def _create_field(self, mutator, parent_model):
+        """Create a new field to add to the model.
+
+        Args:
+            mutator (django_evolution.mutators.ModelMutator):
+                The mutator to perform an operation on.
+
+            parent_model (django_evolution.mock_models.MockModel):
+                The model to add the field to.
+
+        Returns:
+            django.db.models.Field:
+            The newly-created field.
+        """
+        return create_field(project_sig=mutator.project_sig,
+                            field_name=self.field_name,
+                            field_type=self.field_type,
+                            field_attrs=self.field_attrs,
+                            parent_model=parent_model)
 
 
 class RenameField(BaseModelFieldMutation):
@@ -968,16 +993,24 @@ class RenameField(BaseModelFieldMutation):
             new_field_sig.pop('db_column', None)
 
         # Create the mock field instances.
-        old_field = create_field(mutator.project_sig, self.old_field_name,
-                                 field_type, old_field_sig, None)
-        new_field = create_field(mutator.project_sig, self.new_field_name,
-                                 field_type, new_field_sig, None)
+        old_field = create_field(project_sig=mutator.project_sig,
+                                 field_name=self.old_field_name,
+                                 field_type=field_type,
+                                 field_attrs=old_field_sig,
+                                 parent_model=None)
+        new_field = create_field(project_sig=mutator.project_sig,
+                                 field_name=self.new_field_name,
+                                 field_type=field_type,
+                                 field_attrs=new_field_sig,
+                                 parent_model=None)
 
         # Restore the field type to the signature
         old_field_sig['field_type'] = field_type
 
-        new_model = MockModel(mutator.project_sig, mutator.app_label,
-                              self.model_name, mutator.model_sig,
+        new_model = MockModel(project_sig=mutator.project_sig,
+                              app_name=mutator.app_label,
+                              model_name=self.model_name,
+                              model_sig=mutator.model_sig,
                               db_name=mutator.database)
         evolver = mutator.evolver
 
@@ -1209,8 +1242,10 @@ class RenameModel(BaseModelMutation):
 
         new_model_sig['meta']['db_table'] = self.db_table
 
-        new_model = MockModel(mutator.project_sig, mutator.app_label,
-                              self.new_model_name, new_model_sig,
+        new_model = MockModel(project_sig=mutator.project_sig,
+                              app_name=mutator.app_label,
+                              model_name=self.new_model_name,
+                              model_sig=new_model_sig,
                               db_name=mutator.database)
         evolver = mutator.evolver
 
@@ -1344,9 +1379,10 @@ class DeleteApplication(BaseMutation):
             for model_name in list(six.iterkeys(app_sig)):
                 mutation = DeleteModel(model_name)
 
-                if mutation.is_mutable(mutator.app_label, mutator.project_sig,
-                                       mutator.database_state,
-                                       mutator.database):
+                if mutation.is_mutable(app_label=mutator.app_label,
+                                       project_sig=mutator.project_sig,
+                                       database_state=mutator.database_state,
+                                       database=mutator.database):
                     mutator.run_mutation(mutation)
 
     def is_mutable(self, *args, **kwargs):

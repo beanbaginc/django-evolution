@@ -918,7 +918,9 @@ class ChangeFieldTests(EvolutionTestCase):
             ])
 
         test_sig = self.copy_sig(self.start_sig)
-        app_mutator = AppMutator('tests', test_sig, self.database_state)
+        app_mutator = AppMutator(app_label='tests',
+                                 project_sig=test_sig,
+                                 database_state=self.database_state)
         evolutions = d.evolution()['tests']
         app_mutator.run_mutations(evolutions)
 

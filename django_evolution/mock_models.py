@@ -15,7 +15,8 @@ from django_evolution.compat.models import (get_remote_field,
                                             get_remote_field_model)
 
 
-def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
+def create_field(project_sig, field_name, field_type, field_attrs,
+                 parent_model):
     """Create a Django field instance for the given signature data.
 
     This creates a field in a way that's compatible with a variety of versions
@@ -52,9 +53,12 @@ def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
 
     if related_model:
         related_app_name, related_model_name = related_model.split('.')
-        related_model_sig = proj_sig[related_app_name][related_model_name]
-        to = MockModel(proj_sig, related_app_name, related_model_name,
-                       related_model_sig, stub=True)
+        related_model_sig = project_sig[related_app_name][related_model_name]
+        to = MockModel(project_sig=project_sig,
+                       app_name=related_app_name,
+                       model_name=related_model_name,
+                       model_sig=related_model_sig,
+                       stub=True)
 
         has_on_delete = 'on_delete' in field_attrs
 
@@ -140,8 +144,10 @@ def create_field(proj_sig, field_name, field_type, field_attrs, parent_model):
             field.auto_created = True
 
         if through_model_sig:
-            through = MockModel(proj_sig, through_app_name, through_model_name,
-                                through_model_sig)
+            through = MockModel(project_sig=project_sig,
+                                app_name=through_app_name,
+                                model_name=through_model_name,
+                                model_sig=through_model_sig)
             get_remote_field(field).through = through
 
         field.m2m_db_table = curry(field._get_m2m_db_table, parent_model._meta)
@@ -162,7 +168,7 @@ class MockMeta(object):
     providing mock functions for setting up fields from a signature.
     """
 
-    def __init__(self, proj_sig, app_name, model_name, model_sig):
+    def __init__(self, project_sig, app_name, model_name, model_sig):
         """Initialize the meta instance.
 
         Args:
@@ -195,7 +201,7 @@ class MockMeta(object):
         self.managed = True
         self.proxy = False
         self._model_sig = model_sig
-        self._proj_sig = proj_sig
+        self._proj_sig = project_sig
 
     @property
     def local_fields(self):
@@ -234,8 +240,11 @@ class MockMeta(object):
 
             if not stub or primary_key:
                 field_type = field_sig.pop('field_type')
-                field = create_field(self._proj_sig, field_name, field_type,
-                                     field_sig, model)
+                field = create_field(project_sig=self._proj_sig,
+                                     field_name=field_name,
+                                     field_type=field_type,
+                                     field_attrs=field_sig,
+                                     parent_model=model)
                 field_sig['field_type'] = field_type
 
                 if type(field) is models.AutoField:
@@ -331,8 +340,8 @@ class MockModel(object):
     use when generating, reading, or mutating signatures.
     """
 
-    def __init__(self, proj_sig, app_name, model_name, model_sig, stub=False,
-                 db_name=None):
+    def __init__(self, project_sig, app_name, model_name, model_sig,
+                 stub=False, db_name=None):
         """Initialize the model.
 
         Args:
@@ -359,7 +368,10 @@ class MockModel(object):
         """
         self.app_name = app_name
         self.model_name = model_name
-        self._meta = MockMeta(proj_sig, app_name, model_name, model_sig)
+        self._meta = MockMeta(project_sig=project_sig,
+                              app_name=app_name,
+                              model_name=model_name,
+                              model_sig=model_sig)
         self._meta.setup_fields(self, stub)
 
         self._state = ModelState()

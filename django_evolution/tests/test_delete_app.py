@@ -92,8 +92,10 @@ class DeleteAppTests(EvolutionTestCase):
         test_database_state = self.database_state.clone()
         test_sig = self.copy_sig(self.start_sig)
 
-        app_mutator = AppMutator('tests', test_sig, test_database_state,
-                                 database)
+        app_mutator = AppMutator(app_label='tests',
+                                 project_sig=test_sig,
+                                 database_state=test_database_state,
+                                 database=database)
         app_mutator.run_mutation(mutation)
         sql = app_mutator.to_sql()
 

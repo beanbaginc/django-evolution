@@ -65,8 +65,11 @@ class ModelMutator(object):
         and passing a model instance, but can also be called whenever
         a new instance of the model is needed for any lookups.
         """
-        return MockModel(self.project_sig, self.app_label, self.model_name,
-                         self.model_sig, db_name=self.database)
+        return MockModel(project_sig=self.project_sig,
+                         app_name=self.app_label,
+                         model_name=self.model_name,
+                         model_sig=self.model_sig,
+                         db_name=self.database)
 
     def add_column(self, mutation, field, initial):
         """Adds a pending Add Column operation.

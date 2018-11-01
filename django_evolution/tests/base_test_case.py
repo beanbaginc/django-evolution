@@ -163,10 +163,10 @@ class EvolutionTestCase(TransactionTestCase):
             if rescan_indexes:
                 self.test_database_state.rescan_indexes()
 
-            app_mutator = AppMutator('tests',
-                                     test_sig,
-                                     self.test_database_state,
-                                     db_name)
+            app_mutator = AppMutator(app_label='tests',
+                                     project_sig=test_sig,
+                                     database_state=self.test_database_state,
+                                     database=db_name)
             app_mutator.run_mutations(evolutions)
 
             return app_mutator.to_sql()
