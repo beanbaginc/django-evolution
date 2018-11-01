@@ -957,8 +957,7 @@ class FieldSignature(BaseSignature):
             The signature based on the field.
         """
         field_type = type(field)
-        field_sig = cls(field_name=field.name,
-                        field_type=field_type)
+        field_attrs = {}
 
         defaults = cls._get_defaults_for_field_type(field_type)
 
@@ -973,19 +972,24 @@ class FieldSignature(BaseSignature):
                 continue
 
             if value != default:
-                field_sig.field_attrs[attr] = value
+                field_attrs[attr] = value
 
         remote_field = get_remote_field(field)
 
         if remote_field:
             remote_field_meta = get_remote_field_model(remote_field)._meta
 
-            field_sig.field_attrs['related_model'] = '%s.%s' % (
+            related_model = '%s.%s' % (
                 remote_field_meta.app_label,
                 remote_field_meta.object_name,
             )
+        else:
+            related_model = None
 
-        return field_sig
+        return cls(field_name=field.name,
+                   field_type=field_type,
+                   field_attrs=field_attrs,
+                   related_model=related_model)
 
     @classmethod
     def deserialize(cls, field_name, field_sig_dict, sig_version):
@@ -1006,11 +1010,10 @@ class FieldSignature(BaseSignature):
             The resulting signature instance.
         """
         field_type = field_sig_dict['field_type']
-        field_sig = cls(field_name=field_name,
-                        field_type=field_type)
+        field_attrs = {}
 
         for attr in cls._iter_attrs_for_field_type(field_type):
-            if hasattr(field_sig, attr):
+            if hasattr(cls, attr):
                 # This is stored on the field signature class itself, so
                 # it's not attribute data we want to load.
                 continue
@@ -1025,17 +1028,12 @@ class FieldSignature(BaseSignature):
                 # The signature didn't contain a value for this attribute.
                 continue
 
-            field_sig.field_attrs[attr] = value
+            field_attrs[attr] = value
 
-        # Now handle special data from the signature not covered above.
-        try:
-            field_sig.field_attrs['related_model'] = \
-                field_sig_dict['related_model']
-        except KeyError:
-            # The signature doesn't have it. Skip this.
-            pass
-
-        return field_sig
+        return cls(field_name=field_name,
+                   field_type=field_type,
+                   field_attrs=field_attrs,
+                   related_model=field_sig_dict.get('related_model'))
 
     @classmethod
     def _iter_attrs_for_field_type(cls, field_type):
@@ -1076,7 +1074,8 @@ class FieldSignature(BaseSignature):
 
         return defaults
 
-    def __init__(self, field_name, field_type):
+    def __init__(self, field_name, field_type, field_attrs=None,
+                 related_model=None):
         """Initialize the signature.
 
         Args:
@@ -1086,10 +1085,17 @@ class FieldSignature(BaseSignature):
             field_type (cls):
                 The class for the field. This would be a subclass of
                 :py:class:`django.db.models.Field`.
+
+            field_attrs (dict, optional):
+                Attributes to set on the field.
+
+            related_model (unicode, optional):
+                The full path to a related model.
         """
         self.field_name = field_name
         self.field_type = field_type
-        self.field_attrs = OrderedDict()
+        self.field_attrs = field_attrs or OrderedDict()
+        self.related_model = related_model
 
     def get_attr_value(self, attr_name, use_default=True):
         """Return the value for an attribute.
@@ -1163,11 +1169,10 @@ class FieldSignature(BaseSignature):
             FieldSignature:
             The cloned signature.
         """
-        field_sig = FieldSignature(field_name=self.field_name,
-                                   field_type=self.field_type)
-        field_sig.field_attrs = deepcopy(self.field_attrs)
-
-        return field_sig
+        return FieldSignature(field_name=self.field_name,
+                              field_type=self.field_type,
+                              field_attrs=deepcopy(self.field_attrs),
+                              related_model=self.related_model)
 
     def serialize(self, sig_version=DEFAULT_SIGNATURE_VERSION):
         """Serialize field data to a signature dictionary.
@@ -1185,6 +1190,9 @@ class FieldSignature(BaseSignature):
         }
         field_sig_dict.update(self.field_attrs)
 
+        if self.related_model:
+            field_sig_dict['related_model'] = self.related_model
+
         return field_sig_dict
 
     def __eq__(self, other):
@@ -1201,7 +1209,8 @@ class FieldSignature(BaseSignature):
         """
         return (self.field_name == other.field_name and
                 self.field_type == other.field_type and
-                self.field_attrs == other.field_attrs)
+                self.field_attrs == other.field_attrs and
+                self.related_model == other.related_model)
 
     def __repr__(self):
         """Return a string representation of the signature.
@@ -1211,8 +1220,9 @@ class FieldSignature(BaseSignature):
             A string representation of the signature.
         """
         return ('<FieldSignature(field_name=%r, field_type=%r,'
-                ' field_attrs=%r)>'
-                % (self.field_name, self.field_type, self.field_attrs))
+                ' field_attrs=%r, related_model=%r)>'
+                % (self.field_name, self.field_type, self.field_attrs,
+                   self.related_model))
 
 
 def has_indexes_changed(old_model_sig, new_model_sig):

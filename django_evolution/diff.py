@@ -167,20 +167,31 @@ class Diff(object):
                         new_value = new_field_sig.get_attr_value(attr)
 
                         if old_value != new_value:
-                            try:
-                                # The type of field has changed. Try to
-                                # construct one and check the internal type
-                                # used for the database layer to see if we
-                                # need to worry about recording this.
-                                if (attr == 'field_type' and
-                                    (old_value().get_internal_type() ==
-                                     new_value().get_internal_type())):
-                                    continue
-                            except TypeError:
-                                pass
-
                             # The field has been changed.
                             changed_field_attrs.append(attr)
+
+                    # See if the field type has changed.
+                    old_field_type = old_field_sig.field_type
+                    new_field_type = new_field_sig.field_type
+
+                    if old_field_type is not new_field_type:
+                        try:
+                            field_type_changed = (
+                                old_field_type().get_internal_type() !=
+                                new_field_type().get_internal_type())
+                        except TypeError:
+                            # We can't instantiate those, so assume the field
+                            # type has indeed changed.
+                            field_type_changed = True
+
+                        if field_type_changed:
+                            changed_field_attrs.append('field_type')
+
+                    # FieldSignature.related_model is not a field attribute,
+                    # but we do need to track its changes.
+                    if (old_field_sig.related_model !=
+                        new_field_sig.related_model):
+                        changed_field_attrs.append('related_model')
 
                     if changed_field_attrs:
                         # There were attribute changes. Store those with the
@@ -188,8 +199,8 @@ class Diff(object):
                         changed_fields[field_name] = \
                             sorted(changed_field_attrs)
 
-                # Go through the list of of added fields and add any that
-                # don't exist in the original field list.
+                # Go through the list of added fields and add any that don't
+                # exist in the original field list.
                 added_fields = [
                     field_sig.field_name
                     for field_sig in new_model_sig.field_sigs
@@ -348,11 +359,8 @@ class Diff(object):
                                                     model_name=model_name,
                                                     field_name=field_name)
 
-                    if 'related_model' in add_params:
-                        # We want to store this as the string representation,
-                        # not the type.
-                        add_params['related_model'] = \
-                            six.text_type(add_params['related_model'])
+                    if field_sig.related_model:
+                        add_params['related_model'] = field_sig.related_model
 
                     app_mutations.append(AddField(
                         model_name=model_name,
@@ -387,6 +395,10 @@ class Diff(object):
                             self._get_initial_value(app_label=app_label,
                                                     model_name=model_name,
                                                     field_name=field_name)
+
+                    if 'related_model' in field_change:
+                        changed_attrs['related_model'] = \
+                            field_sig.related_model
 
                     app_mutations.append(ChangeField(
                         model_name=model_name,

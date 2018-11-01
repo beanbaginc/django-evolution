@@ -336,15 +336,15 @@ class FieldSignatureTests(BaseSignatureTestCase):
     def test_from_field(self):
         """Testing FieldSignature.from_field"""
         field_sig = FieldSignature.from_field(
-            SignatureFullModel._meta.get_field('null_field'))
+            SignatureFullModel._meta.get_field('ref3'))
 
-        self.assertEqual(field_sig.field_name, 'null_field')
-        self.assertIs(field_sig.field_type, models.IntegerField)
+        self.assertEqual(field_sig.field_name, 'ref3')
+        self.assertIs(field_sig.field_type, models.ForeignKey)
+        self.assertEqual(field_sig.related_model, 'tests.Anchor2')
         self.assertEqual(
             field_sig.field_attrs,
             {
-                'null': True,
-                'db_column': 'size_column',
+                'db_column': 'value',
             })
 
     def test_deserialize_v1(self):
@@ -352,14 +352,16 @@ class FieldSignatureTests(BaseSignatureTestCase):
         field_sig = FieldSignature.deserialize(
             'myfield',
             {
-                'field_type': models.CharField,
+                'field_type': models.ForeignKey,
                 'null': False,
                 'db_column': 'test_column',
+                'related_model': 'tests.Anchor2',
             },
             sig_version=1)
 
         self.assertEqual(field_sig.field_name, 'myfield')
-        self.assertIs(field_sig.field_type, models.CharField)
+        self.assertIs(field_sig.field_type, models.ForeignKey)
+        self.assertEqual(field_sig.related_model, 'tests.Anchor2')
         self.assertEqual(
             field_sig.field_attrs,
             {
@@ -412,12 +414,14 @@ class FieldSignatureTests(BaseSignatureTestCase):
     def test_clone(self):
         """Testing FieldSignature.clone"""
         field_sig = FieldSignature.from_field(
-            SignatureFullModel._meta.get_field('null_field'))
+            SignatureFullModel._meta.get_field('ref1'))
 
         cloned_field_sig = field_sig.clone()
         self.assertIsNot(cloned_field_sig, field_sig)
         self.assertEqual(cloned_field_sig, field_sig)
         self.assertIsNot(cloned_field_sig.field_attrs, field_sig.field_attrs)
+        self.assertEqual(cloned_field_sig.related_model,
+                         field_sig.related_model)
 
     def test_serialize_v1(self):
         """Testing FieldSignature.serialize (signature v1)"""
