@@ -224,8 +224,11 @@ class EvolutionOperations(BaseEvolutionOperations):
         sql_result.add(self.delete_table(TEMP_TABLE_NAME))
 
         if f.unique or f.primary_key:
-            self.record_index(model, [f], use_constraint_name=True,
-                              unique=True)
+            self.database_state.add_index(
+                table_name=table_name,
+                index_name=self.get_new_constraint_name(table_name, f.column),
+                columns=[f.column],
+                unique=True)
 
         return sql_result
 

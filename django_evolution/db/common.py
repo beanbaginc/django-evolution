@@ -244,6 +244,7 @@ class BaseEvolutionOperations(object):
     def add_column(self, model, f, initial):
         qn = self.connection.ops.quote_name
         sql_result = AlterTableSQLResult(self, model)
+        table_name = model._meta.db_table
 
         remote_field = get_remote_field(f)
 
@@ -300,7 +301,7 @@ class BaseEvolutionOperations(object):
 
                     sql_result.add_sql([
                         'UPDATE %s SET %s = %s WHERE %s IS NULL;'
-                        % (qn(model._meta.db_table), qn(f.column),
+                        % (qn(table_name), qn(f.column),
                            initial(), qn(f.column))
                     ])
 
@@ -330,7 +331,7 @@ class BaseEvolutionOperations(object):
                     # tables, drop that default.
                     sql_result.add_post_sql([
                         'ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT;'
-                        % (qn(model._meta.db_table), qn(f.column))
+                        % (qn(table_name), qn(f.column))
                     ])
             else:
                 sql_result.add_alter_table([
@@ -343,8 +344,11 @@ class BaseEvolutionOperations(object):
                 ])
 
         if f.unique or f.primary_key:
-            self.record_index(model, [f], use_constraint_name=True,
-                              unique=True)
+            self.database_state.add_index(
+                table_name=table_name,
+                index_name=self.get_new_constraint_name(table_name, f.column),
+                columns=[f.column],
+                unique=True)
 
         return sql_result
 
@@ -366,7 +370,7 @@ class BaseEvolutionOperations(object):
             ]
         )
 
-    def create_index(self, model, f):
+    def create_index(self, model, field):
         """Returns the SQL for creating an index for a single field.
 
         The index will be recorded in the database signature for future
@@ -375,33 +379,42 @@ class BaseEvolutionOperations(object):
 
         This is not intended to be overridden.
         """
-        index_name = self.find_index_name(model, [f.column])
+        table_name = model._meta.db_table
+        column = field.column
+        index_state = self.database_state.find_index(
+            table_name=table_name,
+            columns=[column])
 
-        if index_name:
+        if index_state:
             return []
 
-        self.record_index(
-            model,
-            [f],
+        self.database_state.add_index(
+            table_name=table_name,
             index_name=create_index_name(self.connection,
-                                         model._meta.db_table,
-                                         field_names=[f.name],
-                                         col_names=[f.column]))
+                                         table_name,
+                                         field_names=[field.name],
+                                         col_names=[column]),
+            columns=[column])
 
-        return SQLResult(sql_indexes_for_field(self.connection, model, f))
+        return SQLResult(sql_indexes_for_field(self.connection, model, field))
 
     def create_unique_index(self, model, index_name, fields):
         qn = self.connection.ops.quote_name
+        table_name = model._meta.db_table
 
-        self.record_index(model, fields, index_name=index_name, unique=True)
+        self.database_state.add_index(
+            table_name=table_name,
+            index_name=index_name,
+            columns=self.get_column_names_for_fields(fields),
+            unique=True)
 
         return SQLResult([
             'CREATE UNIQUE INDEX %s ON %s (%s);'
-            % (qn(index_name), qn(model._meta.db_table),
+            % (qn(index_name), qn(table_name),
                ', '.join([qn(field.column) for field in fields])),
         ])
 
-    def drop_index(self, model, f):
+    def drop_index(self, model, field):
         """Returns the SQL for dropping an index for a single field.
 
         The index matching the field's column will be looked up and,
@@ -413,12 +426,14 @@ class BaseEvolutionOperations(object):
         This is not intended to be overridden. Instead, subclasses should
         override `get_drop_index_sql`.
         """
-        index_name = self.find_index_name(model, [f.column])
+        index_state = self.database_state.find_index(
+            table_name=model._meta.db_table,
+            columns=[field.column])
 
-        if index_name:
-            return self.drop_index_by_name(model, index_name)
-        else:
-            return []
+        if index_state:
+            return self.drop_index_by_name(model, index_state.name)
+
+        return []
 
     def drop_index_by_name(self, model, index_name):
         """Returns the SQL to drop an index, given an index name.
@@ -429,7 +444,8 @@ class BaseEvolutionOperations(object):
         This is not intended to be overridden. Instead, subclasses should
         override `get_drop_index_sql`.
         """
-        self.remove_recorded_index(model, index_name)
+        self.database_state.remove_index(table_name=model._meta.db_table,
+                                         index_name=index_name)
 
         return self.get_drop_index_sql(model, index_name)
 
@@ -482,6 +498,23 @@ class BaseEvolutionOperations(object):
             field_names=[f.name for f in fields],
             col_names=[f.column for f in fields],
             unique=unique)
+
+    def get_new_constraint_name(self, table_name, column):
+        """Return a newly-generated constraint name.
+
+        Args:
+            table_name (unicode):
+                The name of the table.
+
+            column (unicode):
+                The name of the column.
+
+        Returns:
+            unicode:
+            The new constraint name.
+        """
+        return truncate_name('%s_%s_key' % (table_name, column),
+                             self.connection.ops.max_name_length())
 
     def get_default_index_name(self, table_name, field):
         """Return a default index name for the database.
@@ -665,15 +698,28 @@ class BaseEvolutionOperations(object):
         This is not intended to be overridden. Instead, subclasses should
         override `get_change_unique_sql`.
         """
+        table_name = model._meta.db_table
+        constraint_name = None
+
         if new_value:
             constraint_name = self.get_new_index_name(model, [field],
                                                       unique=True)
-            self.record_index(model, [field], index_name=constraint_name,
-                              unique=True)
+            self.database_state.add_index(
+                table_name=table_name,
+                index_name=constraint_name,
+                columns=[field.column],
+                unique=True)
         else:
-            constraint_name = self.find_index_name(model, [field.column],
-                                                   unique=True)
-            self.remove_recorded_index(model, constraint_name, unique=True)
+            index_state = self.database_state.find_index(
+                table_name=table_name,
+                columns=[field.column],
+                unique=True)
+
+            assert index_state
+            constraint_name = index_state.name
+            self.database_state.remove_index(table_name=table_name,
+                                             index_name=constraint_name,
+                                             unique=True)
 
         return self.get_change_unique_sql(model, field, new_value,
                                           constraint_name, mutation.initial)
@@ -721,6 +767,7 @@ class BaseEvolutionOperations(object):
             constraints.
         """
         sql_result = SQLResult()
+        table_name = model._meta.db_table
 
         old_unique_together = set(old_unique_together)
         new_unique_together = set(new_unique_together)
@@ -729,18 +776,28 @@ class BaseEvolutionOperations(object):
 
         for field_names in to_remove:
             fields = self.get_fields_for_names(model, field_names)
-            index_name = self.find_index_name_for_fields(model, fields,
-                                                         unique=True)
+            index_state = self.database_state.find_index(
+                table_name=table_name,
+                columns=self.get_column_names_for_fields(fields),
+                unique=True)
 
-            if index_name:
-                self.remove_recorded_index(model, index_name, unique=True)
+            if index_state:
+                index_name = index_state.name
+
+                self.database_state.remove_index(table_name=table_name,
+                                                 index_name=index_name,
+                                                 unique=True)
                 sql_result.add_sql(
                     self.get_drop_unique_constraint_sql(model, index_name))
 
         for field_names in new_unique_together:
             fields = self.get_fields_for_names(model, field_names)
+            index_state = self.database_state.find_index(
+                table_name=table_name,
+                columns=self.get_column_names_for_fields(fields),
+                unique=True)
 
-            if not self.find_index_name_for_fields(model, fields, unique=True):
+            if not index_state:
                 # This doesn't exist in the database, so we want to add it.
                 index_name = self.get_new_index_name(model, fields,
                                                      unique=True)
@@ -768,6 +825,7 @@ class BaseEvolutionOperations(object):
             The SQL statements for changing the ``index_together`` indexes.
         """
         sql_result = SQLResult()
+        table_name = model._meta.db_table
 
         old_index_together = set(old_index_together or [])
         new_index_together = set(new_index_together)
@@ -776,21 +834,27 @@ class BaseEvolutionOperations(object):
 
         for field_names in to_remove:
             fields = self.get_fields_for_names(model, field_names)
-            index_name = self.find_index_name_for_fields(model, fields)
+            index_state = self.database_state.find_index(
+                table_name=table_name,
+                columns=self.get_column_names_for_fields(fields))
 
-            if index_name:
-                sql_result.add(self.drop_index_by_name(model, index_name))
+            if index_state:
+                sql_result.add(self.drop_index_by_name(model,
+                                                       index_state.name))
 
         for field_names in new_index_together:
             fields = self.get_fields_for_names(model, field_names)
+            columns = self.get_column_names_for_fields(fields)
+            index_state = self.database_state.find_index(table_name=table_name,
+                                                         columns=columns)
 
-            if not self.find_index_name_for_fields(model, fields):
+            if not index_state:
                 # This doesn't exist in the database, so we want to add it.
-                self.record_index(
-                    model,
-                    fields,
-                    index_name=self.get_default_index_together_name(
-                        model._meta.db_table, fields))
+                index_name = self.get_default_index_together_name(table_name,
+                                                                  fields)
+                self.database_state.add_index(table_name=table_name,
+                                              index_name=index_name,
+                                              columns=columns)
                 sql_result.add(sql_indexes_for_fields(
                     self.connection, model, fields, index_together=True))
 
@@ -865,25 +929,33 @@ class BaseEvolutionOperations(object):
         ]
 
         sql_result = SQLResult()
+        table_name = model._meta.db_table
 
         with self.connection.schema_editor(collect_sql=True) as schema_editor:
             for index_info in to_remove:
                 index_field_names = index_info['fields']
                 index_name = index_info.get('name')
-                fields = self.get_fields_for_names(model, index_field_names,
-                                                   allow_sort_prefixes=True)
 
-                if not index_name:
+                if index_name:
+                    index_state = self.database_state.get_index(
+                        table_name=table_name,
+                        index_name=index_name)
+                else:
                     # No explicit index name was given, so see if we can find
                     # one that matches in the database.
-                    index_name = self.find_index_name_for_fields(model, fields)
+                    fields = self.get_fields_for_names(
+                        model,
+                        index_field_names,
+                        allow_sort_prefixes=True)
+                    index_state = self.database_state.find_index(
+                        table_name=table_name,
+                        columns=self.get_column_names_for_fields(fields))
 
-                if (index_name and
-                    self.is_index_name_in_database(model, index_name)):
+                if index_state:
                     # We found a suitable index name, and a matching index
                     # entry in the database. Remove it.
                     index = models.Index(fields=list(index_field_names),
-                                         name=index_name)
+                                         name=index_state.name)
                     sql_result.add('%s;' % index.remove_sql(model,
                                                             schema_editor))
 
@@ -893,13 +965,21 @@ class BaseEvolutionOperations(object):
                 fields = self.get_fields_for_names(model, index_field_names,
                                                    allow_sort_prefixes=True)
 
-                if not index_name:
+                if index_name:
+                    index_state = self.database_state.get_index(
+                        table_name=table_name,
+                        index_name=index_name)
+                else:
                     # No explicit index name was given, so see if we can find
                     # one that matches in the database.
-                    index_name = self.find_index_name_for_fields(model, fields)
+                    index_state = self.database_state.find_index(
+                        table_name=table_name,
+                        columns=self.get_column_names_for_fields(fields))
 
-                if (not index_name or
-                    not self.is_index_name_in_database(model, index_name)):
+                    if index_state:
+                        index_name = index_state.name
+
+                if not index_name or not index_state:
                     # This is a new index not found in the database. We can
                     # record it and proceed.
                     index = models.Index(fields=list(index_field_names),
@@ -908,80 +988,14 @@ class BaseEvolutionOperations(object):
                     if not index_name:
                         index.set_name_with_model(model)
 
-                    self.record_index(model, fields, index_name=index.name)
+                    self.database_state.add_index(
+                        table_name=table_name,
+                        index_name=index.name,
+                        columns=self.get_column_names_for_fields(fields))
                     sql_result.add('%s;' % index.create_sql(model,
                                                             schema_editor))
 
         return sql_result
-
-    def find_index_name(self, model, column_names, unique=False):
-        """Finds an index in the database matching the given criteria.
-
-        This will look in the database signature, attempting to find the
-        name of an index that matches the list of columns and the
-        uniqueness flag. If one is found, it will be returned. Otherwise,
-        None is returned.
-
-        This takes into account all indexes found when first beginning
-        then evolution process, and those added during the evolution
-        process.
-        """
-        if not isinstance(column_names, (list, tuple)):
-            column_names = (column_names,)
-
-        index_state = self.database_state.find_index(
-            table_name=model._meta.db_table,
-            columns=column_names,
-            unique=unique)
-
-        if index_state:
-            return index_state.name
-
-        return None
-
-    def find_index_name_for_fields(self, model, fields, unique=False):
-        """Return whether an index exists for the given fields.
-
-        This is a wrapper around :py:meth:`find_index_name` that will take
-        care of providing the column names for the fields passed to this
-        method.
-
-        Args:
-            model (django.db.models.Model):
-                The model the index would be on.
-
-            fields (list of django.db.models.Field):
-                The list of model fields that the index covers.
-
-            unique (bool, optional):
-                Whether this is a unique constraint.
-
-        Returns:
-            unicode:
-            The name of the index, if found, or ``None`` otherwise.
-        """
-        columns = self.get_column_names_for_fields(fields)
-
-        return self.find_index_name(model, columns, unique=unique)
-
-    def is_index_name_in_database(self, model, index_name):
-        """Return whether there's an index with a given naem in the database.
-
-        Args:
-            model (django.db.models.Model):
-                The model the index is on.
-
-            index_name (unicode):
-                The name of the index.
-
-        Returns:
-            bool:
-            ``True`` if an index with the given name was found, or
-            ``False`` if it was not found.
-        """
-        return self.database_state.get_index(
-            table_name=model._meta.db_table,
-            index_name=index_name) is not None
 
     def get_fields_for_names(self, model, field_names,
                              allow_sort_prefixes=False):
@@ -1106,35 +1120,6 @@ class BaseEvolutionOperations(object):
                 sql.extend(sql_add_constraints(self.connection, relto, refs))
 
         return sql
-
-    def record_index(self, model, fields, use_constraint_name=False,
-                     index_name=None, unique=False):
-        """Records an index in the database signature.
-
-        This is a convenience to record an index in the database signature
-        for future lookups. It can take an index name, or it can generate
-        a constraint name if that's to be used.
-        """
-        table_name = model._meta.db_table
-
-        if not index_name:
-            assert use_constraint_name
-
-            index_name = truncate_name(
-                '%s_%s_key' % (table_name, fields[0].column),
-                self.connection.ops.max_name_length())
-
-        self.database_state.add_index(
-            table_name=table_name,
-            index_name=index_name,
-            columns=self.get_column_names_for_fields(fields),
-            unique=unique)
-
-    def remove_recorded_index(self, model, index_name, unique=False):
-        """Removes an index from the database signature."""
-        self.database_state.remove_index(table_name=model._meta.db_table,
-                                         index_name=index_name,
-                                         unique=unique)
 
     def normalize_value(self, value):
         if isinstance(value, bool):
