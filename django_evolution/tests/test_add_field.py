@@ -118,9 +118,9 @@ class AddFieldTests(EvolutionTestCase):
             added_field = models.IntegerField()
 
         message = (
-            "Cannot use hinted evolution: AddField or ChangeField mutation "
-            "for 'TestModel.added_field' in 'tests' requires user-specified "
-            "initial value."
+            'Cannot use hinted evolution: AddField or ChangeField mutation '
+            'for "TestModel.added_field" in "tests" requires user-specified '
+            'initial value.'
         )
 
         with self.assertRaisesMessage(EvolutionException, message):
