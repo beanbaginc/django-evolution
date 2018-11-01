@@ -15,7 +15,7 @@ from django_evolution.compat.py23 import pickle_dumps, pickle_loads
 from django_evolution.diff import Diff
 from django_evolution.evolve import (get_evolution_sequence,
                                      get_unapplied_evolutions)
-from django_evolution.signature import create_project_sig
+from django_evolution.signature import ProjectSignature
 from django_evolution.utils import get_app_label
 
 
@@ -80,7 +80,7 @@ def _on_app_models_updated(app, verbosity=1, using=DEFAULT_DB_ALIAS, **kwargs):
             Additional keyword arguments provided by the signal handler for
             the syncdb or migrate operation.
     """
-    proj_sig = create_project_sig(using)
+    proj_sig = ProjectSignature.from_database(using).serialize()
     signature = pickle_dumps(proj_sig)
 
     try:

@@ -11,8 +11,8 @@ from django_evolution.compat.py23 import pickle_loads
 from django_evolution.errors import EvolutionException
 from django_evolution.models import Evolution, Version
 from django_evolution.mutations import RenameModel, SQLMutation
-from django_evolution.signature import (has_unique_together_changed,
-                                        create_project_sig)
+from django_evolution.signature import (ProjectSignature,
+                                        has_unique_together_changed)
 from django_evolution.utils import get_app_label, get_app_name
 
 
@@ -98,7 +98,7 @@ def get_mutations(app, evolution_labels, database):
 
     app_label = get_app_label(app)
     old_proj_sig = pickle_loads(latest_version.signature)
-    proj_sig = create_project_sig(database)
+    proj_sig = ProjectSignature.from_database(database).serialize()
 
     if app_label in old_proj_sig and app_label in proj_sig:
         # We want to go through now and make sure we're only applying

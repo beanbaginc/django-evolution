@@ -22,7 +22,7 @@ from django_evolution.compat.models import (all_models,
                                             get_remote_field_model,
                                             set_model_name)
 from django_evolution.db import EvolutionOperationsMulti
-from django_evolution.signature import create_model_sig
+from django_evolution.signature import ModelSignature
 from django_evolution.tests import models as evo_test
 from django_evolution.utils import execute_sql, write_sql
 
@@ -277,7 +277,8 @@ def create_test_project_sig(models, app_label='tests', version=1):
         else:
             app, name = parts
 
-        proj_sig.setdefault(app, OrderedDict())[name] = create_model_sig(model)
+        proj_sig.setdefault(app, OrderedDict())[name] = \
+            ModelSignature.from_model(model).serialize()
 
     return proj_sig
 

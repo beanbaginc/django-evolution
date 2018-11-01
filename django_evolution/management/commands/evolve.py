@@ -19,7 +19,7 @@ from django_evolution.evolve import get_unapplied_evolutions, get_mutations
 from django_evolution.models import Version, Evolution
 from django_evolution.mutations import AddField, DeleteApplication
 from django_evolution.mutators import AppMutator
-from django_evolution.signature import create_project_sig
+from django_evolution.signature import ProjectSignature
 from django_evolution.utils import (execute_sql, get_app_label,
                                     get_evolutions_path, write_sql)
 
@@ -137,7 +137,8 @@ class Command(BaseCommand):
         self.written_hint_files = []
 
         self.database_state = DatabaseState(self.database)
-        self.current_proj_sig = create_project_sig(self.database)
+        self.current_proj_sig = \
+            ProjectSignature.from_database(self.database).serialize()
         self.current_signature = pickle_dumps(self.current_proj_sig)
 
         sql = []

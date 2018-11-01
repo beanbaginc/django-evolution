@@ -6,12 +6,21 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.utils import DEFAULT_DB_ALIAS
 from django.utils import six
+from nose import SkipTest
+
+try:
+    # Django >= 1.11
+    from django.db.models import Index
+except ImportError:
+    # Django <= 1.10
+    Index = None
 
 from django_evolution.compat.apps import get_app
 from django_evolution.compat.models import GenericForeignKey, GenericRelation
 from django_evolution.models import Evolution
-from django_evolution.signature import (create_app_sig, create_field_sig,
-                                        create_model_sig)
+from django_evolution.signature import (AppSignature, FieldSignature,
+                                        IndexSignature, ModelSignature,
+                                        ProjectSignature)
 from django_evolution.tests.base_test_case import EvolutionTestCase
 
 
@@ -95,25 +104,170 @@ class BaseSignatureTestCase(EvolutionTestCase):
     ]
 
 
-class ApplicationSignatureTests(BaseSignatureTestCase):
-    """Unit tests for create_app_sig."""
+class ProjectSignatureTests(BaseSignatureTestCase):
+    """Unit tests for ProjectSignature."""
 
-    def test_create_app_sig(self):
-        """Testing create_app_sig"""
-        app_sig = create_app_sig(get_app('django_evolution'),
-                                 database=DEFAULT_DB_ALIAS)
+    def test_from_database(self):
+        """Testing ProjectSignature.from_database"""
+        project_sig = ProjectSignature.from_database('default')
 
-        model_names = set(six.iterkeys(app_sig))
+        app_ids = set(
+            app_sig.app_id
+            for app_sig in project_sig.app_sigs
+        )
 
-        for model_name in ('Evolution', 'Version'):
-            self.assertIn(model_name, model_names)
+        self.assertIn('contenttypes', app_ids)
+        self.assertIn('django_evolution', app_ids)
 
-            model_sig = app_sig[model_name]
-            self.assertIn('meta', model_sig)
-            self.assertIn('fields', model_sig)
+    def test_deserialize_v1(self):
+        """Testing ProjectSignature.deserialize (signature v1)"""
+        project_sig = ProjectSignature.deserialize(
+            {
+                '__version__': 1,
+                'app1': {},
+                'app2': {},
+            },
+            sig_version=1)
 
-    def test_create_app_sig_with_router(self):
-        """Testing create_app_sig with router.allow_syncdb/allow_migrate_model
+        self.assertEqual(
+            set(
+                app_sig.app_id
+                for app_sig in project_sig.app_sigs
+            ),
+            set(['app1', 'app2']))
+
+    def test_add_app(self):
+        """Testing ProjectSignature.add_app"""
+        project_sig = ProjectSignature()
+        project_sig.add_app(get_app('django_evolution'), database='default')
+
+        self.assertEqual(
+            [
+                app_sig.app_id
+                for app_sig in project_sig.app_sigs
+            ],
+            ['django_evolution'])
+
+    def test_add_app_sig(self):
+        """Testing ProjectSignature.add_app_sig"""
+        project_sig = ProjectSignature()
+
+        app_sig = AppSignature.from_app(get_app('django_evolution'),
+                                        database='default')
+        project_sig.add_app_sig(app_sig)
+
+        self.assertEqual(list(project_sig.app_sigs), [app_sig])
+
+    def test_serialize_v1(self):
+        """Testing ProjectSignature.serialize (signature v1)"""
+        project_sig = ProjectSignature()
+        project_sig.add_app_sig(AppSignature('test_app'))
+
+        self.assertEqual(
+            project_sig.serialize(sig_version=1),
+            {
+                '__version__': 1,
+                'test_app': {},
+            })
+
+
+class AppSignatureTests(BaseSignatureTestCase):
+    """Unit tests for AppSignature."""
+
+    def test_from_app(self):
+        """Testing AppSignature.from_app"""
+        app_sig = AppSignature.from_app(get_app('django_evolution'),
+                                        database=DEFAULT_DB_ALIAS)
+        model_names = set(
+            model_sig.model_name
+            for model_sig in app_sig.model_sigs
+        )
+
+        self.assertEqual(app_sig.app_id, 'django_evolution')
+        self.assertIn('Version', model_names)
+        self.assertIn('Evolution', model_names)
+
+    def test_deserialize_v1(self):
+        """Testing AppSignature.deserialize (signature v1)"""
+        app_sig = AppSignature.deserialize(
+            'app1',
+            {
+                'model1': {
+                    'meta': {
+                        'db_table': 'app1_model1',
+                    },
+                    'fields': {},
+                },
+                'model2': {
+                    'meta': {
+                        'db_table': 'app1_model2',
+                    },
+                    'fields': {},
+                },
+            },
+            sig_version=1)
+
+        self.assertEqual(app_sig.app_id, 'app1')
+
+        model_sigs = sorted(app_sig.model_sigs,
+                            key=lambda sig: sig.model_name)
+        self.assertEqual(len(model_sigs), 2)
+
+        model_sig = model_sigs[0]
+        self.assertEqual(model_sig.model_name, 'model1')
+        self.assertEqual(model_sig.table_name, 'app1_model1')
+
+        model_sig = model_sigs[1]
+        self.assertEqual(model_sig.model_name, 'model2')
+        self.assertEqual(model_sig.table_name, 'app1_model2')
+
+    def test_add_model(self):
+        """Testing AppSignature.add_model"""
+        app_sig = AppSignature('django_evolution')
+        app_sig.add_model(Evolution)
+
+        self.assertEqual(
+            [
+                model_sig.model_name
+                for model_sig in app_sig.model_sigs
+            ],
+            ['Evolution'])
+
+    def test_add_model_sig(self):
+        """Testing AppSignature.add_model_sig"""
+        app_sig = AppSignature('django_evolution')
+
+        model_sig = ModelSignature.from_model(Evolution)
+        app_sig.add_model_sig(model_sig)
+
+        self.assertEqual(list(app_sig.model_sigs), [model_sig])
+
+    def test_serialize_v1(self):
+        """Testing AppSignature.serialize (signature v1)"""
+        app_sig = AppSignature('testapp')
+        app_sig.add_model_sig(ModelSignature(model_name='MyModel',
+                                             table_name='testapp_mymodel'))
+
+        self.assertEqual(
+            app_sig.serialize(sig_version=1),
+            {
+                'MyModel': {
+                    'fields': {},
+                    'meta': {
+                        'db_table': 'testapp_mymodel',
+                        'db_tablespace': None,
+                        'indexes': [],
+                        'index_together': [],
+                        'unique_together': [],
+                        'pk_column': None,
+                        '__unique_together_applied': False,
+                    },
+                },
+            })
+
+    def test_serialize_v1_with_router(self):
+        """Testing AppSignature.serialize (signature v1) with
+        router.allow_syncdb/allow_migrate_model
         """
         class TestRouter(object):
             def allow_syncdb(self, db, model):
@@ -131,68 +285,110 @@ class ApplicationSignatureTests(BaseSignatureTestCase):
                 return model is Evolution
 
         with self.override_db_routers([TestRouter()]):
-            app_sig = create_app_sig(get_app('django_evolution'),
-                                     database=DEFAULT_DB_ALIAS)
+            app_sig = AppSignature.from_app(get_app('django_evolution'),
+                                            database=DEFAULT_DB_ALIAS)
 
-        model_names = set(six.iterkeys(app_sig))
+        model_names = set(six.iterkeys(app_sig.serialize(sig_version=1)))
         self.assertIn('Evolution', model_names)
         self.assertNotIn('Version', model_names)
 
 
 class FieldSignatureTests(BaseSignatureTestCase):
-    """Unit tests for create_field_sig."""
+    """Unit tests for FieldSignature."""
 
-    def test_create_field_sig(self):
-        """Testing create_field_sig"""
-        field_sig = \
-            create_field_sig(SignatureFullModel._meta.get_field('null_field'))
+    def test_from_field(self):
+        """Testing FieldSignature.from_field"""
+        field_sig = FieldSignature.from_field(
+            SignatureFullModel._meta.get_field('null_field'))
+
+        self.assertEqual(field_sig.field_name, 'null_field')
+        self.assertIs(field_sig.field_type, models.IntegerField)
+        self.assertEqual(
+            field_sig.field_attrs,
+            {
+                'null': True,
+                'db_column': 'size_column',
+            })
+
+    def test_deserialize_v1(self):
+        """Testing FieldSignature.deserialize (signature v1)"""
+        field_sig = FieldSignature.deserialize(
+            'myfield',
+            {
+                'field_type': models.CharField,
+                'null': False,
+                'db_column': 'test_column',
+            },
+            sig_version=1)
+
+        self.assertEqual(field_sig.field_name, 'myfield')
+        self.assertIs(field_sig.field_type, models.CharField)
+        self.assertEqual(
+            field_sig.field_attrs,
+            {
+                'null': False,
+                'db_column': 'test_column',
+            })
+
+    def test_serialize_v1(self):
+        """Testing FieldSignature.serialize (signature v1)"""
+        field_sig = FieldSignature.from_field(
+            SignatureFullModel._meta.get_field('null_field'))
 
         self.assertEqual(
-            field_sig,
+            field_sig.serialize(sig_version=1),
             {
                 'db_column': 'size_column',
                 'field_type': models.IntegerField,
                 'null': True,
             })
 
-    def test_create_field_sig_with_unique(self):
-        """Testing create_field_sig with _unique stored as unique"""
-        field_sig = \
-            create_field_sig(SignatureFullModel._meta.get_field('id_card'))
+    def test_serialize_v1_with_unique(self):
+        """Testing FieldSignature.serialize (signature v1) with _unique
+        stored as unique
+        """
+        field_sig = FieldSignature.from_field(
+            SignatureFullModel._meta.get_field('id_card'))
 
         self.assertEqual(
-            field_sig,
+            field_sig.serialize(sig_version=1),
             {
                 'db_index': True,
                 'field_type': models.IntegerField,
                 'unique': True,
             })
 
-    def test_create_field_sig_with_defaults_not_stored(self):
-        """Testing create_field_sig with field defaults not stored"""
+    def test_serialize_v1_with_defaults_not_stored(self):
+        """Testing FieldSignature.serialize (signature v1) with field
+        defaults not stored
+        """
         meta = SignatureDefaultsModel._meta
 
+        field_sig = FieldSignature.from_field(meta.get_field('char_field'))
         self.assertEqual(
-            create_field_sig(meta.get_field('char_field')),
+            field_sig.serialize(sig_version=1),
             {
                 'field_type': models.CharField,
             })
 
+        field_sig = FieldSignature.from_field(meta.get_field('dec_field'))
         self.assertEqual(
-            create_field_sig(meta.get_field('dec_field')),
+            field_sig.serialize(sig_version=1),
             {
                 'field_type': models.DecimalField,
             })
 
+        field_sig = FieldSignature.from_field(meta.get_field('m2m_field'))
         self.assertEqual(
-            create_field_sig(meta.get_field('m2m_field')),
+            field_sig.serialize(sig_version=1),
             {
                 'field_type': models.ManyToManyField,
                 'related_model': 'tests.DefaultsModel',
             })
 
+        field_sig = FieldSignature.from_field(meta.get_field('fkey_field'))
         self.assertEqual(
-            create_field_sig(meta.get_field('fkey_field')),
+            field_sig.serialize(sig_version=1),
             {
                 'field_type': models.ForeignKey,
                 'related_model': 'tests.Anchor1',
@@ -200,14 +396,171 @@ class FieldSignatureTests(BaseSignatureTestCase):
 
 
 class ModelSignatureTests(BaseSignatureTestCase):
-    """Unit tests for create_model_sig."""
+    """Unit tests for ModelSignature."""
 
-    def test_create_model_sig(self):
-        """Testing create_model_sig"""
-        model_sig = create_model_sig(SignatureFullModel)
+    def test_from_model(self):
+        """Testing ModelSignature.from_model"""
+        class ModelSignatureFromModelTestModel(models.Model):
+            field1 = models.CharField(max_length=100)
+            field2 = models.IntegerField(null=True)
+            field3 = models.BooleanField()
+
+            class Meta:
+                db_table = 'my_table'
+                db_tablespace = 'my_tablespace'
+                index_together = (('field1', 'field2'),)
+                unique_together = (('field2', 'field3'),)
+
+                if Index:
+                    indexes = [
+                        Index(name='index1', fields=['field1']),
+                        Index(name='index2', fields=['field3']),
+                    ]
+
+        model_sig = ModelSignature.from_model(ModelSignatureFromModelTestModel)
+
+        self.assertEqual(model_sig.db_tablespace, 'my_tablespace')
+        self.assertEqual(model_sig.index_together, (('field1', 'field2'),))
+        self.assertEqual(model_sig.model_name,
+                         'ModelSignatureFromModelTestModel')
+        self.assertEqual(model_sig.pk_column, 'id')
+        self.assertEqual(model_sig.table_name, 'my_table')
+        self.assertEqual(model_sig.unique_together, (('field2', 'field3'),))
+
+        field_sigs = list(model_sig.field_sigs)
+        self.assertEqual(len(field_sigs), 4)
+        self.assertEqual(field_sigs[0].field_name, 'id')
+        self.assertEqual(field_sigs[1].field_name, 'field1')
+        self.assertEqual(field_sigs[2].field_name, 'field2')
+        self.assertEqual(field_sigs[3].field_name, 'field3')
+
+        if Index:
+            index_sigs = list(model_sig.index_sigs)
+            self.assertEqual(len(index_sigs), 2)
+
+            index_sig = index_sigs[0]
+            self.assertEqual(index_sig.name, 'index1')
+            self.assertEqual(index_sig.fields, ['field1'])
+
+            index_sig = index_sigs[1]
+            self.assertEqual(index_sig.name, 'index2')
+            self.assertEqual(index_sig.fields, ['field3'])
+
+    def test_deserialize(self):
+        """Testing ModelSignature.deserialize (signature v1)"""
+        model_sig = ModelSignature.deserialize(
+            'TestModel',
+            {
+                'meta': {
+                    'db_table': 'my_table',
+                    'db_tablespace': 'my_tablespace',
+                    'index_together': [['field1', 'field2']],
+                    'indexes': [
+                        {
+                            'name': 'index1',
+                            'fields': ['field1'],
+                        },
+                        {
+                            'name': 'index2',
+                            'fields': ['field2'],
+                        },
+                    ],
+                    'pk_column': 'id',
+                    'unique_together': [['field2', 'field3']],
+                },
+                'fields': {
+                    'field1': {
+                        'field_type': models.CharField,
+                        'max_length': 100,
+                    },
+                },
+            },
+            sig_version=1)
+
+        self.assertEqual(model_sig.db_tablespace, 'my_tablespace')
+        self.assertEqual(model_sig.index_together, [('field1', 'field2')])
+        self.assertEqual(model_sig.model_name, 'TestModel')
+        self.assertEqual(model_sig.pk_column, 'id')
+        self.assertEqual(model_sig.table_name, 'my_table')
+        self.assertEqual(model_sig.unique_together, [('field2', 'field3')])
+
+        field_sigs = list(model_sig.field_sigs)
+        self.assertEqual(len(field_sigs), 1)
+        self.assertEqual(field_sigs[0].field_name, 'field1')
+
+        if Index:
+            index_sigs = list(model_sig.index_sigs)
+            self.assertEqual(len(index_sigs), 2)
+
+            index_sig = index_sigs[0]
+            self.assertEqual(index_sig.name, 'index1')
+            self.assertEqual(index_sig.fields, ['field1'])
+
+            index_sig = index_sigs[1]
+            self.assertEqual(index_sig.name, 'index2')
+            self.assertEqual(index_sig.fields, ['field2'])
+
+    def test_add_field(self):
+        """Testing ModelSignature.add_field"""
+        model_sig = ModelSignature(model_name='TestModel',
+                                   table_name='testmodel')
+        model_sig.add_field(
+            SignatureDefaultsModel._meta.get_field('char_field'))
+
+        field_sigs = list(model_sig.field_sigs)
+        self.assertEqual(len(field_sigs), 1)
+
+        field_sig = field_sigs[0]
+        self.assertEqual(field_sig.field_name, 'char_field')
+        self.assertIs(field_sig.field_type, models.CharField)
+
+    def test_add_field_sig(self):
+        """Testing ModelSignature.add_field_sig"""
+        model_sig = ModelSignature(model_name='TestModel',
+                                   table_name='testmodel')
+        model_sig.add_field_sig(FieldSignature.from_field(
+            SignatureDefaultsModel._meta.get_field('char_field')))
+
+        field_sigs = list(model_sig.field_sigs)
+        self.assertEqual(len(field_sigs), 1)
+
+        field_sig = field_sigs[0]
+        self.assertEqual(field_sig.field_name, 'char_field')
+        self.assertIs(field_sig.field_type, models.CharField)
+
+    def test_add_index(self):
+        """Testing ModelSignature.add_index"""
+        if Index is None:
+            raise SkipTest('Meta.indexes is not supported on this version '
+                           'of Django')
+
+        model_sig = ModelSignature(model_name='TestModel',
+                                   table_name='testmodel')
+        model_sig.add_index(Index(name='index1', fields=['field1', 'field2']))
+
+        index_sigs = list(model_sig.index_sigs)
+        self.assertEqual(len(index_sigs), 1)
+
+        index_sig = index_sigs[0]
+        self.assertEqual(index_sig.name, 'index1')
+        self.assertEqual(index_sig.fields, ['field1', 'field2'])
+
+    def test_add_index_sig(self):
+        """Testing ModelSignature.add_index_sig"""
+        model_sig = ModelSignature(model_name='TestModel',
+                                   table_name='testmodel')
+
+        index_sig = IndexSignature(name='index1', fields=['field1', 'field2'])
+        model_sig.add_index_sig(index_sig)
+
+        self.assertEqual(list(model_sig.index_sigs), [index_sig])
+
+    def test_serialize_v1(self):
+        """Testing ModelSignature.serialize (signature v1)"""
+        model_sig = ModelSignature.from_model(SignatureFullModel)
 
         self.assertEqual(
-            model_sig,
+            model_sig.serialize(sig_version=1),
             {
                 'fields': {
                     'char_field': {
@@ -279,17 +632,20 @@ class ModelSignatureTests(BaseSignatureTestCase):
                     'db_table': 'tests_testmodel',
                     'db_tablespace': '',
                     'index_together': [],
+                    'indexes': [],
                     'pk_column': 'id',
                     'unique_together': [],
                 },
             })
 
-    def test_create_model_sig_with_subclass(self):
-        """Testing create_model_sig with subclass of model"""
-        model_sig = create_model_sig(SignatureChildModel)
+    def test_serialize_v1_with_subclass(self):
+        """Testing ModelSignature.serialize (signature v1) with subclass of
+        model
+        """
+        model_sig = ModelSignature.from_model(SignatureChildModel)
 
         self.assertEqual(
-            model_sig,
+            model_sig.serialize(sig_version=1),
             {
                 'fields': {
                     'child_field': {
@@ -308,7 +664,58 @@ class ModelSignatureTests(BaseSignatureTestCase):
                     'db_table': 'tests_childmodel',
                     'db_tablespace': '',
                     'index_together': [],
+                    'indexes': [],
                     'pk_column': 'signatureparentmodel_ptr_id',
                     'unique_together': [],
                 },
+            })
+
+
+class IndexSignatureTests(BaseSignatureTestCase):
+    """Unit tests for IndexSignature."""
+
+    def test_from_index(self):
+        """Testing IndexSignature.from_index"""
+        if Index is None:
+            raise SkipTest('Meta.indexes is not supported on this version '
+                           'of Django')
+
+        index_sig = IndexSignature.from_index(
+            Index(name='index1', fields=['field1', 'field2']))
+
+        self.assertEqual(index_sig.name, 'index1')
+        self.assertEqual(index_sig.fields, ['field1', 'field2'])
+
+    def test_deserialize_v1(self):
+        """Testing IndexSignature.deserialize (signature v1)"""
+        index_sig = IndexSignature.deserialize(
+            {
+                'name': 'index1',
+                'fields': ['field1', 'field2'],
+            },
+            sig_version=1)
+
+        self.assertEqual(index_sig.name, 'index1')
+        self.assertEqual(index_sig.fields, ['field1', 'field2'])
+
+    def test_serialize_v1(self):
+        """Testing IndexSignature.serialize (signature v1)"""
+        index_sig = IndexSignature(name='index1', fields=['field1', 'field2'])
+
+        self.assertEqual(
+            index_sig.serialize(sig_version=1),
+            {
+                'name': 'index1',
+                'fields': ['field1', 'field2'],
+            })
+
+    def test_serialize_v1_without_name(self):
+        """Testing IndexSignature.serialize (signature v1) without index name
+        """
+        index_sig = IndexSignature(fields=['field1', 'field2'])
+
+        self.assertEqual(
+            index_sig.serialize(sig_version=1),
+            {
+                'fields': ['field1', 'field2'],
             })
