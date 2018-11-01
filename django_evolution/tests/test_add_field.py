@@ -59,13 +59,15 @@ class AddFieldTests(EvolutionTestCase):
         """Testing AddField with application not in signature"""
         mutation = AddField('TestModel', 'char_field1', models.CharField)
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot add the field "char_field1" to model "badapp.TestModel". '
-             'The application could not be found in the signature.'),
-            lambda: mutation.run_simulation(app_label='badapp',
-                                            project_sig={},
-                                            database_state=None))
+        message = (
+            'Cannot add the field "char_field1" to model "badapp.TestModel". '
+            'The application could not be found in the signature.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            mutation.run_simulation(app_label='badapp',
+                                    project_sig={},
+                                    database_state=None)
 
     def test_with_bad_model(self):
         """Testing AddField with model not in signature"""
@@ -74,13 +76,15 @@ class AddFieldTests(EvolutionTestCase):
             'tests': {},
         }
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot add the field "char_field1" to model "tests.TestModel". '
-             'The model could not be found in the signature.'),
-            lambda: mutation.run_simulation(app_label='tests',
-                                            project_sig=proj_sig,
-                                            database_state=None))
+        message = (
+            'Cannot add the field "char_field1" to model "tests.TestModel". '
+            'The model could not be found in the signature.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            mutation.run_simulation(app_label='tests',
+                                    project_sig=proj_sig,
+                                    database_state=None)
 
     def test_with_bad_field(self):
         """Testing AddField with field already in signature"""
@@ -95,13 +99,15 @@ class AddFieldTests(EvolutionTestCase):
             },
         }
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot add the field "char_field1" to model "tests.TestModel". '
-             'A field with this name already exists.'),
-            lambda: mutation.run_simulation(app_label='tests',
-                                            project_sig=proj_sig,
-                                            database_state=None))
+        message = (
+            'Cannot add the field "char_field1" to model "tests.TestModel". '
+            'A field with this name already exists.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            mutation.run_simulation(app_label='tests',
+                                    project_sig=proj_sig,
+                                    database_state=None)
 
     def test_add_non_null_column_no_initial_hinted_raises_exception(self):
         """Testing AddField with non-NULL column, no initial value and
@@ -111,12 +117,14 @@ class AddFieldTests(EvolutionTestCase):
             int_field = models.IntegerField()
             added_field = models.IntegerField()
 
-        self.assertRaisesMessage(
-            EvolutionException,
-            ("Cannot use hinted evolution: AddField or ChangeField mutation "
-             "for 'TestModel.added_field' in 'tests' requires user-specified "
-             "initial value."),
-            lambda: self.perform_evolution_tests(
+        message = (
+            "Cannot use hinted evolution: AddField or ChangeField mutation "
+            "for 'TestModel.added_field' in 'tests' requires user-specified "
+            "initial value."
+        )
+
+        with self.assertRaisesMessage(EvolutionException, message):
+            self.perform_evolution_tests(
                 DestModel,
                 [],
                 self.DIFF_TEXT,
@@ -125,7 +133,7 @@ class AddFieldTests(EvolutionTestCase):
                     " initial=<<USER VALUE REQUIRED>>)",
                 ],
                 None,
-                use_hinted_evolutions=True))
+                use_hinted_evolutions=True)
 
     def test_add_non_null_column_no_initial_raises_exception(self):
         """Testing AddField with non-NULL column, no initial value
@@ -135,12 +143,14 @@ class AddFieldTests(EvolutionTestCase):
             int_field = models.IntegerField()
             added_field = models.IntegerField()
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot add the field "added_field" to model '
-             '"tests.TestModel". A non-null initial value must be specified '
-             'in the mutation.'),
-            lambda: self.perform_evolution_tests(
+        message = (
+            'Cannot add the field "added_field" to model '
+            '"tests.TestModel". A non-null initial value must be specified '
+            'in the mutation.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            self.perform_evolution_tests(
                 DestModel,
                 [
                     AddField('TestModel', 'added_field', models.IntegerField),
@@ -150,7 +160,7 @@ class AddFieldTests(EvolutionTestCase):
                     "AddField('TestModel', 'added_field', models.IntegerField,"
                     " initial=<<USER VALUE REQUIRED>>)",
                 ],
-                None))
+                None)
 
     def test_add_non_null_column_with_initial(self):
         """Testing AddField with non-NULL column with initial value"""
@@ -410,11 +420,13 @@ class AddFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot delete the field "id" on model "tests.TestModel". The '
-             'field is a primary key and cannot be deleted.'),
-            lambda: self.perform_evolution_tests(
+        message = (
+            'Cannot delete the field "id" on model "tests.TestModel". The '
+            'field is a primary key and cannot be deleted.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            self.perform_evolution_tests(
                 DestModel,
                 [
                     AddField(
@@ -432,7 +444,7 @@ class AddFieldTests(EvolutionTestCase):
 
                     "DeleteField('TestModel', 'id')",
                 ],
-                None))
+                None)
 
     def test_add_indexed_column(self):
         """Testing AddField with indexed column"""

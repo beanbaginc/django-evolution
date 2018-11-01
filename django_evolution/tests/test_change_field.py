@@ -49,14 +49,16 @@ class ChangeFieldTests(EvolutionTestCase):
         """Testing ChangeField with application not in signature"""
         mutation = ChangeField('TestModel', 'char_field1')
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot change the field "char_field1" on model '
-             '"badapp.TestModel". The application could not be found in the '
-             'signature.'),
-            lambda: mutation.run_simulation(app_label='badapp',
-                                            project_sig={},
-                                            database_state=None))
+        message = (
+            'Cannot change the field "char_field1" on model '
+            '"badapp.TestModel". The application could not be found in the '
+            'signature.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            mutation.run_simulation(app_label='badapp',
+                                    project_sig={},
+                                    database_state=None)
 
     def test_with_bad_model(self):
         """Testing ChangeField with model not in signature"""
@@ -65,14 +67,16 @@ class ChangeFieldTests(EvolutionTestCase):
             'tests': {},
         }
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot change the field "char_field1" on model '
-             '"tests.TestModel". The model could not be found in the '
-             'signature.'),
-            lambda: mutation.run_simulation(app_label='tests',
-                                            project_sig=proj_sig,
-                                            database_state=None))
+        message = (
+            'Cannot change the field "char_field1" on model '
+            '"tests.TestModel". The model could not be found in the '
+            'signature.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            mutation.run_simulation(app_label='tests',
+                                    project_sig=proj_sig,
+                                    database_state=None)
 
     def test_with_bad_field(self):
         """Testing ChangeField with field not in signature"""
@@ -85,14 +89,16 @@ class ChangeFieldTests(EvolutionTestCase):
             },
         }
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot change the field "char_field1" on model '
-             '"tests.TestModel". The field could not be found in the '
-             'signature.'),
-            lambda: mutation.run_simulation(app_label='tests',
-                                            project_sig=proj_sig,
-                                            database_state=None))
+        message = (
+            'Cannot change the field "char_field1" on model '
+            '"tests.TestModel". The field could not be found in the '
+            'signature.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            mutation.run_simulation(app_label='tests',
+                                    project_sig=proj_sig,
+                                    database_state=None)
 
     def test_set_null_false_without_initial_value_raises_exception(self):
         """Testing ChangeField with setting null=False without initial value"""
@@ -110,12 +116,14 @@ class ChangeFieldTests(EvolutionTestCase):
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot change the field "char_field1" on model '
-             '"tests.TestModel". A non-null initial value needs to be '
-             'specified in the mutation.'),
-            lambda: self.perform_evolution_tests(
+        message = (
+            'Cannot change the field "char_field1" on model '
+            '"tests.TestModel". A non-null initial value needs to be '
+            'specified in the mutation.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            self.perform_evolution_tests(
                 DestModel,
                 [
                     ChangeField('TestModel', 'char_field1', null=False),
@@ -126,7 +134,7 @@ class ChangeFieldTests(EvolutionTestCase):
                 [
                     "ChangeField('TestModel', 'char_field1',"
                     " initial=<<USER VALUE REQUIRED>>, null=False)",
-                ]))
+                ])
 
     def test_set_null_false_and_null_initial_value_raises_exception(self):
         """Testing ChangeField with setting null=False and null initial
@@ -146,12 +154,14 @@ class ChangeFieldTests(EvolutionTestCase):
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot change the field "char_field1" on model '
-             '"tests.TestModel". A non-null initial value needs to be '
-             'specified in the mutation.'),
-            lambda: self.perform_evolution_tests(
+        message = (
+            'Cannot change the field "char_field1" on model '
+            '"tests.TestModel". A non-null initial value needs to be '
+            'specified in the mutation.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            self.perform_evolution_tests(
                 DestModel,
                 [
                     ChangeField('TestModel', 'char_field1', null=False,
@@ -163,7 +173,7 @@ class ChangeFieldTests(EvolutionTestCase):
                 [
                     "ChangeField('TestModel', 'char_field1',"
                     " initial=<<USER VALUE REQUIRED>>, null=False)",
-                ]))
+                ])
 
     def test_set_null_false_and_initial_value(self):
         """Testing ChangeField with setting null=False and initial value"""

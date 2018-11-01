@@ -58,14 +58,16 @@ class RenameFieldTests(EvolutionTestCase):
         """Testing RenameField with application not in signature"""
         mutation = RenameField('TestModel', 'char_field1', 'char_field2')
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot rename the field "char_field1" on model '
-             '"badapp.TestModel". The application could not be found in the '
-             'signature.'),
-            lambda: mutation.run_simulation(app_label='badapp',
-                                            project_sig={},
-                                            database_state=None))
+        message = (
+            'Cannot rename the field "char_field1" on model '
+            '"badapp.TestModel". The application could not be found in the '
+            'signature.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            mutation.run_simulation(app_label='badapp',
+                                    project_sig={},
+                                    database_state=None)
 
     def test_with_bad_model(self):
         """Testing RenameField with model not in signature"""
@@ -74,14 +76,16 @@ class RenameFieldTests(EvolutionTestCase):
             'tests': {},
         }
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot rename the field "char_field1" on model '
-             '"tests.TestModel". The model could not be found in the '
-             'signature.'),
-            lambda: mutation.run_simulation(app_label='tests',
-                                            project_sig=proj_sig,
-                                            database_state=None))
+        message = (
+            'Cannot rename the field "char_field1" on model '
+            '"tests.TestModel". The model could not be found in the '
+            'signature.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            mutation.run_simulation(app_label='tests',
+                                    project_sig=proj_sig,
+                                    database_state=None)
 
     def test_with_bad_field(self):
         """Testing RenameField with field not in signature"""
@@ -94,14 +98,16 @@ class RenameFieldTests(EvolutionTestCase):
             },
         }
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot rename the field "char_field1" on model '
-             '"tests.TestModel". The field could not be found in the '
-             'signature.'),
-            lambda: mutation.run_simulation(app_label='tests',
-                                            project_sig=proj_sig,
-                                            database_state=None))
+        message = (
+            'Cannot rename the field "char_field1" on model '
+            '"tests.TestModel". The field could not be found in the '
+            'signature.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            mutation.run_simulation(app_label='tests',
+                                    project_sig=proj_sig,
+                                    database_state=None)
 
     def test_rename(self):
         """Testing RenameField"""

@@ -29,27 +29,31 @@ class OrderingTests(EvolutionTestCase):
         """Testing SQLMutation and no update_func provided"""
         mutation = SQLMutation('test', '')
 
-        self.assertRaisesMessage(
-            CannotSimulate,
-            ('SQLMutations must provide an update_func(simulation) or '
-             'legacy update_func(app_label, project_sig) parameter in '
-             'order to be simulated.'),
-            lambda: mutation.run_simulation(app_label='tests',
-                                            project_sig={},
-                                            database_state=None))
+        message = (
+            'SQLMutations must provide an update_func(simulation) or '
+            'legacy update_func(app_label, project_sig) parameter in '
+            'order to be simulated.'
+        )
+
+        with self.assertRaisesMessage(CannotSimulate, message):
+            mutation.run_simulation(app_label='tests',
+                                    project_sig={},
+                                    database_state=None)
 
     def test_add_fields_bad_update_func_signature(self):
         """Testing SQLMutation and bad update_func signature"""
         mutation = SQLMutation('test', '', update_func=lambda a, b, c: None)
 
-        self.assertRaisesMessage(
-            CannotSimulate,
-            ('SQLMutations must provide an update_func(simulation) or '
-             'legacy update_func(app_label, project_sig) parameter in '
-             'order to be simulated.'),
-            lambda: mutation.run_simulation(app_label='tests',
-                                            project_sig={},
-                                            database_state=None))
+        message = (
+            'SQLMutations must provide an update_func(simulation) or '
+            'legacy update_func(app_label, project_sig) parameter in '
+            'order to be simulated.'
+        )
+
+        with self.assertRaisesMessage(CannotSimulate, message):
+            mutation.run_simulation(app_label='tests',
+                                    project_sig={},
+                                    database_state=None)
 
     def test_add_fields_simulation_functions(self):
         """Testing SQLMutation and adding fields with simulation functions"""

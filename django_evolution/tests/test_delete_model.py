@@ -19,13 +19,15 @@ class DeleteModelTests(EvolutionTestCase):
         """Testing DeleteModel with application not in signature"""
         mutation = DeleteModel('TestModel')
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot delete the model "badapp.TestModel". The application '
-             'could not be found in the signature.'),
-            lambda: mutation.run_simulation(app_label='badapp',
-                                            project_sig={},
-                                            database_state=None))
+        message = (
+            'Cannot delete the model "badapp.TestModel". The application '
+            'could not be found in the signature.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            mutation.run_simulation(app_label='badapp',
+                                    project_sig={},
+                                    database_state=None)
 
     def test_with_bad_model(self):
         """Testing DeleteModel with model not in signature"""
@@ -34,13 +36,15 @@ class DeleteModelTests(EvolutionTestCase):
             'tests': {},
         }
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot delete the model "tests.TestModel". The model could '
-             'not be found in the signature.'),
-            lambda: mutation.run_simulation(app_label='tests',
-                                            project_sig=proj_sig,
-                                            database_state=None))
+        message = (
+            'Cannot delete the model "tests.TestModel". The model could '
+            'not be found in the signature.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            mutation.run_simulation(app_label='tests',
+                                    project_sig=proj_sig,
+                                    database_state=None)
 
     def test_delete_model(self):
         """Testing DeleteModel"""

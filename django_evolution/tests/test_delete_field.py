@@ -59,14 +59,16 @@ class DeleteFieldTests(EvolutionTestCase):
         """Testing DeleteField with application not in signature"""
         mutation = DeleteField('TestModel', 'char_field1')
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot delete the field "char_field1" on model '
-             '"badapp.TestModel". The application could not be found in the '
-             'signature.'),
-            lambda: mutation.run_simulation(app_label='badapp',
-                                            project_sig={},
-                                            database_state=None))
+        message = (
+            'Cannot delete the field "char_field1" on model '
+            '"badapp.TestModel". The application could not be found in the '
+            'signature.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            mutation.run_simulation(app_label='badapp',
+                                    project_sig={},
+                                    database_state=None)
 
     def test_with_bad_model(self):
         """Testing DeleteField with model not in signature"""
@@ -75,14 +77,16 @@ class DeleteFieldTests(EvolutionTestCase):
             'tests': {},
         }
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot delete the field "char_field1" on model '
-             '"tests.TestModel". The model could not be found in the '
-             'signature.'),
-            lambda: mutation.run_simulation(app_label='tests',
-                                            project_sig=proj_sig,
-                                            database_state=None))
+        message = (
+            'Cannot delete the field "char_field1" on model '
+            '"tests.TestModel". The model could not be found in the '
+            'signature.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            mutation.run_simulation(app_label='tests',
+                                    project_sig=proj_sig,
+                                    database_state=None)
 
     def test_with_bad_field(self):
         """Testing DeleteField with field not in signature"""
@@ -95,14 +99,16 @@ class DeleteFieldTests(EvolutionTestCase):
             },
         }
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot delete the field "char_field1" on model '
-             '"tests.TestModel". The field could not be found in the '
-             'signature.'),
-            lambda: mutation.run_simulation(app_label='tests',
-                                            project_sig=proj_sig,
-                                            database_state=None))
+        message = (
+            'Cannot delete the field "char_field1" on model '
+            '"tests.TestModel". The field could not be found in the '
+            'signature.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            mutation.run_simulation(app_label='tests',
+                                    project_sig=proj_sig,
+                                    database_state=None)
 
     def test_delete(self):
         """Testing DeleteField with a typical column"""

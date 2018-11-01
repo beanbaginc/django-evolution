@@ -51,13 +51,15 @@ class DeleteAppTests(EvolutionTestCase):
         """Testing DeleteApplication with application not in signature"""
         mutation = DeleteApplication()
 
-        self.assertRaisesMessage(
-            SimulationFailure,
-            ('Cannot delete the application "badapp". The application could '
-             'not be found in the signature.'),
-            lambda: mutation.run_simulation(app_label='badapp',
-                                            project_sig={},
-                                            database_state=None))
+        message = (
+            'Cannot delete the application "badapp". The application could '
+            'not be found in the signature.'
+        )
+
+        with self.assertRaisesMessage(SimulationFailure, message):
+            mutation.run_simulation(app_label='badapp',
+                                    project_sig={},
+                                    database_state=None)
 
     def test_delete_app(self):
         """Testing DeleteApplication"""
