@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+from copy import deepcopy
+
 from django.conf import global_settings
 from django.db import models
 from django.db.models.fields.related import ForeignKey
@@ -71,6 +73,15 @@ class BaseSignature(object):
         """
         raise NotImplementedError
 
+    def clone(self):
+        """Clone the signature.
+
+        Returns:
+            BaseSignature:
+            The cloned signature.
+        """
+        raise NotImplementedError
+
     def serialize(self, sig_version=DEFAULT_SIGNATURE_VERSION):
         """Serialize data to a signature dictionary.
 
@@ -81,6 +92,29 @@ class BaseSignature(object):
         Returns:
             dict:
             The serialized data.
+        """
+        raise NotImplementedError
+
+    def __eq__(self, other):
+        """Return whether two signatures are equal.
+
+        Args:
+            other (BaseSignature):
+                The other signature.
+
+        Returns:
+            bool:
+            ``True`` if the project signatures are equal. ``False`` if they
+            are not.
+        """
+        raise NotImplementedError
+
+    def __repr__(self):
+        """Return a string representation of the signature.
+
+        Returns:
+            unicode:
+            A string representation of the signature.
         """
         raise NotImplementedError
 
@@ -177,6 +211,34 @@ class ProjectSignature(BaseSignature):
                 The application signature to add.
         """
         self._app_sigs[app_sig.app_id] = app_sig
+
+    def get_app_sig(self, app_id):
+        """Return an application signature with the given ID.
+
+        Args:
+            app_id (unicode):
+                The ID of the application signature.
+
+        Returns:
+            AppSignature:
+            The application signature, if found. If no application signature
+            matches the ID, ``None`` will be returned.
+        """
+        return self._app_sigs.get(app_id)
+
+    def clone(self):
+        """Clone the signature.
+
+        Returns:
+            ProjectSignature:
+            The cloned signature.
+        """
+        cloned_sig = ProjectSignature()
+
+        for app_sig in self.app_sigs:
+            cloned_sig.add_app_sig(app_sig.clone())
+
+        return cloned_sig
 
     def serialize(self, sig_version=DEFAULT_SIGNATURE_VERSION):
         """Serialize project data to a signature dictionary.
@@ -329,6 +391,34 @@ class AppSignature(BaseSignature):
         """
         self._model_sigs[model_sig.model_name] = model_sig
 
+    def get_model_sig(self, model_name):
+        """Return a model signature for the given model name.
+
+        Args:
+            model_name (unicode):
+                The name of the model.
+
+        Returns:
+            ModelSignature:
+            The model signature, if found. If no model signature matches
+            the model name, ``None`` will be returned.
+        """
+        return self._model_sigs.get(model_name)
+
+    def clone(self):
+        """Clone the signature.
+
+        Returns:
+            AppSignature:
+            The cloned signature.
+        """
+        cloned_sig = AppSignature(app_id=self.app_id)
+
+        for model_sig in self.model_sigs:
+            cloned_sig.add_model_sig(model_sig.clone())
+
+        return cloned_sig
+
     def serialize(self, sig_version=DEFAULT_SIGNATURE_VERSION):
         """Serialize application data to a signature dictionary.
 
@@ -438,17 +528,13 @@ class ModelSignature(BaseSignature):
 
         model_sig = cls(
             db_tablespace=meta_sig_dict.get('db_tablespace'),
-            index_together=[
-                tuple(index_together)
-                for index_together in meta_sig_dict.get('index_together', [])
-            ],
+            index_together=meta_sig_dict.get('index_together', []),
             model_name=model_name,
             pk_column=meta_sig_dict.get('pk_column'),
             table_name=meta_sig_dict.get('db_table'),
-            unique_together=[
-                tuple(unique_together)
-                for unique_together in meta_sig_dict.get('unique_together', [])
-            ])
+            unique_together=meta_sig_dict.get('unique_together', []))
+        model_sig._unique_together_applied = \
+            meta_sig_dict.get('__unique_together_applied', False)
 
         for index_sig_dict in meta_sig_dict.get('indexes', []):
             model_sig.add_index_sig(
@@ -489,9 +575,9 @@ class ModelSignature(BaseSignature):
         self.model_name = model_name
         self.db_tablespace = db_tablespace
         self.table_name = table_name
-        self.index_together = index_together
+        self.index_together = self._normalize_together(index_together)
         self.pk_column = pk_column
-        self.unique_together = unique_together
+        self.unique_together = self._normalize_together(unique_together)
 
         self.index_sigs = []
         self._field_sigs = OrderedDict()
@@ -523,6 +609,20 @@ class ModelSignature(BaseSignature):
         """
         self._field_sigs[field_sig.field_name] = field_sig
 
+    def get_field_sig(self, field_name):
+        """Return a field signature for the given field name.
+
+        Args:
+            field_name (unicode):
+                The name of the field.
+
+        Returns:
+            FieldSignature:
+            The field signature, if found. If no field signature matches
+            the field name, ``None`` will be returned.
+        """
+        return self._field_sigs.get(field_name)
+
     def add_index(self, index):
         """Add an explicit index to the models.
 
@@ -548,6 +648,57 @@ class ModelSignature(BaseSignature):
                 The index signature to add.
         """
         self.index_sigs.append(index_sig)
+
+    def has_unique_together_changed(self, old_model_sig):
+        """Return whether unique_together has changed between signatures.
+
+        ``unique_together`` is considered to have changed under the following
+        conditions:
+
+        * They are different in value.
+        * Either the old or new is non-empty (even if equal) and evolving
+          from an older signature from Django Evolution pre-0.7, where
+          unique_together wasn't applied to the database.
+
+        Args:
+            old_model_sig (ModelSignature):
+                The old model signature to compare against.
+
+        Return:
+            bool:
+            ``True`` if the value has changed. ``False`` if they're
+            considered equal for the purposes of evolution.
+        """
+        old_unique_together = old_model_sig.unique_together
+        new_unique_together = self.unique_together
+
+        return (old_unique_together != new_unique_together or
+                ((old_unique_together or new_unique_together) and
+                 not old_model_sig._unique_together_applied))
+
+    def clone(self):
+        """Clone the signature.
+
+        Returns:
+            ModelSignature:
+            The cloned signature.
+        """
+        cloned_sig = ModelSignature(
+            model_name=self.model_name,
+            table_name=self.table_name,
+            db_tablespace=self.db_tablespace,
+            index_together=deepcopy(self.index_together),
+            pk_column=self.pk_column,
+            unique_together=deepcopy(self.unique_together))
+        cloned_sig._unique_together_applied = self._unique_together_applied
+
+        for field_sig in self.field_sigs:
+            cloned_sig.add_field_sig(field_sig.clone())
+
+        for index_sig in self.index_sigs:
+            cloned_sig.add_index_sig(index_sig.clone())
+
+        return cloned_sig
 
     def serialize(self, sig_version=DEFAULT_SIGNATURE_VERSION):
         """Serialize model data to a signature dictionary.
@@ -609,6 +760,32 @@ class ModelSignature(BaseSignature):
         """
         return '<ModelSignature(model_name=%r)>' % self.model_name
 
+    def _normalize_together(self, together):
+        """Normalize a <field>_together value.
+
+        This is intended to normalize ``index_together`` and
+        ``unique_together`` values so that they're reliably stored in a
+        consistent format.
+
+        Args:
+            together (object):
+                The value to normalize.
+
+        Returns:
+            list of tuple:
+            The normalized value.
+        """
+        if not together:
+            return []
+
+        if not isinstance(together[0], (tuple, list)):
+            together = (together,)
+
+        return [
+            tuple(item)
+            for item in together
+        ]
+
 
 class IndexSignature(BaseSignature):
     """Signature information for an explicit index.
@@ -664,6 +841,16 @@ class IndexSignature(BaseSignature):
         """
         self.fields = fields
         self.name = name
+
+    def clone(self):
+        """Clone the signature.
+
+        Returns:
+            IndexSignature:
+            The cloned signature.
+        """
+        return IndexSignature(name=self.name,
+                              fields=list(self.fields))
 
     def serialize(self, sig_version=DEFAULT_SIGNATURE_VERSION):
         """Serialize index data to a signature dictionary.
@@ -904,6 +1091,84 @@ class FieldSignature(BaseSignature):
         self.field_type = field_type
         self.field_attrs = OrderedDict()
 
+    def get_attr_value(self, attr_name, use_default=True):
+        """Return the value for an attribute.
+
+        By default, this will return the default value for the attribute if
+        it's not explicitly set.
+
+        Args:
+            attr_name (unicode):
+                The name of the attribute.
+
+            use_default (bool, optional):
+                Whether to return the default value for the attribute if it's
+                not explicitly set.
+
+        Returns:
+            object:
+            The value for the attribute.
+        """
+        try:
+            return self.field_attrs[attr_name]
+        except KeyError:
+            if use_default:
+                return self.get_attr_default(attr_name)
+
+            return None
+
+    def get_attr_default(self, attr_name):
+        """Return the default value for an attribute.
+
+        Args:
+            attr_name (unicode):
+                The attribute name.
+
+        Returns:
+            object:
+            The default value for the attribute, or ``None``.
+        """
+        for defaults in (self._ATTRIBUTE_DEFAULTS.get(self.field_type, {}),
+                         self._ATTRIBUTE_DEFAULTS['*']):
+            try:
+                return defaults[attr_name]
+            except KeyError:
+                continue
+
+        return None
+
+    def is_attr_value_default(self, attr_name):
+        """Return whether an attribute is set to its default value.
+
+        Args:
+            attr_name (unicode):
+                The attribute name.
+
+        Returns:
+            bool:
+            ``True`` if the attribute's value is set to its default value.
+            ``False`` if it has a custom value.
+        """
+        try:
+            attr_value = self.field_attrs[attr_name]
+        except KeyError:
+            return True
+
+        return attr_value == self.get_attr_default(attr_name)
+
+    def clone(self):
+        """Clone the signature.
+
+        Returns:
+            FieldSignature:
+            The cloned signature.
+        """
+        field_sig = FieldSignature(field_name=self.field_name,
+                                   field_type=self.field_type)
+        field_sig.field_attrs = deepcopy(self.field_attrs)
+
+        return field_sig
+
     def serialize(self, sig_version=DEFAULT_SIGNATURE_VERSION):
         """Serialize field data to a signature dictionary.
 
@@ -936,8 +1201,7 @@ class FieldSignature(BaseSignature):
         """
         return (self.field_name == other.field_name and
                 self.field_type == other.field_type and
-                self.field_attrs == other.field_attrs and
-                self.related_model == other.related_model)
+                self.field_attrs == other.field_attrs)
 
     def __repr__(self):
         """Return a string representation of the signature.

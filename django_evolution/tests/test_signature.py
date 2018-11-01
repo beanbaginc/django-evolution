@@ -158,6 +158,23 @@ class ProjectSignatureTests(BaseSignatureTestCase):
 
         self.assertEqual(list(project_sig.app_sigs), [app_sig])
 
+    def test_clone(self):
+        """Testing ProjectSignature.clone"""
+        project_sig = ProjectSignature()
+
+        app_sig = AppSignature.from_app(get_app('django_evolution'),
+                                        database='default')
+        project_sig.add_app_sig(app_sig)
+
+        cloned_project_sig = project_sig.clone()
+        self.assertIsNot(cloned_project_sig, project_sig)
+        self.assertEqual(cloned_project_sig, project_sig)
+
+        for cloned_app_sig, app_sig in zip(cloned_project_sig.app_sigs,
+                                           project_sig.app_sigs):
+            self.assertIsNot(cloned_app_sig, app_sig)
+            self.assertEqual(cloned_app_sig, app_sig)
+
     def test_serialize_v1(self):
         """Testing ProjectSignature.serialize (signature v1)"""
         project_sig = ProjectSignature()
@@ -241,6 +258,26 @@ class AppSignatureTests(BaseSignatureTestCase):
         app_sig.add_model_sig(model_sig)
 
         self.assertEqual(list(app_sig.model_sigs), [model_sig])
+
+    def test_get_model_sig(self):
+        """Testing AppSignature.get_model_sig"""
+        app_sig = AppSignature('django_evolution')
+
+        model_sig = ModelSignature.from_model(Evolution)
+        app_sig.add_model_sig(model_sig)
+
+        self.assertIs(app_sig.get_model_sig('Evolution'), model_sig)
+
+    def test_clone(self):
+        """Testing AppSignature.clone"""
+        app_sig = AppSignature.from_app(get_app('django_evolution'),
+                                        database=DEFAULT_DB_ALIAS)
+        cloned_app_sig = app_sig.clone()
+
+        for cloned_model_sig, model_sig in zip(cloned_app_sig.model_sigs,
+                                               app_sig.model_sigs):
+            self.assertIsNot(cloned_model_sig, model_sig)
+            self.assertEqual(cloned_model_sig, model_sig)
 
     def test_serialize_v1(self):
         """Testing AppSignature.serialize (signature v1)"""
@@ -329,6 +366,58 @@ class FieldSignatureTests(BaseSignatureTestCase):
                 'null': False,
                 'db_column': 'test_column',
             })
+
+    def test_get_attr_value(self):
+        """Testing FieldSignature.get_attr_value"""
+        field_sig = FieldSignature.from_field(
+            SignatureFullModel._meta.get_field('null_field'))
+
+        self.assertEqual(field_sig.get_attr_value('db_column'),
+                         'size_column')
+
+    def test_get_attr_value_with_not_set_and_use_default_true(self):
+        """Testing FieldSignature.get_attr_value with not set and
+        use_default=True
+        """
+        field_sig = FieldSignature.from_field(
+            SignatureFullModel._meta.get_field('null_field'))
+
+        self.assertFalse(field_sig.get_attr_value('db_index'))
+
+    def test_get_attr_value_with_not_set_and_use_default_false(self):
+        """Testing FieldSignature.get_attr_value with not set and
+        use_default=False
+        """
+        field_sig = FieldSignature.from_field(
+            SignatureFullModel._meta.get_field('null_field'))
+
+        self.assertIsNone(field_sig.get_attr_value('db_index',
+                                                   use_default=False))
+
+    def test_get_attr_default(self):
+        """Testing FieldSignature.get_attr_default"""
+        field_sig = FieldSignature.from_field(
+            SignatureFullModel._meta.get_field('null_field'))
+
+        self.assertFalse(field_sig.get_attr_default('null'))
+
+    def test_is_attr_value_default(self):
+        """Testing FieldSignature.is_attr_value_default"""
+        field_sig = FieldSignature.from_field(
+            SignatureFullModel._meta.get_field('null_field'))
+
+        self.assertTrue(field_sig.is_attr_value_default('db_index'))
+        self.assertFalse(field_sig.is_attr_value_default('null'))
+
+    def test_clone(self):
+        """Testing FieldSignature.clone"""
+        field_sig = FieldSignature.from_field(
+            SignatureFullModel._meta.get_field('null_field'))
+
+        cloned_field_sig = field_sig.clone()
+        self.assertIsNot(cloned_field_sig, field_sig)
+        self.assertEqual(cloned_field_sig, field_sig)
+        self.assertIsNot(cloned_field_sig.field_attrs, field_sig.field_attrs)
 
     def test_serialize_v1(self):
         """Testing FieldSignature.serialize (signature v1)"""
@@ -420,12 +509,12 @@ class ModelSignatureTests(BaseSignatureTestCase):
         model_sig = ModelSignature.from_model(ModelSignatureFromModelTestModel)
 
         self.assertEqual(model_sig.db_tablespace, 'my_tablespace')
-        self.assertEqual(model_sig.index_together, (('field1', 'field2'),))
+        self.assertEqual(model_sig.index_together, [('field1', 'field2')])
         self.assertEqual(model_sig.model_name,
                          'ModelSignatureFromModelTestModel')
         self.assertEqual(model_sig.pk_column, 'id')
         self.assertEqual(model_sig.table_name, 'my_table')
-        self.assertEqual(model_sig.unique_together, (('field2', 'field3'),))
+        self.assertEqual(model_sig.unique_together, [('field2', 'field3')])
 
         field_sigs = list(model_sig.field_sigs)
         self.assertEqual(len(field_sigs), 4)
@@ -528,6 +617,24 @@ class ModelSignatureTests(BaseSignatureTestCase):
         self.assertEqual(field_sig.field_name, 'char_field')
         self.assertIs(field_sig.field_type, models.CharField)
 
+    def test_get_field_sig(self):
+        """Testing ModelSignature.get_field_sig"""
+        model_sig = ModelSignature(model_name='TestModel',
+                                   table_name='testmodel')
+
+        field_sig = FieldSignature.from_field(
+            SignatureDefaultsModel._meta.get_field('char_field'))
+        model_sig.add_field_sig(field_sig)
+
+        self.assertIs(model_sig.get_field_sig('char_field'), field_sig)
+
+    def test_get_field_sig_with_invalid_field_name(self):
+        """Testing ModelSignature.get_field_sig with invalid field name"""
+        model_sig = ModelSignature(model_name='TestModel',
+                                   table_name='testmodel')
+
+        self.assertIsNone(model_sig.get_field_sig('char_field'))
+
     def test_add_index(self):
         """Testing ModelSignature.add_index"""
         if Index is None:
@@ -554,6 +661,88 @@ class ModelSignatureTests(BaseSignatureTestCase):
         model_sig.add_index_sig(index_sig)
 
         self.assertEqual(list(model_sig.index_sigs), [index_sig])
+
+    def test_has_unique_together_changed_and_old_applied(self):
+        """Testing ModelSignature.has_unique_together_changed with equal
+        unique_together contents and old unique_together applied
+        """
+        new_model_sig = ModelSignature(model_name='TestModel',
+                                       table_name='testmodel',
+                                       unique_together=[['field1', 'field2']])
+
+        old_model_sig = ModelSignature(model_name='TestModel',
+                                       table_name='testmodel',
+                                       unique_together=(('field1', 'field2',)))
+        old_model_sig._unique_together_applied = True
+
+        self.assertFalse(
+            new_model_sig.has_unique_together_changed(old_model_sig))
+
+    def test_has_unique_together_changed_and_old_not_applied(self):
+        """Testing ModelSignature.has_unique_together_changed with equal
+        unique_together contents and old unique_together not applied
+        """
+        new_model_sig = ModelSignature(model_name='TestModel',
+                                       table_name='testmodel',
+                                       unique_together=[['field1', 'field2']])
+
+        old_model_sig = ModelSignature(model_name='TestModel',
+                                       table_name='testmodel',
+                                       unique_together=(('field1', 'field2',)))
+        old_model_sig._unique_together_applied = False
+
+        self.assertTrue(
+            new_model_sig.has_unique_together_changed(old_model_sig))
+
+    def test_has_unique_together_changed_and_changed(self):
+        """Testing ModelSignature.has_unique_together_changed with differences
+        in unique_together
+        """
+        new_model_sig = ModelSignature(model_name='TestModel',
+                                       table_name='testmodel',
+                                       unique_together=[['field1', 'field3']])
+
+        old_model_sig = ModelSignature(model_name='TestModel',
+                                       table_name='testmodel',
+                                       unique_together=(('field1', 'field2',)))
+        old_model_sig._unique_together_applied = True
+
+        self.assertTrue(
+            new_model_sig.has_unique_together_changed(old_model_sig))
+
+    def test_has_unique_together_changed_and_both_empty(self):
+        """Testing ModelSignature.has_unique_together_changed with both empty
+        """
+        new_model_sig = ModelSignature(model_name='TestModel',
+                                       table_name='testmodel',
+                                       unique_together=[])
+
+        old_model_sig = ModelSignature(model_name='TestModel',
+                                       table_name='testmodel',
+                                       unique_together=[])
+
+        self.assertFalse(
+            new_model_sig.has_unique_together_changed(old_model_sig))
+
+    def test_clone(self):
+        """Testing ModelSignature.clone"""
+        model_sig = ModelSignature.from_model(SignatureFullModel)
+        model_sig.add_index_sig(IndexSignature(name='index1',
+                                               fields=['field1', 'field2']))
+        cloned_model_sig = model_sig.clone()
+
+        self.assertIsNot(cloned_model_sig, model_sig)
+        self.assertEqual(cloned_model_sig, model_sig)
+
+        for cloned_field_sig, field_sig in zip(cloned_model_sig.field_sigs,
+                                               model_sig.field_sigs):
+            self.assertIsNot(cloned_field_sig, field_sig)
+            self.assertEqual(cloned_field_sig, field_sig)
+
+        for cloned_index_sig, index_sig in zip(cloned_model_sig.index_sigs,
+                                               model_sig.index_sigs):
+            self.assertIsNot(cloned_index_sig, index_sig)
+            self.assertEqual(cloned_index_sig, index_sig)
 
     def test_serialize_v1(self):
         """Testing ModelSignature.serialize (signature v1)"""
@@ -697,6 +886,15 @@ class IndexSignatureTests(BaseSignatureTestCase):
 
         self.assertEqual(index_sig.name, 'index1')
         self.assertEqual(index_sig.fields, ['field1', 'field2'])
+
+    def test_clone(self):
+        """Testing IndexSignature.clone"""
+        index_sig = IndexSignature(name='index1', fields=['field1', 'field2'])
+        cloned_index_sig = index_sig.clone()
+
+        self.assertIsNot(cloned_index_sig, index_sig)
+        self.assertEqual(cloned_index_sig, index_sig)
+        self.assertIsNot(cloned_index_sig.fields, index_sig.fields)
 
     def test_serialize_v1(self):
         """Testing IndexSignature.serialize (signature v1)"""
