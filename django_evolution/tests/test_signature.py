@@ -158,6 +158,28 @@ class ProjectSignatureTests(BaseSignatureTestCase):
 
         self.assertEqual(list(project_sig.app_sigs), [app_sig])
 
+    def test_remove_app_sig(self):
+        """Testing ProjectSignature.remove_app_sig"""
+        project_sig = ProjectSignature()
+
+        app_sig = AppSignature.from_app(get_app('django_evolution'),
+                                        database='default')
+        project_sig.add_app_sig(app_sig)
+        project_sig.remove_app_sig('django_evolution')
+
+        self.assertIsNone(project_sig.get_app_sig('django_evolution'))
+
+    def test_remove_app_sig_with_invalid_app_id(self):
+        """Testing ProjectSignature.remove_app_sig with invalid app ID"""
+        project_sig = ProjectSignature()
+
+        message = (
+            'An application signature for "invalid_app" could not be found.'
+        )
+
+        with self.assertRaisesMessage(ValueError, message):
+            project_sig.remove_app_sig('invalid_app')
+
     def test_clone(self):
         """Testing ProjectSignature.clone"""
         project_sig = ProjectSignature()
@@ -258,6 +280,25 @@ class AppSignatureTests(BaseSignatureTestCase):
         app_sig.add_model_sig(model_sig)
 
         self.assertEqual(list(app_sig.model_sigs), [model_sig])
+
+    def test_remove_model_sig(self):
+        """Testing AppSignature.remove_model_sig"""
+        app_sig = AppSignature('django_evolution')
+
+        model_sig = ModelSignature.from_model(Evolution)
+        app_sig.add_model_sig(model_sig)
+        app_sig.remove_model_sig('Evolution')
+
+        self.assertIsNone(app_sig.get_model_sig('Evolution'))
+
+    def test_remove_model_sig_with_invalid_model_name(self):
+        """Testing AppSignature.remove_model_sig with invalid model name"""
+        app_sig = AppSignature('django_evolution')
+
+        message = 'A model signature for "Evolution" could not be found.'
+
+        with self.assertRaisesMessage(ValueError, message):
+            app_sig.remove_model_sig('Evolution')
 
     def test_get_model_sig(self):
         """Testing AppSignature.get_model_sig"""
@@ -620,6 +661,28 @@ class ModelSignatureTests(BaseSignatureTestCase):
         field_sig = field_sigs[0]
         self.assertEqual(field_sig.field_name, 'char_field')
         self.assertIs(field_sig.field_type, models.CharField)
+
+    def test_remove_field_sig(self):
+        """Testing ModelSignature.remove_field_sig"""
+        model_sig = ModelSignature(model_name='TestModel',
+                                   table_name='testmodel')
+
+        field_sig = FieldSignature.from_field(
+            SignatureDefaultsModel._meta.get_field('char_field'))
+        model_sig.add_field_sig(field_sig)
+        model_sig.remove_field_sig('char_field')
+
+        self.assertIsNone(model_sig.get_field_sig('char_field'))
+
+    def test_remove_field_sig_with_invalid_field_name(self):
+        """Testing ModelSignature.remove_field_sig with invalid field name"""
+        model_sig = ModelSignature(model_name='TestModel',
+                                   table_name='testmodel')
+
+        message = 'A field signature for "char_field" could not be found.'
+
+        with self.assertRaisesMessage(ValueError, message):
+            model_sig.remove_field_sig('char_field')
 
     def test_get_field_sig(self):
         """Testing ModelSignature.get_field_sig"""

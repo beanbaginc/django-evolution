@@ -212,6 +212,25 @@ class ProjectSignature(BaseSignature):
         """
         self._app_sigs[app_sig.app_id] = app_sig
 
+    def remove_app_sig(self, app_id):
+        """Remove an application signature from the project signature.
+
+        Args:
+            app_id (unicode):
+                The ID of the application signature to remove.
+
+        Raises:
+            ValueError:
+                The application ID does not represent a known application
+                signature.
+        """
+        try:
+            del self._app_sigs[app_id]
+        except KeyError:
+            raise ValueError(
+                'An application signature for "%s" could not be found.'
+                % app_id)
+
     def get_app_sig(self, app_id):
         """Return an application signature with the given ID.
 
@@ -390,6 +409,23 @@ class AppSignature(BaseSignature):
                 The model signature to add.
         """
         self._model_sigs[model_sig.model_name] = model_sig
+
+    def remove_model_sig(self, model_name):
+        """Remove a model signature from the application signature.
+
+        Args:
+            model_name (unicode):
+                The name of the model.
+
+        Raises:
+            ValueError:
+                The model name does not represent a known model signature.
+        """
+        try:
+            del self._model_sigs[model_name]
+        except KeyError:
+            raise ValueError('A model signature for "%s" could not be found.'
+                             % model_name)
 
     def get_model_sig(self, model_name):
         """Return a model signature for the given model name.
@@ -608,6 +644,23 @@ class ModelSignature(BaseSignature):
                 The field signature to add.
         """
         self._field_sigs[field_sig.field_name] = field_sig
+
+    def remove_field_sig(self, field_name):
+        """Remove a field signature from the model signature.
+
+        Args:
+            field_name (unicode):
+                The name of the field.
+
+        Raises:
+            ValueError:
+                The field name does not represent a known field signature.
+        """
+        try:
+            del self._field_sigs[field_name]
+        except KeyError:
+            raise ValueError('A field signature for "%s" could not be found.'
+                             % field_name)
 
     def get_field_sig(self, field_name):
         """Return a field signature for the given field name.
