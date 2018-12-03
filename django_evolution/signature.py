@@ -95,6 +95,20 @@ class BaseSignature(object):
         """
         raise NotImplementedError
 
+    def __ne__(self, other):
+        """Return whether two signatures are not equal.
+
+        Args:
+            other (BaseSignature):
+                The other signature.
+
+        Returns:
+            bool:
+            ``True`` if the project signatures are not equal. ``False`` if they
+            are equal.
+        """
+        return not (self == other)
+
     def __repr__(self):
         """Return a string representation of the signature.
 
@@ -362,7 +376,7 @@ class ProjectSignature(BaseSignature):
             ``True`` if the project signatures are equal. ``False`` if they
             are not.
         """
-        return self._app_sigs == other._app_sigs
+        return dict.__eq__(self._app_sigs, other._app_sigs)
 
     def __repr__(self):
         """Return a string representation of the signature.
@@ -634,7 +648,7 @@ class AppSignature(BaseSignature):
             they are not.
         """
         return (self.app_id == other.app_id and
-                self._model_sigs == other._model_sigs)
+                dict.__eq__(self._model_sigs, other._model_sigs))
 
     def __repr__(self):
         """Return a string representation of the signature.
@@ -1057,11 +1071,12 @@ class ModelSignature(BaseSignature):
         """
         return (self.table_name == other.table_name and
                 self.db_tablespace == other.db_tablespace and
-                self.index_sigs == other.index_sigs and
-                self.index_together == other.index_together and
+                set(self.index_sigs) == set(other.index_sigs) and
+                (set(self._normalize_together(self.index_together)) ==
+                 set(self._normalize_together(other.index_together))) and
                 self.model_name == other.model_name and
                 self.pk_column == other.pk_column and
-                self._field_sigs == other._field_sigs and
+                dict.__eq__(self._field_sigs, other._field_sigs) and
                 not self.has_unique_together_changed(other))
 
     def __repr__(self):
@@ -1200,6 +1215,17 @@ class IndexSignature(BaseSignature):
         return (((not self.name and not other.name) or
                  self.name == other.name) and
                 self.fields == other.fields)
+
+    def __hash__(self):
+        """Return a hash of the signature.
+
+        This is required for comparison within a :py:class:`set`.
+
+        Returns:
+            int:
+            The hash of the signature.
+        """
+        return hash(repr(self))
 
     def __repr__(self):
         """Return a string representation of the signature.
@@ -1575,8 +1601,8 @@ class FieldSignature(BaseSignature):
             are not.
         """
         return (self.field_name == other.field_name and
-                self.field_type == other.field_type and
-                self.field_attrs == other.field_attrs and
+                self.field_type is other.field_type and
+                dict.__eq__(self.field_attrs, other.field_attrs) and
                 self.related_model == other.related_model)
 
     def __repr__(self):

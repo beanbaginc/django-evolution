@@ -2,6 +2,8 @@
 
 from __future__ import unicode_literals
 
+from collections import OrderedDict
+
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.utils import DEFAULT_DB_ALIAS
@@ -240,6 +242,29 @@ class ProjectSignatureTests(BaseSignatureTestCase):
                 'test_app': {},
             })
 
+    def test_eq(self):
+        """Testing ProjectSignature.__eq__"""
+        project_sig1 = ProjectSignature()
+        project_sig1.add_app_sig(AppSignature('app1'))
+        project_sig1.add_app_sig(AppSignature('app2'))
+
+        project_sig2 = ProjectSignature()
+        project_sig2.add_app_sig(AppSignature('app2'))
+        project_sig2.add_app_sig(AppSignature('app1'))
+
+        self.assertEqual(project_sig1, project_sig2)
+
+    def test_ne(self):
+        """Testing ProjectSignature.__ne__"""
+        project_sig1 = ProjectSignature()
+        project_sig1.add_app_sig(AppSignature('app1'))
+        project_sig1.add_app_sig(AppSignature('app2'))
+
+        project_sig2 = ProjectSignature()
+        project_sig2.add_app_sig(AppSignature('app1'))
+
+        self.assertNotEqual(project_sig1, project_sig2)
+
 
 class AppSignatureTests(BaseSignatureTestCase):
     """Unit tests for AppSignature."""
@@ -421,6 +446,43 @@ class AppSignatureTests(BaseSignatureTestCase):
         self.assertIn('Evolution', model_names)
         self.assertNotIn('Version', model_names)
 
+    def test_eq(self):
+        """Testing AppSignature.__eq__"""
+        app_sig1 = AppSignature('app')
+        app_sig1.add_model_sig(ModelSignature(model_name='MyModel1',
+                                              table_name='testapp_mymodel1'))
+        app_sig1.add_model_sig(ModelSignature(model_name='MyModel2',
+                                              table_name='testapp_mymodel2'))
+
+        app_sig2 = AppSignature('app')
+        app_sig2.add_model_sig(ModelSignature(model_name='MyModel2',
+                                              table_name='testapp_mymodel2'))
+        app_sig2.add_model_sig(ModelSignature(model_name='MyModel1',
+                                              table_name='testapp_mymodel1'))
+
+        self.assertEqual(app_sig1, app_sig2)
+
+    def test_ne_with_different_app_ids(self):
+        """Testing AppSignature.__ne__ with different app IDs"""
+        self.assertNotEqual(AppSignature('app1'),
+                            AppSignature('app2'))
+
+    def test_ne_with_different_model_sigs(self):
+        """Testing AppSignature.__ne__ with different model sigs"""
+        app_sig1 = AppSignature('app')
+        app_sig1.add_model_sig(ModelSignature(model_name='MyModel1',
+                                              table_name='testapp_mymodel1'))
+        app_sig1.add_model_sig(ModelSignature(model_name='MyModel2',
+                                              table_name='testapp_mymodel2'))
+
+        app_sig2 = AppSignature('app')
+        app_sig2.add_model_sig(ModelSignature(model_name='MyModel2',
+                                              table_name='testapp_mymodel2'))
+        app_sig2.add_model_sig(ModelSignature(model_name='MyModel1',
+                                              table_name='testapp_mymodel1'))
+
+        self.assertEqual(app_sig1, app_sig2)
+
 
 class FieldSignatureTests(BaseSignatureTestCase):
     """Unit tests for FieldSignature."""
@@ -578,6 +640,115 @@ class FieldSignatureTests(BaseSignatureTestCase):
                 'field_type': models.ForeignKey,
                 'related_model': 'tests.Anchor1',
             })
+
+    def test_eq(self):
+        """Testing FieldSignature.__eq__"""
+        field_sig1 = FieldSignature(
+            field_name='field1',
+            field_type=models.ForeignKey,
+            field_attrs=OrderedDict([
+                ('db_index', True),
+                ('null', True),
+            ]),
+            related_model='tests.Anchor1')
+
+        field_sig2 = FieldSignature(
+            field_name='field1',
+            field_type=models.ForeignKey,
+            field_attrs=OrderedDict([
+                ('null', True),
+                ('db_index', True),
+            ]),
+            related_model='tests.Anchor1')
+
+        self.assertEqual(field_sig1, field_sig2)
+
+    def test_ne_with_different_name(self):
+        """Testing FieldSignature.__ne__ with different field_name"""
+        field_sig1 = FieldSignature(
+            field_name='field1',
+            field_type=models.ForeignKey,
+            field_attrs=OrderedDict([
+                ('db_index', True),
+                ('null', True),
+            ]),
+            related_model='tests.Anchor1')
+
+        field_sig2 = FieldSignature(
+            field_name='field2',
+            field_type=models.ForeignKey,
+            field_attrs=OrderedDict([
+                ('null', True),
+                ('db_index', True),
+            ]),
+            related_model='tests.Anchor1')
+
+        self.assertNotEqual(field_sig1, field_sig2)
+
+    def test_ne_with_different_type(self):
+        """Testing FieldSignature.__ne__ with different field_type"""
+        field_sig1 = FieldSignature(
+            field_name='field1',
+            field_type=models.ForeignKey,
+            field_attrs=OrderedDict([
+                ('db_index', True),
+                ('null', True),
+            ]),
+            related_model='tests.Anchor1')
+
+        field_sig2 = FieldSignature(
+            field_name='field1',
+            field_type=models.CharField,
+            field_attrs=OrderedDict([
+                ('null', True),
+                ('db_index', True),
+            ]),
+            related_model='tests.Anchor1')
+
+        self.assertNotEqual(field_sig1, field_sig2)
+
+    def test_ne_with_different_attrs(self):
+        """Testing FieldSignature.__ne__ with different field_attrs"""
+        field_sig1 = FieldSignature(
+            field_name='field1',
+            field_type=models.ForeignKey,
+            field_attrs=OrderedDict([
+                ('db_index', True),
+                ('null', True),
+            ]),
+            related_model='tests.Anchor1')
+
+        field_sig2 = FieldSignature(
+            field_name='field1',
+            field_type=models.ForeignKey,
+            field_attrs=OrderedDict([
+                ('db_index', True),
+            ]),
+            related_model='tests.Anchor1')
+
+        self.assertNotEqual(field_sig1, field_sig2)
+
+    def test_ne_with_different_related_model(self):
+        """Testing FieldSignature.__ne__ with different related_model"""
+        field_sig1 = FieldSignature(
+            field_name='field1',
+            field_type=models.ForeignKey,
+            field_attrs=OrderedDict([
+                ('db_index', True),
+                ('null', True),
+            ]),
+            related_model='tests.Anchor1')
+
+        field_sig2 = FieldSignature(
+            field_name='field1',
+            field_type=models.ForeignKey,
+            field_attrs=OrderedDict([
+                ('db_index', True),
+                ('null', True),
+            ]),
+            related_model='tests.Anchor2')
+
+        self.assertNotEqual(field_sig1, field_sig2)
 
 
 class ModelSignatureTests(BaseSignatureTestCase):
@@ -992,6 +1163,157 @@ class ModelSignatureTests(BaseSignatureTestCase):
                 },
             })
 
+    def test_eq(self):
+        """Testing ModelSignature.__eq__"""
+        self.assertEqual(ModelSignature(model_name='TestModel',
+                                        table_name='testmodel'),
+                         ModelSignature(model_name='TestModel',
+                                        table_name='testmodel'))
+
+        model_sig1 = ModelSignature(
+            model_name='TestModel1',
+            table_name='testmodel1',
+            db_tablespace='tablespace',
+            pk_column='id',
+            index_together=[
+                ('field1', 'field2'),
+            ],
+            unique_together=[
+                ('field3', 'field4'),
+            ])
+        model_sig1._unique_together_applied = True
+        model_sig1.add_field_sig(FieldSignature.from_field(
+            SignatureDefaultsModel._meta.get_field('char_field')))
+        model_sig1.add_field_sig(FieldSignature.from_field(
+            SignatureDefaultsModel._meta.get_field('dec_field')))
+        model_sig1.add_index_sig(IndexSignature(
+            name='index1',
+            fields=['field5', 'field6']))
+        model_sig1.add_index_sig(IndexSignature(
+            fields=['field7', 'field8']))
+
+        model_sig2 = ModelSignature(
+            model_name='TestModel1',
+            table_name='testmodel1',
+            db_tablespace='tablespace',
+            pk_column='id',
+            index_together=[
+                ['field1', 'field2'],
+            ],
+            unique_together=[
+                ['field3', 'field4'],
+            ])
+        model_sig2._unique_together_applied = True
+        model_sig2.add_field_sig(FieldSignature.from_field(
+            SignatureDefaultsModel._meta.get_field('dec_field')))
+        model_sig2.add_field_sig(FieldSignature.from_field(
+            SignatureDefaultsModel._meta.get_field('char_field')))
+        model_sig2.add_index_sig(IndexSignature(
+            fields=['field7', 'field8']))
+        model_sig2.add_index_sig(IndexSignature(
+            name='index1',
+            fields=['field5', 'field6']))
+
+        self.assertEqual(model_sig1, model_sig2)
+
+    def test_ne_with_different_model_name(self):
+        """Testing ModelSignature.__ne__ with different model_name"""
+        self.assertNotEqual(ModelSignature(model_name='TestModel1',
+                                           table_name='testmodel'),
+                            ModelSignature(model_name='TestModel2',
+                                           table_name='testmodel'))
+
+    def test_ne_with_different_table_name(self):
+        """Testing ModelSignature.__ne__ with different table_name"""
+        self.assertNotEqual(ModelSignature(model_name='TestModel',
+                                           table_name='testmodel1'),
+                            ModelSignature(model_name='TestModel',
+                                           table_name='testmodel2'))
+
+    def test_ne_with_different_tablespace(self):
+        """Testing ModelSignature.__ne__ with different db_tablespace"""
+        self.assertNotEqual(ModelSignature(model_name='TestModel',
+                                           table_name='testmodel',
+                                           db_tablespace='space1'),
+                            ModelSignature(model_name='TestModel',
+                                           table_name='testmodel',
+                                           db_tablespace='space2'))
+
+    def test_ne_with_different_index_sigs(self):
+        """Testing ModelSignature.__ne__ with different index signatures"""
+        model_sig1 = ModelSignature(model_name='TestModel',
+                                    table_name='testmodel')
+        model_sig1.add_index_sig(IndexSignature(fields=['field1']))
+
+        model_sig2 = ModelSignature(model_name='TestModel',
+                                    table_name='testmodel')
+        model_sig2.add_index_sig(IndexSignature(fields=['field2']))
+
+        self.assertNotEqual(model_sig1, model_sig2)
+
+    def test_ne_with_different_index_together(self):
+        """Testing ModelSignature.__ne__ with different index_together"""
+        model_sig1 = ModelSignature(
+            model_name='TestModel',
+            table_name='testmodel',
+            index_together=[
+                ('field1', 'field2'),
+            ])
+
+        model_sig2 = ModelSignature(
+            model_name='TestModel',
+            table_name='testmodel',
+            index_together=[
+                ('field1', 'field2'),
+                ('field3', 'field4'),
+            ])
+
+        self.assertNotEqual(model_sig1, model_sig2)
+
+    def test_ne_with_different_unique_together(self):
+        """Testing ModelSignature.__ne__ with different unique_together"""
+        model_sig1 = ModelSignature(
+            model_name='TestModel',
+            table_name='testmodel',
+            unique_together=[
+                ('field1', 'field2'),
+            ])
+
+        model_sig2 = ModelSignature(
+            model_name='TestModel',
+            table_name='testmodel',
+            unique_together=[
+                ('field1', 'field2'),
+                ('field3', 'field4'),
+            ])
+
+        self.assertNotEqual(model_sig1, model_sig2)
+
+    def test_ne_with_different_pk_column(self):
+        """Testing ModelSignature.__ne__ with different pk_column"""
+        self.assertNotEqual(ModelSignature(model_name='TestModel',
+                                           table_name='testmodel',
+                                           pk_column='col1'),
+                            ModelSignature(model_name='TestModel',
+                                           table_name='testmodel',
+                                           pk_column='col2'))
+
+    def test_ne_with_different_field_sigs(self):
+        """Testing ModelSignature.__ne__ with different field signatures"""
+        model_sig1 = ModelSignature(model_name='TestModel',
+                                    table_name='testmodel')
+        model_sig1.add_field_sig(FieldSignature.from_field(
+            SignatureDefaultsModel._meta.get_field('char_field')))
+        model_sig1.add_field_sig(FieldSignature.from_field(
+            SignatureDefaultsModel._meta.get_field('dec_field')))
+
+        model_sig2 = ModelSignature(model_name='TestModel',
+                                    table_name='testmodel')
+        model_sig1.add_field_sig(FieldSignature.from_field(
+            SignatureDefaultsModel._meta.get_field('char_field')))
+
+        self.assertNotEqual(model_sig1, model_sig2)
+
 
 class IndexSignatureTests(BaseSignatureTestCase):
     """Unit tests for IndexSignature."""
@@ -1050,3 +1372,34 @@ class IndexSignatureTests(BaseSignatureTestCase):
             {
                 'fields': ['field1', 'field2'],
             })
+
+    def test_eq(self):
+        """Testing IndexSignature.__eq__"""
+        self.assertEqual(IndexSignature(fields=['field1', 'field2']),
+                         IndexSignature(fields=['field1', 'field2']))
+
+        self.assertEqual(IndexSignature(name='test_index',
+                                        fields=['field1', 'field2']),
+                         IndexSignature(name='test_index',
+                                        fields=['field1', 'field2']))
+
+    def test_ne_with_different_names(self):
+        """Testing IndexSignature.__ne__ with different names"""
+        self.assertNotEqual(IndexSignature(name='index1',
+                                           fields=['field1', 'field2']),
+                            IndexSignature(name='index2',
+                                           fields=['field1', 'field2']))
+
+        self.assertNotEqual(IndexSignature(fields=['field1', 'field2']),
+                            IndexSignature(name='index1',
+                                           fields=['field1', 'field2']))
+
+    def test_ne_with_different_fields(self):
+        """Testing IndexSignature.__ne__ with different fields"""
+        self.assertNotEqual(IndexSignature(name='index1',
+                                           fields=['field1', 'field2']),
+                            IndexSignature(name='index1',
+                                           fields=['field2']))
+
+        self.assertNotEqual(IndexSignature(fields=['field1', 'field2']),
+                            IndexSignature(fields=['field2']))
