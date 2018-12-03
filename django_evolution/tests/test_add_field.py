@@ -6,6 +6,10 @@ from django.db import connection, models
 
 from django_evolution.errors import EvolutionException, SimulationFailure
 from django_evolution.mutations import AddField, DeleteField
+from django_evolution.signature import (AppSignature,
+                                        FieldSignature,
+                                        ModelSignature,
+                                        ProjectSignature)
 from django_evolution.tests.base_test_case import EvolutionTestCase
 
 
@@ -66,15 +70,15 @@ class AddFieldTests(EvolutionTestCase):
 
         with self.assertRaisesMessage(SimulationFailure, message):
             mutation.run_simulation(app_label='badapp',
-                                    project_sig={},
+                                    project_sig=ProjectSignature(),
                                     database_state=None)
 
     def test_with_bad_model(self):
         """Testing AddField with model not in signature"""
         mutation = AddField('TestModel', 'char_field1', models.CharField)
-        proj_sig = {
-            'tests': {},
-        }
+
+        project_sig = ProjectSignature()
+        project_sig.add_app_sig(AppSignature(app_id='tests'))
 
         message = (
             'Cannot add the field "char_field1" to model "tests.TestModel". '
@@ -83,21 +87,23 @@ class AddFieldTests(EvolutionTestCase):
 
         with self.assertRaisesMessage(SimulationFailure, message):
             mutation.run_simulation(app_label='tests',
-                                    project_sig=proj_sig,
+                                    project_sig=project_sig,
                                     database_state=None)
 
     def test_with_bad_field(self):
         """Testing AddField with field already in signature"""
         mutation = AddField('TestModel', 'char_field1', models.CharField)
-        proj_sig = {
-            'tests': {
-                'TestModel': {
-                    'fields': {
-                        'char_field1': {},
-                    },
-                },
-            },
-        }
+
+        model_sig = ModelSignature(model_name='TestModel',
+                                   table_name='tests_testmodel')
+        model_sig.add_field_sig(FieldSignature(field_name='char_field1',
+                                               field_type=models.CharField))
+
+        app_sig = AppSignature(app_id='tests')
+        app_sig.add_model_sig(model_sig)
+
+        project_sig = ProjectSignature()
+        project_sig.add_app_sig(app_sig)
 
         message = (
             'Cannot add the field "char_field1" to model "tests.TestModel". '
@@ -106,7 +112,7 @@ class AddFieldTests(EvolutionTestCase):
 
         with self.assertRaisesMessage(SimulationFailure, message):
             mutation.run_simulation(app_label='tests',
-                                    project_sig=proj_sig,
+                                    project_sig=project_sig,
                                     database_state=None)
 
     def test_add_non_null_column_no_initial_hinted_raises_exception(self):

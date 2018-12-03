@@ -106,10 +106,10 @@ class Diff(object):
             target_project_sig (django_evolution.signature.ProjectSignature):
                 The target project signature for the diff.
         """
-        original_project_sig = \
-            ProjectSignature.deserialize(original_project_sig)
-        target_project_sig = \
-            ProjectSignature.deserialize(target_project_sig)
+        assert isinstance(original_project_sig, ProjectSignature), \
+               'original_project_sig must be a ProjectSignature instance'
+        assert isinstance(target_project_sig, ProjectSignature), \
+               'target_project_sig must be a ProjectSignature instance'
 
         self.original_project_sig = original_project_sig
         self.target_project_sig = target_project_sig

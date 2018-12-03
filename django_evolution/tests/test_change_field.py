@@ -7,6 +7,9 @@ from django_evolution.diff import Diff
 from django_evolution.errors import SimulationFailure
 from django_evolution.mutations import ChangeField
 from django_evolution.mutators import AppMutator
+from django_evolution.signature import (AppSignature,
+                                        ModelSignature,
+                                        ProjectSignature)
 from django_evolution.tests.base_test_case import EvolutionTestCase
 
 
@@ -57,15 +60,15 @@ class ChangeFieldTests(EvolutionTestCase):
 
         with self.assertRaisesMessage(SimulationFailure, message):
             mutation.run_simulation(app_label='badapp',
-                                    project_sig={},
+                                    project_sig=ProjectSignature(),
                                     database_state=None)
 
     def test_with_bad_model(self):
         """Testing ChangeField with model not in signature"""
         mutation = ChangeField('TestModel', 'char_field1')
-        proj_sig = {
-            'tests': {},
-        }
+
+        project_sig = ProjectSignature()
+        project_sig.add_app_sig(AppSignature(app_id='tests'))
 
         message = (
             'Cannot change the field "char_field1" on model '
@@ -75,19 +78,21 @@ class ChangeFieldTests(EvolutionTestCase):
 
         with self.assertRaisesMessage(SimulationFailure, message):
             mutation.run_simulation(app_label='tests',
-                                    project_sig=proj_sig,
+                                    project_sig=project_sig,
                                     database_state=None)
 
     def test_with_bad_field(self):
         """Testing ChangeField with field not in signature"""
         mutation = ChangeField('TestModel', 'char_field1')
-        proj_sig = {
-            'tests': {
-                'TestModel': {
-                    'fields': {},
-                },
-            },
-        }
+
+        model_sig = ModelSignature(model_name='TestModel',
+                                   table_name='tests_testmodel')
+
+        app_sig = AppSignature(app_id='tests')
+        app_sig.add_model_sig(model_sig)
+
+        project_sig = ProjectSignature()
+        project_sig.add_app_sig(app_sig)
 
         message = (
             'Cannot change the field "char_field1" on model '
@@ -97,7 +102,7 @@ class ChangeFieldTests(EvolutionTestCase):
 
         with self.assertRaisesMessage(SimulationFailure, message):
             mutation.run_simulation(app_label='tests',
-                                    project_sig=proj_sig,
+                                    project_sig=project_sig,
                                     database_state=None)
 
     def test_set_null_false_without_initial_value_raises_exception(self):
@@ -900,7 +905,12 @@ class ChangeFieldTests(EvolutionTestCase):
         end2, end_sig2 = self.make_end_signatures(OtherDestModel, 'OtherModel')
 
         end.update(end2)
-        end_sig['tests'].update(end_sig2['tests'])
+
+        end_app_sig = end_sig.get_app_sig('tests')
+        end_app_sig2 = end_sig2.get_app_sig('tests')
+
+        for model_sig in end_app_sig2.model_sigs:
+            end_app_sig.add_model_sig(model_sig.clone())
 
         d = self.perform_diff_test(
             end_sig,
@@ -917,7 +927,7 @@ class ChangeFieldTests(EvolutionTestCase):
                 " initial=<<USER VALUE REQUIRED>>, max_length=32)",
             ])
 
-        test_sig = self.copy_sig(self.start_sig)
+        test_sig = self.start_sig.clone()
         app_mutator = AppMutator(app_label='tests',
                                  project_sig=test_sig,
                                  database_state=self.database_state)

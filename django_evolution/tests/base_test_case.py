@@ -151,7 +151,7 @@ class EvolutionTestCase(TestCase):
         db_name = db_name or self.default_database_name
 
         self.test_database_state = self.database_state.clone()
-        test_sig = self.copy_sig(self.start_sig)
+        test_sig = self.start_sig.clone()
 
         for mutation in evolutions:
             mutation.run_simulation(app_label='tests',
@@ -180,7 +180,7 @@ class EvolutionTestCase(TestCase):
         db_name = db_name or self.default_database_name
 
         self.test_database_state = self.database_state.clone()
-        test_sig = self.copy_sig(self.start_sig)
+        test_sig = self.start_sig.clone()
 
         sql = execute_test_sql(self.start, end, run_mutations,
                                database=db_name)
@@ -236,9 +236,6 @@ class EvolutionTestCase(TestCase):
             self.pre_extra_models + pre_extra_models + [(name, model)] +
             extra_models + self.extra_models
         ))
-
-    def copy_sig(self, sig):
-        return copy.deepcopy(sig)
 
     def copy_models(self, models):
         return copy.deepcopy(models)

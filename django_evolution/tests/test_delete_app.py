@@ -7,6 +7,7 @@ from django_evolution.diff import Diff
 from django_evolution.errors import SimulationFailure
 from django_evolution.mutations import DeleteApplication
 from django_evolution.mutators import AppMutator
+from django_evolution.signature import ProjectSignature
 from django_evolution.tests.base_test_case import EvolutionTestCase
 
 
@@ -58,7 +59,7 @@ class DeleteAppTests(EvolutionTestCase):
 
         with self.assertRaisesMessage(SimulationFailure, message):
             mutation.run_simulation(app_label='badapp',
-                                    project_sig={},
+                                    project_sig=ProjectSignature(),
                                     database_state=None)
 
     def test_delete_app(self):
@@ -76,8 +77,8 @@ class DeleteAppTests(EvolutionTestCase):
             extra_models=self.default_extra_models,
             db_name=database)
 
-        end_sig = self.copy_sig(self.start_sig)
-        end_sig.pop('tests')
+        end_sig = self.start_sig.clone()
+        end_sig.remove_app_sig('tests')
 
         d = Diff(self.start_sig, end_sig)
         self.assertEqual(sorted(six.iterkeys(d.deleted)), ['tests'])
@@ -90,7 +91,7 @@ class DeleteAppTests(EvolutionTestCase):
                                  db_name=database)
 
         test_database_state = self.database_state.clone()
-        test_sig = self.copy_sig(self.start_sig)
+        test_sig = self.start_sig.clone()
 
         app_mutator = AppMutator(app_label='tests',
                                  project_sig=test_sig,

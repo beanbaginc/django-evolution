@@ -643,9 +643,13 @@ class ChangeMetaUniqueTogetherTests(EvolutionTestCase):
         self.set_base_model(ChangeMetaPlainBaseModel)
 
         # Pretend this is an older signature with the same unique_together.
-        meta = self.start_sig['tests']['TestModel']['meta']
-        del meta['__unique_together_applied']
-        meta['unique_together'] = DestModel._meta.unique_together
+        model_sig = (
+            self.start_sig
+            .get_app_sig('tests')
+            .get_model_sig('TestModel')
+        )
+        model_sig.unique_together = DestModel._meta.unique_together
+        model_sig._unique_together_applied = False
 
         self.perform_evolution_tests(
             DestModel,
@@ -676,8 +680,12 @@ class ChangeMetaUniqueTogetherTests(EvolutionTestCase):
         self.set_base_model(ChangeMetaUniqueTogetherBaseModel)
 
         # Pretend this is an older signature with the same unique_together.
-        meta = self.start_sig['tests']['TestModel']['meta']
-        del meta['__unique_together_applied']
+        model_sig = (
+            self.start_sig
+            .get_app_sig('tests')
+            .get_model_sig('TestModel')
+        )
+        model_sig._unique_together_applied = False
 
         self.perform_evolution_tests(
             DestModel,

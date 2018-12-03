@@ -7,16 +7,16 @@ from django.db.models.base import ModelState
 from django.db.models.fields import FieldDoesNotExist
 from django.db.models.fields.related import RECURSIVE_RELATIONSHIP_CONSTANT
 from django.utils import six
-from django.utils.encoding import force_bytes
 from django.utils.functional import curry
 
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.models import (get_remote_field,
                                             get_remote_field_model)
+from django_evolution.signature import FieldSignature, ModelSignature
 
 
 def create_field(project_sig, field_name, field_type, field_attrs,
-                 parent_model):
+                 parent_model, related_model=None):
     """Create a Django field instance for the given signature data.
 
     This creates a field in a way that's compatible with a variety of versions
@@ -38,6 +38,10 @@ def create_field(project_sig, field_name, field_type, field_attrs,
             The parent model that would own this field. This must be a
             subclass of :py:class:`django.db.models.Model`.
 
+        related_model (unicode, optional):
+            The full class path to a model this relates to. This requires
+            a :py:class:`django.db.models.ForeignKey` field type.
+
     Returns:
         django.db.models.Field:
         A new field instance matching the provided data.
@@ -46,14 +50,17 @@ def create_field(project_sig, field_name, field_type, field_attrs,
     # simulate what the format would be for the default name.
     field_name = str(field_name)
 
-    # related_model isn't a valid field attribute, so it must be removed
-    # prior to instantiating the field, but it must be restored
-    # to keep the signature consistent.
-    related_model = field_attrs.pop('related_model', None)
+    assert 'related_model' not in field_attrs, \
+           ('related_model cannot be passed in field_attrs when calling '
+            'create_field(). Pass the related_model parameter instead.')
 
     if related_model:
         related_app_name, related_model_name = related_model.split('.')
-        related_model_sig = project_sig[related_app_name][related_model_name]
+        related_model_sig = (
+            project_sig
+            .get_app_sig(related_app_name)
+            .get_model_sig(related_model_name)
+        )
         to = MockModel(project_sig=project_sig,
                        app_name=related_app_name,
                        model_name=related_model_name,
@@ -72,10 +79,6 @@ def create_field(project_sig, field_name, field_type, field_attrs,
             field_attrs['on_delete'] = models.CASCADE
 
         field = field_type(to, name=field_name, **field_attrs)
-        field_attrs['related_model'] = related_model
-
-        if not has_on_delete:
-            field_attrs.pop('on_delete', None)
     else:
         field = field_type(name=field_name, **field_attrs)
 
@@ -84,63 +87,68 @@ def create_field(project_sig, field_name, field_type, field_attrs,
         # Starting in Django 1.2, a ManyToManyField must have a through
         # model defined. This will be set internally to an auto-created
         # model if one isn't specified. We have to fake that model.
-        through_model = field_attrs.get('through_model', None)
+        through_model = field_attrs.get('through_model')
         through_model_sig = None
 
         if through_model:
             through_app_name, through_model_name = through_model.split('.')
-            through_model_sig = proj_sig[through_app_name][through_model_name]
+            through_model_sig = (
+                project_sig
+                .get_app_sig(through_app_name)
+                .get_model_sig(through_model_name)
+            )
         elif hasattr(field, '_get_m2m_attr'):
             # Django >= 1.2
             remote_field = get_remote_field(field)
             remote_field_model = get_remote_field_model(remote_field)
 
-            to = remote_field_model._meta.object_name.lower()
+            to_field_name = remote_field_model._meta.object_name.lower()
 
             if (remote_field_model == RECURSIVE_RELATIONSHIP_CONSTANT or
-                to == parent_model._meta.object_name.lower()):
-                from_ = 'from_%s' % to
-                to = 'to_%s' % to
+                to_field_name == parent_model._meta.object_name.lower()):
+                from_field_name = 'from_%s' % to_field_name
+                to_field_name = 'to_%s' % to_field_name
             else:
-                from_ = parent_model._meta.object_name.lower()
+                from_field_name = parent_model._meta.object_name.lower()
 
             # This corresponds to the signature in
             # related.create_many_to_many_intermediary_model
             through_app_name = parent_model.app_name
             through_model_name = '%s_%s' % (parent_model._meta.object_name,
-                                            field.name)
-            through_model = '%s.%s' % (through_app_name, through_model_name)
+                                            field.name),
 
-            fields = OrderedDict()
-            fields['id'] = {
-                'field_type': models.AutoField,
-                'primary_key': True,
-            }
+            through_model_sig = ModelSignature(
+                model_name=through_model_name,
+                table_name=field._get_m2m_db_table(parent_model._meta),
+                pk_column='id',
+                unique_together=[(from_field_name, to_field_name)])
 
-            fields[from_] = {
-                'field_type': models.ForeignKey,
-                'related_model': '%s.%s' % (parent_model.app_name,
-                                            parent_model._meta.object_name),
-                'related_name': '%s+' % through_model_name,
-            }
+            # 'id' field
+            through_model_sig.add_field_sig(FieldSignature(
+                field_name='id',
+                field_type=models.AutoField,
+                field_attrs={
+                    'primary_key': True,
+                }))
 
-            fields[to] = {
-                'field_type': models.ForeignKey,
-                'related_model': related_model,
-                'related_name': '%s+' % through_model_name,
-            }
-
-            through_model_sig = {
-                'meta': {
-                    'db_table': field._get_m2m_db_table(parent_model._meta),
-                    'managed': True,
-                    'auto_created': True,
-                    'app_label': through_app_name,
-                    'unique_together': ((from_, to),),
-                    'pk_column': 'id',
+            # 'from' field
+            through_model_sig.add_field_sig(FieldSignature(
+                field_name=from_field_name,
+                field_type=models.ForeignKey,
+                field_attrs={
+                    'related_name': '%s+' % through_model_name,
                 },
-                'fields': fields,
-            }
+                related_model='%s.%s' % (parent_model.app_name,
+                                         parent_model._meta.object_name)))
+
+            # 'to' field
+            through_model_sig.add_field_sig(FieldSignature(
+                field_name=to_field_name,
+                field_type=models.ForeignKey,
+                field_attrs={
+                    'related_name': '%s+' % through_model_name,
+                },
+                related_model=related_model))
 
             field.auto_created = True
 
@@ -148,7 +156,9 @@ def create_field(project_sig, field_name, field_type, field_attrs,
             through = MockModel(project_sig=project_sig,
                                 app_name=through_app_name,
                                 model_name=through_model_name,
-                                model_sig=through_model_sig)
+                                model_sig=through_model_sig,
+                                auto_created=not through_model,
+                                managed=not through_model)
             get_remote_field(field).through = through
 
         field.m2m_db_table = curry(field._get_m2m_db_table, parent_model._meta)
@@ -169,11 +179,12 @@ class MockMeta(object):
     providing mock functions for setting up fields from a signature.
     """
 
-    def __init__(self, project_sig, app_name, model_name, model_sig):
+    def __init__(self, project_sig, app_name, model_name, model_sig,
+                 managed=False, auto_created=False):
         """Initialize the meta instance.
 
         Args:
-            proj_sig (dict):
+            project_sig (django_evolution.signature.ProjectSignature):
                 The project's schema signature.
 
             app_name (unicode):
@@ -184,25 +195,45 @@ class MockMeta(object):
 
             model_sig (dict):
                 The model's schema signature.
+
+            managed (bool, optional):
+                Whether this represents a model managed internally by Django,
+                rather than a developer-created model.
+
+            auto_created (bool, optional):
+                Whether this represents an auto-created model (such as an
+                intermediary many-to-many model).
         """
         self.object_name = model_name
         self.app_label = app_name
         self.meta = {
-            'order_with_respect_to': None,
+            'auto_created': auto_created,
+            'db_table': model_sig.table_name,
+            'db_tablespace': model_sig.db_tablespace,
             'has_auto_field': None,
-            'db_tablespace': None,
-            'swapped': False,
-            'index_together': [],
+            'index_together': model_sig.index_together,
             'indexes': [],
+            'managed': managed,
+            'order_with_respect_to': None,
+            'pk_column': model_sig.pk_column,
+            'swapped': False,
+            'unique_together': model_sig.unique_together,
         }
-        self.meta.update(model_sig['meta'])
+
+        if hasattr(models, 'Index'):
+            self.meta['indexes'] = [
+                models.Index(name=index_sig.name,
+                             fields=index_sig.fields)
+                for index_sig in model_sig.index_sigs
+            ]
+
         self._fields = OrderedDict()
         self._many_to_many = OrderedDict()
         self.abstract = False
         self.managed = True
         self.proxy = False
         self._model_sig = model_sig
-        self._proj_sig = project_sig
+        self._project_sig = project_sig
 
     @property
     def local_fields(self):
@@ -236,17 +267,16 @@ class MockMeta(object):
                 internally when creating relationships between models and
                 fields in order to prevent recursive relationships.
         """
-        for field_name, field_sig in six.iteritems(self._model_sig['fields']):
-            primary_key = field_sig.get('primary_key', False)
+        for field_sig in self._model_sig.field_sigs:
+            primary_key = field_sig.get_attr_value('primary_key')
 
             if not stub or primary_key:
-                field_type = field_sig.pop('field_type')
-                field = create_field(project_sig=self._proj_sig,
-                                     field_name=field_name,
-                                     field_type=field_type,
-                                     field_attrs=field_sig,
-                                     parent_model=model)
-                field_sig['field_type'] = field_type
+                field = create_field(project_sig=self._project_sig,
+                                     field_name=field_sig.field_name,
+                                     field_type=field_sig.field_type,
+                                     field_attrs=field_sig.field_attrs,
+                                     parent_model=model,
+                                     related_model=field_sig.related_model)
 
                 if isinstance(field, models.AutoField):
                     self.meta['has_auto_field'] = True
@@ -257,7 +287,7 @@ class MockMeta(object):
                 else:
                     self._fields[field.name] = field
 
-                field.set_attributes_from_name(field_name)
+                field.set_attributes_from_name(field.name)
 
                 if primary_key:
                     self.pk = field
@@ -342,11 +372,11 @@ class MockModel(object):
     """
 
     def __init__(self, project_sig, app_name, model_name, model_sig,
-                 stub=False, db_name=None):
+                 auto_created=False, managed=False, stub=False, db_name=None):
         """Initialize the model.
 
         Args:
-            proj_sig (dict):
+            project_sig (django_evolution.signature.ProjectSignature):
                 The project's schema signature.
 
             app_name (unicode):
@@ -357,6 +387,14 @@ class MockModel(object):
 
             model_sig (dict):
                 The model's schema signature.
+
+            auto_created (bool, optional):
+                Whether this represents an auto-created model (such as an
+                intermediary many-to-many model).
+
+            managed (bool, optional):
+                Whether this represents a model managed internally by Django,
+                rather than a developer-created model.
 
             stub (bool, optional):
                 Whether this is a stub model. This is used internally to
@@ -372,7 +410,9 @@ class MockModel(object):
         self._meta = MockMeta(project_sig=project_sig,
                               app_name=app_name,
                               model_name=model_name,
-                              model_sig=model_sig)
+                              model_sig=model_sig,
+                              auto_created=auto_created,
+                              managed=managed)
         self._meta.setup_fields(self, stub)
 
         self._state = ModelState()

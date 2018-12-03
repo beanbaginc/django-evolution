@@ -4,6 +4,7 @@ from django.db import models
 
 from django_evolution.errors import CannotSimulate
 from django_evolution.mutations import SQLMutation
+from django_evolution.signature import FieldSignature, ProjectSignature
 from django_evolution.tests.base_test_case import EvolutionTestCase
 
 
@@ -37,7 +38,7 @@ class OrderingTests(EvolutionTestCase):
 
         with self.assertRaisesMessage(CannotSimulate, message):
             mutation.run_simulation(app_label='tests',
-                                    project_sig={},
+                                    project_sig=ProjectSignature(),
                                     database_state=None)
 
     def test_add_fields_bad_update_func_signature(self):
@@ -52,7 +53,7 @@ class OrderingTests(EvolutionTestCase):
 
         with self.assertRaisesMessage(CannotSimulate, message):
             mutation.run_simulation(app_label='tests',
-                                    project_sig={},
+                                    project_sig=ProjectSignature(),
                                     database_state=None)
 
     def test_add_fields_simulation_functions(self):
@@ -73,10 +74,12 @@ class OrderingTests(EvolutionTestCase):
         # Modern simulation function.
         def update_third(simulation):
             model_sig = simulation.get_model_sig('TestModel')
-            model_sig['fields']['added_field3'] = {
-                'field_type': models.IntegerField,
-                'null': True
-            }
+            model_sig.add_field_sig(FieldSignature(
+                field_name='added_field3',
+                field_type=models.IntegerField,
+                field_attrs={
+                    'null': True,
+                }))
 
         self.perform_evolution_tests(
             AddFieldsModel,

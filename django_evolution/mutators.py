@@ -56,7 +56,16 @@ class ModelMutator(object):
 
     @property
     def model_sig(self):
-        return self.project_sig[self.app_label][self.model_name]
+        """The model signature that this mutator is working with.
+
+        Type:
+            django_evolution.signature.ModelSignature
+        """
+        return (
+            self.project_sig
+            .get_app_sig(self.app_label)
+            .get_model_sig(self.model_name)
+        )
 
     def create_model(self):
         """Creates a mock model instance with the stored information.
@@ -135,11 +144,28 @@ class ModelMutator(object):
         """
         assert not self._finalized
 
+        if prop_name in ('index_together', 'unique_together'):
+            old_value = getattr(self.model_sig, prop_name)
+        elif prop_name == 'indexes':
+            old_value = []
+
+            for index_sig in self.model_sig.index_sigs:
+                index_value = {
+                    'fields': list(index_sig.fields),
+                }
+
+                if index_sig.name:
+                    index_value['name'] = index_sig.name
+
+                old_value.append(index_value)
+        else:
+            raise ValueError('Cannot change meta property "%s"' % prop_name)
+
         self._ops.append({
             'type': 'change_meta',
             'mutation': mutation,
             'prop_name': prop_name,
-            'old_value': self.model_sig['meta'].get(prop_name),
+            'old_value': old_value,
             'new_value': new_value,
         })
 
@@ -790,10 +816,11 @@ class AppMutator(object):
                             # still want the rename included in the mutations,
                             # so we need to check to make sure only the new
                             # model name is in there.
-                            app_sig = self.project_sig[self.app_label]
+                            app_sig = \
+                                self.project_sig.get_app_sig(self.app_label)
 
-                            if (new_model_name in app_sig and
-                                old_model_name not in app_sig):
+                            if (app_sig.get_model_sig(new_model_name) and
+                                not app_sig.get_model_sig(old_model_name)):
                                 remove_mutation = True
                     elif isinstance(mutation, ChangeMeta):
                         if (mutation.prop_name == 'unique_together' and

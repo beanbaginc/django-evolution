@@ -30,7 +30,7 @@ class OrderingTests(EvolutionTestCase):
                                             name='TestModel')
 
         # Simulate the removal of Case41Anchor
-        end_sig['tests'].pop('Case41Anchor')
+        end_sig.get_app_sig('tests').remove_model_sig('Case41Anchor')
 
         self.perform_diff_test(
             end_sig,

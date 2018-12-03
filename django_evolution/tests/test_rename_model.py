@@ -4,6 +4,7 @@ from django.db import models
 
 from django_evolution.errors import SimulationFailure
 from django_evolution.mutations import RenameModel
+from django_evolution.signature import AppSignature, ProjectSignature
 from django_evolution.tests.base_test_case import EvolutionTestCase
 
 
@@ -29,16 +30,16 @@ class RenameModelTests(EvolutionTestCase):
 
         with self.assertRaisesMessage(SimulationFailure, message):
             mutation.run_simulation(app_label='badapp',
-                                    project_sig={},
+                                    project_sig=ProjectSignature(),
                                     database_state=None)
 
     def test_with_bad_model(self):
         """Testing RenameModel with model not in signature"""
         mutation = RenameModel('TestModel', 'DestModel',
                                db_table='tests_destmodel')
-        proj_sig = {
-            'tests': {},
-        }
+
+        project_sig = ProjectSignature()
+        project_sig.add_app_sig(AppSignature(app_id='tests'))
 
         message = (
             'Cannot rename the model "tests.TestModel". The model could '
@@ -47,7 +48,7 @@ class RenameModelTests(EvolutionTestCase):
 
         with self.assertRaisesMessage(SimulationFailure, message):
             mutation.run_simulation(app_label='tests',
-                                    project_sig=proj_sig,
+                                    project_sig=project_sig,
                                     database_state=None)
 
     def test_rename(self):
@@ -105,8 +106,14 @@ class RenameModelTests(EvolutionTestCase):
                             pre_extra_models=[('RefModel', RefModel)])
 
         end, end_sig = self.make_end_signatures(DestModel, 'DestModel')
-        end_sig['tests']['RefModel']['fields']['my_ref']['related_model'] = \
-            'tests.DestModel'
+
+        end_field_sig = (
+            end_sig
+            .get_app_sig('tests')
+            .get_model_sig('RefModel')
+            .get_field_sig('my_ref')
+        )
+        end_field_sig.related_model = 'tests.DestModel'
 
         self.perform_evolution_tests(
             DestModel,
@@ -146,8 +153,13 @@ class RenameModelTests(EvolutionTestCase):
                             pre_extra_models=[('RefModel', RefModel)])
 
         end, end_sig = self.make_end_signatures(DestModel, 'DestModel')
-        end_sig['tests']['RefModel']['fields']['my_ref']['related_model'] = \
-            'tests.DestModel'
+        end_field_sig = (
+            end_sig
+            .get_app_sig('tests')
+            .get_model_sig('RefModel')
+            .get_field_sig('my_ref')
+        )
+        end_field_sig.related_model = 'tests.DestModel'
 
         self.perform_evolution_tests(
             DestModel,
@@ -183,8 +195,14 @@ class RenameModelTests(EvolutionTestCase):
                             pre_extra_models=[('RefModel', RefModel)])
 
         end, end_sig = self.make_end_signatures(DestModel, 'DestModel')
-        end_sig['tests']['RefModel']['fields']['my_ref']['related_model'] = \
-            'tests.DestModel'
+
+        end_field_sig = (
+            end_sig
+            .get_app_sig('tests')
+            .get_model_sig('RefModel')
+            .get_field_sig('my_ref')
+        )
+        end_field_sig.related_model = 'tests.DestModel'
 
         self.perform_evolution_tests(
             DestModel,
@@ -223,8 +241,14 @@ class RenameModelTests(EvolutionTestCase):
                             pre_extra_models=[('RefModel', RefModel)])
 
         end, end_sig = self.make_end_signatures(DestModel, 'DestModel')
-        end_sig['tests']['RefModel']['fields']['my_ref']['related_model'] = \
-            'tests.DestModel'
+
+        end_field_sig = (
+            end_sig
+            .get_app_sig('tests')
+            .get_model_sig('RefModel')
+            .get_field_sig('my_ref')
+        )
+        end_field_sig.related_model = 'tests.DestModel'
 
         self.perform_evolution_tests(
             DestModel,

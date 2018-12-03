@@ -4,6 +4,9 @@ from django.db import models
 
 from django_evolution.errors import SimulationFailure
 from django_evolution.mutations import RenameField
+from django_evolution.signature import (AppSignature,
+                                        ModelSignature,
+                                        ProjectSignature)
 from django_evolution.tests.base_test_case import EvolutionTestCase
 
 
@@ -66,15 +69,15 @@ class RenameFieldTests(EvolutionTestCase):
 
         with self.assertRaisesMessage(SimulationFailure, message):
             mutation.run_simulation(app_label='badapp',
-                                    project_sig={},
+                                    project_sig=ProjectSignature(),
                                     database_state=None)
 
     def test_with_bad_model(self):
         """Testing RenameField with model not in signature"""
         mutation = RenameField('TestModel', 'char_field1', 'char_field2')
-        proj_sig = {
-            'tests': {},
-        }
+
+        project_sig = ProjectSignature()
+        project_sig.add_app_sig(AppSignature(app_id='tests'))
 
         message = (
             'Cannot rename the field "char_field1" on model '
@@ -84,19 +87,21 @@ class RenameFieldTests(EvolutionTestCase):
 
         with self.assertRaisesMessage(SimulationFailure, message):
             mutation.run_simulation(app_label='tests',
-                                    project_sig=proj_sig,
+                                    project_sig=project_sig,
                                     database_state=None)
 
     def test_with_bad_field(self):
         """Testing RenameField with field not in signature"""
         mutation = RenameField('TestModel', 'char_field1', 'char_field2')
-        proj_sig = {
-            'tests': {
-                'TestModel': {
-                    'fields': {},
-                },
-            },
-        }
+
+        model_sig = ModelSignature(model_name='TestModel',
+                                   table_name='tests_testmodel')
+
+        app_sig = AppSignature(app_id='tests')
+        app_sig.add_model_sig(model_sig)
+
+        project_sig = ProjectSignature()
+        project_sig.add_app_sig(app_sig)
 
         message = (
             'Cannot rename the field "char_field1" on model '
@@ -106,7 +111,7 @@ class RenameFieldTests(EvolutionTestCase):
 
         with self.assertRaisesMessage(SimulationFailure, message):
             mutation.run_simulation(app_label='tests',
-                                    project_sig=proj_sig,
+                                    project_sig=project_sig,
                                     database_state=None)
 
     def test_rename(self):

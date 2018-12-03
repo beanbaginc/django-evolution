@@ -301,13 +301,20 @@ class PreprocessingTests(EvolutionTestCase):
 
         # Prepare the renamed model in the end signature.
         end, end_sig = self.make_end_signatures(DestModel, 'TestModel')
-        end_tests_sig = end_sig['tests']
-        end_tests_sig['RenamedReffedPreprocModel'] = \
-            end_tests_sig.pop('ReffedPreprocModel')
+        end_app_sig = end_sig.get_app_sig('tests')
 
-        fields_sig = end_tests_sig['TestModel']['fields']
-        fields_sig['added_field']['related_model'] = \
-            'tests.RenamedReffedPreprocModel'
+        end_model_sig = end_app_sig.get_model_sig('ReffedPreprocModel').clone()
+        end_model_sig.model_name = 'RenamedReffedPreprocModel'
+
+        end_app_sig.remove_model_sig('ReffedPreprocModel')
+        end_app_sig.add_model_sig(end_model_sig)
+
+        end_field_sig = (
+            end_app_sig
+            .get_model_sig('TestModel')
+            .get_field_sig('added_field')
+        )
+        end_field_sig.related_model = 'tests.RenamedReffedPreprocModel'
 
         self.perform_evolution_tests(
             DestModel,
@@ -352,13 +359,20 @@ class PreprocessingTests(EvolutionTestCase):
 
         # Prepare the renamed model in the end signature.
         end, end_sig = self.make_end_signatures(DestModel, 'TestModel')
-        end_tests_sig = end_sig['tests']
-        end_tests_sig['RenamedReffedPreprocModel'] = \
-            end_tests_sig.pop('ReffedPreprocModel')
+        end_app_sig = end_sig.get_app_sig('tests')
 
-        fields_sig = end_tests_sig['TestModel']['fields']
-        fields_sig['renamed_field']['related_model'] = \
-            'tests.RenamedReffedPreprocModel'
+        end_model_sig = end_app_sig.get_model_sig('ReffedPreprocModel').clone()
+        end_model_sig.model_name = 'RenamedReffedPreprocModel'
+
+        end_app_sig.remove_model_sig('ReffedPreprocModel')
+        end_app_sig.add_model_sig(end_model_sig)
+
+        end_field_sig = (
+            end_app_sig
+            .get_model_sig('TestModel')
+            .get_field_sig('renamed_field')
+        )
+        end_field_sig.related_model = 'tests.RenamedReffedPreprocModel'
 
         self.perform_evolution_tests(
             DestModel,

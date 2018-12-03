@@ -19,37 +19,6 @@ from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.utils import get_app_label
 
 
-ATTRIBUTE_DEFAULTS = {
-    # Common to all fields
-    'primary_key': False,
-    'max_length': None,
-    'unique': False,
-    'null': False,
-    'db_index': False,
-    'db_column': None,
-    'db_tablespace': global_settings.DEFAULT_TABLESPACE,
-    'rel': None,
-    # Decimal Field
-    'max_digits': None,
-    'decimal_places': None,
-    # ManyToManyField
-    'db_table': None
-}
-
-ATTRIBUTE_ALIASES = {
-    # r7790 modified the unique attribute of the meta model to be
-    # a property that combined an underlying _unique attribute with
-    # the primary key attribute. We need the underlying property,
-    # but we don't want to affect old signatures (plus the
-    # underscore is ugly :-).
-    'unique': '_unique',
-
-    # Django 1.9 moved from 'rel' to 'remote_field' for relations, but
-    # for compatibility reasons we want to retain 'rel' in our signatures.
-    'rel': 'remote_field',
-}
-
-
 DEFAULT_SIGNATURE_VERSION = 1
 
 
@@ -523,11 +492,11 @@ class ModelSignature(BaseSignature):
         """
         meta = model._meta
         model_sig = cls(db_tablespace=meta.db_tablespace,
-                        index_together=meta.index_together,
+                        index_together=deepcopy(meta.index_together),
                         model_name=meta.object_name,
                         pk_column=six.text_type(meta.pk.column),
                         table_name=meta.db_table,
-                        unique_together=meta.unique_together)
+                        unique_together=deepcopy(meta.unique_together))
         model_sig._unique_together_applied = True
 
         if getattr(meta, 'indexes', None):
@@ -860,7 +829,7 @@ class IndexSignature(BaseSignature):
             IndexSignature:
             The signature based on the index.
         """
-        return cls(name=index.name,
+        return cls(name=index.name or None,
                    fields=index.fields)
 
     @classmethod
@@ -937,7 +906,8 @@ class IndexSignature(BaseSignature):
             ``True`` if the index signatures are equal. ``False`` if they
             are not.
         """
-        return (self.name == other.name and
+        return (((not self.name and not other.name) or
+                 self.name == other.name) and
                 self.fields == other.fields)
 
     def __repr__(self):

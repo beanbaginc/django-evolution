@@ -2,7 +2,6 @@
 
 from __future__ import unicode_literals
 
-import copy
 import inspect
 
 from django.db import models
@@ -13,11 +12,13 @@ from django.utils.functional import curry
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.db.sql_result import SQLResult
+from django_evolution.db.state import DatabaseState
 from django_evolution.errors import (CannotSimulate, SimulationFailure,
                                      EvolutionNotImplementedError)
 from django_evolution.mock_models import MockModel, MockRelated, create_field
-from django_evolution.signature import (ATTRIBUTE_DEFAULTS,
-                                        record_unique_together_applied)
+from django_evolution.signature import (FieldSignature,
+                                        IndexSignature,
+                                        ProjectSignature)
 from django_evolution.utils import get_database_for_model_name
 
 
@@ -52,6 +53,12 @@ class Simulation(object):
                 The registered database name in Django to simulate operating
                 on.
         """
+        assert isinstance(project_sig, ProjectSignature), \
+               'project_sig must be a ProjectSignature instance'
+        assert (database_state is None or
+                isinstance(database_state, DatabaseState)), \
+               'database_state must be None or a DatabaseState instance'
+
         self.mutation = mutation
         self.app_label = app_label
         self.project_sig = project_sig
@@ -75,14 +82,20 @@ class Simulation(object):
             dict:
             The application signature.
 
+        Returns:
+            django_evolution.signature.AppSignature:
+            The signature for the app.
+
         Raises:
             django_evolution.errors.SimulationFailure:
                 A signature could not be found for the application.
         """
-        try:
-            return self.project_sig[self.app_label]
-        except KeyError:
-            self.fail('The application could not be found in the signature.')
+        app_sig = self.project_sig.get_app_sig(self.app_label)
+
+        if app_sig:
+            return app_sig
+
+        self.fail('The application could not be found in the signature.')
 
     def get_model_sig(self, model_name):
         """Return the signature for a model with the given name.
@@ -92,15 +105,21 @@ class Simulation(object):
                 The name of the model to fetch a signature for.
 
         Returns:
+            django_evolution.signature.ModelSignature:
+            The signature for the model.
+
+        Raises:
             django_evolution.errors.SimulationFailure:
                 A signature could not be found for the model or its parent
                 application.
         """
-        try:
-            return self.get_app_sig()[model_name]
-        except KeyError:
-            self.fail('The model could not be found in the signature.',
-                      model_name=model_name)
+        model_sig = self.get_app_sig().get_model_sig(model_name)
+
+        if model_sig:
+            return model_sig
+
+        self.fail('The model could not be found in the signature.',
+                  model_name=model_name)
 
     def get_field_sig(self, model_name, field_name):
         """Return the signature for a field with the given name.
@@ -113,16 +132,22 @@ class Simulation(object):
                 The name of the field to fetch a signature for.
 
         Returns:
+            django_evolution.signature.FieldSignature:
+            The signature for the field.
+
+        Raises:
             django_evolution.errors.SimulationFailure:
                 A signature could not be found for the field, its parent
                 model, or its parent application.
         """
-        try:
-            return self.get_model_sig(model_name)['fields'][field_name]
-        except KeyError:
-            self.fail('The field could not be found in the signature.',
-                      model_name=model_name,
-                      field_name=field_name)
+        field_sig = self.get_model_sig(model_name).get_field_sig(field_name)
+
+        if field_sig:
+            return field_sig
+
+        self.fail('The field could not be found in the signature.',
+                  model_name=model_name,
+                  field_name=field_name)
 
     def fail(self, error, **error_vars):
         """Fail the simulation.
@@ -505,32 +530,29 @@ class DeleteField(BaseModelFieldMutation):
                 message.
         """
         model_sig = simulation.get_model_sig(self.model_name)
-        field = simulation.get_field_sig(self.model_name, self.field_name)
+        field_sig = simulation.get_field_sig(self.model_name, self.field_name)
 
-        if field.get('primary_key', False):
+        if field_sig.get_attr_value('primary_key'):
             simulation.fail('The field is a primary key and cannot '
                             'be deleted.')
 
         # If the field was used in the unique_together attribute, update it.
-        unique_together = model_sig['meta']['unique_together']
-        unique_together_list = []
+        new_unique_together = []
 
-        for ut_index in range(0, len(unique_together), 1):
-            ut = unique_together[ut_index]
-            unique_together_fields = []
+        for unique_together_entry in model_sig.unique_together:
+            new_entry = tuple(
+                field_name
+                for field_name in unique_together_entry
+                if field_name != self.field_name
+            )
 
-            for field_name_index in range(0, len(ut), 1):
-                field_name = ut[field_name_index]
+            if new_entry:
+                new_unique_together.append(new_entry)
 
-                if not field_name == self.field_name:
-                    unique_together_fields.append(field_name)
-
-            unique_together_list.append(tuple(unique_together_fields))
-
-        model_sig['meta']['unique_together'] = tuple(unique_together_list)
+        model_sig.unique_together = new_unique_together
 
         # Simulate the deletion of the field.
-        del model_sig['fields'][self.field_name]
+        model_sig.remove_field_sig(self.field_name)
 
     def mutate(self, mutator, model):
         """Schedule a field deletion on the mutator.
@@ -546,17 +568,13 @@ class DeleteField(BaseModelFieldMutation):
             model (MockModel):
                 The model being mutated.
         """
-        field_sig = mutator.model_sig['fields'][self.field_name]
-
-        # Temporarily remove field_type from the field signature
-        # so that we can create a field
-        field_type = field_sig.pop('field_type')
+        field_sig = mutator.model_sig.get_field_sig(self.field_name)
         field = create_field(project_sig=mutator.project_sig,
                              field_name=self.field_name,
-                             field_type=field_type,
-                             field_attrs=field_sig,
-                             parent_model=model)
-        field_sig['field_type'] = field_type
+                             field_type=field_sig.field_type,
+                             field_attrs=field_sig.field_attrs,
+                             parent_model=model,
+                             related_model=field_sig.related_model)
 
         if isinstance(field, models.ManyToManyField):
             mutator.add_sql(
@@ -639,7 +657,25 @@ class SQLMutation(BaseMutation):
                 return
             elif len(argspec.args) == 2:
                 # Legacy simulation function.
-                self.update_func(simulation.app_label, simulation.project_sig)
+                project_sig = simulation.project_sig
+
+                serialized_sig = project_sig.serialize(sig_version=1)
+                self.update_func(simulation.app_label, serialized_sig)
+                new_project_sig = ProjectSignature.deserialize(serialized_sig)
+
+                # We have to reconstruct the existing project signature's state
+                # based on this.
+                app_sig_ids = [
+                    app_sig.app_id
+                    for app_sig in new_project_sig.app_sigs
+                ]
+
+                for app_sig_id in app_sig_ids:
+                    project_sig.remove_app_sig(app_sig_id)
+
+                for app_sig in new_project_sig.app_sigs:
+                    project_sig.add_app_sig(app_sig)
+
                 return
 
         raise CannotSimulate(
@@ -757,22 +793,24 @@ class AddField(BaseModelFieldMutation):
                 message.
         """
         model_sig = simulation.get_model_sig(self.model_name)
-        fields_sig = model_sig['fields']
 
-        if self.field_name in fields_sig:
+        if model_sig.get_field_sig(self.field_name) is not None:
             simulation.fail('A field with this name already exists.')
 
-        if (self.field_type is not models.ManyToManyField and
-            not self.field_attrs.get('null', ATTRIBUTE_DEFAULTS['null'])
+        if (not issubclass(self.field_type, models.ManyToManyField) and
+            not self.field_attrs.get('null')
             and self.initial is None):
             simulation.fail('A non-null initial value must be specified in '
                             'the mutation.')
 
-        fields_sig[self.field_name] = {
-            'field_type': self.field_type,
-        }
+        field_attrs = self.field_attrs.copy()
+        related_model = field_attrs.pop('related_model', None)
 
-        fields_sig[self.field_name].update(self.field_attrs)
+        field_sig = FieldSignature(field_name=self.field_name,
+                                   field_type=self.field_type,
+                                   field_attrs=field_attrs,
+                                   related_model=related_model)
+        model_sig.add_field_sig(field_sig)
 
     def mutate(self, mutator, model):
         """Schedule a field addition on the mutator.
@@ -820,8 +858,11 @@ class AddField(BaseModelFieldMutation):
 
         related_app_label, related_model_name = \
             self.field_attrs['related_model'].split('.')
-        related_sig = \
-            mutator.project_sig[related_app_label][related_model_name]
+        related_sig = (
+            mutator.project_sig
+            .get_app_sig(related_app_label)
+            .get_model_sig(related_model_name)
+        )
         related_model = MockModel(project_sig=mutator.project_sig,
                                   app_name=related_app_label,
                                   model_name=related_model_name,
@@ -860,11 +901,15 @@ class AddField(BaseModelFieldMutation):
             django.db.models.Field:
             The newly-created field.
         """
+        field_attrs = self.field_attrs.copy()
+        related_model = field_attrs.pop('related_model', None)
+
         return create_field(project_sig=mutator.project_sig,
                             field_name=self.field_name,
                             field_type=self.field_type,
-                            field_attrs=self.field_attrs,
-                            parent_model=parent_model)
+                            field_attrs=field_attrs,
+                            parent_model=parent_model,
+                            related_model=related_model)
 
 
 class RenameField(BaseModelFieldMutation):
@@ -940,25 +985,27 @@ class RenameField(BaseModelFieldMutation):
                 message.
         """
         model_sig = simulation.get_model_sig(self.model_name)
-        field_sig = simulation.get_field_sig(self.model_name,
-                                             self.old_field_name)
-        fields_sig = model_sig['fields']
 
-        if issubclass(field_sig['field_type'], models.ManyToManyField):
+        field_sig = simulation.get_field_sig(self.model_name,
+                                             self.old_field_name).clone()
+        field_sig.field_name = self.new_field_name
+
+        if issubclass(field_sig.field_type, models.ManyToManyField):
             if self.db_table:
-                field_sig['db_table'] = self.db_table
+                field_sig.field_attrs['db_table'] = self.db_table
             else:
-                field_sig.pop('db_table', None)
+                field_sig.field_attrs.pop('db_table', None)
         elif self.db_column:
-            field_sig['db_column'] = self.db_column
+            field_sig.field_attrs['db_column'] = self.db_column
         else:
             # db_column and db_table were not specified (or not specified for
             # the appropriate field types). Clear the old value if one was set.
             # This amounts to resetting the column or table name to the Django
             # default name
-            field_sig.pop('db_column', None)
+            field_sig.field_attrs.pop('db_column', None)
 
-        fields_sig[self.new_field_name] = fields_sig.pop(self.old_field_name)
+        model_sig.remove_field_sig(self.old_field_name)
+        model_sig.add_field_sig(field_sig)
 
     def mutate(self, mutator, model):
         """Schedule a field rename on the mutator.
@@ -973,39 +1020,35 @@ class RenameField(BaseModelFieldMutation):
             model (MockModel):
                 The model being mutated.
         """
-        old_field_sig = mutator.model_sig['fields'][self.old_field_name]
-
-        # Temporarily remove the field type so that we can create mock field
-        # instances.
-        field_type = old_field_sig.pop('field_type')
+        old_field_sig = mutator.model_sig.get_field_sig(self.old_field_name)
+        field_type = old_field_sig.field_type
 
         # Duplicate the old field sig, and apply the table/column changes.
-        new_field_sig = copy.copy(old_field_sig)
+        new_field_sig = old_field_sig.clone()
 
-        if issubclass(field_type, models.ManyToManyField):
+        if issubclass(old_field_sig.field_type, models.ManyToManyField):
             if self.db_table:
-                new_field_sig['db_table'] = self.db_table
+                new_field_sig.field_attrs['db_table'] = self.db_table
             else:
-                new_field_sig.pop('db_table', None)
+                new_field_sig.field_attrs.pop('db_table', None)
         elif self.db_column:
-            new_field_sig['db_column'] = self.db_column
+            new_field_sig.field_attrs['db_column'] = self.db_column
         else:
-            new_field_sig.pop('db_column', None)
+            new_field_sig.field_attrs.pop('db_column', None)
 
         # Create the mock field instances.
         old_field = create_field(project_sig=mutator.project_sig,
                                  field_name=self.old_field_name,
                                  field_type=field_type,
-                                 field_attrs=old_field_sig,
+                                 field_attrs=old_field_sig.field_attrs,
+                                 related_model=old_field_sig.related_model,
                                  parent_model=None)
         new_field = create_field(project_sig=mutator.project_sig,
                                  field_name=self.new_field_name,
                                  field_type=field_type,
-                                 field_attrs=new_field_sig,
+                                 field_attrs=new_field_sig.field_attrs,
+                                 related_model=new_field_sig.related_model,
                                  parent_model=None)
-
-        # Restore the field type to the signature
-        old_field_sig['field_type'] = field_type
 
         new_model = MockModel(project_sig=mutator.project_sig,
                               app_name=mutator.app_label,
@@ -1090,10 +1133,10 @@ class ChangeField(BaseModelFieldMutation):
                 message.
         """
         field_sig = simulation.get_field_sig(self.model_name, self.field_name)
-        field_sig.update(self.field_attrs)
+        field_sig.field_attrs.update(self.field_attrs)
 
         if ('null' in self.field_attrs and not self.field_attrs['null'] and
-            not issubclass(field_sig['field_type'], models.ManyToManyField) and
+            not issubclass(field_sig.field_type, models.ManyToManyField) and
             self.initial is None):
             simulation.fail('A non-null initial value needs to be specified '
                             'in the mutation.')
@@ -1112,7 +1155,7 @@ class ChangeField(BaseModelFieldMutation):
             model (MockModel):
                 The model being mutated.
         """
-        field_sig = mutator.model_sig['fields'][self.field_name]
+        field_sig = mutator.model_sig.get_field_sig(self.field_name)
         field = model._meta.get_field(self.field_name)
 
         for attr_name in six.iterkeys(self.field_attrs):
@@ -1125,8 +1168,7 @@ class ChangeField(BaseModelFieldMutation):
         new_field_attrs = {}
 
         for attr_name, attr_value in six.iteritems(self.field_attrs):
-            old_attr_value = field_sig.get(attr_name,
-                                           ATTRIBUTE_DEFAULTS[attr_name])
+            old_attr_value = field_sig.get_attr_value(attr_name)
 
             # Avoid useless SQL commands if nothing has changed.
             if old_attr_value != attr_value:
@@ -1197,32 +1239,24 @@ class RenameModel(BaseModelMutation):
                 message.
         """
         app_sig = simulation.get_app_sig()
-        model_sig = simulation.get_model_sig(self.old_model_name)
-        meta_sig = model_sig['meta']
 
-        if self.db_table:
-            meta_sig['db_table'] = self.db_table
-        else:
-            # db_table was not specified. Clear the old value if one was set.
-            # This amounts to resetting the column or table name to the Django
-            # default name.
-            meta_sig.pop('db_table', None)
+        model_sig = simulation.get_model_sig(self.old_model_name).clone()
+        model_sig.model_name = self.new_model_name
+        model_sig.table_name = self.db_table
 
-        app_sig[self.new_model_name] = app_sig.pop(self.old_model_name)
+        app_sig.remove_model_sig(self.old_model_name)
+        app_sig.add_model_sig(model_sig)
 
         old_related_model = '%s.%s' % (simulation.app_label,
                                        self.old_model_name)
         new_related_model = '%s.%s' % (simulation.app_label,
                                        self.new_model_name)
 
-        for app_sig in six.itervalues(simulation.project_sig):
-            if not isinstance(app_sig, dict):
-                continue
-
-            for model_sig in six.itervalues(app_sig):
-                for field in six.itervalues(model_sig['fields']):
-                    if field.get('related_model') == old_related_model:
-                        field['related_model'] = new_related_model
+        for cur_app_sig in simulation.project_sig.app_sigs:
+            for cur_model_sig in cur_app_sig.model_sigs:
+                for cur_field_sig in cur_model_sig.field_sigs:
+                    if cur_field_sig.related_model == old_related_model:
+                        cur_field_sig.related_model = new_related_model
 
     def mutate(self, mutator, model):
         """Schedule a model rename on the mutator.
@@ -1238,22 +1272,22 @@ class RenameModel(BaseModelMutation):
                 The model being mutated.
         """
         old_model_sig = mutator.model_sig
-        new_model_sig = copy.deepcopy(old_model_sig)
 
-        new_model_sig['meta']['db_table'] = self.db_table
+        new_model_sig = old_model_sig.clone()
+        new_model_sig.model_name = self.new_model_name
+        new_model_sig.table_name = self.db_table
 
         new_model = MockModel(project_sig=mutator.project_sig,
                               app_name=mutator.app_label,
                               model_name=self.new_model_name,
                               model_sig=new_model_sig,
                               db_name=mutator.database)
-        evolver = mutator.evolver
 
-        sql = evolver.rename_table(new_model,
-                                   old_model_sig['meta']['db_table'],
-                                   new_model_sig['meta']['db_table'])
-
-        mutator.add_sql(self, sql)
+        mutator.add_sql(
+            self,
+            mutator.evolver.rename_table(new_model,
+                                         old_model_sig.table_name,
+                                         new_model_sig.table_name))
 
 
 class DeleteModel(BaseModelMutation):
@@ -1290,7 +1324,7 @@ class DeleteModel(BaseModelMutation):
 
         # Check for the model first, and then delete it.
         simulation.get_model_sig(self.model_name)
-        del app_sig[self.model_name]
+        app_sig.remove_model_sig(self.model_name)
 
     def mutate(self, mutator, model):
         """Schedule a model deletion on the mutator.
@@ -1307,12 +1341,10 @@ class DeleteModel(BaseModelMutation):
         """
         sql_result = SQLResult()
 
-        # Remove any many to many tables.
-        fields = mutator.model_sig['fields']
-
-        for field_name, field_sig in six.iteritems(fields):
-            if issubclass(field_sig['field_type'], models.ManyToManyField):
-                field = model._meta.get_field(field_name)
+        # Remove any many-to-many tables.
+        for field_sig in mutator.model_sig.field_sigs:
+            if issubclass(field_sig.field_type, models.ManyToManyField):
+                field = model._meta.get_field(field_sig.field_name)
                 m2m_table = field._get_m2m_db_table(model._meta)
                 sql_result.add(mutator.evolver.delete_table(m2m_table))
 
@@ -1349,7 +1381,8 @@ class DeleteApplication(BaseMutation):
         app_sig = simulation.get_app_sig()
 
         # Simulate the deletion of the models.
-        for model_name in list(six.iterkeys(app_sig)):
+        for model_sig in list(app_sig.model_sigs):
+            model_name = model_sig.model_name
             mutation = DeleteModel(model_name)
 
             if mutation.is_mutable(app_label=simulation.app_label,
@@ -1358,7 +1391,7 @@ class DeleteApplication(BaseMutation):
                                    database=simulation.database):
                 # Check for the model's existence, and then delete.
                 simulation.get_model_sig(model_name)
-                del app_sig[model_name]
+                app_sig.remove_model_sig(model_name)
 
     def mutate(self, mutator):
         """Schedule an application deletion on the mutator.
@@ -1374,9 +1407,10 @@ class DeleteApplication(BaseMutation):
         # This test will introduce a regression, but we can't afford to remove
         # all models at a same time if they aren't owned by the same database
         if mutator.database:
-            app_sig = mutator.project_sig[mutator.app_label]
+            app_sig = mutator.project_sig.get_app_sig(mutator.app_label)
 
-            for model_name in list(six.iterkeys(app_sig)):
+            for model_sig in list(app_sig.model_sigs):
+                model_name = model_sig.model_name
                 mutation = DeleteModel(model_name)
 
                 if mutation.is_mutable(app_label=mutator.app_label,
@@ -1479,15 +1513,25 @@ class ChangeMeta(BaseModelMutation):
         """
         model_sig = simulation.get_model_sig(self.model_name)
         evolver = simulation.get_evolver()
+        prop_name = self.prop_name
 
-        if not evolver.supported_change_meta.get(self.prop_name):
+        if not evolver.supported_change_meta.get(prop_name):
             simulation.fail('The property cannot be modified on this '
                             'database.')
 
-        model_sig['meta'][self.prop_name] = self.new_value
-
-        if self.prop_name == 'unique_together':
-            record_unique_together_applied(model_sig)
+        if prop_name == 'index_together':
+            model_sig.index_together = self.new_value
+        elif prop_name == 'unique_together':
+            model_sig.unique_together = self.new_value
+            model_sig._unique_together_applied = True
+        elif prop_name == 'indexes':
+            model_sig.index_sigs = [
+                IndexSignature(name=index.get('name'),
+                               fields=index['fields'])
+                for index in self.new_value
+            ]
+        else:
+            simulation.fail('The property cannot be changed on a model.')
 
     def mutate(self, mutator, model):
         """Schedule a model meta property change on the mutator.

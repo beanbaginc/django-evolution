@@ -166,7 +166,8 @@ def _on_app_models_updated(app, verbosity=1, using=DEFAULT_DB_ALIAS, **kwargs):
         #     nudge.save()
         #     latest_version = nudge
 
-        diff = Diff(old_proj_sig, proj_sig)
+        diff = Diff(ProjectSignature.deserialize(old_proj_sig),
+                    ProjectSignature.deserialize(proj_sig))
 
         if not diff.is_empty():
             print(style.NOTICE(

@@ -22,7 +22,8 @@ from django_evolution.compat.models import (all_models,
                                             get_remote_field_model,
                                             set_model_name)
 from django_evolution.db import EvolutionOperationsMulti
-from django_evolution.signature import ModelSignature
+from django_evolution.signature import (AppSignature, ModelSignature,
+                                        ProjectSignature)
 from django_evolution.tests import models as evo_test
 from django_evolution.utils import execute_sql, write_sql
 
@@ -264,23 +265,27 @@ def create_test_project_sig(models, app_label='tests', version=1):
         dict:
         The new project signature.
     """
-    proj_sig = {
-        '__version__': version,
-    }
+    app_sig = AppSignature(app_id=app_label)
+
+    project_sig = ProjectSignature()
+    project_sig.add_app_sig(app_sig)
 
     for full_name, model in models:
         parts = full_name.split('.')
 
         if len(parts) == 1:
-            name = parts[0]
-            app = app_label
+            app_sig.add_model_sig(ModelSignature.from_model(model))
         else:
-            app, name = parts
+            model_app_label, model_name = parts
+            model_app_sig = project_sig.get_app_sig(model_app_label)
 
-        proj_sig.setdefault(app, OrderedDict())[name] = \
-            ModelSignature.from_model(model).serialize()
+            if model_app_sig is None:
+                model_app_sig = AppSignature(app_id=model_app_label)
+                project_sig.add_app_sig(model_app_sig)
 
-    return proj_sig
+            model_app_sig.add_model_sig(ModelSignature.from_model(model))
+
+    return project_sig
 
 
 def execute_test_sql(start_sig, end_sig, generate_sql_func, app_label='tests',

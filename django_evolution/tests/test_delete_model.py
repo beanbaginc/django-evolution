@@ -4,6 +4,7 @@ from django.db import models
 
 from django_evolution.errors import SimulationFailure
 from django_evolution.mutations import DeleteModel
+from django_evolution.signature import AppSignature, ProjectSignature
 from django_evolution.tests.base_test_case import EvolutionTestCase
 
 
@@ -26,15 +27,15 @@ class DeleteModelTests(EvolutionTestCase):
 
         with self.assertRaisesMessage(SimulationFailure, message):
             mutation.run_simulation(app_label='badapp',
-                                    project_sig={},
+                                    project_sig=ProjectSignature(),
                                     database_state=None)
 
     def test_with_bad_model(self):
         """Testing DeleteModel with model not in signature"""
         mutation = DeleteModel('TestModel')
-        proj_sig = {
-            'tests': {},
-        }
+
+        project_sig = ProjectSignature()
+        project_sig.add_app_sig(AppSignature(app_id='tests'))
 
         message = (
             'Cannot delete the model "tests.TestModel". The model could '
@@ -43,7 +44,7 @@ class DeleteModelTests(EvolutionTestCase):
 
         with self.assertRaisesMessage(SimulationFailure, message):
             mutation.run_simulation(app_label='tests',
-                                    project_sig=proj_sig,
+                                    project_sig=project_sig,
                                     database_state=None)
 
     def test_delete_model(self):
@@ -53,10 +54,10 @@ class DeleteModelTests(EvolutionTestCase):
 
         self.set_base_model(BasicModel, 'BasicModel')
 
-        end_sig = self.copy_sig(self.start_sig)
+        end_sig = self.start_sig.clone()
         end = self.copy_models(self.start)
 
-        end_sig['tests'].pop('BasicModel')
+        end_sig.get_app_sig('tests').remove_model_sig('BasicModel')
         end.pop('basicmodel')
 
         self.perform_evolution_tests(
@@ -83,10 +84,10 @@ class DeleteModelTests(EvolutionTestCase):
             name='BasicWithM2MModel',
             extra_models=[('DeleteModelAnchor', DeleteModelAnchor)])
 
-        end_sig = self.copy_sig(self.start_sig)
+        end_sig = self.start_sig.clone()
         end = self.copy_models(self.start)
 
-        end_sig['tests'].pop('BasicWithM2MModel')
+        end_sig.get_app_sig('tests').remove_model_sig('BasicWithM2MModel')
         end.pop('basicwithm2mmodel')
 
         self.perform_evolution_tests(
@@ -112,10 +113,10 @@ class DeleteModelTests(EvolutionTestCase):
 
         self.set_base_model(CustomTableModel, 'CustomTableModel')
 
-        end_sig = self.copy_sig(self.start_sig)
+        end_sig = self.start_sig.clone()
         end = self.copy_models(self.start)
 
-        end_sig['tests'].pop('CustomTableModel')
+        end_sig.get_app_sig('tests').remove_model_sig('CustomTableModel')
         end.pop('customtablemodel')
 
         self.perform_evolution_tests(
@@ -147,10 +148,11 @@ class DeleteModelTests(EvolutionTestCase):
             name='CustomTableWithM2MModel',
             extra_models=[('DeleteModelAnchor', DeleteModelAnchor)])
 
-        end_sig = self.copy_sig(self.start_sig)
+        end_sig = self.start_sig.clone()
         end = self.copy_models(self.start)
 
-        end_sig['tests'].pop('CustomTableWithM2MModel')
+        end_sig.get_app_sig('tests').remove_model_sig(
+            'CustomTableWithM2MModel')
         end.pop('customtablewithm2mmodel')
 
         self.perform_evolution_tests(
@@ -173,10 +175,10 @@ class DeleteModelTests(EvolutionTestCase):
 
         self.set_base_model(BasicModel, 'BasicModel', db_name='db_multi')
 
-        end_sig = self.copy_sig(self.start_sig)
+        end_sig = self.start_sig.clone()
         end = self.copy_models(self.start)
 
-        end_sig['tests'].pop('BasicModel')
+        end_sig.get_app_sig('tests').remove_model_sig('BasicModel')
         end.pop('basicmodel')
 
         self.perform_evolution_tests(
