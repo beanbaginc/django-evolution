@@ -42,6 +42,21 @@ class BaseSignature(object):
         """
         raise NotImplementedError
 
+    def diff(self, old_sig):
+        """Diff against an older signature.
+
+        The resulting data is dependent on the type of signature.
+
+        Args:
+            old_sig (BaseSignature):
+                The old signature to diff against.
+
+        Returns:
+            object:
+            The resulting diffed data.
+        """
+        raise NotImplementedError
+
     def clone(self):
         """Clone the signature.
 
@@ -213,6 +228,73 @@ class ProjectSignature(BaseSignature):
             matches the ID, ``None`` will be returned.
         """
         return self._app_sigs.get(app_id)
+
+    def diff(self, old_project_sig):
+        """Diff against an older project signature.
+
+        This will return a dictionary of changes between two project
+        signatures.
+
+        Args:
+            old_project_sig (ProjectSignature):
+                The old project signature to diff against.
+
+        Returns:
+            collections.OrderedDict:
+            A dictionary in the following form::
+
+                {
+                    'changed': {
+                        <app ID>: <AppSignature diff>,
+                        ...
+                    },
+                    'deleted': [
+                        <app ID>: [
+                            <model name>,
+                            ...
+                        ],
+                        ...
+                    ],
+                }
+
+            Any key lacking a value will be ommitted from the diff.
+
+        Raises:
+            TypeError:
+                The old signature provided was not a
+                :py:class:`ProjectSignature`.
+        """
+        if not isinstance(old_project_sig, ProjectSignature):
+            raise TypeError('Must provide a ProjectSignature to diff against, '
+                            'not a %s.' % type(old_project_sig))
+
+        changed_apps = OrderedDict()
+        deleted_apps = OrderedDict()
+
+        for old_app_sig in old_project_sig.app_sigs:
+            app_id = old_app_sig.app_id
+            new_app_sig = self.get_app_sig(app_id)
+
+            if new_app_sig:
+                app_changes = new_app_sig.diff(old_app_sig)
+
+                if app_changes:
+                    # There are changes for this application. Store that in the
+                    # diff.
+                    changed_apps[app_id] = app_changes
+            else:
+                # The application has been deleted.
+                deleted_apps[app_id] = [
+                    model_sig.model_name
+                    for model_sig in old_app_sig.model_sigs
+                ]
+
+        return OrderedDict(
+            (key, value)
+            for key, value in (('changed', changed_apps),
+                               ('deleted', deleted_apps))
+            if value
+        )
 
     def clone(self):
         """Clone the signature.
@@ -409,6 +491,66 @@ class AppSignature(BaseSignature):
             the model name, ``None`` will be returned.
         """
         return self._model_sigs.get(model_name)
+
+    def diff(self, old_app_sig):
+        """Diff against an older application signature.
+
+        This will return a dictionary containing the differences between
+        two application signatures.
+
+        Args:
+            old_app_sig (AppSignature):
+                The old app signature to diff against.
+
+        Returns:
+            collections.OrderedDict:
+            A dictionary in the following form::
+
+                {
+                    'changed': {
+                        <model_name>: <ModelSignature diff>,
+                        ...
+                    },
+                    'deleted': [ <list of deleted model names> ],
+                }
+
+            Any key lacking a value will be ommitted from the diff.
+
+        Raises:
+            TypeError:
+                The old signature provided was not an :py:class:`AppSignature`.
+        """
+        if not isinstance(old_app_sig, AppSignature):
+            raise TypeError('Must provide an AppSignature to diff against, '
+                            'not a %s.' % type(old_app_sig))
+
+        deleted_models = []
+        changed_models = OrderedDict()
+
+        # Process the models in the application, looking for changes to
+        # fields and meta attributes.
+        for old_model_sig in old_app_sig.model_sigs:
+            model_name = old_model_sig.model_name
+            new_model_sig = self.get_model_sig(model_name)
+
+            if new_model_sig:
+                model_changes = new_model_sig.diff(old_model_sig)
+
+                if model_changes:
+                    # There are changes for this model. Store that in the
+                    # diff.
+                    changed_models[model_name] = model_changes
+            else:
+                # The model has been deleted.
+                deleted_models.append(model_name)
+
+        # Build the dictionary of changes for the app.
+        return OrderedDict(
+            (key, value)
+            for key, value in (('changed', changed_models),
+                               ('deleted', deleted_models))
+            if value
+        )
 
     def clone(self):
         """Clone the signature.
@@ -697,6 +839,100 @@ class ModelSignature(BaseSignature):
         return (old_unique_together != new_unique_together or
                 ((old_unique_together or new_unique_together) and
                  not old_model_sig._unique_together_applied))
+
+    def diff(self, old_model_sig):
+        """Diff against an older model signature.
+
+        This will return a dictionary containing the differences in fields
+        and meta information between two signatures.
+
+        Args:
+            old_model_sig (ModelSignature):
+                The old model signature to diff against.
+
+        Returns:
+            collections.OrderedDict:
+            A dictionary in the following form::
+
+                {
+                    'added': [
+                        <field name>,
+                        ...
+                    ],
+                    'deleted': [
+                        <field name>,
+                        ...
+                    ],
+                    'changed': {
+                        <field name>: <FieldSignature diff>,
+                        ...
+                    },
+                    'meta_changed': {
+                        'indexes': <new value>,
+                        'index_together': <new value>,
+                        'unique_together': <new value>,
+                    },
+                }
+
+            Any key lacking a value will be ommitted from the diff.
+
+        Raises:
+            TypeError:
+                The old signature provided was not a
+                :py:class:`ModelSignature`.
+        """
+        if not isinstance(old_model_sig, ModelSignature):
+            raise TypeError('Must provide a ModelSignature to diff against, '
+                            'not a %s.' % type(old_model_sig))
+
+        # Go through all the fields, looking for changed and deleted fields.
+        changed_fields = OrderedDict()
+        deleted_fields = []
+
+        for old_field_sig in old_model_sig.field_sigs:
+            field_name = old_field_sig.field_name
+            new_field_sig = self.get_field_sig(field_name)
+
+            if new_field_sig:
+                # Go through all the attributes on the field, looking for
+                # changes.
+                changed_field_attrs = new_field_sig.diff(old_field_sig)
+
+                if changed_field_attrs:
+                    # There were attribute changes. Store those with the field.
+                    changed_fields[field_name] = changed_field_attrs
+            else:
+                # The field has been deleted.
+                deleted_fields.append(field_name)
+
+        # Go through the list of added fields and add any that don't
+        # exist in the original field list.
+        added_fields = [
+            field_sig.field_name
+            for field_sig in self.field_sigs
+            if not old_model_sig.get_field_sig(field_sig.field_name)
+        ]
+
+        # Build a list of changes to Model.Meta attributes.
+        meta_changed = []
+
+        if self.has_unique_together_changed(old_model_sig):
+            meta_changed.append('unique_together')
+
+        if self.index_together != old_model_sig.index_together:
+            meta_changed.append('index_together')
+
+        if list(self.index_sigs) != list(old_model_sig.index_sigs):
+            meta_changed.append('indexes')
+
+        return OrderedDict(
+            (key, value)
+            for key, value in (('added', added_fields),
+                               ('changed', changed_fields),
+                               ('deleted', deleted_fields),
+                               ('meta_changed', meta_changed))
+            if value
+        )
 
     def clone(self):
         """Clone the signature.
@@ -1184,6 +1420,59 @@ class FieldSignature(BaseSignature):
             return True
 
         return attr_value == self.get_attr_default(attr_name)
+
+    def diff(self, old_field_sig):
+        """Diff against an older field signature.
+
+        This will return a list of field names that have changed between
+        this field signature and an older one.
+
+        Args:
+            old_field_sig (FieldSignature):
+                The old field signature to diff against.
+
+        Returns:
+            list:
+            The list of field names.
+
+        Raises:
+            TypeError:
+                The old signature provided was not a
+                :py:class:`FieldSignature`.
+        """
+        if not isinstance(old_field_sig, FieldSignature):
+            raise TypeError('Must provide a FieldSignature to diff against, '
+                            'not a %s.' % type(old_field_sig))
+
+        changed_attrs = [
+            attr
+            for attr in (set(old_field_sig.field_attrs) |
+                         set(self.field_attrs))
+            if self.get_attr_value(attr) != old_field_sig.get_attr_value(attr)
+        ]
+
+        # See if the field type has changed.
+        old_field_type = old_field_sig.field_type
+        new_field_type = self.field_type
+
+        if old_field_type is not new_field_type:
+            try:
+                field_type_changed = (old_field_type().get_internal_type() !=
+                                      new_field_type().get_internal_type())
+            except TypeError:
+                # We can't instantiate those, so assume the field
+                # type has indeed changed.
+                field_type_changed = True
+
+            if field_type_changed:
+                changed_attrs.append('field_type')
+
+        # FieldSignature.related_model is not a field attribute,
+        # but we do need to track its changes.
+        if old_field_sig.related_model != self.related_model:
+            changed_attrs.append('related_model')
+
+        return sorted(changed_attrs)
 
     def clone(self):
         """Clone the signature.
