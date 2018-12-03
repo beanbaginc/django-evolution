@@ -2,6 +2,7 @@ from __future__ import print_function, unicode_literals
 
 from django.core.management.base import CommandError
 from django.db.models import Q
+from django.utils.six.moves import input
 
 from django_evolution.compat.commands import BaseCommand
 from django_evolution.models import Evolution
@@ -72,7 +73,7 @@ class Command(BaseCommand):
 
         if to_wipe_ids:
             if options['interactive']:
-                confirm = raw_input("""
+                confirm = input("""
 You have requested to delete %s evolution(s). This may cause permanent
 problems, and should only be done after a FULL BACKUP and under direct
 guidance.

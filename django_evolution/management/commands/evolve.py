@@ -8,6 +8,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import CommandError
 from django.db import connections, transaction
 from django.db.utils import DEFAULT_DB_ALIAS
+from django.utils.six.moves import input
 
 from django_evolution.compat.apps import get_apps, get_app
 from django_evolution.compat.commands import BaseCommand
@@ -322,7 +323,7 @@ class Command(BaseCommand):
             # Now that we've worked out the mutations required,
             # and we know they simulate OK, run the evolutions
             if self.interactive:
-                confirm = raw_input("""
+                confirm = input("""
 You have requested a database evolution. This will alter tables
 and data currently in the %r database, and may result in
 IRREVERSABLE DATA LOSS. Evolutions should be *thoroughly* reviewed
