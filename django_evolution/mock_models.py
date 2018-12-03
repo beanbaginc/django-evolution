@@ -67,16 +67,16 @@ def create_field(project_sig, field_name, field_type, field_attrs,
                        model_sig=related_model_sig,
                        stub=True)
 
-        has_on_delete = 'on_delete' in field_attrs
-
         if (issubclass(field_type, models.ForeignKey) and
             hasattr(models, 'CASCADE') and
-            not has_on_delete):
+            'on_delete' not in field_attrs):
             # Starting in Django 2.0, on_delete is a requirement for
             # ForeignKeys. If not provided in the signature, we want to
             # default this to CASCADE, which is the value that Django
             # previously defaulted to.
-            field_attrs['on_delete'] = models.CASCADE
+            field_attrs = dict({
+                'on_delete': models.CASCADE,
+            }, **field_attrs)
 
         field = field_type(to, name=field_name, **field_attrs)
     else:
