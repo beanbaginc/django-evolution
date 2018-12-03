@@ -6,6 +6,7 @@ from django.conf import global_settings
 from django.db import models
 from django.db.models.fields.related import ForeignKey
 from django.utils import six
+from django.utils.translation import ugettext as _
 
 from django_evolution.compat.apps import get_apps
 from django_evolution.compat.datastructures import OrderedDict
@@ -16,6 +17,7 @@ from django_evolution.compat.models import (GenericRelation,
                                             get_remote_field,
                                             get_remote_field_model)
 from django_evolution.db import EvolutionOperationsMulti
+from django_evolution.errors import MissingSignatureError
 from django_evolution.utils import get_app_label
 
 
@@ -204,30 +206,47 @@ class ProjectSignature(BaseSignature):
                 The ID of the application signature to remove.
 
         Raises:
-            ValueError:
+            django_evolution.errors.MissingSignatureError:
                 The application ID does not represent a known application
                 signature.
         """
         try:
             del self._app_sigs[app_id]
         except KeyError:
-            raise ValueError(
-                'An application signature for "%s" could not be found.'
+            raise MissingSignatureError(
+                _('An application signature for "%s" could not be found.')
                 % app_id)
 
-    def get_app_sig(self, app_id):
+    def get_app_sig(self, app_id, required=False):
         """Return an application signature with the given ID.
 
         Args:
             app_id (unicode):
                 The ID of the application signature.
 
+            required (bool, optional):
+                Whether the app signature must be present. If ``True`` and
+                the signature is missing, this will raise an exception.
+
         Returns:
             AppSignature:
             The application signature, if found. If no application signature
             matches the ID, ``None`` will be returned.
+
+        Raises:
+            django_evolution.errors.MissingSignatureError:
+                The application signature was not found, and ``required`` was
+                ``True``.
         """
-        return self._app_sigs.get(app_id)
+        app_sig = self._app_sigs.get(app_id)
+
+        if app_sig is None and required:
+            raise MissingSignatureError(
+                _('Unable to find an application signature for "%s". '
+                  'syncdb/migrate might need to be run first.')
+                % app_id)
+
+        return app_sig
 
     def diff(self, old_project_sig):
         """Diff against an older project signature.
@@ -469,28 +488,46 @@ class AppSignature(BaseSignature):
                 The name of the model.
 
         Raises:
-            ValueError:
+            django_evolution.errors.MissingSignatureError:
                 The model name does not represent a known model signature.
         """
         try:
             del self._model_sigs[model_name]
         except KeyError:
-            raise ValueError('A model signature for "%s" could not be found.'
-                             % model_name)
+            raise MissingSignatureError(
+                _('A model signature for "%s" could not be found.')
+                % model_name)
 
-    def get_model_sig(self, model_name):
+    def get_model_sig(self, model_name, required=False):
         """Return a model signature for the given model name.
 
         Args:
             model_name (unicode):
                 The name of the model.
 
+            required (bool, optional):
+                Whether the model signature must be present. If ``True`` and
+                the signature is missing, this will raise an exception.
+
         Returns:
             ModelSignature:
             The model signature, if found. If no model signature matches
             the model name, ``None`` will be returned.
+
+        Raises:
+            django_evolution.errors.MissingSignatureError:
+                The model signature was not found, and ``required`` was
+                ``True``.
         """
-        return self._model_sigs.get(model_name)
+        model_sig = self._model_sigs.get(model_name)
+
+        if model_sig is None and required:
+            raise MissingSignatureError(
+                _('Unable to find a model signature for "%s.%s". '
+                  'syncdb/migrate might need to be run first.')
+                % (self.app_id, model_name))
+
+        return model_sig
 
     def diff(self, old_app_sig):
         """Diff against an older application signature.
@@ -764,28 +801,46 @@ class ModelSignature(BaseSignature):
                 The name of the field.
 
         Raises:
-            ValueError:
+            django_evolution.errors.MissingSignatureError:
                 The field name does not represent a known field signature.
         """
         try:
             del self._field_sigs[field_name]
         except KeyError:
-            raise ValueError('A field signature for "%s" could not be found.'
-                             % field_name)
+            raise MissingSignatureError(
+                _('A field signature for "%s" could not be found.')
+                % field_name)
 
-    def get_field_sig(self, field_name):
+    def get_field_sig(self, field_name, required=False):
         """Return a field signature for the given field name.
 
         Args:
             field_name (unicode):
                 The name of the field.
 
+            required (bool, optional):
+                Whether the model signature must be present. If ``True`` and
+                the signature is missing, this will raise an exception.
+
         Returns:
             FieldSignature:
             The field signature, if found. If no field signature matches
             the field name, ``None`` will be returned.
+
+        Raises:
+            django_evolution.errors.MissingSignatureError:
+                The model signature was not found, and ``required`` was
+                ``True``.
         """
-        return self._field_sigs.get(field_name)
+        field_sig = self._field_sigs.get(field_name)
+
+        if field_sig is None and required:
+            raise MissingSignatureError(
+                _('Unable to find a field signature for "%s.%s". '
+                  'syncdb/migrate might need to be run first.')
+                % (self.model_name, field_name))
+
+        return field_sig
 
     def add_index(self, index):
         """Add an explicit index to the models.

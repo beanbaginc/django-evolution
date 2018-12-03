@@ -58,8 +58,8 @@ def create_field(project_sig, field_name, field_type, field_attrs,
         related_app_name, related_model_name = related_model.split('.')
         related_model_sig = (
             project_sig
-            .get_app_sig(related_app_name)
-            .get_model_sig(related_model_name)
+            .get_app_sig(related_app_name, required=True)
+            .get_model_sig(related_model_name, required=True)
         )
         to = MockModel(project_sig=project_sig,
                        app_name=related_app_name,

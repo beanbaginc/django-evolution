@@ -17,6 +17,7 @@ except ImportError:
 
 from django_evolution.compat.apps import get_app
 from django_evolution.compat.models import GenericForeignKey, GenericRelation
+from django_evolution.errors import MissingSignatureError
 from django_evolution.models import Evolution
 from django_evolution.signature import (AppSignature, FieldSignature,
                                         IndexSignature, ModelSignature,
@@ -158,6 +159,36 @@ class ProjectSignatureTests(BaseSignatureTestCase):
 
         self.assertEqual(list(project_sig.app_sigs), [app_sig])
 
+    def test_get_app_sig(self):
+        """Testing ProjectSignature.get_app_sig"""
+        project_sig = ProjectSignature()
+
+        app_sig = AppSignature.from_app(get_app('django_evolution'),
+                                        database='default')
+        project_sig.add_app_sig(app_sig)
+
+        self.assertIs(project_sig.get_app_sig('django_evolution'), app_sig)
+
+    def test_get_app_sig_with_no_result(self):
+        """Testing ProjectSignature.get_app_sig with signature not found"""
+        project_sig = ProjectSignature()
+
+        self.assertIsNone(project_sig.get_app_sig('invalid'))
+
+    def test_get_app_sig_with_no_result_and_required(self):
+        """Testing ProjectSignature.get_app_sig with signature not found and
+        required=True
+        """
+        project_sig = ProjectSignature()
+
+        message = (
+            'Unable to find an application signature for "invalid". '
+            'syncdb/migrate might need to be run first.'
+        )
+
+        with self.assertRaisesMessage(MissingSignatureError, message):
+            project_sig.get_app_sig('invalid', required=True)
+
     def test_remove_app_sig(self):
         """Testing ProjectSignature.remove_app_sig"""
         project_sig = ProjectSignature()
@@ -177,7 +208,7 @@ class ProjectSignatureTests(BaseSignatureTestCase):
             'An application signature for "invalid_app" could not be found.'
         )
 
-        with self.assertRaisesMessage(ValueError, message):
+        with self.assertRaisesMessage(MissingSignatureError, message):
             project_sig.remove_app_sig('invalid_app')
 
     def test_clone(self):
@@ -281,6 +312,35 @@ class AppSignatureTests(BaseSignatureTestCase):
 
         self.assertEqual(list(app_sig.model_sigs), [model_sig])
 
+    def test_get_model_sig(self):
+        """Testing AppSignature.get_model_sig"""
+        app_sig = AppSignature('django_evolution')
+
+        model_sig = ModelSignature.from_model(Evolution)
+        app_sig.add_model_sig(model_sig)
+
+        self.assertIs(app_sig.get_model_sig('Evolution'), model_sig)
+
+    def test_get_model_sig_with_no_result(self):
+        """Testing AppSignature.get_model_sig with signature not found"""
+        app_sig = AppSignature('django_evolution')
+
+        self.assertIsNone(app_sig.get_model_sig('invalid'))
+
+    def test_get_model_sig_with_no_result_and_required(self):
+        """Testing AppSignature.get_model_sig with signature not found and
+        required=True
+        """
+        app_sig = AppSignature('django_evolution')
+
+        message = (
+            'Unable to find a model signature for "django_evolution.Invalid". '
+            'syncdb/migrate might need to be run first.'
+        )
+
+        with self.assertRaisesMessage(MissingSignatureError, message):
+            app_sig.get_model_sig('Invalid', required=True)
+
     def test_remove_model_sig(self):
         """Testing AppSignature.remove_model_sig"""
         app_sig = AppSignature('django_evolution')
@@ -297,17 +357,8 @@ class AppSignatureTests(BaseSignatureTestCase):
 
         message = 'A model signature for "Evolution" could not be found.'
 
-        with self.assertRaisesMessage(ValueError, message):
+        with self.assertRaisesMessage(MissingSignatureError, message):
             app_sig.remove_model_sig('Evolution')
-
-    def test_get_model_sig(self):
-        """Testing AppSignature.get_model_sig"""
-        app_sig = AppSignature('django_evolution')
-
-        model_sig = ModelSignature.from_model(Evolution)
-        app_sig.add_model_sig(model_sig)
-
-        self.assertIs(app_sig.get_model_sig('Evolution'), model_sig)
 
     def test_clone(self):
         """Testing AppSignature.clone"""
@@ -662,6 +713,39 @@ class ModelSignatureTests(BaseSignatureTestCase):
         self.assertEqual(field_sig.field_name, 'char_field')
         self.assertIs(field_sig.field_type, models.CharField)
 
+    def test_get_field_sig(self):
+        """Testing ModelSignature.get_field_sig"""
+        model_sig = ModelSignature(model_name='TestModel',
+                                   table_name='testmodel')
+
+        field_sig = FieldSignature.from_field(
+            SignatureDefaultsModel._meta.get_field('char_field'))
+        model_sig.add_field_sig(field_sig)
+
+        self.assertIs(model_sig.get_field_sig('char_field'), field_sig)
+
+    def test_get_field_sig_with_no_result(self):
+        """Testing ModelSignature.get_field_sig with signature not found"""
+        model_sig = ModelSignature(model_name='TestModel',
+                                   table_name='testmodel')
+
+        self.assertIsNone(model_sig.get_field_sig('invalid'))
+
+    def test_get_field_sig_with_no_result_and_required(self):
+        """Testing AppSignature.get_field_sig with signature not found and
+        required=True
+        """
+        model_sig = ModelSignature(model_name='TestModel',
+                                   table_name='testmodel')
+
+        message = (
+            'Unable to find a field signature for "TestModel.invalid". '
+            'syncdb/migrate might need to be run first.'
+        )
+
+        with self.assertRaisesMessage(MissingSignatureError, message):
+            model_sig.get_field_sig('invalid', required=True)
+
     def test_remove_field_sig(self):
         """Testing ModelSignature.remove_field_sig"""
         model_sig = ModelSignature(model_name='TestModel',
@@ -681,26 +765,8 @@ class ModelSignatureTests(BaseSignatureTestCase):
 
         message = 'A field signature for "char_field" could not be found.'
 
-        with self.assertRaisesMessage(ValueError, message):
+        with self.assertRaisesMessage(MissingSignatureError, message):
             model_sig.remove_field_sig('char_field')
-
-    def test_get_field_sig(self):
-        """Testing ModelSignature.get_field_sig"""
-        model_sig = ModelSignature(model_name='TestModel',
-                                   table_name='testmodel')
-
-        field_sig = FieldSignature.from_field(
-            SignatureDefaultsModel._meta.get_field('char_field'))
-        model_sig.add_field_sig(field_sig)
-
-        self.assertIs(model_sig.get_field_sig('char_field'), field_sig)
-
-    def test_get_field_sig_with_invalid_field_name(self):
-        """Testing ModelSignature.get_field_sig with invalid field name"""
-        model_sig = ModelSignature(model_name='TestModel',
-                                   table_name='testmodel')
-
-        self.assertIsNone(model_sig.get_field_sig('char_field'))
 
     def test_add_index(self):
         """Testing ModelSignature.add_index"""

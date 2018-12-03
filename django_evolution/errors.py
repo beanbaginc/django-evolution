@@ -24,3 +24,7 @@ class EvolutionNotImplementedError(EvolutionException, NotImplementedError):
 
 class DatabaseStateError(EvolutionException):
     """There was an issue working with database state."""
+
+
+class MissingSignatureError(EvolutionException):
+    """A requested signature could not be found."""
