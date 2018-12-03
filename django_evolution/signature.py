@@ -1061,8 +1061,8 @@ class ModelSignature(BaseSignature):
                 self.index_together == other.index_together and
                 self.model_name == other.model_name and
                 self.pk_column == other.pk_column and
-                self.unique_together == other.unique_together and
-                self._field_sigs == other._field_sigs)
+                self._field_sigs == other._field_sigs and
+                not self.has_unique_together_changed(other))
 
     def __repr__(self):
         """Return a string representation of the signature.

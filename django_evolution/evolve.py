@@ -1,18 +1,13 @@
 from __future__ import unicode_literals
 
 import os
-import pickle
 from importlib import import_module
 
-from django.utils import six
-
 from django_evolution.builtin_evolutions import BUILTIN_SEQUENCES
-from django_evolution.compat.py23 import pickle_loads
 from django_evolution.errors import EvolutionException
 from django_evolution.models import Evolution, Version
 from django_evolution.mutations import RenameModel, SQLMutation
-from django_evolution.signature import (ProjectSignature,
-                                        has_unique_together_changed)
+from django_evolution.signature import ProjectSignature
 from django_evolution.utils import get_app_label, get_app_name
 
 
@@ -96,11 +91,14 @@ def get_mutations(app, evolution_labels, database):
 
     latest_version = Version.objects.current_version(using=database)
 
-    app_label = get_app_label(app)
-    old_proj_sig = pickle_loads(latest_version.signature)
-    proj_sig = ProjectSignature.from_database(database).serialize()
+    app_id = get_app_label(app)
+    old_project_sig = latest_version.signature
+    project_sig = ProjectSignature.from_database(database)
 
-    if app_label in old_proj_sig and app_label in proj_sig:
+    old_app_sig = old_project_sig.get_app_sig(app_id)
+    app_sig = project_sig.get_app_sig(app_id)
+
+    if old_app_sig is not None and app_sig is not None:
         # We want to go through now and make sure we're only applying
         # evolutions for models where the signature is different between
         # what's stored and what's current.
@@ -109,25 +107,22 @@ def get_mutations(app, evolution_labels, database):
         # which would have the up-to-date signature, and we might be trying
         # to apply evolutions on top of that (which would already be applied).
         # These would generate errors. So, try hard to prevent that.
-        old_app_sig = old_proj_sig[app_label]
-        app_sig = proj_sig[app_label]
-
-        changed_models = set()
-
-        # Find the list of models in the latest signature of this app
+        #
+        # First, Find the list of models in the latest signature of this app
         # that aren't in the old signature.
-        for model_name, model_sig in six.iteritems(app_sig):
-            if (model_name not in old_app_sig or
-                old_app_sig[model_name] != model_sig or
-                has_unique_together_changed(old_app_sig[model_name],
-                                            model_sig)):
-                changed_models.add(model_name)
+        changed_models = set(
+            model_sig.model_name
+            for model_sig in app_sig.model_sigs
+            if old_app_sig.get_model_sig(model_sig.model_name) != model_sig
+        )
 
         # Now do the same for models in the old signature, in case the
         # model has been deleted.
-        for model_name, model_sig in six.iteritems(old_app_sig):
-            if model_name not in app_sig:
-                changed_models.add(model_name)
+        changed_models.update(
+            old_model_sig.model_name
+            for old_model_sig in old_app_sig.model_sigs
+            if app_sig.get_model_sig(old_model_sig.model_name) is None
+        )
 
         # We should now have a full list of which models changed. Filter
         # the list of mutations appropriately.

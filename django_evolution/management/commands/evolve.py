@@ -11,7 +11,6 @@ from django.db.utils import DEFAULT_DB_ALIAS
 
 from django_evolution.compat.apps import get_apps, get_app
 from django_evolution.compat.commands import BaseCommand
-from django_evolution.compat.py23 import pickle_dumps, pickle_loads
 from django_evolution.db.state import DatabaseState
 from django_evolution.diff import Diff
 from django_evolution.errors import EvolutionException
@@ -137,9 +136,8 @@ class Command(BaseCommand):
         self.written_hint_files = []
 
         self.database_state = DatabaseState(self.database)
-        self.current_proj_sig = \
-            ProjectSignature.from_database(self.database).serialize()
-        self.current_signature = pickle_dumps(self.current_proj_sig)
+        self.current_proj_sig = ProjectSignature.from_database(self.database)
+        self.current_signature = self.current_proj_sig
 
         sql = []
 
@@ -147,7 +145,7 @@ class Command(BaseCommand):
             latest_version = \
                 Version.objects.current_version(using=self.database)
 
-            self.old_proj_sig = pickle_loads(latest_version.signature)
+            self.old_proj_sig = latest_version.signature
             self.diff = Diff(self.old_proj_sig, self.current_proj_sig)
         except Evolution.DoesNotExist:
             raise CommandError("Can't evolve yet. Need to set an "

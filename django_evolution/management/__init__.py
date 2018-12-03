@@ -7,14 +7,12 @@ from django.conf import settings
 from django.core.management.color import color_style
 from django.db.models import signals
 from django.db.utils import DEFAULT_DB_ALIAS
-from django.utils import six
 
-from django_evolution import models as django_evolution
 from django_evolution.compat.apps import get_apps, get_app
-from django_evolution.compat.py23 import pickle_dumps, pickle_loads
 from django_evolution.diff import Diff
 from django_evolution.evolve import (get_evolution_sequence,
                                      get_unapplied_evolutions)
+from django_evolution.models import Evolution, Version
 from django_evolution.signature import ProjectSignature
 from django_evolution.utils import get_app_label
 
@@ -51,9 +49,9 @@ def _install_baseline(app, latest_version, using, verbosity):
                                                  ', '.join(sequence)))
 
     for evo_label in sequence:
-        evolution = django_evolution.Evolution(app_label=app_label,
-                                               label=evo_label,
-                                               version=latest_version)
+        evolution = Evolution(app_label=app_label,
+                              label=evo_label,
+                              version=latest_version)
         evolution.save(using=using)
 
 
@@ -80,18 +78,16 @@ def _on_app_models_updated(app, verbosity=1, using=DEFAULT_DB_ALIAS, **kwargs):
             Additional keyword arguments provided by the signal handler for
             the syncdb or migrate operation.
     """
-    proj_sig = ProjectSignature.from_database(using).serialize()
-    signature = pickle_dumps(proj_sig)
+    project_sig = ProjectSignature.from_database(using)
 
     try:
-        latest_version = \
-            django_evolution.Version.objects.current_version(using=using)
-    except django_evolution.Version.DoesNotExist:
+        latest_version = Version.objects.current_version(using=using)
+    except Version.DoesNotExist:
         # We need to create a baseline version.
         if verbosity > 0:
             print("Installing baseline version")
 
-        latest_version = django_evolution.Version(signature=signature)
+        latest_version = Version(signature=project_sig)
         latest_version.save(using=using)
 
         for a in get_apps():
@@ -108,42 +104,44 @@ def _on_app_models_updated(app, verbosity=1, using=DEFAULT_DB_ALIAS, **kwargs):
 
     # Evolutions are checked over the entire project, so we only need to check
     # once. We do this check when Django Evolutions itself is synchronized.
-    if app == django_evolution:
-        old_proj_sig = pickle_loads(latest_version.signature)
+
+    if app is get_app('django_evolution'):
+        old_project_sig = latest_version.signature
 
         # If any models or apps have been added, a baseline must be set
         # for those new models
         changed = False
         new_apps = []
 
-        for app_name, new_app_sig in six.iteritems(proj_sig):
-            if app_name == '__version__':
-                # Ignore the __version__ tag
-                continue
-
-            old_app_sig = old_proj_sig.get(app_name, None)
+        for new_app_sig in project_sig.app_sigs:
+            app_id = new_app_sig.app_id
+            old_app_sig = old_project_sig.get_app_sig(app_id)
 
             if old_app_sig is None:
                 # App has been added
-                old_proj_sig[app_name] = proj_sig[app_name]
-                new_apps.append(app_name)
+                old_project_sig.add_app_sig(new_app_sig.clone())
+                new_apps.append(app_id)
                 changed = True
             else:
-                for model_name, new_model_sig in six.iteritems(new_app_sig):
-                    old_model_sig = old_app_sig.get(model_name, None)
+                for new_model_sig in new_app_sig.model_sigs:
+                    model_name = new_model_sig.model_name
+
+                    old_model_sig = old_app_sig.get_model_sig(model_name)
 
                     if old_model_sig is None:
                         # Model has been added
-                        old_proj_sig[app_name][model_name] = \
-                            proj_sig[app_name][model_name]
+                        old_app_sig.add_model_sig(
+                            project_sig
+                            .get_app_sig(app_id)
+                            .get_model_sig(model_name)
+                            .clone())
                         changed = True
 
         if changed:
             if verbosity > 0:
                 print("Adding baseline version for new models")
 
-            latest_version = \
-                django_evolution.Version(signature=pickle_dumps(old_proj_sig))
+            latest_version = Version(signature=old_project_sig)
             latest_version.save(using=using)
 
             for app_name in new_apps:
@@ -166,15 +164,13 @@ def _on_app_models_updated(app, verbosity=1, using=DEFAULT_DB_ALIAS, **kwargs):
         #     nudge.save()
         #     latest_version = nudge
 
-        diff = Diff(ProjectSignature.deserialize(old_proj_sig),
-                    ProjectSignature.deserialize(proj_sig))
+        diff = Diff(old_project_sig, project_sig)
 
         if not diff.is_empty():
             print(style.NOTICE(
                 'Project signature has changed - an evolution is required'))
 
             if verbosity > 1:
-                old_proj_sig = pickle_loads(latest_version.signature)
                 print(diff)
 
 

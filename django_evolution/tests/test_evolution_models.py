@@ -5,6 +5,7 @@ from datetime import datetime
 from django.test.testcases import TestCase
 
 from django_evolution.models import Version
+from django_evolution.signature import ProjectSignature
 
 
 class VersionManagerTests(TestCase):
@@ -18,8 +19,9 @@ class VersionManagerTests(TestCase):
         timestamp = datetime(year=2015, month=12, day=10, hour=12, minute=13,
                              second=14)
 
-        Version.objects.create(signature='abc123', when=timestamp)
-        version = Version.objects.create(signature='abc123-def456',
+        Version.objects.create(signature=ProjectSignature(),
+                               when=timestamp)
+        version = Version.objects.create(signature=ProjectSignature(),
                                          when=timestamp)
 
         latest_version = Version.objects.current_version()

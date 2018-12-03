@@ -1,8 +1,15 @@
 from __future__ import unicode_literals
 
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models.signals import post_init
+from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.timezone import now
+from django.utils.translation import ugettext_lazy as _
+
+from django_evolution.compat.py23 import pickle_dumps, pickle_loads
+from django_evolution.signature import ProjectSignature
 
 
 class VersionManager(models.Manager):
@@ -39,9 +46,169 @@ class VersionManager(models.Manager):
             raise self.model.DoesNotExist
 
 
+class SignatureField(models.TextField):
+    """A field for loading and storing project signatures.
+
+    This will handle deserializing any project signatures stored in the
+    database, converting them into a
+    :py:class:`~django_evolution.signatures.ProjectSignature`, and then
+    writing a serialized version back to the database.
+    """
+
+    description = _('Signature')
+
+    def contribute_to_class(self, cls, name):
+        """Perform operations when added to a class.
+
+        This will listen for when an instance is constructed in order to
+        perform some initial work.
+
+        Args:
+            cls (type):
+                The model class.
+
+            name (str):
+                The name of the field.
+        """
+        super(SignatureField, self).contribute_to_class(cls, name)
+
+        post_init.connect(self._post_init, sender=cls)
+
+    def value_to_string(self, obj):
+        """Return a serialized string value from the field.
+
+        Args:
+            obj (django.db.models.Model):
+                The model instance.
+
+        Returns:
+            unicode:
+            The serialized string contents.
+        """
+        return self._dumps(self.value_from_object(obj))
+
+    def to_python(self, value):
+        """Return a ProjectSignature value from the field contents.
+
+        Args:
+            value (object):
+                The current value assigned to the field. This might be
+                serialized string content or a
+                :py:class:`~django_evolution.signatures.ProjectSignature`
+                instance.
+
+        Returns:
+            django_evolution.signatures.ProjectSignature:
+            The project signature stored in the field.
+
+        Raises:
+            django.core.exceptions.ValidationError:
+                The field contents are of an unexpected type.
+        """
+        if isinstance(value, six.string_types):
+            return ProjectSignature.deserialize(pickle_loads(value))
+        elif isinstance(value, ProjectSignature):
+            return value
+        else:
+            raise ValidationError(
+                'Unsupported serialized signature type %s' % type(value),
+                code='invalid',
+                params={
+                    'value': value,
+                })
+
+    def get_prep_value(self, value):
+        """Return a prepared Python value to work with.
+
+        This simply wraps :py:meth:`to_python`.
+
+        Args:
+            value (object):
+                The current value assigned to the field. This might be
+                serialized string content or a
+                :py:class:`~django_evolution.signatures.ProjectSignature`
+                instance.
+
+        Returns:
+            django_evolution.signatures.ProjectSignature:
+            The project signature stored in the field.
+
+        Raises:
+            django.core.exceptions.ValidationError:
+                The field contents are of an unexpected type.
+        """
+        return self.to_python(value)
+
+    def get_db_prep_value(self, value, connection, prepared=False):
+        """Return a prepared value for use in database operations.
+
+        Args:
+            value (object):
+                The current value assigned to the field. This might be
+                serialized string content or a
+                :py:class:`~django_evolution.signatures.ProjectSignature`
+                instance.
+
+            connection (django.db.backends.base.BaseDatabaseWrapper):
+                The database connection to operate on.
+
+            prepared (bool, optional):
+                Whether the value is already prepared for Python.
+
+        Returns:
+            unicode:
+            The value prepared for database operations.
+        """
+        if not prepared:
+            value = self.get_prep_value(value)
+
+        return self._dumps(value)
+
+    def _post_init(self, instance, **kwargs):
+        """Handle the construction of a model instance.
+
+        This will ensure the value set on the field is a valid
+        :py:class:`~django_evolution.signatures.ProjectSignature` object.
+
+        Args:
+            instance (django.db.models.Model):
+                The model instance being constructed.
+
+            **kwargs (dict, unused):
+                Additional keyword arguments from the signal.
+        """
+        setattr(instance, self.attname,
+                self.to_python(self.value_from_object(instance)))
+
+    def _dumps(self, data):
+        """Serialize the project signature to a string.
+
+        Args:
+            data (object):
+                The signature data to dump. This might be serialized string
+                content or a
+                :py:class:`~django_evolution.signatures.ProjectSignature`
+                instance.
+
+        Returns:
+            django_evolution.signatures.ProjectSignature:
+            The project signature stored in the field.
+
+        Raises:
+            TypeError:
+                The data provided was not of a supported type.
+        """
+        if isinstance(data, six.string_types):
+            return data
+        elif isinstance(data, ProjectSignature):
+            return pickle_dumps(data.serialize())
+        else:
+            raise TypeError('Unsupported signature type %s' % type(data))
+
+
 @python_2_unicode_compatible
 class Version(models.Model):
-    signature = models.TextField()
+    signature = SignatureField()
     when = models.DateTimeField(default=now)
 
     objects = VersionManager()
