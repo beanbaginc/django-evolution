@@ -1,31 +1,31 @@
+"""Management command for applying, inspecting, and hinting evolutions."""
+
 from __future__ import print_function, unicode_literals
 
-import logging
+import textwrap
 import os
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import CommandError
-from django.db import connections, transaction
 from django.db.utils import DEFAULT_DB_ALIAS
+from django.dispatch import receiver
+from django.utils import six
 from django.utils.six.moves import input
+from django.utils.translation import ngettext, ugettext as _
 
-from django_evolution.compat.apps import get_apps, get_app
+from django_evolution.compat.apps import get_app
 from django_evolution.compat.commands import BaseCommand
-from django_evolution.db.state import DatabaseState
-from django_evolution.diff import Diff
 from django_evolution.errors import EvolutionException
-from django_evolution.evolve import get_unapplied_evolutions, get_mutations
-from django_evolution.models import Version, Evolution
-from django_evolution.mutations import AddField, DeleteApplication
-from django_evolution.mutators import AppMutator
-from django_evolution.signature import ProjectSignature
-from django_evolution.utils import (execute_sql, get_app_label,
-                                    get_evolutions_path, write_sql)
+from django_evolution.evolve import EvolveAppTask, Evolver, PurgeAppTask
+from django_evolution.signals import applied_evolution, applying_evolution
+from django_evolution.utils import get_evolutions_path, write_sql
 
 
 class Command(BaseCommand):
-    help = 'Evolve the models in a Django project.'
+    """Manages and applies evolutions to the database."""
+
+    help = 'Manage evolutions to the database schema based on model changes.'
     args = '<appname appname ...>'
 
     requires_model_validation = False
@@ -42,25 +42,28 @@ class Command(BaseCommand):
             action='store_false',
             dest='interactive',
             default=True,
-            help='Tells Django to NOT prompt the user for input of any kind.')
+            help=_('Automatically says yes to any prompts. When used with '
+                   '--execute, this will apply evolutions without first '
+                   'asking for confirmation.'))
         parser.add_argument(
             '--hint',
             action='store_true',
             dest='hint',
             default=False,
-            help='Generate an evolution script that would update the app.')
+            help=_('Display sample evolutions covering any new changes made '
+                   'to models since the last evolution.'))
         parser.add_argument(
             '--purge',
             action='store_true',
             dest='purge',
             default=False,
-            help='Generate evolutions to delete stale applications.')
+            help=_('Purge deleted applications from the evolution history.'))
         parser.add_argument(
             '--sql',
             action='store_true',
             dest='compile_sql',
             default=False,
-            help='Compile a Django evolution script into SQL.')
+            help=_('Display the evolutions as SQL.'))
         parser.add_argument(
             '-w',
             '--write',
@@ -68,408 +71,427 @@ class Command(BaseCommand):
             action='store',
             dest='write_evolution_name',
             default=None,
-            help='Write the generated evolutions to files with the given '
-                 'evolution name in each affected app\'s "evolutions" paths.')
+            help=_('Write the generated evolutions to files with the given '
+                   'evolution name in each affected app\'s "evolutions" '
+                   'paths.'))
         parser.add_argument(
             '-x',
             '--execute',
             action='store_true',
             dest='execute',
             default=False,
-            help='Apply the evolution to the database.')
+            help=_('Apply evolutions to the database.'))
         parser.add_argument(
             '--database',
             action='store',
             dest='database',
-            help='Nominates a database to synchronize.')
+            help=_('Specify the database containing models to synchronize.'))
 
     def handle(self, *app_labels, **options):
-        try:
-            self.evolve(*app_labels, **options)
-        except CommandError:
-            raise
-        except Exception as e:
-            logging.error('Unexpected error: %s' % e, exc_info=1)
-            raise
+        """Handle the command.
 
-    def evolve(self, *app_labels, **options):
+        This will validate the arguments and run through the evolution
+        process.
+
+        Args:
+            app_labels (list of unicode):
+                The app labels to evolve.
+
+            options (dict):
+                Options parsed by the argument parser.
+
+        Raises:
+            django.core.management.base.CommandError:
+                Arguments were invalid or something went wrong. Details are
+                in the message.
+        """
         if not getattr(settings, 'DJANGO_EVOLUTION_ENABLED', True):
             raise CommandError(
-                'Django Evolution is disabled for this project. Evolutions '
-                'cannot be manually run.')
+                _('Django Evolution is disabled for this project. '
+                  'Evolutions cannot be manually run.'))
 
-        self.hint = options['hint']
-        self.write_evolution_name = options.get('write_evolution_name')
-        self.verbosity = int(options['verbosity'])
-        self.interactive = options['interactive']
-        self.execute = options['execute']
-        self.compile_sql = options['compile_sql']
         self.purge = options['purge']
-        self.database = options['database']
+        self.verbosity = int(options['verbosity'])
 
-        if not self.database:
-            self.database = DEFAULT_DB_ALIAS
+        hint = options['hint']
+        compile_sql = options['compile_sql']
+        database_name = options['database'] or DEFAULT_DB_ALIAS
+        execute = options['execute']
+        interactive = options['interactive']
+        write_evolution_name = options['write_evolution_name']
 
-        if self.write_evolution_name and not self.hint:
-            raise CommandError('--write cannot be used without --hint.')
+        if app_labels and self.execute:
+            raise CommandError(
+                _('Cannot specify an application name when executing '
+                  'evolutions.'))
 
-        self.using_args = {
-            'using': self.database
-        }
-
-        # Use the list of all apps, unless app labels are specified.
-        if app_labels:
-            if self.execute:
-                raise CommandError('Cannot specify an application name when '
-                                   'executing evolutions.')
-            try:
-                app_list = [get_app(app_label) for app_label in app_labels]
-            except (ImproperlyConfigured, ImportError) as e:
-                raise CommandError("%s. Are you sure your INSTALLED_APPS "
-                                   "setting is correct?" % e)
-        else:
-            app_list = get_apps()
-
-        # Iterate over all applications running the mutations
-        self.evolution_required = False
-        self.simulated = True
-        self.new_evolutions = []
-        self.written_hint_files = []
-
-        self.database_state = DatabaseState(self.database)
-        self.current_proj_sig = ProjectSignature.from_database(self.database)
-        self.current_signature = self.current_proj_sig
-
-        sql = []
+        if write_evolution_name and not hint:
+            raise CommandError(_('--write cannot be used without --hint.'))
 
         try:
-            latest_version = \
-                Version.objects.current_version(using=self.database)
+            self.evolver = Evolver(database_name=database_name,
+                                   hinted=hint)
 
-            self.old_proj_sig = latest_version.signature
-            self.diff = Diff(self.old_proj_sig, self.current_proj_sig)
-        except Evolution.DoesNotExist:
-            raise CommandError("Can't evolve yet. Need to set an "
-                               "evolution baseline.")
+            # Figure out what tasks we need to add to the evolver. This
+            # must be done before we check any state (as that will finalize
+            # the task list).
+            self._add_tasks(app_labels)
 
-        try:
-            for app in app_list:
-                app_sql = self.evolve_app(app)
+            # Calculate some information we may need later.
+            self.active_purge_tasks = [
+                task
+                for task in self.evolver.tasks
+                if isinstance(task, PurgeAppTask) and len(task.sql) > 0
+            ]
 
-                if app_sql:
-                    sql.append((get_app_label(app), app_sql))
-
-            # Process the purged applications if requested to do so.
-            if self.purge:
-                purge_sql = self.purge_apps()
-
-                if purge_sql:
-                    sql.append((None, purge_sql))
-        except EvolutionException as e:
-            raise CommandError(str(e))
-
-        self.check_simulation()
-
-        if self.evolution_required:
-            self.perform_evolution(sql)
-        elif self.verbosity > 0:
-            self.stdout.write('No evolution required.\n')
-
-    def evolve_app(self, app):
-        app_label = get_app_label(app)
-        sql = []
-
-        if self.hint:
-            evolutions = []
-            hinted_evolution = self.diff.evolution()
-            temp_mutations = hinted_evolution.get(app_label, [])
-        else:
-            evolutions = get_unapplied_evolutions(app, self.database)
-            temp_mutations = get_mutations(app, evolutions, self.database)
-
-        mutations = [
-            mutation for mutation in temp_mutations
-            if mutation.is_mutable(app_label, self.old_proj_sig,
-                                   self.database_state, self.database)
-        ]
-
-        if mutations:
-            app_sql = ['', '-- Evolve application %s' % app_label]
-            self.evolution_required = True
-
-            app_mutator = AppMutator(app_label, self.old_proj_sig,
-                                     self.database_state, self.database)
-            app_mutator.run_mutations(mutations)
-            app_mutator_sql = app_mutator.to_sql()
-
-            if self.compile_sql or self.execute:
-                app_sql.extend(app_mutator_sql)
-
-            if not app_mutator.can_simulate:
-                self.simulated = False
-
-            self.new_evolutions.extend(
-                Evolution(app_label=app_label, label=label)
-                for label in evolutions)
-
-            if not self.execute:
-                if self.compile_sql:
-                    write_sql(app_sql, self.database)
-                else:
-                    hinted_evolution = (
-                        '%s\n'
-                        % self.generate_hint(app, app_label, mutations)
-                    )
-
-                    if self.hint and self.write_evolution_name:
-                        evolutions_filename = \
-                            os.path.join(get_evolutions_path(app),
-                                         self.write_evolution_name + '.py')
-                        assert evolutions_filename
-
-                        self.written_hint_files.append((evolutions_filename,
-                                                        hinted_evolution))
-                    else:
-                        self.stdout.write(hinted_evolution)
-
-            sql.extend(app_sql)
-        else:
+            # Display any additional information on the evolution process
+            # the caller may be interested in.
             if self.verbosity > 1:
-                self.stdout.write('Application %s is up to date\n' % app_label)
+                self._display_extra_task_details()
 
-        return sql
+            # Simulate the evolutions to make sure that they'll get us to the
+            # target database state. This will raise a CommandError with
+            # helpful information if the evolutions don't get us there, or
+            # if one or more evolutions couldn't be simulated.
+            simulated = self._check_simulation()
 
-    def purge_apps(self):
-        sql = []
-
-        if self.diff.deleted:
-            self.evolution_required = True
-            delete_app = DeleteApplication()
-            purge_sql = []
-
-            for app_label in self.diff.deleted:
-                if delete_app.is_mutable(app_label, self.old_proj_sig,
-                                         self.database_state,
-                                         self.database):
-                    app_mutator = AppMutator(app_label, self.old_proj_sig,
-                                             self.database_state,
-                                             self.database)
-                    app_mutator.run_mutation(delete_app)
-                    app_mutator_sql = app_mutator.to_sql()
-
-                    if self.compile_sql or self.execute:
-                        purge_sql.append('-- Purge application %s'
-                                         % app_label)
-                        purge_sql.extend(app_mutator_sql)
-
-            if not self.execute:
-                if self.compile_sql:
-                    write_sql(purge_sql, self.database)
+            if not self.evolver.get_evolution_required():
+                if self.verbosity > 0:
+                    self.stdout.write(_('No evolution required.\n'))
+            elif execute:
+                if not interactive or self._confirm_execute():
+                    self._perform_evolution()
                 else:
-                    self.stdout.write(
-                        'The following application(s) can be purged:\n')
+                    self.stderr.write(_('Evolution cancelled.\n'))
+            elif compile_sql:
+                self._display_compiled_sql()
+            else:
+                # Be helpful and list any applications that can be purged,
+                # and then show any evolution content that may be useful to
+                # the user.
+                self._display_available_purges()
+                self._generate_evolution_contents(write_evolution_name)
 
-                    for app_label in self.diff.deleted:
-                        self.stdout.write('    %s\n' % app_label)
+                if simulated:
+                    if self.verbosity > 0:
+                        self.stdout.write(_('Trial evolution successful!\n'))
 
+                    if not self.evolver.hinted and self.verbosity > 0:
+                        self.stdout.write(_(
+                            'Run `./manage.py evolve --execute` to apply '
+                            'the evolution.\n'))
+        except EvolutionException as e:
+            raise CommandError(six.text_type(e))
+
+    def _add_tasks(self, app_labels):
+        """Add tasks to the evolver, based on the command options.
+
+        This will queue up the applications that need to be evolved, and
+        queue up the purging of stale applications if requested.
+
+        Args:
+            app_labels (list of unicode):
+                The list of app labels to evolve. If this is empty, all
+                registered apps will be evolved.
+        """
+        evolver = self.evolver
+
+        if app_labels:
+            # The caller wants to evolve specific apps. Queue each one,
+            # handling any invalid app labels in the process.
+            try:
+                for app_label in app_labels:
+                    evolver.queue_evolve_app(get_app(app_label))
+            except (ImportError, ImproperlyConfigured) as e:
+                raise CommandError(
+                    _('%s. Are you sure your INSTALLED_APPS setting is '
+                      'correct?')
+                    % e)
+        else:
+            # The caller wants the default behavior of evolving all apps
+            # with pending evolutions.
+            evolver.queue_evolve_all_apps()
+
+        if self.purge:
+            # The caller wants to purge all old stale applications that
+            # no longer exist.
+            #
+            # Note that we don't do this by default, since those apps
+            # might not be permanently added to the list of installed apps.
+            evolver.queue_purge_old_apps()
+
+    def _display_extra_task_details(self):
+        """Display some informative state about queued tasks.
+
+        This will list any applications that are already up-tp-date, and
+        list whether or not any applications need to be purged.
+        """
+        # List all applications that appear up-to-date.
+        for task in self.evolver.tasks:
+            if isinstance(task, EvolveAppTask) and not task.can_evolve:
+                self.stdout.write(_('Application "%s" is up-to-date\n')
+                                  % task.app_label)
+
+        if self.purge and not self.active_purge_tasks:
+            # List whether there are any applications that need to be
+            # purged.
+            self.stdout.write(_('No applications need to be purged.\n'))
+
+    def _check_simulation(self):
+        """Check the results of a simulation.
+
+        This will check first if a simulation could even occur (based on
+        whether there are raw SQL mutations that are going to be applied). If a
+        simulation did occur, information on the simulation results and
+        the resulting signature diff will be displayed.
+
+        If a simulation either could not be performed, or was performed and
+        succeeded, a result will be returned so that the caller can perform
+        additional operations based on that state.
+
+        If a simulation could be performed but failed, this will immediately
+        terminate the command with an error message.
+
+        Returns:
+            bool:
+            ```True`` if the simulation was successful and all changes were
+            resolved. ``False`` if a simulation could not be performed due to
+            raw SQL mutations.
+
+        Raises:
+            django.core.management.base.CommandError:
+                A simulation was performed, but changes could not be resolved.
+        """
+        if not self.evolver.can_simulate():
+            self.stdout.write(self.style.NOTICE(
+                _('Evolution could not be simulated, possibly due '
+                  'to raw SQL mutations\n')))
+
+            return False
+
+        diff = self.evolver.diff_evolutions()
+
+        if diff.is_empty(ignore_apps=not self.purge):
+            return True
+
+        if self.evolver.hinted:
+            self.stderr.write(self._wrap_paragraphs(_(
+                'Your models contain changes that Django Evolution '
+                'cannot resolve automatically.\n'
+                '\n'
+                'This is probably due to a currently unimplemented '
+                'mutation type. You will need to manually construct a '
+                'mutation to resolve the remaining changes.')))
+        else:
+            self.stderr.write(self._wrap_paragraphs(_(
+                'The stored evolutions do not completely resolve '
+                'all model changes.\n'
+                '\n'
+                'Run `./manage.py evolve --hint` to see a '
+                'suggestion for the changes required.')))
+
+        self.stdout.write('\n\n')
+        self.stdout.write(self._wrap_paragraphs(_(
+            'The following are the changes that could not be resolved:')))
+        self.stdout.write('\n%s\n' % diff)
+
+        raise CommandError(_(
+            'Your models contain changes that Django Evolution cannot '
+            'resolve automatically.'))
+
+    def _confirm_execute(self):
+        """Prompt the user to confirm execution of an evolution.
+
+        This will warn the user of the risks of evolving the database and
+        to recommend a backup. It will then prompt for confirmation, returning
+        the result.
+
+        Returns:
+            bool:
+            ``True`` if the user confirmed the execution. ``False`` if the
+            execution should be cancelled.
+        """
+        prompt = self._wrap_paragraphs(
+            _('You have requested a database evolution. This will alter '
+              'tables and data currently in the "%s" database, and may '
+              'result in IRREVERSABLE DATA LOSS. Evolutions should be '
+              '*thoroughly* reviewed prior to execution.\n'
+              '\n'
+              'MAKE A BACKUP OF YOUR DATABASE BEFORE YOU CONTINUE!\n'
+              '\n'
+              'Are you sure you want to execute the evolutions?\n'
+              '\n'
+              'Type "yes" to continue, or "no" to cancel:')
+            % self.evolver.database_name)
+
+        # Note that we must append a space here, rather than above, since the
+        # paragraph wrapping logic will strip trailing whitespace.
+        return input('%s ' % prompt).lower() == 'yes'
+
+    def _perform_evolution(self):
+        """Perform the evolution.
+
+        This will perform the evolution, based on the options passed to this
+        command. Progress on the evolution will be printed to the console.
+
+        Raises:
+            django.core.management.base.CommandError:
+                The evolution failed.
+        """
+        evolver = self.evolver
+        verbosity = self.verbosity
+
+        if verbosity > 0:
+            @receiver(applying_evolution, sender=evolver)
+            def _on_applying_evolution(task, **kwargs):
+                self.stdout.write(
+                    _('Applying database evolution for %s...\n')
+                    % task.app_label)
+
+        if verbosity > 1:
+            @receiver(applied_evolution, sender=evolver)
+            def _on_applied_evolution(task, **kwargs):
+                self.stdout.write(
+                    _('Successfully applied database evolution for %s.\n')
+                    % task.app_label)
+
+        self.stdout.write(
+            '\n%s\n\n'
+            % self._wrap_paragraphs(_(
+                'This may take a while. Please be patient, and DO NOT '
+                'cancel the upgrade!')))
+
+        try:
+            evolver.evolve()
+        except EvolutionException as e:
+            self.stderr.write('%s\n' % e)
+
+            if getattr(e, 'last_sql_statement', None):
+                self.stderr.write(
+                    _('The SQL statement that failed was: %s\n')
+                    % e.last_sql_statement)
+
+            raise CommandError(six.text_type(e))
+
+        if verbosity > 0:
+            self.stdout.write(_('The evolution was successful!\n'))
+
+    def _display_compiled_sql(self):
+        """Display the compiled SQL for the evolution run.
+
+        This will output the SQL that would be executed based on the options
+        passed to the command.
+        """
+        database_name = self.evolver.database_name
+
+        for i, task in enumerate(self.evolver.tasks):
+            if task.sql:
+                if i > 0:
                     self.stdout.write('\n')
 
-            sql.extend(purge_sql)
-        else:
-            if self.verbosity > 1:
-                self.stdout.write('No applications need to be purged.\n')
+                self.stdout.write('-- %s\n' % task)
+                write_sql(task.sql, database_name)
 
-        return sql
+    def _display_available_purges(self):
+        """Display the apps that can be purged."""
+        purge_tasks = self.active_purge_tasks
 
-    def check_simulation(self):
-        if self.simulated:
-            diff = Diff(self.old_proj_sig, self.current_proj_sig)
+        if purge_tasks:
+            self.stdout.write(
+                ngettext('The following application can be purged:',
+                         'The following applications can be purged:',
+                         len(purge_tasks)))
+            self.stdout.write('\n')
 
-            if not diff.is_empty(not self.purge):
-                if self.hint:
-                    self.stdout.write(self.style.ERROR(
-                        'Your models contain changes that Django Evolution '
-                        'cannot resolve automatically.\n'))
-                    self.stdout.write(
-                        'This is probably due to a currently unimplemented '
-                        'mutation type.\n')
-                    self.stdout.write(
-                        'You will need to manually construct a mutation '
-                        'to resolve the remaining changes.\n')
-                else:
-                    self.stdout.write(self.style.ERROR(
-                        'The stored evolutions do not completely resolve '
-                        'all model changes.\n'))
-                    self.stdout.write(
-                        'Run `./manage.py evolve --hint` to see a '
-                        'suggestion for the changes required.\n')
+            for purge_task in purge_tasks:
+                self.stdout.write('    * %s\n' % purge_task.app_label)
 
-                self.stdout.write(
-                    '\n'
-                    'The following are the changes that could not be '
-                    'resolved:\n'
-                    '%s\n'
-                    % diff)
+            self.stdout.write('\n')
+        elif self.verbosity > 1:
+            self.stdout.write(_('No applications need to be purged.\n'))
 
-                raise CommandError('Your models contain changes that Django '
-                                   'Evolution cannot resolve automatically.')
-        else:
-            self.stdout.write(self.style.NOTICE(
-                'Evolution could not be simulated, possibly due to raw '
-                'SQL mutations\n'))
+    def _generate_evolution_contents(self, evolution_label=None):
+        """Generate the contents of evolution files or hinted evolutions.
 
-    def perform_evolution(self, sql):
-        if self.execute:
-            # Now that we've worked out the mutations required,
-            # and we know they simulate OK, run the evolutions
-            if self.interactive:
-                confirm = input("""
-You have requested a database evolution. This will alter tables
-and data currently in the %r database, and may result in
-IRREVERSABLE DATA LOSS. Evolutions should be *thoroughly* reviewed
-prior to execution.
+        This will grab the contents of either the stored evolution files
+        or hinted evolutions (if using ``--hint``) and write them to the
+        console or to generated evolution files (if using ``--write``).
 
-MAKE A BACKUP OF YOUR DATABASE BEFORE YOU CONTINUE!
+        Args:
+            evolution_label (unicode, optional):
+                The label used as a base for any generated filenames.
+                If provided, the filenames will be written to the appropriate
+                evolution directories, with a ``.py`` appended.
 
-Are you sure you want to execute the evolutions?
+        Raises:
+            django.core.management.base.CommandError:
+                An evolution file couldn't be written. Details are in the
+                error message.
+        """
+        evolution_contents = self.evolver.iter_evolution_content()
 
-Type 'yes' to continue, or 'no' to cancel: """ % self.database)
-            else:
-                confirm = 'yes'
+        if evolution_label:
+            # We're writing the hinted evolution files to disk. Notify the user
+            # and begin writing.
+            verbosity = self.verbosity
 
-            if confirm.lower() == 'yes':
-                connection = connections[self.database]
-                connection.disable_constraint_checking()
+            if verbosity > 0:
+                self.stdout.write('\n%s\n\n' % self._wrap_paragraphs(_(
+                    'The following evolution files were written. Verify the '
+                    'contents and add them to the SEQUENCE lists in each '
+                    '__init__.py.')))
 
-                # Begin Transaction
-                with connection.constraint_checks_disabled(), \
-                     transaction.atomic(**self.using_args):
-                    # TODO: Close the cursor when this succeeds/fails.
-                    cursor = connection.cursor()
-                    app_label = None
+            for task, content in evolution_contents:
+                assert hasattr(task, 'app')
 
-                    self.stdout.write(
-                        '\n'
-                        'This may take a while. Please be patient, and do not '
-                        'cancel the upgrade!\n'
-                        '\n')
+                dirname = get_evolutions_path(task.app)
+                filename = os.path.join(dirname, '%s.py' % evolution_label)
 
+                if not os.path.exists(dirname):
                     try:
-                        # Perform the SQL
-                        for app_label, app_sql in sql:
-                            if app_label and self.verbosity > 0:
-                                self.stdout.write(
-                                    'Applying database evolutions for %s...\n'
-                                    % app_label)
-
-                            execute_sql(cursor, app_sql, self.database)
-
-                        # Now update the evolution table
-                        version = Version(signature=self.current_signature)
-                        version.save(**self.using_args)
-
-                        for evolution in self.new_evolutions:
-                            evolution.version = version
-                            evolution.save(**self.using_args)
-                    except Exception as e:
-                        self.stdout.write(
-                            self.style.ERROR(
-                                'Database evolutions for %s failed!'
-                                % app_label))
-
-                        if hasattr(e, 'last_sql_statement'):
-                            self.stdout.write(
-                                self.style.ERROR('The SQL statement was: %s'
-                                                 % e.last_sql_statement))
-
-                        self.stdout.write(
-                            self.style.ERROR('The database error was: %s\n'
-                                             % e))
-
+                        os.mkdir(dirname, 0o755)
+                    except IOError as e:
                         raise CommandError(
-                            'Error applying evolution for %s: %s'
-                            % (app_label, e))
+                            _('Unable to create evolutions directory "%s": %s')
+                            % (dirname, e))
 
-                if self.verbosity > 0:
-                    self.stdout.write('Evolution successful.\n')
-            else:
-                self.stdout.write(self.style.ERROR('Evolution cancelled.\n'))
-        elif not self.compile_sql and self.verbosity > 0 and self.simulated:
-            self.stdout.write('Trial evolution successful.\n')
+                try:
+                    with open(filename, 'w') as fp:
+                        fp.write(content.strip())
+                        fp.write('\n')
+                except Exception as e:
+                    raise CommandError(
+                        _('Unable to write evolution file "%s": %s')
+                        % (filename, e))
 
-            if self.hint:
-                if self.write_evolution_name:
-                    self.stdout.write(
-                        '\n'
-                        'The following evolution files were written. '
-                        'Verify the contents and add them\n'
-                        'to the SEQUENCE lists in each __init__.py.\n\n')
+                if verbosity > 0:
+                    self.stdout.write('  * %s\n' % os.path.relpath(filename))
+        else:
+            # We're just going to output the hint content.
+            for i, (task, content) in enumerate(evolution_contents):
+                assert hasattr(task, 'app_label')
 
-                    for filename, hinted_evolution in self.written_hint_files:
-                        evolutions_dir = os.path.dirname(filename)
+                self.stdout.write('#----- Evolution for %s\n' % task.app_label)
+                self.stdout.write(content.strip())
+                self.stdout.write('#----------------------\n')
 
-                        if not os.path.exists(evolutions_dir):
-                            os.mkdir(evolutions_dir, 0o755)
+            self.stdout.write('\n')
 
-                        with open(filename, 'w') as fp:
-                            fp.write(hinted_evolution)
+    def _wrap_paragraphs(self, text):
+        """Wrap a block of text into paragraphs.
 
-                        self.stdout.write('  * %s\n'
-                                          % os.path.relpath(filename))
-            else:
-                self.stdout.write("Run './manage.py evolve --execute' to "
-                                  "apply evolution.\n")
+        This will take paragraphs worth of text and wrap them to fit in a
+        standard terminal width, helping provide more readable output.
 
-    def generate_hint(self, app, app_label, mutations):
-        imports = set()
-        project_imports = set()
-        mutation_types = set()
+        Args:
+            text (unicode):
+                The text to wrap.
 
-        app_prefix = app.__name__.split('.')[0]
-
-        for m in mutations:
-            mutation_types.add(m.__class__.__name__)
-
-            if isinstance(m, AddField):
-                field_module = m.field_type.__module__
-
-                if field_module.startswith('django.db.models'):
-                    imports.add('from django.db import models')
-                else:
-                    import_str = 'from %s import %s' % \
-                                 (field_module, m.field_type.__name__)
-
-                    if field_module.startswith(app_prefix):
-                        project_imports.add(import_str)
-                    else:
-                        imports.add(import_str)
-
-        lines = []
-
-        if not self.write_evolution_name:
-            lines.append('#----- Evolution for %s' % app_label)
-
-        lines += [
-            'from __future__ import unicode_literals',
-            '',
-        ]
-
-        lines.append('from django_evolution.mutations import %s'
-                     % ', '.join(sorted(mutation_types)))
-        lines += sorted(imports)
-
-        if project_imports:
-            lines += [''] + sorted(project_imports)
-
-        lines += [
-            '',
-            '',
-            'MUTATIONS = [',
-        ] + ['    %s,' % mutation for mutation in mutations] + [
-            ']',
-        ]
-
-        if not self.write_evolution_name:
-            lines.append('#----------------------')
-
-        return '\n'.join(lines)
+        Returns:
+            unicode:
+            The wrapped text.
+        """
+        return '\n'.join(
+            textwrap.fill(paragraph)
+            for paragraph in text.splitlines()
+        )

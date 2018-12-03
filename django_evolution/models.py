@@ -213,8 +213,20 @@ class Version(models.Model):
 
     objects = VersionManager()
 
+    def is_hinted(self):
+        """Return whether this is a hinted version.
+
+        Hinted versions store a signature without any accompanying evolutions.
+
+        Returns:
+            bool:
+            ``True`` if this is a hinted evolution. ``False`` if it's based on
+            explicit evolutions.
+        """
+        return not self.evolutions.exists()
+
     def __str__(self):
-        if not self.evolutions.count():
+        if self.is_hinted():
             return 'Hinted version, updated on %s' % self.when
 
         return 'Stored version, updated on %s' % self.when
@@ -232,8 +244,9 @@ class Evolution(models.Model):
     app_label = models.CharField(max_length=200)
     label = models.CharField(max_length=100)
 
-    class Meta:
-        db_table = 'django_evolution'
-
     def __str__(self):
         return 'Evolution %s, applied to %s' % (self.label, self.app_label)
+
+    class Meta:
+        db_table = 'django_evolution'
+        ordering = ('id',)

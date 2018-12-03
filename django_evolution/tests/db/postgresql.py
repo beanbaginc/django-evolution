@@ -1404,3 +1404,16 @@ preprocessing = {
 
     'noop': '',
 }
+
+
+evolver = {
+    'evolve_app_task': (
+        'ALTER TABLE "tests_testmodel"'
+        ' ALTER COLUMN "value" TYPE varchar(100)'
+        ' USING CAST("value" as varchar(100));'
+    ),
+
+    'purge_app_task': (
+        'DROP TABLE "tests_testmodel";'
+    ),
+}

@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import logging
+from contextlib import contextmanager
 from functools import partial
 
 import django
@@ -288,6 +289,64 @@ def create_test_project_sig(models, app_label='tests', version=1):
     return project_sig
 
 
+def execute_transaction(sql, database=DEFAULT_DB_ALIAS):
+    """Execute SQL in a new transaction.
+
+    Args:
+        sql (unicode or list):
+            The SQL to execute. This must be a value accepted by
+            :py:func:`~django_evolution.utils.execute_sql`.
+
+        database (unicode, optional):
+            The name of the database to use.
+    """
+    connection = connections[database]
+
+    try:
+        with connection.constraint_checks_disabled():
+            with atomic(using=database):
+                execute_sql(connection.cursor(), sql, database)
+    except Exception as e:
+        logging.exception('Error executing SQL %s: %s', sql, e)
+        raise
+
+
+@contextmanager
+def ensure_test_db(model_entries, app_label='tests',
+                   database=DEFAULT_DB_ALIAS):
+    """Ensure tables are created and destroyed when running code.
+
+    This will register all necessary models and indexes, provided by the
+    caller, and populate them in the database. After the inner context has
+    completed, the models and indexes will be destroyed.
+
+    Args:
+        model_entries (list of tuple):
+            The list of model entries to add to the database. Each entry
+            is a tuple containing the model class and the name to register
+            for it.
+
+        app_label (unicode, optional):
+            The application label for the models to register.
+
+        database (unicode, optional):
+            The name of the database to execute on.
+    """
+    # Set up the initial state of the app cache.
+    register_app_models(app_label, model_entries, reset=True)
+
+    # Install the initial tables and indexes.
+    execute_transaction(sql_create(evo_test, database),
+                        database)
+
+    try:
+        yield
+    finally:
+        # Clean up the database.
+        execute_transaction(sql_delete(evo_test, database),
+                            database)
+
+
 def execute_test_sql(start_sig, end_sig, generate_sql_func, app_label='tests',
                      database=DEFAULT_DB_ALIAS):
     """Execute SQL for a unit test.
@@ -324,24 +383,9 @@ def execute_test_sql(start_sig, end_sig, generate_sql_func, app_label='tests',
         list of unicode:
         The list of executed SQL statements for the test.
     """
-    def _execute_transaction(sql):
-        try:
-            with db_connection.constraint_checks_disabled(), \
-                 atomic(using=database):
-                execute_sql(db_connection.cursor(), sql, database)
-        except Exception as e:
-            logging.exception('Error executing SQL %s: %s', sql, e)
-            raise
-
-    db_connection = connections[database]
-
-    # Set up the initial state of the app cache.
-    register_app_models(app_label, six.iteritems(start_sig), reset=True)
-
-    # Install the initial tables and indexes.
-    _execute_transaction(sql_create(evo_test, database))
-
-    try:
+    with ensure_test_db(model_entries=six.iteritems(start_sig),
+                        app_label=app_label,
+                        database=database):
         # Set the app cache to the end state. generate_sql will depend on
         # this state.
         register_app_models(app_label, six.iteritems(end_sig), reset=True)
@@ -349,12 +393,9 @@ def execute_test_sql(start_sig, end_sig, generate_sql_func, app_label='tests',
         # Execute and output the SQL for the test.
         sql = generate_sql_func()
         sql_out = write_sql(sql, database)
-        _execute_transaction(sql)
+        execute_transaction(sql, database)
 
         return sql_out
-    finally:
-        # Clean up the database.
-        _execute_transaction(sql_delete(evo_test, database))
 
 
 def get_sql_mappings(mapping_key, db_name):

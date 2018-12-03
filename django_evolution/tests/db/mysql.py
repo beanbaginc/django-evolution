@@ -1177,3 +1177,17 @@ preprocessing = {
 
     'noop': '',
 }
+
+
+evolver = {
+    'evolve_app_task': '\n'.join([
+        'UPDATE `tests_testmodel` SET `value`=LEFT(`value`,100);',
+
+        'ALTER TABLE `tests_testmodel`'
+        ' MODIFY COLUMN `value` varchar(100);',
+    ]),
+
+    'purge_app_task': (
+        'DROP TABLE `tests_testmodel`;'
+    ),
+}

@@ -266,6 +266,27 @@ class AppMutator(object):
     to get the SQL statements needed to apply those operations. Once called,
     the mutator is finalized, and new operations cannot be added.
     """
+
+    @classmethod
+    def from_evolver(cls, evolver, app_label):
+        """Create an AppMutator based on the state from an Evolver.
+
+        Args:
+            evolver (django_evolution.evolve.Evolver):
+                The Evolver containing the state for the app mutator.
+
+            app_label (unicode):
+                The label of the app to evolve.
+
+        Returns:
+            AppMutator:
+            The new app mutator.
+        """
+        return cls(app_label=app_label,
+                   project_sig=evolver.project_sig,
+                   database_state=evolver.database_state,
+                   database=evolver.database_name)
+
     def __init__(self, app_label, project_sig, database_state, database=None):
         self.app_label = app_label
         self.project_sig = project_sig

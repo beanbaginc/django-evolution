@@ -2989,3 +2989,30 @@ preprocessing = {
 
     'noop': '',
 }
+
+
+evolver = {
+    'evolve_app_task': '\n'.join([
+        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
+        '("id" integer NULL UNIQUE PRIMARY KEY,'
+        ' "value" varchar(100) NULL);',
+
+        'INSERT INTO "TEMP_TABLE" ("id", "value")'
+        ' SELECT "id", "value" FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'CREATE TABLE "tests_testmodel"'
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "value" varchar(100) NOT NULL);',
+
+        'INSERT INTO "tests_testmodel" ("id", "value")'
+        ' SELECT "id", "value" FROM "TEMP_TABLE";',
+
+        'DROP TABLE "TEMP_TABLE";',
+    ]),
+
+    'purge_app_task': (
+        'DROP TABLE "tests_testmodel";'
+    ),
+}
