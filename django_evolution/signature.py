@@ -16,9 +16,8 @@ from django_evolution.compat.models import (GenericRelation,
                                             get_models,
                                             get_remote_field,
                                             get_remote_field_model)
-from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.errors import MissingSignatureError
-from django_evolution.utils import get_app_label
+from django_evolution.utils.apps import get_app_label
 
 
 DEFAULT_SIGNATURE_VERSION = 1

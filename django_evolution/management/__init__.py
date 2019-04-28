@@ -10,11 +10,11 @@ from django.db.utils import DEFAULT_DB_ALIAS
 
 from django_evolution.compat.apps import get_apps, get_app
 from django_evolution.diff import Diff
-from django_evolution.evolve import (get_evolution_sequence,
-                                     get_unapplied_evolutions)
 from django_evolution.models import Evolution, Version
 from django_evolution.signature import ProjectSignature
-from django_evolution.utils import get_app_label
+from django_evolution.utils.apps import get_app_label
+from django_evolution.utils.evolutions import (get_evolution_sequence,
+                                               get_unapplied_evolutions)
 
 
 style = color_style()

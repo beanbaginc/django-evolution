@@ -10,7 +10,7 @@ from django_evolution.mutations import (AddField, BaseModelMutation,
                                         ChangeField, ChangeMeta,
                                         DeleteField, DeleteModel,
                                         RenameField, RenameModel)
-from django_evolution.utils import get_database_for_model_name
+from django_evolution.utils.models import get_database_for_model_name
 
 
 class ModelMutator(object):

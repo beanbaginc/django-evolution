@@ -19,7 +19,7 @@ from django_evolution.mock_models import MockModel, MockRelated, create_field
 from django_evolution.signature import (FieldSignature,
                                         IndexSignature,
                                         ProjectSignature)
-from django_evolution.utils import get_database_for_model_name
+from django_evolution.utils.models import get_database_for_model_name
 
 
 class Simulation(object):

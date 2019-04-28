@@ -19,7 +19,8 @@ from django_evolution.compat.commands import BaseCommand
 from django_evolution.errors import EvolutionException
 from django_evolution.evolve import EvolveAppTask, Evolver, PurgeAppTask
 from django_evolution.signals import applied_evolution, applying_evolution
-from django_evolution.utils import get_evolutions_path, write_sql
+from django_evolution.utils.evolutions import get_evolutions_path
+from django_evolution.utils.sql import write_sql
 
 
 class Command(BaseCommand):

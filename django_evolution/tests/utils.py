@@ -26,7 +26,7 @@ from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.signature import (AppSignature, ModelSignature,
                                         ProjectSignature)
 from django_evolution.tests import models as evo_test
-from django_evolution.utils import execute_sql, write_sql
+from django_evolution.utils.sql import execute_sql, write_sql
 
 
 test_connections = ConnectionHandler(settings.TEST_DATABASES)
