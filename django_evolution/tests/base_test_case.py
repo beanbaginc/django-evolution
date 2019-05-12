@@ -21,6 +21,8 @@ from django_evolution.tests.utils import (create_test_project_sig,
 class TestCase(TransactionTestCase):
     """Base class for all Django Evolution test cases."""
 
+    ws_re = re.compile(r'\s+')
+
     def shortDescription(self):
         """Returns the description of the current test.
 
@@ -46,8 +48,6 @@ class EvolutionTestCase(TestCase):
     default_base_model = None
     default_pre_extra_models = []
     default_extra_models = []
-
-    ws_re = re.compile(r'\s+')
 
     # Allow for diffs for large dictionary structures, to help debug
     # signature failures.
