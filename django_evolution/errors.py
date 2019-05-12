@@ -85,3 +85,17 @@ class EvolutionTaskAlreadyQueuedError(QueueEvolverTaskError):
 
 class EvolutionBaselineMissingError(EvolutionException):
     """An evolution baseline is missing."""
+
+
+class InvalidSignatureVersion(EvolutionException):
+    """An invalid signature version was provided or found."""
+
+    def __init__(self, version):
+        """Initialize the exception.
+
+        Args:
+            version (int):
+                The invalid signature version.
+        """
+        super(InvalidSignatureVersion, self).__init__(
+            '%s is not a known signature version' % version)

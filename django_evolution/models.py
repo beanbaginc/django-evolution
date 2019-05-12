@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+import json
+
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import post_init
@@ -8,6 +10,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.timezone import now
 from django.utils.translation import ugettext_lazy as _
 
+from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.py23 import pickle_dumps, pickle_loads
 from django_evolution.signature import ProjectSignature
 
@@ -106,7 +109,13 @@ class SignatureField(models.TextField):
                 The field contents are of an unexpected type.
         """
         if isinstance(value, six.string_types):
-            return ProjectSignature.deserialize(pickle_loads(value))
+            if value.startswith('json!'):
+                loaded_value = json.loads(value[len('json!'):],
+                                          object_pairs_hook=OrderedDict)
+            else:
+                loaded_value = pickle_loads(value)
+
+            return ProjectSignature.deserialize(loaded_value)
         elif isinstance(value, ProjectSignature):
             return value
         else:
@@ -191,7 +200,7 @@ class SignatureField(models.TextField):
                 instance.
 
         Returns:
-            django_evolution.signatures.ProjectSignature:
+            unicode:
             The project signature stored in the field.
 
         Raises:
@@ -201,7 +210,13 @@ class SignatureField(models.TextField):
         if isinstance(data, six.string_types):
             return data
         elif isinstance(data, ProjectSignature):
-            return pickle_dumps(data.serialize())
+            serialized_data = data.serialize()
+            sig_version = serialized_data['__version__']
+
+            if sig_version >= 2:
+                return 'json!%s' % json.dumps(serialized_data)
+            else:
+                return pickle_dumps(serialized_data)
         else:
             raise TypeError('Unsupported signature type %s' % type(data))
 

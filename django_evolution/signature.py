@@ -1,10 +1,116 @@
+"""Classes for working with stored evolution state signatures.
+
+These provide a way to work with the state of Django apps and their models in
+an abstract way, and to deserialize from or serialize to a string. Signatures
+can also be diffed, showing the changes between an older and a newer version
+in order to help see how the current database's signature differs from an older
+stored version.
+
+Serialized versions of signatures are versioned, and the signature classes
+handle loading and saving as any version. However, state may be lost when
+downgrading a signature.
+
+The following versions are currently supported:
+
+Version 1:
+    The original version of the signature, used up until Django Evolution
+    1.0. This is in the form of::
+
+        {
+            '__version__': 1,
+            '<legacy_app_label>': {
+                '<model_name>': {
+                    'meta': {
+                        'db_table': '<table name>',
+                        'db_tablespace': '<tablespace>',
+                        'index_together': [
+                            ('<colname>', ...),
+                            ...
+                        ],
+                        'indexes': [
+                            {
+                                'name': '<name>',
+                                'fields': ['<colname>', ...],
+                            },
+                            ...
+                        ],
+                        'pk_column': '<colname>',
+                        'unique_together': [
+                            ('<colname>', ...),
+                            ...
+                        ],
+                        '__unique_together_applied': True|False,
+                    },
+                    'fields': {
+                        'field_type': <class>,
+                        'related_model': '<app_label>.<class_name>',
+                        '<field_attr>': <value>,
+                        ...
+                    },
+                },
+                ...
+            },
+            ...
+        }
+
+
+Version 2:
+    Introduced in Django Evolution 2.0. This differs from version 1 in
+    that it's deeper, with explicit namespaces for apps, models, and
+    field attributes that can exist alongside metadata keys. This is
+    in the form of::
+
+        {
+            '__version__': 2,
+            'apps': {
+                '<app_label>': {
+                    'models': {
+                        '<model_name>': {
+                            'meta': {
+                                'db_table': '<table name>',
+                                'db_tablespace': '<tablespace>',
+                                'index_together': [
+                                    ('<colname>', ...),
+                                    ...
+                                ],
+                                'indexes': [
+                                    {
+                                        'name': '<name>',
+                                        'fields': ['<colname>', ...],
+                                    },
+                                    ...
+                                ],
+                                'pk_column': '<colname>',
+                                'unique_together': [
+                                    ('<colname>', ...),
+                                    ...
+                                ],
+                                '__unique_together_applied': True|False,
+                            },
+                            'fields': {
+                                'type': '<class_path>',
+                                'related_model': '<app_label>.<class_name>',
+                                'attrs': {
+                                    '<field_attr_name>': <value>,
+                                    ...
+                                },
+                            },
+                        },
+                        ...
+                    },
+                },
+                ...
+            },
+        }
+"""
+
 from __future__ import unicode_literals
 
 from copy import deepcopy
+from importlib import import_module
 
 from django.conf import global_settings
 from django.db import models
-from django.db.models.fields.related import ForeignKey
 from django.utils import six
 from django.utils.translation import ugettext as _
 
@@ -16,11 +122,13 @@ from django_evolution.compat.models import (GenericRelation,
                                             get_models,
                                             get_remote_field,
                                             get_remote_field_model)
-from django_evolution.errors import MissingSignatureError
+from django_evolution.errors import (InvalidSignatureVersion,
+                                     MissingSignatureError)
 from django_evolution.utils.apps import get_app_label
 
 
-DEFAULT_SIGNATURE_VERSION = 1
+#: The latest signature version.
+LATEST_SIGNATURE_VERSION = 2
 
 
 class BaseSignature(object):
@@ -40,6 +148,10 @@ class BaseSignature(object):
         Returns:
             BaseSignature:
             The resulting signature class.
+
+        Raises:
+            django_evolution.errors.InvalidSignatureVersion:
+                The signature version provided isn't supported.
         """
         raise NotImplementedError
 
@@ -67,16 +179,21 @@ class BaseSignature(object):
         """
         raise NotImplementedError
 
-    def serialize(self, sig_version=DEFAULT_SIGNATURE_VERSION):
+    def serialize(self, sig_version=LATEST_SIGNATURE_VERSION):
         """Serialize data to a signature dictionary.
 
         Args:
-            sig_version (int):
-                The signature version to serialize as.
+            sig_version (int, optional):
+                The signature version to serialize as. This always defaults
+                to the latest.
 
         Returns:
             dict:
             The serialized data.
+
+        Raises:
+            django_evolution.errors.InvalidSignatureVersion:
+                The signature version provided isn't supported.
         """
         raise NotImplementedError
 
@@ -165,16 +282,30 @@ class ProjectSignature(BaseSignature):
         Returns:
             ProjectSignature:
             The resulting signature instance.
+
+        Raises:
+            django_evolution.errors.InvalidSignatureVersion:
+                The signature version found in the dictionary is unsupported.
         """
         sig_version = project_sig_dict['__version__']
+        validate_sig_version(sig_version)
+
         project_sig = cls()
 
-        for key, value in six.iteritems(project_sig_dict):
-            if key != '__version__':
-                project_sig.add_app_sig(AppSignature.deserialize(
-                    app_id=key,
-                    app_sig_dict=value,
-                    sig_version=sig_version))
+        if sig_version == 2:
+            app_sigs_dict = project_sig_dict['apps']
+        elif sig_version == 1:
+            app_sigs_dict = OrderedDict(
+                (app_id, app_sig_dict)
+                for app_id, app_sig_dict in six.iteritems(project_sig_dict)
+                if app_id != '__version__'
+            )
+
+        for app_id, app_sig_dict in six.iteritems(app_sigs_dict):
+            project_sig.add_app_sig(AppSignature.deserialize(
+                app_id=app_id,
+                app_sig_dict=app_sig_dict,
+                sig_version=sig_version))
 
         return project_sig
 
@@ -342,24 +473,36 @@ class ProjectSignature(BaseSignature):
 
         return cloned_sig
 
-    def serialize(self, sig_version=DEFAULT_SIGNATURE_VERSION):
+    def serialize(self, sig_version=LATEST_SIGNATURE_VERSION):
         """Serialize project data to a signature dictionary.
 
         Args:
-            sig_version (int):
-                The signature version to serialize as.
+            sig_version (int, optional):
+                The signature version to serialize as. This always defaults
+                to the latest.
 
         Returns:
             dict:
             The serialized data.
+
+        Raises:
+            django_evolution.errors.InvalidSignatureVersion:
+                The signature version provided isn't supported.
         """
+        validate_sig_version(sig_version)
+
         project_sig_dict = {
             '__version__': sig_version,
         }
-        project_sig_dict.update(
-            (app_id, app_sig.serialize(sig_version))
-            for app_id, app_sig in six.iteritems(self._app_sigs)
-        )
+
+        if sig_version == 2:
+            app_sigs_dict = OrderedDict()
+            project_sig_dict['apps'] = app_sigs_dict
+        elif sig_version == 1:
+            app_sigs_dict = project_sig_dict
+
+        for app_id, app_sig in six.iteritems(self._app_sigs):
+            app_sigs_dict[app_id] = app_sig.serialize(sig_version)
 
         return project_sig_dict
 
@@ -447,12 +590,24 @@ class AppSignature(BaseSignature):
         Returns:
             AppSignature:
             The resulting signature instance.
+
+        Raises:
+            django_evolution.errors.InvalidSignatureVersion:
+                The signature version provided isn't supported.
         """
+        validate_sig_version(sig_version)
+
+        if sig_version == 2:
+            model_sigs_dict = app_sig_dict['models']
+        elif sig_version == 1:
+            model_sigs_dict = app_sig_dict
+
         app_sig = cls(app_id=app_id)
 
-        for model_name, model_sig_dict in six.iteritems(app_sig_dict):
+        for model_name, model_sig_dict in six.iteritems(model_sigs_dict):
             app_sig.add_model_sig(
-                ModelSignature.deserialize(model_name, model_sig_dict,
+                ModelSignature.deserialize(model_name=model_name,
+                                           model_sig_dict=model_sig_dict,
                                            sig_version=sig_version))
 
         return app_sig
@@ -616,21 +771,35 @@ class AppSignature(BaseSignature):
 
         return cloned_sig
 
-    def serialize(self, sig_version=DEFAULT_SIGNATURE_VERSION):
+    def serialize(self, sig_version=LATEST_SIGNATURE_VERSION):
         """Serialize application data to a signature dictionary.
 
         Args:
-            sig_version (int):
-                The signature version to serialize as.
+            sig_version (int, optional):
+                The signature version to serialize as. This always defaults
+                to the latest.
 
         Returns:
             dict:
             The serialized data.
+
+        Raises:
+            django_evolution.errors.InvalidSignatureVersion:
+                The signature version provided isn't supported.
         """
+        validate_sig_version(sig_version)
+
         app_sig_dict = OrderedDict()
 
+        if sig_version == 2:
+            # Add an ordered dictionary of models to the signature.
+            model_sigs_dict = OrderedDict()
+            app_sig_dict['models'] = model_sigs_dict
+        elif sig_version == 1:
+            model_sigs_dict = app_sig_dict
+
         for model_name, model_sig in six.iteritems(self._model_sigs):
-            app_sig_dict[model_name] = model_sig.serialize(sig_version)
+            model_sigs_dict[model_name] = model_sig.serialize(sig_version)
 
         return app_sig_dict
 
@@ -719,7 +888,13 @@ class ModelSignature(BaseSignature):
         Returns:
             ModelSignature:
             The resulting signature instance.
+
+        Raises:
+            django_evolution.errors.InvalidSignatureVersion:
+                The signature version provided isn't supported.
         """
+        validate_sig_version(sig_version)
+
         meta_sig_dict = model_sig_dict['meta']
         fields_sig_dict = model_sig_dict['fields']
 
@@ -1026,17 +1201,24 @@ class ModelSignature(BaseSignature):
 
         return cloned_sig
 
-    def serialize(self, sig_version=DEFAULT_SIGNATURE_VERSION):
+    def serialize(self, sig_version=LATEST_SIGNATURE_VERSION):
         """Serialize model data to a signature dictionary.
 
         Args:
-            sig_version (int):
-                The signature version to serialize as.
+            sig_version (int, optional):
+                The signature version to serialize as. This always defaults
+                to the latest.
 
         Returns:
             dict:
             The serialized data.
+
+        Raises:
+            django_evolution.errors.InvalidSignatureVersion:
+                The signature version provided isn't supported.
         """
+        validate_sig_version(sig_version)
+
         return {
             'meta': {
                 'db_table': self.table_name,
@@ -1151,7 +1333,13 @@ class IndexSignature(BaseSignature):
         Returns:
             IndexSignature:
             The resulting signature instance.
+
+        Raises:
+            django_evolution.errors.InvalidSignatureVersion:
+                The signature version provided isn't supported.
         """
+        validate_sig_version(sig_version)
+
         return cls(name=index_sig_dict.get('name'),
                    fields=index_sig_dict['fields'])
 
@@ -1179,17 +1367,24 @@ class IndexSignature(BaseSignature):
         return IndexSignature(name=self.name,
                               fields=list(self.fields))
 
-    def serialize(self, sig_version=DEFAULT_SIGNATURE_VERSION):
+    def serialize(self, sig_version=LATEST_SIGNATURE_VERSION):
         """Serialize index data to a signature dictionary.
 
         Args:
-            sig_version (int):
-                The signature version to serialize as.
+            sig_version (int, optional):
+                The signature version to serialize as. This always defaults
+                to the latest.
 
         Returns:
             dict:
             The serialized data.
+
+        Raises:
+            django_evolution.errors.InvalidSignatureVersion:
+                The signature version provided isn't supported.
         """
+        validate_sig_version(sig_version)
+
         index_sig_dict = {
             'fields': self.fields,
         }
@@ -1347,8 +1542,37 @@ class FieldSignature(BaseSignature):
         Returns:
             FieldSignature:
             The resulting signature instance.
+
+        Raises:
+            django_evolution.errors.InvalidSignatureVersion:
+                The signature version provided isn't supported.
         """
-        field_type = field_sig_dict['field_type']
+        validate_sig_version(sig_version)
+
+        if sig_version == 2:
+            field_sig_attrs = field_sig_dict.get('attrs', {})
+
+            # Load the class for the referenced field type.
+            field_type_module, field_type_name = \
+                field_sig_dict['type'].rsplit('.', 1)
+
+            # If we have a field path in the signature that lives in
+            # django.db.models.fields, update it to look in django.db.models
+            # instead. This is for compatibility across all Django versions.
+            if field_type_module.startswith('django.db.models.fields'):
+                field_type_module = 'django.db.models'
+
+            try:
+                field_type = getattr(import_module(field_type_module),
+                                     field_type_name)
+            except (AttributeError, ImportError):
+                raise ImportError('Unable to locate field type %s'
+                                  % '%s.%s' % (field_type_module,
+                                               field_type_name))
+        elif sig_version == 1:
+            field_sig_attrs = field_sig_dict
+            field_type = field_sig_dict['field_type']
+
         field_attrs = {}
 
         for attr in cls._iter_attrs_for_field_type(field_type):
@@ -1359,10 +1583,10 @@ class FieldSignature(BaseSignature):
 
             alias = cls._ATTRIBUTE_ALIASES.get(attr)
 
-            if alias and alias in field_sig_dict:
-                value = field_sig_dict[alias]
-            elif attr in field_sig_dict:
-                value = field_sig_dict[attr]
+            if alias and alias in field_sig_attrs:
+                value = field_sig_attrs[alias]
+            elif attr in field_sig_attrs:
+                value = field_sig_attrs[attr]
             else:
                 # The signature didn't contain a value for this attribute.
                 continue
@@ -1566,21 +1790,43 @@ class FieldSignature(BaseSignature):
                               field_attrs=deepcopy(self.field_attrs),
                               related_model=self.related_model)
 
-    def serialize(self, sig_version=DEFAULT_SIGNATURE_VERSION):
+    def serialize(self, sig_version=LATEST_SIGNATURE_VERSION):
         """Serialize field data to a signature dictionary.
 
         Args:
-            sig_version (int):
-                The signature version to serialize as.
+            sig_version (int, optional):
+                The signature version to serialize as. This always defaults
+                to the latest.
 
         Returns:
             dict:
             The serialized data.
+
+        Raises:
+            django_evolution.errors.InvalidSignatureVersion:
+                The signature version provided isn't supported.
         """
-        field_sig_dict = {
-            'field_type': self.field_type,
-        }
-        field_sig_dict.update(self.field_attrs)
+        validate_sig_version(sig_version)
+
+        field_sig_dict = OrderedDict()
+
+        if sig_version == 2:
+            field_module = self.field_type.__module__
+
+            # If the field lives in django.db.models.fields, update it to
+            # use django.db.models instead. This is for compatibility across
+            # all Django versions.
+            if field_module.startswith('django.db.models.fields'):
+                field_module = 'django.db.models'
+
+            field_sig_dict['type'] = '%s.%s' % (field_module,
+                                                self.field_type.__name__)
+
+            if self.field_attrs:
+                field_sig_dict['attrs'] = deepcopy(self.field_attrs)
+        elif sig_version == 1:
+            field_sig_dict['field_type'] = self.field_type
+            field_sig_dict.update(self.field_attrs)
 
         if self.related_model:
             field_sig_dict['related_model'] = self.related_model
@@ -1673,3 +1919,20 @@ def record_unique_together_applied(model_sig):
     future evolutions.
     """
     model_sig['meta']['__unique_together_applied'] = True
+
+
+def validate_sig_version(sig_version):
+    """Validate that a signature version is supported.
+
+    Args:
+        sig_version (int):
+            The version of the signature to validate.
+
+    Raises:
+        django_evolution.errors.InvalidSignatureVersion:
+            The signature version provided isn't supported.
+    """
+    assert isinstance(sig_version, int)
+
+    if not (0 < sig_version <= LATEST_SIGNATURE_VERSION):
+        raise InvalidSignatureVersion(sig_version)
