@@ -518,7 +518,8 @@ class ProjectSignature(BaseSignature):
             ``True`` if the project signatures are equal. ``False`` if they
             are not.
         """
-        return dict.__eq__(self._app_sigs, other._app_sigs)
+        return (other is not None and
+                dict.__eq__(self._app_sigs, other._app_sigs))
 
     def __repr__(self):
         """Return a string representation of the signature.
@@ -815,7 +816,8 @@ class AppSignature(BaseSignature):
             ``True`` if the application signatures are equal. ``False`` if
             they are not.
         """
-        return (self.app_id == other.app_id and
+        return (other is not None and
+                self.app_id == other.app_id and
                 dict.__eq__(self._model_sigs, other._model_sigs))
 
     def __repr__(self):
@@ -1250,7 +1252,8 @@ class ModelSignature(BaseSignature):
             ``True`` if the model signatures are equal. ``False`` if they
             are not.
         """
-        return (self.table_name == other.table_name and
+        return (other is not None and
+                self.table_name == other.table_name and
                 self.db_tablespace == other.db_tablespace and
                 set(self.index_sigs) == set(other.index_sigs) and
                 (set(self._normalize_together(self.index_together)) ==
@@ -1406,7 +1409,8 @@ class IndexSignature(BaseSignature):
             ``True`` if the index signatures are equal. ``False`` if they
             are not.
         """
-        return (((not self.name and not other.name) or
+        return (other is not None and
+                ((not self.name and not other.name) or
                  self.name == other.name) and
                 self.fields == other.fields)
 
@@ -1845,7 +1849,8 @@ class FieldSignature(BaseSignature):
             ``True`` if the field signatures are equal. ``False`` if they
             are not.
         """
-        return (self.field_name == other.field_name and
+        return (other is not None and
+                self.field_name == other.field_name and
                 self.field_type is other.field_type and
                 dict.__eq__(self.field_attrs, other.field_attrs) and
                 self.related_model == other.related_model)
