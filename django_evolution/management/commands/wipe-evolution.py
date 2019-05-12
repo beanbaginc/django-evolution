@@ -3,6 +3,7 @@ from __future__ import print_function, unicode_literals
 from django.core.management.base import CommandError
 from django.db.models import Q
 from django.utils.six.moves import input
+from django.utils.translation import ugettext as _
 
 from django_evolution.compat.commands import BaseCommand
 from django_evolution.models import Evolution
@@ -22,6 +23,11 @@ class Command(BaseCommand):
             parser (object):
                 The argument parser to add to.
         """
+        parser.add_argument(
+            'args',
+            metavar='EVOLUTION_LABEL',
+            nargs='+',
+            help=_('One or more evolution labels to wipe.'))
         parser.add_argument(
             '--noinput',
             action='store_false',

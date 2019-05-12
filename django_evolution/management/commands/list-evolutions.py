@@ -1,5 +1,7 @@
 from __future__ import print_function, unicode_literals
 
+from django.utils.translation import ugettext as _
+
 from django_evolution.compat.apps import get_apps
 from django_evolution.compat.commands import BaseCommand
 from django_evolution.models import Evolution
@@ -8,6 +10,19 @@ from django_evolution.utils.apps import get_app_label
 
 class Command(BaseCommand):
     """Lists the applied evolutions for one or more apps."""
+
+    def add_arguments(self, parser):
+        """Add arguments to the command.
+
+        Args:
+            parser (object):
+                The argument parser to add to.
+        """
+        parser.add_argument(
+            'args',
+            metavar='APP_LABEL',
+            nargs='*',
+            help=_('One or more app labels to list evolutions for.'))
 
     def handle(self, *app_labels, **options):
         if not app_labels:

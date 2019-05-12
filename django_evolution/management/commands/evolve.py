@@ -39,6 +39,11 @@ class Command(BaseCommand):
                 The argument parser to add to.
         """
         parser.add_argument(
+            'args',
+            metavar='APP_LABEL',
+            nargs='*',
+            help=_('One or more app labels to evolve.'))
+        parser.add_argument(
             '--noinput',
             action='store_false',
             dest='interactive',
