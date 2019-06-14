@@ -61,8 +61,9 @@ class VersionTests(TestCase):
         """
         Version.objects.create(
             signature='json!{"__version__": 2,'
-                      '"apps": {"app1": {"models": {}}, '
-                      '"app2": {"models": {}}}}')
+                      '"apps": {'
+                      '"app1": {"legacy_app_label": "app1", "models": {}}, '
+                      '"app2": {"legacy_app_label": "app2", "models": {}}}}')
 
         version = Version.objects.get()
         project_sig = version.signature
@@ -96,9 +97,11 @@ class VersionTests(TestCase):
                 '__version__': 2,
                 'apps': {
                     'app1': {
+                        'legacy_app_label': 'app1',
                         'models': {},
                     },
                     'app2': {
+                        'legacy_app_label': 'app2',
                         'models': {},
                     },
                 },

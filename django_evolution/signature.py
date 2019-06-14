@@ -64,6 +64,7 @@ Version 2:
             '__version__': 2,
             'apps': {
                 '<app_label>': {
+                    'legacy_app_label': '<legacy app_label>',
                     'upgrade_method': 'migrations'|'evolutions'|None,
                     'migrations': {
                         'start': '<migration ID>'|None,
@@ -131,7 +132,7 @@ from django_evolution.compat.models import (GenericRelation,
 from django_evolution.consts import UpgradeMethod
 from django_evolution.errors import (InvalidSignatureVersion,
                                      MissingSignatureError)
-from django_evolution.utils.apps import get_app_label
+from django_evolution.utils.apps import get_app_label, get_legacy_app_label
 from django_evolution.utils.evolutions import get_app_upgrade_method
 
 
@@ -374,7 +375,8 @@ class ProjectSignature(BaseSignature):
 
         Args:
             app_id (unicode):
-                The ID of the application signature.
+                The ID of the application signature. This may be a modern
+                app label, or a legacy app label.
 
             required (bool, optional):
                 Whether the app signature must be present. If ``True`` and
@@ -391,6 +393,12 @@ class ProjectSignature(BaseSignature):
                 ``True``.
         """
         app_sig = self._app_sigs.get(app_id)
+
+        if app_sig is None:
+            for temp_app_sig in six.itervalues(self._app_sigs):
+                if temp_app_sig.legacy_app_label == app_id:
+                    app_sig = temp_app_sig
+                    break
 
         if app_sig is None and required:
             raise MissingSignatureError(
@@ -443,8 +451,7 @@ class ProjectSignature(BaseSignature):
         deleted_apps = OrderedDict()
 
         for old_app_sig in old_project_sig.app_sigs:
-            app_id = old_app_sig.app_id
-            new_app_sig = self.get_app_sig(app_id)
+            new_app_sig = self.get_app_sig(old_app_sig.app_id)
 
             if new_app_sig:
                 app_changes = new_app_sig.diff(old_app_sig)
@@ -452,10 +459,10 @@ class ProjectSignature(BaseSignature):
                 if app_changes:
                     # There are changes for this application. Store that
                     # in the diff.
-                    changed_apps[app_id] = app_changes
+                    changed_apps[new_app_sig.app_id] = app_changes
             else:
                 # The application has been deleted.
-                deleted_apps[app_id] = [
+                deleted_apps[old_app_sig.app_id] = [
                     model_sig.model_name
                     for model_sig in old_app_sig.model_sigs
                 ]
@@ -565,8 +572,11 @@ class AppSignature(BaseSignature):
             AppSignature:
             The application signature based on the application.
         """
+        app_label = get_app_label(app)
+
         app_sig = cls(
-            app_id=get_app_label(app),
+            app_id=app_label,
+            legacy_app_label=get_legacy_app_label(app),
             upgrade_method=get_app_upgrade_method(app, simulate_applied=True))
 
         for model in get_models(app):
@@ -577,8 +587,7 @@ class AppSignature(BaseSignature):
             #
             # On older versions of Django, we check if the model allows for
             # synchronization to the database (allow_syncdb).
-            if (db_router_allows_migrate(database, get_app_label(app),
-                                         model) or
+            if (db_router_allows_migrate(database, app_label, model) or
                 db_router_allows_syncdb(database, model)):
                 app_sig.add_model(model)
 
@@ -608,12 +617,14 @@ class AppSignature(BaseSignature):
         """
         validate_sig_version(sig_version)
 
+        legacy_app_label = None
         upgrade_method = None
         start_migration_id = None
         last_applied_migration_id = None
 
         if sig_version == 2:
             model_sigs_dict = app_sig_dict['models']
+            legacy_app_label = app_sig_dict['legacy_app_label']
             upgrade_method = app_sig_dict.get('upgrade_method')
 
             migrations = app_sig_dict.get('migrations', {})
@@ -621,6 +632,7 @@ class AppSignature(BaseSignature):
             last_applied_migration_id = migrations.get('last_applied')
         elif sig_version == 1:
             model_sigs_dict = app_sig_dict
+            legacy_app_label = app_id
 
             # Try to figure out the upgrade method for this app, factoring in
             # just the presence of evolutions/migrations directories (*not*
@@ -640,6 +652,7 @@ class AppSignature(BaseSignature):
                 pass
 
         app_sig = cls(app_id=app_id,
+                      legacy_app_label=legacy_app_label,
                       upgrade_method=upgrade_method,
                       start_migration_id=start_migration_id,
                       last_applied_migration_id=last_applied_migration_id)
@@ -653,13 +666,19 @@ class AppSignature(BaseSignature):
 
         return app_sig
 
-    def __init__(self, app_id, upgrade_method=None, start_migration_id=None,
-                 last_applied_migration_id=None):
+    def __init__(self, app_id, legacy_app_label=None, upgrade_method=None,
+                 start_migration_id=None, last_applied_migration_id=None):
         """Initialize the signature.
 
         Args:
             app_id (unicode):
                 The ID of the application. This will be the application label.
+                On modern versions of Django, this may differ from the
+                legacy app label.
+
+            legacy_app_label (unicode, optional):
+                The legacy label for the application. This is based on the
+                module name.
 
             upgrade_method (unicode, optional):
                 The upgrade method used for this application. This must be
@@ -676,6 +695,7 @@ class AppSignature(BaseSignature):
                 for the app.
         """
         self.app_id = app_id
+        self.legacy_app_label = legacy_app_label or app_id
         self.upgrade_method = upgrade_method
         self.start_migration_id = start_migration_id
         self.last_applied_migration_id = last_applied_migration_id
@@ -687,6 +707,18 @@ class AppSignature(BaseSignature):
     def model_sigs(self):
         """The model signatures stored on the application signature."""
         return six.itervalues(self._model_sigs)
+
+    def is_empty(self):
+        """Return whether the application signature is empty.
+
+        An empty application signature contains no models.
+
+        Returns:
+            bool:
+            ``True`` if the signature is empty. ``False`` if it still has
+            models in it.
+        """
+        return not bool(self._model_sigs)
 
     def add_model(self, model):
         """Add a model to the application signature.
@@ -726,6 +758,10 @@ class AppSignature(BaseSignature):
             raise MissingSignatureError(
                 _('A model signature for "%s" could not be found.')
                 % model_name)
+
+    def clear_model_sigs(self):
+        """Clear all model signatures from the application signature."""
+        self._model_sigs.clear()
 
     def get_model_sig(self, model_name, required=False):
         """Return a model signature for the given model name.
@@ -774,10 +810,17 @@ class AppSignature(BaseSignature):
 
                 {
                     'changed': {
-                        <model_name>: <ModelSignature diff>,
+                        '<model_name>': <ModelSignature diff>,
                         ...
                     },
                     'deleted': [ <list of deleted model names> ],
+                    'meta_changed': {
+                        '<prop_name>': {
+                            'old': <old value>,
+                            'new': <new value>,
+                        },
+                        ...
+                    }
                 }
 
             Any key lacking a value will be ommitted from the diff.
@@ -810,6 +853,17 @@ class AppSignature(BaseSignature):
             else:
                 # The model has been deleted.
                 deleted_models.append(model_name)
+
+        # Check for changes to basic metadata for the app.
+        for key in ('app_id', 'legacy_app_label'):
+            old_value = getattr(old_app_sig, key)
+            new_value = getattr(self, key)
+
+            if old_value != new_value:
+                meta_changed[key] = {
+                    'old': old_value,
+                    'new': new_value,
+                }
 
         # Check if the upgrade method has changed. We have to do this a bit
         # carefully, as the old value might be None, due to:
@@ -873,6 +927,7 @@ class AppSignature(BaseSignature):
         """
         cloned_sig = AppSignature(
             app_id=self.app_id,
+            legacy_app_label=self.legacy_app_label,
             upgrade_method=self.upgrade_method,
             start_migration_id=self.start_migration_id,
             last_applied_migration_id=self.last_applied_migration_id)
@@ -903,6 +958,8 @@ class AppSignature(BaseSignature):
         app_sig_dict = OrderedDict()
 
         if sig_version == 2:
+            app_sig_dict['legacy_app_label'] = self.legacy_app_label
+
             if self.upgrade_method:
                 app_sig_dict['upgrade_method'] = self.upgrade_method
 
@@ -937,6 +994,7 @@ class AppSignature(BaseSignature):
         """
         return (other is not None and
                 self.app_id == other.app_id and
+                self.legacy_app_label == other.legacy_app_label and
                 self.upgrade_method == other.upgrade_method and
                 self.start_migration_id == other.start_migration_id and
                 (self.last_applied_migration_id ==
@@ -950,8 +1008,9 @@ class AppSignature(BaseSignature):
             unicode:
             A string representation of the signature.
         """
-        return ('<AppSignature(app_id=%r, upgrade_method=%r, models=%r)>'
-                % (self.app_id, self.upgrade_method,
+        return ('<AppSignature(app_id=%r, legacy_app_label=%r,'
+                ' upgrade_method=%r, models=%r)>'
+                % (self.app_id, self.legacy_app_label, self.upgrade_method,
                    list(six.iterkeys(self._model_sigs))))
 
 

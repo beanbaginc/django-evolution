@@ -4,12 +4,18 @@ import copy
 import logging
 
 from django_evolution.db import EvolutionOperationsMulti
-from django_evolution.errors import CannotSimulate
+from django_evolution.errors import (CannotSimulate,
+                                     EvolutionBaselineMissingError)
 from django_evolution.mock_models import MockModel
-from django_evolution.mutations import (AddField, BaseModelMutation,
-                                        ChangeField, ChangeMeta,
-                                        DeleteField, DeleteModel,
-                                        RenameField, RenameModel)
+from django_evolution.mutations import (AddField,
+                                        BaseModelMutation,
+                                        ChangeField,
+                                        ChangeMeta,
+                                        DeleteField,
+                                        DeleteModel,
+                                        RenameAppLabel,
+                                        RenameField,
+                                        RenameModel)
 from django_evolution.utils.models import get_database_for_model_name
 
 
@@ -30,11 +36,39 @@ class ModelMutator(object):
     ModelMutator only works with mutations that are instances of
     BaseModelFieldMutation. It is also intended for internal use by AppMutator.
     """
-    def __init__(self, app_mutator, model_name, app_label, project_sig,
-                 database_state, database):
+
+    def __init__(self, app_mutator, model_name, app_label, legacy_app_label,
+                 project_sig, database_state, database=None):
+        """Initialize the mutator.
+
+        Args:
+            app_mutator (AppMutator):
+                The app mutator that owns this model mutator.
+
+            model_name (unicode):
+                The name of the model being evolved.
+
+            app_label (unicode):
+                The label of the app to evolve.
+
+            legacy_app_label (unicode):
+                The legacy label of the app to evolve. This is based on the
+                module name and is used in the transitioning of pre-Django 1.7
+                signatures.
+
+            project_sig (django_evolution.signature.ProjectSignature):
+                The project signature being evolved.
+
+            database_state (django_evolution.db.state.DatabaseState):
+                The database state information to manipulate.
+
+            database (unicode, optional):
+                The name of the database being evolved.
+        """
         self.app_mutator = app_mutator
         self.model_name = model_name
         self.app_label = app_label
+        self.legacy_app_label = legacy_app_label
         self.database = (database or
                          get_database_for_model_name(app_label, model_name))
         self.can_simulate = True
@@ -61,11 +95,18 @@ class ModelMutator(object):
         Type:
             django_evolution.signature.ModelSignature
         """
-        return (
-            self.project_sig
-            .get_app_sig(self.app_label)
-            .get_model_sig(self.model_name)
-        )
+        app_sig = self.project_sig.get_app_sig(self.app_label)
+
+        if app_sig is None:
+            if (self.legacy_app_label is not None and
+                self.legacy_app_label != self.app_label):
+                # Check if it can be found by the legacy label.
+                app_sig = self.project_sig.get_app_sig(self.legacy_app_label)
+
+            if app_sig is None:
+                raise EvolutionBaselineMissingError()
+
+        return app_sig.get_model_sig(self.model_name)
 
     def create_model(self):
         """Creates a mock model instance with the stored information.
@@ -200,6 +241,7 @@ class ModelMutator(object):
     def run_simulation(self, mutation):
         try:
             mutation.run_simulation(app_label=self.app_label,
+                                    legacy_app_label=self.legacy_app_label,
                                     project_sig=self.project_sig,
                                     database_state=self.database_state,
                                     database=self.database)
@@ -234,6 +276,7 @@ class ModelMutator(object):
 
         try:
             mutation.run_simulation(app_label=self.app_label,
+                                    legacy_app_label=self.legacy_app_label,
                                     project_sig=self.project_sig,
                                     database_state=self.database_state,
                                     database=self.database)
@@ -268,7 +311,7 @@ class AppMutator(object):
     """
 
     @classmethod
-    def from_evolver(cls, evolver, app_label):
+    def from_evolver(cls, evolver, app_label, legacy_app_label=None):
         """Create an AppMutator based on the state from an Evolver.
 
         Args:
@@ -278,17 +321,45 @@ class AppMutator(object):
             app_label (unicode):
                 The label of the app to evolve.
 
+            legacy_app_label (unicode, optional):
+                The legacy label of the app to evolve. This is based on the
+                module name and is used in the transitioning of pre-Django 1.7
+                signatures.
+
         Returns:
             AppMutator:
             The new app mutator.
         """
         return cls(app_label=app_label,
+                   legacy_app_label=legacy_app_label,
                    project_sig=evolver.project_sig,
                    database_state=evolver.database_state,
                    database=evolver.database_name)
 
-    def __init__(self, app_label, project_sig, database_state, database=None):
+    def __init__(self, app_label, project_sig, database_state,
+                 legacy_app_label=None, database=None):
+        """Initialize the mutator.
+
+        Args:
+            app_label (unicode):
+                The label of the app to evolve.
+
+            project_sig (django_evolution.signature.ProjectSignature):
+                The project signature being evolved.
+
+            database_state (django_evolution.db.state.DatabaseState):
+                The database state information to manipulate.
+
+            legacy_app_label (unicode, optional):
+                The legacy label of the app to evolve. This is based on the
+                module name and is used in the transitioning of pre-Django 1.7
+                signatures.
+
+            database (unicode, optional):
+                The name of the database being evolved.
+        """
         self.app_label = app_label
+        self.legacy_app_label = legacy_app_label or app_label
         self.project_sig = project_sig
         self.database_state = database_state
         self.database = database
@@ -318,8 +389,13 @@ class AppMutator(object):
                 self._finalize_model_mutator()
 
                 model_mutator = ModelMutator(
-                    self, mutation.model_name, self.app_label,
-                    self.project_sig, self.database_state, self.database)
+                    app_mutator=self,
+                    model_name=mutation.model_name,
+                    app_label=self.app_label,
+                    legacy_app_label=self.legacy_app_label,
+                    project_sig=self.project_sig,
+                    database_state=self.database_state,
+                    database=self.database)
                 self._last_model_mutator = model_mutator
 
             model_mutator.run_mutation(mutation)
@@ -330,6 +406,7 @@ class AppMutator(object):
 
             try:
                 mutation.run_simulation(app_label=self.app_label,
+                                        legacy_app_label=self.legacy_app_label,
                                         project_sig=self.project_sig,
                                         database_state=self.database_state,
                                         database=self.database)
@@ -462,6 +539,7 @@ class AppMutator(object):
             last_change_mutations = {}
             renames = {}
             model_renames = {}
+            app_label_renames = {}
 
             # On our first pass, we loop from last to first mutation and
             # attempt the following things:
@@ -492,6 +570,9 @@ class AppMutator(object):
             #    for a model being deleted, it will be removed. Otherwise, the
             #    history of model rename mutations are stored, in order from
             #    last to first, keyed off from the earliest model rename.
+            #
+            # 6) Completing the picture, all app ID/label renames are tracked.
+            #    This will influence values for any models or fields.
             for mutation in reversed(mutations):
                 remove_mutation = False
 
@@ -642,6 +723,28 @@ class AppMutator(object):
                         # the property.
                         model_meta_indexes[mutation.model_name] = \
                             mutation.new_value
+                elif isinstance(mutation, RenameAppLabel):
+                    old_app_label = mutation.old_app_label
+                    new_app_label = mutation.new_app_label
+
+                    # Create or update a record of app label rename mutations
+                    # for this app. We use this to fix up any related model
+                    # field names on the second run through.
+                    if new_app_label in app_label_renames:
+                        self._rename_dict_key(app_label_renames,
+                                              old_app_label,
+                                              new_app_label)
+                    else:
+                        app_label_renames[old_app_label] = {
+                            'can_process': False,
+                            'mutations': [],
+                        }
+
+                    # Add the mutation to the list of renames for the app.
+                    # This results in a chain from the last RenameAppLabel to
+                    # the first.
+                    app_label_renames[old_app_label]['mutations'].append(
+                        mutation)
 
                 if remove_mutation:
                     removed_mutations.add(mutation)
@@ -673,16 +776,20 @@ class AppMutator(object):
             # 4) Collapse down any RenameModels into the first RenameModel,
             #    and schedule the remaining for removal.
             #
+            # 5) Collapse down any RenameAppLabels into the first
+            #    RenameAppLabel and schedule the remaining for removal.
+            #
             # 5) Update any added fields referencing another model (such as a
-            #    ForeignKey) to reference the model's new name, if renamed.
+            #    ForeignKey) to reference the model's new name or app label,
+            #    if renamed.
             #
             # 6) Remove any RenameModels that are renaming to the name
             #    already found in the current signature. This is needed in
             #    case we're processing RenameModels for a model that was just
             #    introduced, so we don't attempt to rename a non-existing name
             #    to the current name.
-            if (noop_fields or renames or model_renames or unique_together or
-                model_meta_indexes):
+            if (noop_fields or renames or model_renames or app_label_renames or
+                unique_together or model_meta_indexes):
                 for mutation in mutations:
                     remove_mutation = False
 
@@ -712,20 +819,36 @@ class AppMutator(object):
                         if related_model:
                             app_label, related_model_name = \
                                 related_model.split('.')
-                            rename_info = model_renames.get(related_model_name)
+                            app_label_rename_info = \
+                                app_label_renames.get(app_label)
+                            model_rename_info = \
+                                model_renames.get(related_model_name)
 
-                            if rename_info:
+                            if app_label_rename_info:
+                                app_label_rename_info['can_process'] = True
+                                rename_mutation = \
+                                    app_label_rename_info['mutations'][0]
+                                new_app_label = rename_mutation.new_app_label
+                            else:
+                                new_app_label = None
+
+                            if model_rename_info:
+                                model_rename_info['can_process'] = True
+                                rename_mutation = \
+                                    model_rename_info['mutations'][0]
+                                new_model_name = rename_mutation.new_model_name
+                            else:
+                                new_model_name = None
+
+                            if new_app_label or new_model_name:
                                 # Update the related_model set in the final
                                 # field.
-                                rename_info['can_process'] = True
-                                rename_mutations = rename_info['mutations']
-                                rename_mutation = rename_mutations[0]
-
-                                mutation.field_attrs['related_model'] = \
-                                    '.'.join([
-                                        app_label,
-                                        rename_mutation.new_model_name
-                                    ])
+                                mutation.field_attrs['related_model'] = (
+                                    '%s.%s'
+                                    % (
+                                        new_app_label or app_label,
+                                        new_model_name or related_model_name,
+                                    ))
                     elif isinstance(mutation, ChangeField):
                         mutation_id = self._get_mutation_id(mutation)
 
@@ -870,6 +993,40 @@ class AppMutator(object):
                             value = model_meta_indexes[mutation.model_name]
 
                             if mutation.new_value != value:
+                                remove_mutation = True
+                    elif isinstance(mutation, RenameAppLabel):
+                        old_app_label = mutation.old_app_label
+                        new_app_label = mutation.new_app_label
+
+                        if old_app_label in app_label_renames:
+                            # Set the renames for this app to be processable.
+                            # Then we'll update the mutation list and the key
+                            # in order to allow for future lookups.
+                            rename_info = app_label_renames[old_app_label]
+                            rename_info['can_process'] = True
+                            rename_mutations = rename_info['mutations']
+                            rename_mutation = rename_mutations[0]
+
+                            self._rename_dict_key(model_renames,
+                                                  old_app_label,
+                                                  new_app_label)
+
+                            # This will become the main RenameAppLabel, so we
+                            # want it to rename to the final app label.
+                            mutation.new_app_label = \
+                                rename_mutation.new_app_label
+
+                            # Mark everything but the last rename mutation
+                            # for removal, and update the list of mutations to
+                            # include only this one
+                            removed_mutations.update(rename_mutations[:-1])
+                            rename_info['mutations'] = [rename_mutations[-1]]
+
+                            # If we're actually renaming to what we already
+                            # have in the baseline (due to having installed a
+                            # baseline signature for this app just previously),
+                            # we can skip this mutation entirely.
+                            if self.app_label == new_app_label:
                                 remove_mutation = True
 
                     if remove_mutation:

@@ -9,8 +9,12 @@ from django.utils.translation import ugettext as _
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.models import get_model
 from django_evolution.errors import EvolutionException
-from django_evolution.mutations import (DeleteField, AddField, DeleteModel,
-                                        ChangeField, ChangeMeta)
+from django_evolution.mutations import (AddField,
+                                        ChangeField,
+                                        ChangeMeta,
+                                        DeleteField,
+                                        DeleteModel,
+                                        RenameAppLabel)
 from django_evolution.signature import ProjectSignature
 
 
@@ -165,6 +169,10 @@ class Diff(object):
 
             if app_meta_changed:
                 lines.append('In app %s:' % app_label)
+
+                if ('app_id' in app_meta_changed or
+                    'legacy_app_label' in app_meta_changed):
+                    lines.append('    App label has changed')
 
                 if 'upgrade_method' in app_meta_changed:
                     lines.append('    Schema upgrade method changed')
@@ -321,6 +329,18 @@ class Diff(object):
                 DeleteModel(model_name=model_name)
                 for model_name in app_changes.get('deleted', {})
             ]
+
+            # See if any important details about the app have changed.
+            meta_changed = app_changes.get('meta_changed', {})
+            app_label_changed = meta_changed.get('app_id', {})
+            legacy_app_label_changed = meta_changed.get('legacy_app_label', {})
+
+            if app_label_changed or legacy_app_label_changed:
+                app_mutations.append(RenameAppLabel(
+                    app_label_changed.get('old', app_sig.app_id),
+                    app_label_changed.get('new', app_sig.app_id),
+                    legacy_app_label=legacy_app_label_changed.get(
+                        'new', app_sig.legacy_app_label)))
 
             if app_mutations:
                 mutations[app_label] = app_mutations

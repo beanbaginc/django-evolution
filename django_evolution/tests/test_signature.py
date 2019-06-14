@@ -145,9 +145,11 @@ class ProjectSignatureTests(BaseSignatureTestCase):
                 '__version__': 2,
                 'apps': {
                     'app1': {
+                        'legacy_app_label': 'app1',
                         'models': {},
                     },
                     'app2': {
+                        'legacy_app_label': 'app2',
                         'models': {},
                     },
                 },
@@ -274,6 +276,7 @@ class ProjectSignatureTests(BaseSignatureTestCase):
                 '__version__': 2,
                 'apps': {
                     'test_app': {
+                        'legacy_app_label': 'test_app',
                         'models': {},
                     },
                 },
@@ -360,6 +363,7 @@ class AppSignatureTests(BaseSignatureTestCase):
         app_sig = AppSignature.deserialize(
             'app1',
             {
+                'legacy_app_label': 'legacy',
                 'models': {
                     'model1': {
                         'meta': {
@@ -378,6 +382,7 @@ class AppSignatureTests(BaseSignatureTestCase):
             sig_version=2)
 
         self.assertEqual(app_sig.app_id, 'app1')
+        self.assertEqual(app_sig.legacy_app_label, 'legacy')
         self.assertIsNone(app_sig.upgrade_method)
         self.assertIsNone(app_sig.start_migration_id)
         self.assertIsNone(app_sig.last_applied_migration_id)
@@ -401,6 +406,7 @@ class AppSignatureTests(BaseSignatureTestCase):
         app_sig = AppSignature.deserialize(
             'app1',
             {
+                'legacy_app_label': 'legacy',
                 'upgrade_method': 'migrations',
                 'migrations': {
                     'start': '0001_initial',
@@ -411,6 +417,7 @@ class AppSignatureTests(BaseSignatureTestCase):
             sig_version=2)
 
         self.assertEqual(app_sig.app_id, 'app1')
+        self.assertEqual(app_sig.legacy_app_label, 'legacy')
         self.assertEqual(app_sig.upgrade_method, UpgradeMethod.MIGRATIONS)
         self.assertEqual(app_sig.start_migration_id, '0001_initial')
         self.assertEqual(app_sig.last_applied_migration_id,
@@ -489,12 +496,14 @@ class AppSignatureTests(BaseSignatureTestCase):
         """Testing AppSignature.clone"""
         app_sig = AppSignature.from_app(get_app('django_evolution'),
                                         database=DEFAULT_DB_ALIAS)
+        app_sig.legacy_app_label = 'legacy'
         app_sig.upgrade_method = UpgradeMethod.MIGRATIONS
         app_sig.start_migration_id = '0001_initial'
         app_sig.last_applied_migration_id = '0005_last_applied'
 
         cloned_app_sig = app_sig.clone()
         self.assertEqual(cloned_app_sig.app_id, 'django_evolution')
+        self.assertEqual(cloned_app_sig.legacy_app_label, 'legacy')
         self.assertEqual(cloned_app_sig.upgrade_method,
                          UpgradeMethod.MIGRATIONS)
         self.assertEqual(cloned_app_sig.start_migration_id, '0001_initial')
@@ -566,6 +575,7 @@ class AppSignatureTests(BaseSignatureTestCase):
         self.assertEqual(
             app_sig.serialize(sig_version=2),
             {
+                'legacy_app_label': 'testapp',
                 'upgrade_method': 'evolutions',
                 'models': {
                     'MyModel': {
@@ -597,6 +607,7 @@ class AppSignatureTests(BaseSignatureTestCase):
         self.assertEqual(
             app_sig.serialize(sig_version=2),
             {
+                'legacy_app_label': 'testapp',
                 'upgrade_method': 'migrations',
                 'migrations': {
                     'start': '0001_initial',
@@ -647,6 +658,38 @@ class AppSignatureTests(BaseSignatureTestCase):
         models_sig_dict = app_sig_dict['models']
         self.assertIn('Evolution', models_sig_dict)
         self.assertNotIn('Version', models_sig_dict)
+
+    def test_diff_with_app_id(self):
+        """Testing AppSignature.diff with app_id"""
+        old_app_sig = AppSignature('app1', legacy_app_label='legacy')
+        new_app_sig = AppSignature('app2', legacy_app_label='legacy')
+
+        self.assertEqual(
+            new_app_sig.diff(old_app_sig),
+            {
+                'meta_changed': {
+                    'app_id': {
+                        'old': 'app1',
+                        'new': 'app2',
+                    },
+                },
+            })
+
+    def test_diff_with_legacy_app_label(self):
+        """Testing AppSignature.diff with legacy_app_label"""
+        old_app_sig = AppSignature('app', legacy_app_label='legacy1')
+        new_app_sig = AppSignature('app', legacy_app_label='legacy2')
+
+        self.assertEqual(
+            new_app_sig.diff(old_app_sig),
+            {
+                'meta_changed': {
+                    'legacy_app_label': {
+                        'old': 'legacy1',
+                        'new': 'legacy2',
+                    },
+                },
+            })
 
     def test_diff_with_upgrade_method_evo_to_migrations(self):
         """Testing AppSignature.diff with upgrade_method changing from
@@ -711,6 +754,7 @@ class AppSignatureTests(BaseSignatureTestCase):
     def test_eq(self):
         """Testing AppSignature.__eq__"""
         app_sig1 = AppSignature('app',
+                                legacy_app_label='legacy',
                                 upgrade_method=UpgradeMethod.MIGRATIONS,
                                 start_migration_id='0001_initial',
                                 last_applied_migration_id='0005_last_applied')
@@ -720,6 +764,7 @@ class AppSignatureTests(BaseSignatureTestCase):
                                               table_name='testapp_mymodel2'))
 
         app_sig2 = AppSignature('app',
+                                legacy_app_label='legacy',
                                 upgrade_method=UpgradeMethod.MIGRATIONS,
                                 start_migration_id='0001_initial',
                                 last_applied_migration_id='0005_last_applied')
@@ -734,6 +779,16 @@ class AppSignatureTests(BaseSignatureTestCase):
         """Testing AppSignature.__ne__ with different app IDs"""
         self.assertNotEqual(AppSignature('app1'),
                             AppSignature('app2'))
+
+    def test_ne_with_different_legacy_app_labels(self):
+        """Testing AppSignature.__ne__ with different legacy_app_label values
+        """
+        app_sig1 = AppSignature('app1',
+                                legacy_app_label='legacy1')
+        app_sig2 = AppSignature('app1',
+                                legacy_app_label='legacy2')
+
+        self.assertNotEqual(app_sig1, app_sig2)
 
     def test_ne_with_different_model_sigs(self):
         """Testing AppSignature.__ne__ with different model sigs"""

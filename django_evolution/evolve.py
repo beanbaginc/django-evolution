@@ -22,7 +22,7 @@ from django_evolution.mutations import AddField, DeleteApplication
 from django_evolution.mutators import AppMutator
 from django_evolution.signals import applied_evolution, applying_evolution
 from django_evolution.signature import ProjectSignature
-from django_evolution.utils.apps import get_app_label
+from django_evolution.utils.apps import get_app_label, get_legacy_app_label
 from django_evolution.utils.evolutions import (get_app_pending_mutations,
                                                get_unapplied_evolutions)
 from django_evolution.utils.sql import execute_sql
@@ -197,8 +197,9 @@ class PurgeAppTask(BaseEvolutionTask):
         mutation = DeleteApplication()
 
         if self.is_mutation_mutable(mutation, app_label=self.app_label):
-            app_mutator = AppMutator.from_evolver(evolver=evolver,
-                                                  app_label=self.app_label)
+            app_mutator = AppMutator.from_evolver(
+                evolver=evolver,
+                app_label=self.app_label)
             app_mutator.run_mutation(mutation)
 
             self.evolution_required = True
@@ -277,8 +278,9 @@ class EvolveAppTask(BaseEvolutionTask):
             task_id='evolve-app:%s' % app.__name__,
             evolver=evolver)
 
-        self.app_label = get_app_label(app)
         self.app = app
+        self.app_label = get_app_label(app)
+        self.legacy_app_label = get_legacy_app_label(app)
         self._evolutions = evolutions
         self._mutations = None
 
@@ -326,8 +328,10 @@ class EvolveAppTask(BaseEvolutionTask):
         ]
 
         if mutations:
-            app_mutator = AppMutator.from_evolver(evolver=evolver,
-                                                  app_label=self.app_label)
+            app_mutator = AppMutator.from_evolver(
+                evolver=evolver,
+                app_label=self.app_label,
+                legacy_app_label=self.legacy_app_label)
             app_mutator.run_mutations(mutations)
 
             self.can_simulate = app_mutator.can_simulate
@@ -672,7 +676,8 @@ class Evolver(object):
                 been prepared and finalized.
         """
         try:
-            self.queue_task(PurgeAppTask(self, app_label))
+            self.queue_task(PurgeAppTask(evolver=self,
+                                         app_label=app_label))
         except EvolutionTaskAlreadyQueuedError:
             raise EvolutionTaskAlreadyQueuedError(
                 _('"%s" is already being tracked for purging')
