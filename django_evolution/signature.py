@@ -2051,64 +2051,6 @@ class FieldSignature(BaseSignature):
                    self.related_model))
 
 
-def has_indexes_changed(old_model_sig, new_model_sig):
-    """Return whether indexes have changed between signatures.
-
-    Args:
-        old_model_sig (dict):
-            Old signature for the model.
-
-        new_model_sig (dict):
-            New signature for the model.
-
-    Returns:
-        bool:
-        ```True``` if there are any differences in indexes.
-    """
-    return (old_model_sig['meta'].get('indexes', []) !=
-            new_model_sig['meta'].get('indexes', []))
-
-
-def has_index_together_changed(old_model_sig, new_model_sig):
-    """Returns whether index_together has changed between signatures."""
-    old_meta = old_model_sig['meta']
-    new_meta = new_model_sig['meta']
-    old_index_together = old_meta.get('index_together', [])
-    new_index_together = new_meta['index_together']
-
-    return list(old_index_together) != list(new_index_together)
-
-
-def has_unique_together_changed(old_model_sig, new_model_sig):
-    """Returns whether unique_together has changed between signatures.
-
-    unique_together is considered to have changed under the following
-    conditions:
-
-        * They are different in value.
-        * Either the old or new is non-empty (even if equal) and evolving
-          from an older signature from Django Evolution pre-0.7, where
-          unique_together wasn't applied to the database.
-    """
-    old_meta = old_model_sig['meta']
-    new_meta = new_model_sig['meta']
-    old_unique_together = old_meta['unique_together']
-    new_unique_together = new_meta['unique_together']
-
-    return (list(old_unique_together) != list(new_unique_together) or
-            ((old_unique_together or new_unique_together) and
-             not old_meta.get('__unique_together_applied', False)))
-
-
-def record_unique_together_applied(model_sig):
-    """Records that unique_together was applied.
-
-    This will prevent that unique_together from becoming invalidated in
-    future evolutions.
-    """
-    model_sig['meta']['__unique_together_applied'] = True
-
-
 def validate_sig_version(sig_version):
     """Validate that a signature version is supported.
 
