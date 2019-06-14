@@ -46,20 +46,17 @@ def get_models(app_mod=None, include_auto_created=False):
         # Django >= 1.7
         if app_mod is None:
             return apps.get_models(include_auto_created=include_auto_created)
-        else:
-            app_label = app_mod.__name__.split('.')[-2]
 
-            try:
-                app_config = apps.get_app_config(app_label)
-
+        for app_config in apps.get_app_configs():
+            if app_config.models_module is app_mod:
                 return [
                     model
                     for model in app_config.get_models(
                         include_auto_created=include_auto_created)
                     if not model._meta.abstract
                 ]
-            except LookupError:
-                return []
+
+        return []
     else:
         # Django < 1.7
         return _get_models(app_mod, include_auto_created=include_auto_created)

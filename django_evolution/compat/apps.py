@@ -128,6 +128,7 @@ def register_app(app_label, app):
         # Django >= 1.7
         app_config = AppConfig(app.__name__, app)
         app_config.label = app_label
+        app_config.models_module = app
 
         apps.set_installed_apps(settings.INSTALLED_APPS + [app_config])
     else:
