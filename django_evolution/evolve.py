@@ -23,7 +23,7 @@ from django_evolution.mutators import AppMutator
 from django_evolution.signals import applied_evolution, applying_evolution
 from django_evolution.signature import ProjectSignature
 from django_evolution.utils.apps import get_app_label
-from django_evolution.utils.evolutions import (get_mutations,
+from django_evolution.utils.evolutions import (get_app_pending_mutations,
                                                get_unapplied_evolutions)
 from django_evolution.utils.sql import execute_sql
 
@@ -314,9 +314,10 @@ class EvolveAppTask(BaseEvolutionTask):
         else:
             evolutions = get_unapplied_evolutions(app=app,
                                                   database=database_name)
-            pending_mutations = get_mutations(app=app,
-                                              evolution_labels=evolutions,
-                                              database=database_name)
+            pending_mutations = get_app_pending_mutations(
+                app=app,
+                evolution_labels=evolutions,
+                database=database_name)
 
         mutations = [
             mutation

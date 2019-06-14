@@ -328,6 +328,14 @@ class AppMutator(object):
 
             mutation.mutate(self)
 
+            try:
+                mutation.run_simulation(app_label=self.app_label,
+                                        project_sig=self.project_sig,
+                                        database_state=self.database_state,
+                                        database=self.database)
+            except CannotSimulate:
+                self.can_simulate = False
+
     def run_mutations(self, mutations):
         """Runs a list of mutations."""
         mutations = self._preprocess_mutations(mutations)

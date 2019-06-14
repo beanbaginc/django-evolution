@@ -10,6 +10,7 @@ from django.utils import six
 from django.utils.functional import curry
 
 from django_evolution.compat.datastructures import OrderedDict
+from django_evolution.consts import UpgradeMethod
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.db.sql_result import SQLResult
 from django_evolution.db.state import DatabaseState
@@ -1548,3 +1549,65 @@ class ChangeMeta(BaseModelMutation):
                 The model being mutated.
         """
         mutator.change_meta(self, self.prop_name, self.new_value)
+
+
+class MoveToDjangoMigrations(BaseMutation):
+    """A mutation that uses Django migrations for an app's future upgrades.
+
+    This directs this app to evolve only up until this mutation, and to then
+    hand any future schema changes over to Django's migrations.
+
+    Once this mutation is used, no further mutations can be added for the app.
+    """
+
+    def __init__(self, migration_id='0001_initial'):
+        """Initialize the mutation.
+
+        Args:
+            migration_id (unicode, optional):
+                The starting migration for the app.
+        """
+        self.migration_id = migration_id
+
+    def is_mutable(self, *args, **kwargs):
+        """Return whether the mutation can be applied to the database.
+
+        Args:
+            *args (tuple, unused):
+                Unused positional arguments.
+
+            **kwargs (tuple, unused):
+                Unused positional arguments.
+
+        Returns:
+            bool:
+            ``True``, always.
+        """
+        return True
+
+    def simulate(self, simulation):
+        """Simulate the mutation.
+
+        This will alter the app's signature to mark it as being handled by
+        Django migrations.
+
+        Args:
+            simulation (Simulation):
+                The simulation being performed.
+        """
+        app_sig = simulation.get_app_sig()
+        app_sig.upgrade_method = UpgradeMethod.MIGRATIONS
+        app_sig.start_migration_id = self.migration_id
+        app_sig.last_applied_migration_id = None
+
+    def mutate(self, mutator):
+        """Schedule an app mutation on the mutator.
+
+        As this mutation just modifies state on the signature, no actual
+        database operations are performed.
+
+        Args:
+            mutator (django_evolution.mutators.AppMutator, unused):
+                The mutator to perform an operation on.
+        """
+        pass

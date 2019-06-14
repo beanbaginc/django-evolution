@@ -33,7 +33,14 @@ except RuntimeError:
 
 # Starting with Django Evolution 0.7.0, we explicitly need ChangeMetas for
 # unique_together.
-BUILTIN_SEQUENCES['django.contrib.auth'].append(
-    'auth_unique_together_baseline')
-BUILTIN_SEQUENCES['django.contrib.contenttypes'].append(
-    'contenttypes_unique_together_baseline')
+BUILTIN_SEQUENCES['django.contrib.auth'] += [
+    'auth_unique_together_baseline',
+    'auth_move_to_migrations',
+]
+BUILTIN_SEQUENCES['django.contrib.contenttypes'] += [
+    'contenttypes_unique_together_baseline',
+    'contenttypes_move_to_migrations',
+]
+BUILTIN_SEQUENCES['django.contrib.sessions'] += [
+    'sessions_move_to_migrations',
+]

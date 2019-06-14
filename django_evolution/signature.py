@@ -64,6 +64,11 @@ Version 2:
             '__version__': 2,
             'apps': {
                 '<app_label>': {
+                    'upgrade_method': 'migrations'|'evolutions'|None,
+                    'migrations': {
+                        'start': '<migration ID>'|None,
+                        'last_applied': '<migration ID>'|None,
+                    },
                     'models': {
                         '<model_name>': {
                             'meta': {
@@ -110,11 +115,12 @@ from copy import deepcopy
 from importlib import import_module
 
 from django.conf import global_settings
+from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 from django.utils import six
 from django.utils.translation import ugettext as _
 
-from django_evolution.compat.apps import get_apps
+from django_evolution.compat.apps import get_apps, get_app
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.db import (db_router_allows_migrate,
                                         db_router_allows_syncdb)
@@ -122,9 +128,11 @@ from django_evolution.compat.models import (GenericRelation,
                                             get_models,
                                             get_remote_field,
                                             get_remote_field_model)
+from django_evolution.consts import UpgradeMethod
 from django_evolution.errors import (InvalidSignatureVersion,
                                      MissingSignatureError)
 from django_evolution.utils.apps import get_app_label
+from django_evolution.utils.evolutions import get_app_upgrade_method
 
 
 #: The latest signature version.
@@ -442,8 +450,8 @@ class ProjectSignature(BaseSignature):
                 app_changes = new_app_sig.diff(old_app_sig)
 
                 if app_changes:
-                    # There are changes for this application. Store that in the
-                    # diff.
+                    # There are changes for this application. Store that
+                    # in the diff.
                     changed_apps[app_id] = app_changes
             else:
                 # The application has been deleted.
@@ -557,7 +565,9 @@ class AppSignature(BaseSignature):
             AppSignature:
             The application signature based on the application.
         """
-        app_sig = cls(app_id=get_app_label(app))
+        app_sig = cls(
+            app_id=get_app_label(app),
+            upgrade_method=get_app_upgrade_method(app, simulate_applied=True))
 
         for model in get_models(app):
             # Only include those models that can be synced.
@@ -598,12 +608,42 @@ class AppSignature(BaseSignature):
         """
         validate_sig_version(sig_version)
 
+        upgrade_method = None
+        start_migration_id = None
+        last_applied_migration_id = None
+
         if sig_version == 2:
             model_sigs_dict = app_sig_dict['models']
+            upgrade_method = app_sig_dict.get('upgrade_method')
+
+            migrations = app_sig_dict.get('migrations', {})
+            start_migration_id = migrations.get('start')
+            last_applied_migration_id = migrations.get('last_applied')
         elif sig_version == 1:
             model_sigs_dict = app_sig_dict
 
-        app_sig = cls(app_id=app_id)
+            # Try to figure out the upgrade method for this app, factoring in
+            # just the presence of evolutions/migrations directories (*not*
+            # scanning for any mutations that change the upgrade method).
+            #
+            # This might not find an upgrade method, which is okay. Other
+            # heuristics during diffing will try to deal with unknown upgrade
+            # methods, and when all else fails, explicit mutations can be
+            # added to set the record straight.
+            try:
+                upgrade_method = get_app_upgrade_method(get_app(app_id),
+                                                        scan_evolutions=False)
+            except ImproperlyConfigured:
+                # An app with the ID couldn't be found. This is likely either
+                # an issue with an app label change, a deleted app, or an
+                # app that is dynamically added later.
+                pass
+
+        app_sig = cls(app_id=app_id,
+                      upgrade_method=upgrade_method,
+                      start_migration_id=start_migration_id,
+                      last_applied_migration_id=last_applied_migration_id)
+        app_sig._loaded_sig_version = sig_version
 
         for model_name, model_sig_dict in six.iteritems(model_sigs_dict):
             app_sig.add_model_sig(
@@ -613,14 +653,34 @@ class AppSignature(BaseSignature):
 
         return app_sig
 
-    def __init__(self, app_id):
+    def __init__(self, app_id, upgrade_method=None, start_migration_id=None,
+                 last_applied_migration_id=None):
         """Initialize the signature.
 
         Args:
             app_id (unicode):
                 The ID of the application. This will be the application label.
+
+            upgrade_method (unicode, optional):
+                The upgrade method used for this application. This must be
+                a value from
+                :py:class:`~django_evolution.evolve.UpgradeMethod`, or
+                ``None``.
+
+            start_migration_id (unicode, optional):
+                The starting migration ID, if using Django Migrations for the
+                app.
+
+            last_applied_migration_id (unicode, optional):
+                The last applied migration ID, if using Django Migrations
+                for the app.
         """
         self.app_id = app_id
+        self.upgrade_method = upgrade_method
+        self.start_migration_id = start_migration_id
+        self.last_applied_migration_id = last_applied_migration_id
+
+        self._loaded_sig_version = None
         self._model_sigs = OrderedDict()
 
     @property
@@ -732,6 +792,7 @@ class AppSignature(BaseSignature):
 
         deleted_models = []
         changed_models = OrderedDict()
+        meta_changed = OrderedDict()
 
         # Process the models in the application, looking for changes to
         # fields and meta attributes.
@@ -750,11 +811,56 @@ class AppSignature(BaseSignature):
                 # The model has been deleted.
                 deleted_models.append(model_name)
 
+        # Check if the upgrade method has changed. We have to do this a bit
+        # carefully, as the old value might be None, due to:
+        #
+        # 1. Coming from a version 1 signature (meaning that we only care if
+        #    there are actual changes to the app and we're also transitioning
+        #    to Migrations)
+        #
+        # 2. Coming from a version 2 signature (including a database scan)
+        #    and the old signature doesn't list an upgrade method for the
+        #    app (meaning it likely didn't use either evolutions or
+        #    migrations).
+        old_upgrade_method = old_app_sig.upgrade_method
+        new_upgrade_method = self.upgrade_method
+        old_sig_version = old_app_sig._loaded_sig_version
+
+        if (old_upgrade_method != new_upgrade_method and
+            ((old_sig_version is None and
+              old_upgrade_method is not None) or
+             (old_sig_version == 1 and
+              (changed_models or deleted_models) and
+              old_upgrade_method is None and
+              new_upgrade_method != UpgradeMethod.EVOLUTIONS))):
+            # The upgrade method has changed. If we're moving to migrations,
+            # discard any other changes to the model. We're working with the
+            # assumption that the migrations will account for any changes.
+            #
+            # The assumption may technically be wrong (there may be
+            # evolutions to apply before migrations takes over), but we can't
+            # easily separate out the changes made by each method. However,
+            # since we've recorded a change to this app, the evolver will
+            # still apply any remaining evolutions, so we're covered.
+            meta_changed['upgrade_method'] = {
+                'old': old_upgrade_method,
+                'new': new_upgrade_method,
+            }
+
+        if new_upgrade_method == UpgradeMethod.MIGRATIONS:
+            # If we're using migrations, we don't want to show any other
+            # changes to the models. Those are handled by migrations, and
+            # aren't something we want to include in the diff, since they
+            # can't be resolved by evolutions.
+            changed_models.clear()
+            deleted_models = []
+
         # Build the dictionary of changes for the app.
         return OrderedDict(
             (key, value)
             for key, value in (('changed', changed_models),
-                               ('deleted', deleted_models))
+                               ('deleted', deleted_models),
+                               ('meta_changed', meta_changed))
             if value
         )
 
@@ -765,7 +871,11 @@ class AppSignature(BaseSignature):
             AppSignature:
             The cloned signature.
         """
-        cloned_sig = AppSignature(app_id=self.app_id)
+        cloned_sig = AppSignature(
+            app_id=self.app_id,
+            upgrade_method=self.upgrade_method,
+            start_migration_id=self.start_migration_id,
+            last_applied_migration_id=self.last_applied_migration_id)
 
         for model_sig in self.model_sigs:
             cloned_sig.add_model_sig(model_sig.clone())
@@ -793,6 +903,15 @@ class AppSignature(BaseSignature):
         app_sig_dict = OrderedDict()
 
         if sig_version == 2:
+            if self.upgrade_method:
+                app_sig_dict['upgrade_method'] = self.upgrade_method
+
+                if self.upgrade_method == UpgradeMethod.MIGRATIONS:
+                    app_sig_dict['migrations'] = {
+                        'start': self.start_migration_id,
+                        'last_applied': self.last_applied_migration_id,
+                    }
+
             # Add an ordered dictionary of models to the signature.
             model_sigs_dict = OrderedDict()
             app_sig_dict['models'] = model_sigs_dict
@@ -818,6 +937,10 @@ class AppSignature(BaseSignature):
         """
         return (other is not None and
                 self.app_id == other.app_id and
+                self.upgrade_method == other.upgrade_method and
+                self.start_migration_id == other.start_migration_id and
+                (self.last_applied_migration_id ==
+                 other.last_applied_migration_id) and
                 dict.__eq__(self._model_sigs, other._model_sigs))
 
     def __repr__(self):
@@ -827,8 +950,9 @@ class AppSignature(BaseSignature):
             unicode:
             A string representation of the signature.
         """
-        return ('<AppSignature(app_id=%r, models=%r)>'
-                % (self.app_id, list(six.iterkeys(self._model_sigs))))
+        return ('<AppSignature(app_id=%r, upgrade_method=%r, models=%r)>'
+                % (self.app_id, self.upgrade_method,
+                   list(six.iterkeys(self._model_sigs))))
 
 
 class ModelSignature(BaseSignature):

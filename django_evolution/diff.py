@@ -148,7 +148,7 @@ class Diff(object):
 
         Returns:
             unicode:
-            The stirng representation of the diff.
+            The string representation of the diff.
         """
         lines = [
             'The application %s has been deleted' % app_label
@@ -160,6 +160,14 @@ class Diff(object):
                 'The model %s.%s has been deleted' % (app_label, model_name)
                 for model_name in app_changes.get('deleted', {})
             ]
+
+            app_meta_changed = app_changes.get('meta_changed', {})
+
+            if app_meta_changed:
+                lines.append('In app %s:' % app_label)
+
+                if 'upgrade_method' in app_meta_changed:
+                    lines.append('    Schema upgrade method changed')
 
             app_changed = app_changes.get('changed', {})
 

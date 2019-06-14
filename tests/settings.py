@@ -102,7 +102,12 @@ TEMPLATE_DIRS = (
 )
 
 INSTALLED_APPS = [
+    'django.contrib.auth',
     'django.contrib.contenttypes',
     'django_evolution',
-    'django_evolution.tests.no_models_app',  # Needed for some tests.
+
+    # The following are needed for some tests.
+    'django_evolution.tests.evolutions_app',
+    'django_evolution.tests.no_models_app',
+    'django_evolution.tests.migrations_app',
 ]

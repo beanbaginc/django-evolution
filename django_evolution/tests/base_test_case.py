@@ -148,6 +148,34 @@ class EvolutionTestCase(TestCase):
 
     def perform_simulations(self, evolutions, end_sig, ignore_apps=False,
                             db_name=None):
+        """Run simulations and verify that they result in an end signature.
+
+        This will run through an evolution chain, simulating each one on a
+        copy of the starting signature, and then verifying that the signature
+        is properly transformed into the expected ending signature.
+
+        Args:
+            evolutions (list of django_evolution.mutations.BaseMutation):
+                The evolution chain to run simulations on.
+
+            end_sig (django_evolution.signature.ProjectSignature):
+                The expected ending signature.
+
+            ignore_apps (bool, optional):
+                Whether to ignore changes to the list of applications.
+
+            db_name (unicode, optional):
+                The name of the database to perform the simulations against.
+
+        Returns:
+            django_evolution.signature.ProjectSignature:
+            The resulting modified signature.
+
+        Raises:
+            AssertionError:
+                The modified signature did not match the expected end
+                signature.
+        """
         db_name = db_name or self.default_database_name
 
         self.test_database_state = self.database_state.clone()
@@ -162,6 +190,8 @@ class EvolutionTestCase(TestCase):
         # Check that the simulation's changes results in an empty diff.
         d = Diff(test_sig, end_sig)
         self.assertTrue(d.is_empty(ignore_apps=ignore_apps))
+
+        return test_sig
 
     def perform_mutations(self, evolutions, end, end_sig, sql_name,
                           rescan_indexes=True, db_name=None):

@@ -8,11 +8,45 @@ from importlib import import_module
 from django.db.utils import DEFAULT_DB_ALIAS
 
 from django_evolution.builtin_evolutions import BUILTIN_SEQUENCES
+from django_evolution.consts import UpgradeMethod
 from django_evolution.errors import EvolutionException
-from django_evolution.models import Evolution, Version
-from django_evolution.mutations import RenameModel, SQLMutation
-from django_evolution.signature import ProjectSignature
 from django_evolution.utils.apps import get_app_label, get_app_name
+
+
+def has_migrations_module(app):
+    """Return whether an app has a migrations module.
+
+    Args:
+        app (module):
+            The app module.
+
+    Returns:
+        bool:
+        ``True`` if the app has a ``migrations`` module. ``False`` if it
+        does not.
+    """
+    app_name = get_app_name(app)
+
+    try:
+        import_module('%s.migrations' % app_name)
+        return True
+    except ImportError:
+        return False
+
+
+def has_evolutions_module(app):
+    """Return whether an app has an evolutions module.
+
+    Args:
+        app (module):
+            The app module.
+
+    Returns:
+        bool:
+        ``True`` if the app has a ``evolutions`` module. ``False`` if it
+        does not.
+    """
+    return get_evolutions_module(app) is not None
 
 
 def get_evolutions_module(app):
@@ -29,9 +63,14 @@ def get_evolutions_module(app):
     """
     app_name = get_app_name(app)
 
+    if app_name in BUILTIN_SEQUENCES:
+        module_name = 'django_evolution.builtin_evolutions'
+    else:
+        module_name = '%s.evolutions' % app_name
+
     try:
-        return __import__(app_name + '.evolutions', {}, {}, [''])
-    except:
+        return import_module(module_name)
+    except ImportError:
         return None
 
 
@@ -92,6 +131,10 @@ def get_unapplied_evolutions(app, database=DEFAULT_DB_ALIAS):
         list of unicode:
         The labels of evolutions that have not yet been applied.
     """
+    # Avoids a nasty circular import. Util modules should always be
+    # importable, so we compensate here.
+    from django_evolution.models import Evolution
+
     applied = set(
         Evolution.objects
         .using(database)
@@ -106,15 +149,45 @@ def get_unapplied_evolutions(app, database=DEFAULT_DB_ALIAS):
     ]
 
 
-def get_mutations(app, evolution_labels, database=DEFAULT_DB_ALIAS):
-    """Return the mutations provided by the given evolution names.
+def get_applied_evolutions(app, database=DEFAULT_DB_ALIAS):
+    """Return the list of labels for applied evolutions for a Django app.
+
+    Args:
+        app (module):
+            The app to return evolutions for.
+
+        database (unicode, optional):
+            The name of the database containing the
+            :py:class:`~django_evolution.models.Evolution` entries.
+
+    Returns:
+        list of unicode:
+        The labels of evolutions that have been applied.
+    """
+    # Avoids a nasty circular import. Util modules should always be
+    # importable, so we compensate here.
+    from django_evolution.models import Evolution
+
+    return list(
+        Evolution.objects
+        .using(database)
+        .filter(app_label=get_app_label(app))
+        .values_list('label', flat=True)
+    )
+
+
+def get_app_mutations(app, evolution_labels=None, database=DEFAULT_DB_ALIAS):
+    """Return the mutations on an app provided by the given evolution names.
 
     Args:
         app (module):
             The app the evolutions belong to.
 
-        evolution_labels (unicode):
+        evolution_labels (list of unicode, optional):
             The labels of the evolutions to return mutations for.
+
+            If ``None``, this will factor in all evolution labels for the
+            app.
 
         database (unicode, optional):
             The name of the database the evolutions cover.
@@ -127,38 +200,34 @@ def get_mutations(app, evolution_labels, database=DEFAULT_DB_ALIAS):
         django_evolution.errors.EvolutionException:
             One or more evolutions are missing.
     """
-    # For each item in the evolution sequence. Check each item to see if it is
-    # a python file or an sql file.
-    try:
-        app_name = get_app_name(app)
+    # Avoids a nasty circular import. Util modules should always be
+    # importable, so we compensate here.
+    from django_evolution.mutations import SQLMutation
 
-        if app_name in BUILTIN_SEQUENCES:
-            module_name = 'django_evolution.builtin_evolutions'
-        else:
-            module_name = '%s.evolutions' % app_name
+    evolutions_module = get_evolutions_module(app)
 
-        evolution_module = import_module(module_name)
-    except ImportError:
+    if evolutions_module is None:
         return []
 
     mutations = []
+    directory_name = os.path.dirname(evolutions_module.__file__)
+
+    if evolution_labels is None:
+        evolution_labels = get_evolution_sequence(app)
 
     for label in evolution_labels:
-        directory_name = os.path.dirname(evolution_module.__file__)
-
         # The first element is used for compatibility purposes.
         filenames = [
-            os.path.join(directory_name, label + '.sql'),
-            os.path.join(directory_name, "%s_%s.sql" % (database, label)),
+            os.path.join(directory_name, '%s.sql' % label),
+            os.path.join(directory_name, '%s_%s.sql' % (database, label)),
         ]
 
         found = False
 
         for filename in filenames:
             if os.path.exists(filename):
-                sql_file = open(filename, 'r')
-                sql = sql_file.readlines()
-                sql_file.close()
+                with open(filename, 'r') as fp:
+                    sql = fp.readlines()
 
                 mutations.append(SQLMutation(label, sql))
 
@@ -167,14 +236,55 @@ def get_mutations(app, evolution_labels, database=DEFAULT_DB_ALIAS):
 
         if not found:
             try:
-                module_name = [evolution_module.__name__, label]
-                module = __import__('.'.join(module_name),
-                                    {}, {}, [module_name])
-                mutations.extend(module.MUTATIONS)
+                module = import_module('%s.%s' % (evolutions_module.__name__,
+                                                  label))
+                mutations += module.MUTATIONS
             except ImportError:
                 raise EvolutionException(
                     'Error: Failed to find an SQL or Python evolution named %s'
                     % label)
+
+    return mutations
+
+
+def get_app_pending_mutations(app, evolution_labels,
+                              database=DEFAULT_DB_ALIAS):
+    """Return an app's pending mutations provided by the given evolution names.
+
+    This is similar to :py:meth:`get_app_mutations`, but filters the list
+    of mutations down to remove any that are unnecessary (ones that do not
+    operate on changed parts of the project signature).
+
+    Args:
+        app (module):
+            The app the evolutions belong to.
+
+        evolution_labels (list of unicode, optional):
+            The labels of the evolutions to return mutations for.
+
+            If ``None``, this will factor in all evolution labels for the
+            app.
+
+        database (unicode, optional):
+            The name of the database the evolutions cover.
+
+    Returns:
+        list of django_evolution.mutations.BaseMutation:
+        The list of mutations provided by the evolutions.
+
+    Raises:
+        django_evolution.errors.EvolutionException:
+            One or more evolutions are missing.
+    """
+    # Avoids a nasty circular import. Util modules should always be
+    # importable, so we compensate here.
+    from django_evolution.models import Version
+    from django_evolution.mutations import RenameModel
+    from django_evolution.signature import ProjectSignature
+
+    mutations = get_app_mutations(app=app,
+                                  evolution_labels=evolution_labels,
+                                  database=database)
 
     latest_version = Version.objects.current_version(using=database)
 
@@ -226,3 +336,76 @@ def get_mutations(app, evolution_labels, database=DEFAULT_DB_ALIAS):
         ]
 
     return mutations
+
+
+def get_app_upgrade_method(app, scan_evolutions=True, simulate_applied=False):
+    """Return the upgrade method to use for a given app.
+
+    This will determine if the app should be using Django Evolution or
+    Django Migrations for any schema upgrades.
+
+    If an ``evolutions`` module is found, then this will determine the method
+    to be :py:attr:`UpgradeMethod.EVOLUTIONS
+    <django_evolution.consts.UpgradeMethod.EVOLUTIONS>`, unless the app has
+    been moved over to using Migrations.
+
+    If instead there's a ``migrations`` module, then this will determine
+    the method to be :py:attr:`UpgradeMethod.MIGRATIONS
+    <django_evolution.consts.UpgradeMethod.MIGRATIONS>`.
+
+    Otherwise, this will return ``None``, indicating that no established
+    method has been chosen. This allows a determination to be made later,
+    based on the Django version or the consumer's choice.
+
+    Note that this may return that migrations are the preferred method for
+    an app even on versions of Django that do not support migrations. It's
+    up to the caller to handle this however it chooses.
+
+    Args:
+        app (module):
+            The app module to determine the upgrade method for.
+
+        scan_evolutions (bool, optional):
+            Whether to scan evolutions for the app to determine the current
+            upgrade method.
+
+        simulate_applied (bool, optional):
+            Return the upgrade method based on the state of the app if all
+            mutations had been applied. This is useful for generating end
+            state signatures.
+
+            This is ignored if passing ``scan_evolutions=False``.
+
+    Returns:
+        unicode:
+        The upgrade method. This will be a value from
+        :py:class:`~django_evolution.consts.UpgradeMethod`, or ``None`` if
+        a clear determination could not be made.
+    """
+    # Avoids a nasty circular import. Util modules should always be
+    # importable, so we compensate here.
+    from django_evolution.mutations import MoveToDjangoMigrations
+
+    if has_evolutions_module(app):
+        # This app made use of Django Evolution. See if we're still using
+        # that, or if it's handed control over to Django migrations.
+
+        if scan_evolutions:
+            if simulate_applied:
+                evolutions = None
+            else:
+                evolutions = get_applied_evolutions(app)
+
+            mutations = get_app_mutations(app=app,
+                                          evolution_labels=evolutions)
+
+            for mutation in reversed(mutations):
+                if isinstance(mutation, MoveToDjangoMigrations):
+                    return UpgradeMethod.MIGRATIONS
+
+        return UpgradeMethod.EVOLUTIONS
+
+    if has_migrations_module(app):
+        return UpgradeMethod.MIGRATIONS
+
+    return None
