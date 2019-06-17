@@ -114,7 +114,7 @@ from importlib import import_module
 
 from django.conf import global_settings
 from django.core.exceptions import ImproperlyConfigured
-from django.db import models
+from django.db import DEFAULT_DB_ALIAS, models
 from django.utils import six
 from django.utils.translation import ugettext as _
 
@@ -140,7 +140,7 @@ class BaseSignature(object):
     """Base class for a signature."""
 
     @classmethod
-    def deserialize(self, sig_dict, sig_version):
+    def deserialize(self, sig_dict, sig_version, database=DEFAULT_DB_ALIAS):
         """Deserialize the signature.
 
         Args:
@@ -149,6 +149,9 @@ class BaseSignature(object):
 
             sig_version (int):
                 The stored signature version.
+
+            database (unicode, optional):
+                The name of the database.
 
         Returns:
             BaseSignature:
@@ -274,15 +277,15 @@ class ProjectSignature(BaseSignature):
         return project_sig
 
     @classmethod
-    def deserialize(cls, project_sig_dict, **kwargs):
+    def deserialize(cls, project_sig_dict, database=DEFAULT_DB_ALIAS):
         """Deserialize a serialized project signature.
 
         Args:
             project_sig_dict (dict):
                 The dictionary containing project signature data.
 
-            **kwargs (dict):
-                Extra keyword arguments.
+            database (unicode, optional):
+                The name of the database.
 
         Returns:
             ProjectSignature:
@@ -310,7 +313,8 @@ class ProjectSignature(BaseSignature):
             project_sig.add_app_sig(AppSignature.deserialize(
                 app_id=app_id,
                 app_sig_dict=app_sig_dict,
-                sig_version=sig_version))
+                sig_version=sig_version,
+                database=database))
 
         return project_sig
 
@@ -569,7 +573,9 @@ class AppSignature(BaseSignature):
             The application signature based on the application.
         """
         app_label = get_app_label(app)
-        app_upgrade_info = get_app_upgrade_info(app, simulate_applied=True)
+        app_upgrade_info = get_app_upgrade_info(app,
+                                                simulate_applied=True,
+                                                database=database)
 
         app_sig = cls(
             app_id=app_label,
@@ -584,7 +590,8 @@ class AppSignature(BaseSignature):
         return app_sig
 
     @classmethod
-    def deserialize(cls, app_id, app_sig_dict, sig_version):
+    def deserialize(cls, app_id, app_sig_dict, sig_version,
+                    database=DEFAULT_DB_ALIAS):
         """Deserialize a serialized application signature.
 
         Args:
@@ -596,6 +603,9 @@ class AppSignature(BaseSignature):
 
             sig_version (int):
                 The version of the serialized signature data.
+
+            database (unicode, optional):
+                The name of the database.
 
         Returns:
             AppSignature:
@@ -630,7 +640,8 @@ class AppSignature(BaseSignature):
             # added to set the record straight.
             try:
                 upgrade_info = get_app_upgrade_info(get_app(app_id),
-                                                    scan_evolutions=False)
+                                                    scan_evolutions=False,
+                                                    database=database)
                 upgrade_method = upgrade_info.get('upgrade_method')
                 applied_migrations = upgrade_info.get('applied_migrations')
             except ImproperlyConfigured:
@@ -649,7 +660,8 @@ class AppSignature(BaseSignature):
             app_sig.add_model_sig(
                 ModelSignature.deserialize(model_name=model_name,
                                            model_sig_dict=model_sig_dict,
-                                           sig_version=sig_version))
+                                           sig_version=sig_version,
+                                           database=database))
 
         return app_sig
 
@@ -1036,7 +1048,8 @@ class ModelSignature(BaseSignature):
         return model_sig
 
     @classmethod
-    def deserialize(cls, model_name, model_sig_dict, sig_version):
+    def deserialize(cls, model_name, model_sig_dict, sig_version,
+                    database=DEFAULT_DB_ALIAS):
         """Deserialize a serialized model signature.
 
         Args:
@@ -1048,6 +1061,9 @@ class ModelSignature(BaseSignature):
 
             sig_version (int):
                 The version of the serialized signature data.
+
+            database (unicode, optional):
+                The name of the database.
 
         Returns:
             ModelSignature:
@@ -1075,13 +1091,15 @@ class ModelSignature(BaseSignature):
         for index_sig_dict in meta_sig_dict.get('indexes', []):
             model_sig.add_index_sig(
                 IndexSignature.deserialize(index_sig_dict=index_sig_dict,
-                                           sig_version=sig_version))
+                                           sig_version=sig_version,
+                                           database=database))
 
         for field_name, field_sig_dict in six.iteritems(fields_sig_dict):
             model_sig.add_field_sig(
                 FieldSignature.deserialize(field_name=field_name,
                                            field_sig_dict=field_sig_dict,
-                                           sig_version=sig_version))
+                                           sig_version=sig_version,
+                                           database=database))
 
         return model_sig
 
@@ -1485,7 +1503,8 @@ class IndexSignature(BaseSignature):
                    fields=index.fields)
 
     @classmethod
-    def deserialize(cls, index_sig_dict, sig_version):
+    def deserialize(cls, index_sig_dict, sig_version,
+                    database=DEFAULT_DB_ALIAS):
         """Deserialize a serialized index signature.
 
         Args:
@@ -1494,6 +1513,9 @@ class IndexSignature(BaseSignature):
 
             sig_version (int):
                 The version of the serialized signature data.
+
+            database (unicode, optional):
+                The name of the database.
 
         Returns:
             IndexSignature:
@@ -1692,7 +1714,8 @@ class FieldSignature(BaseSignature):
                    related_model=related_model)
 
     @classmethod
-    def deserialize(cls, field_name, field_sig_dict, sig_version):
+    def deserialize(cls, field_name, field_sig_dict, sig_version,
+                    database=DEFAULT_DB_ALIAS):
         """Deserialize a serialized field signature.
 
         Args:
@@ -1704,6 +1727,9 @@ class FieldSignature(BaseSignature):
 
             sig_version (int):
                 The version of the serialized signature data.
+
+            database (unicode, optional):
+                The name of the database.
 
         Returns:
             FieldSignature:

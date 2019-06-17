@@ -1328,13 +1328,14 @@ class Evolver(object):
             self.version = version
 
         try:
-            version.save()
+            version.save(using=self.database_name)
 
             if new_evolutions:
                 for evolution in new_evolutions:
                     evolution.version = version
 
-                Evolution.objects.bulk_create(new_evolutions)
+                Evolution.objects.using(self.database_name).bulk_create(
+                    new_evolutions)
         except Exception as e:
             raise EvolutionExecutionError(
                 _('Error saving new evolution version information: %s')
