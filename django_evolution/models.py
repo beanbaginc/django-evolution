@@ -108,7 +108,9 @@ class SignatureField(models.TextField):
             django.core.exceptions.ValidationError:
                 The field contents are of an unexpected type.
         """
-        if isinstance(value, six.string_types):
+        if not value:
+            return ProjectSignature()
+        elif isinstance(value, six.string_types):
             if value.startswith('json!'):
                 loaded_value = json.loads(value[len('json!'):],
                                           object_pairs_hook=OrderedDict)

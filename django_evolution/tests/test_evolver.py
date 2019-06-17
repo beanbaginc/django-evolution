@@ -2,10 +2,11 @@
 
 from __future__ import unicode_literals
 
-from django.db import connections, models
+from django.db import DatabaseError, connections, models
 from django.dispatch import receiver
 
 from django_evolution.compat.apps import get_app, get_apps
+from django_evolution.compat.db import sql_delete
 from django_evolution.errors import (EvolutionBaselineMissingError,
                                      EvolutionTaskAlreadyQueuedError,
                                      QueueEvolverTaskError)
@@ -21,7 +22,7 @@ from django_evolution.signature import AppSignature, ModelSignature
 from django_evolution.tests import models as evo_test
 from django_evolution.tests.base_test_case import EvolutionTestCase
 from django_evolution.tests.models import BaseTestModel
-from django_evolution.tests.utils import ensure_test_db
+from django_evolution.tests.utils import ensure_test_db, execute_transaction
 
 
 class DummyTask(BaseEvolutionTask):
@@ -63,11 +64,30 @@ class EvolverTests(BaseEvolverTestCase):
         self.assertEqual(list(evolver.tasks), [])
 
     def test_init_with_no_baseline(self):
-        """Testing Evolver.__init__ with no baselines"""
+        """Testing Evolver.__init__ with no baseline signatures"""
         Version.objects.all().delete()
 
-        with self.assertRaises(EvolutionBaselineMissingError):
-            Evolver()
+        Evolver()
+
+        version = Version.objects.get()
+        app_sigs = list(version.signature.app_sigs)
+        self.assertEqual(len(app_sigs), 1)
+        self.assertEqual(app_sigs[0].app_id, 'django_evolution')
+
+    def test_init_with_no_base_models(self):
+        """Testing Evolver.__init__ with no base models"""
+        execute_transaction(sql_delete(get_app('django_evolution')))
+
+        # Make sure these are really gone.
+        with self.assertRaises(DatabaseError):
+            Version.objects.count()
+
+        Evolver()
+
+        version = Version.objects.get()
+        app_sigs = list(version.signature.app_sigs)
+        self.assertEqual(len(app_sigs), 1)
+        self.assertEqual(app_sigs[0].app_id, 'django_evolution')
 
     def test_can_simulate_with_all_can_simulate_true_evolution_true(self):
         """Testing Evolver.can_simulate with all tasks having can_simulate=True

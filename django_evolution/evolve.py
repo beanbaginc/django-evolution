@@ -6,20 +6,19 @@ import logging
 from collections import OrderedDict
 from contextlib import contextmanager
 
-from django.db import connections
+from django.db import DatabaseError, connections
 from django.db.utils import DEFAULT_DB_ALIAS
 from django.utils import six
 from django.utils.translation import ugettext as _
 
-from django_evolution.compat.apps import get_apps
+from django_evolution.compat.apps import get_app, get_apps
 from django_evolution.compat.db import (atomic,
                                         db_get_installable_models_for_app,
                                         sql_create_models)
 from django_evolution.consts import UpgradeMethod
 from django_evolution.db.state import DatabaseState
 from django_evolution.diff import Diff
-from django_evolution.errors import (EvolutionBaselineMissingError,
-                                     EvolutionException,
+from django_evolution.errors import (EvolutionException,
                                      EvolutionTaskAlreadyQueuedError,
                                      EvolutionExecutionError,
                                      QueueEvolverTaskError)
@@ -30,7 +29,7 @@ from django_evolution.signals import (applied_evolution,
                                       applying_evolution,
                                       created_models,
                                       creating_models)
-from django_evolution.signature import ProjectSignature
+from django_evolution.signature import AppSignature, ProjectSignature
 from django_evolution.support import supports_migrations
 from django_evolution.utils.apps import get_app_label, get_legacy_app_label
 from django_evolution.utils.evolutions import (get_app_pending_mutations,
@@ -722,6 +721,11 @@ class Evolver(object):
             The project signature. This will start off as the previous
             signature stored in the database, but will be modified when
             mutations are simulated.
+
+        version (django_evolution.models.Version):
+            The project version entry saved as the result of any evolution
+            operations. This contains the current version of the project
+            signature. It may be ``None`` until :py:meth:`evolve` is called.
     """
 
     def __init__(self, hinted=False, database_name=DEFAULT_DB_ALIAS):
@@ -747,6 +751,7 @@ class Evolver(object):
         self.evolved = False
         self.initial_diff = None
         self.project_sig = None
+        self.version = None
 
         self.connection = connections[database_name]
 
@@ -765,17 +770,43 @@ class Evolver(object):
         try:
             latest_version = \
                 Version.objects.current_version(using=database_name)
+        except (DatabaseError, Version.DoesNotExist):
+            # Either the models aren't yet synced to the database, or we
+            # don't have a saved project signature, so let's set these up.
+            self.project_sig = ProjectSignature()
+            app = get_app('django_evolution')
 
-            self.project_sig = latest_version.signature
-            self.initial_diff = Diff(self.project_sig,
-                                     self.target_project_sig)
-        except Version.DoesNotExist:
-            # TODO: Once we're automatically running syncdb/migrate, this
-            #       shouldn't be an issue, and we can remove the error.
-            #       Or make it something more dire.
-            raise EvolutionBaselineMissingError(
-                _('An evolution baseline must be set before an evolution '
-                  'can be performed.'))
+            task = EvolveAppTask(evolver=self,
+                                 app=app)
+            task.prepare(hinted=False)
+
+            with self.transaction() as cursor:
+                task.execute(cursor, create_models_now=True)
+
+            self.database_state.rescan_tables()
+
+            app_sig = AppSignature.from_app(app=app,
+                                            database=database_name)
+            self.project_sig.add_app_sig(app_sig)
+
+            # Let's make completely sure that we've only found the models
+            # we expect. This is mostly for the benefit of unit tests.
+            model_names = set(
+                model_sig.model_name
+                for model_sig in app_sig.model_sigs
+            )
+            expected_model_names = set(['Evolution', 'Version'])
+
+            assert model_names == expected_model_names, (
+                'Unexpected models found for django_evolution app: %s'
+                % ', '.join(model_names - expected_model_names))
+
+            self._save_project_sig(new_evolutions=task.new_evolutions)
+            latest_version = self.version
+
+        self.project_sig = latest_version.signature
+        self.initial_diff = Diff(self.project_sig,
+                                 self.target_project_sig)
 
     @property
     def tasks(self):
@@ -1011,21 +1042,7 @@ class Evolver(object):
             # Things may have changed, so rescan the database.
             self.database_state.rescan_tables()
 
-        try:
-            # Now save the current signature and version.
-            version = Version.objects.create(
-                signature=self.project_sig)
-
-            for evolution in new_evolutions:
-                evolution.version = version
-
-            Evolution.objects.bulk_create(new_evolutions)
-        except Exception as e:
-            raise EvolutionExecutionError(
-                _('Error saving new evolution version information: %s')
-                % e,
-                detailed_error=six.text_type(e))
-
+        self._save_project_sig(new_evolutions=new_evolutions)
         self.evolved = True
 
     def _prepare_tasks(self):
@@ -1060,3 +1077,41 @@ class Evolver(object):
                 yield cursor
             finally:
                 cursor.close()
+
+    def _save_project_sig(self, new_evolutions):
+        """Save the project signature and any new evolutions.
+
+        This will serialize the current modified project signature to the
+        database and write any new evolutions, attaching them to the current
+        project version.
+
+        This can be called many times for one evolver instance. After the
+        first time, the version already saved will simply be updated.
+
+        Args:
+            new_evolutions (list of django_evolution.models.Evolution):
+                The list of new evolutions to save to the database.
+
+        Raises:
+            django_evolution.errors.EvolutionExecutionError:
+                There was an error saving to the database.
+        """
+        version = self.version
+
+        if version is None:
+            version = Version(signature=self.project_sig)
+            self.version = version
+
+        try:
+            version.save()
+
+            if new_evolutions:
+                for evolution in new_evolutions:
+                    evolution.version = version
+
+                Evolution.objects.bulk_create(new_evolutions)
+        except Exception as e:
+            raise EvolutionExecutionError(
+                _('Error saving new evolution version information: %s')
+                % e,
+                detailed_error=six.text_type(e))
