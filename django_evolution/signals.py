@@ -5,6 +5,19 @@ from __future__ import unicode_literals
 from django.dispatch import Signal
 
 
+#: Emitted when an Evolver begins evolving.
+evolving = Signal()
+
+#: Emitted when an Evolver finishes evolving.
+evolved = Signal()
+
+#: Emitted when an Evolver fails evolving.
+#:
+#: Args:
+#:     exception (Exception):
+#:         The exception raised when evolution failed.
+evolving_failed = Signal(providing_args=['exception'])
+
 #: Emitted when an evolution is about to be applied to an app.
 #:
 #: Args:

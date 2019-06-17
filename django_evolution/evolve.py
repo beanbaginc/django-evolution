@@ -28,7 +28,10 @@ from django_evolution.mutators import AppMutator
 from django_evolution.signals import (applied_evolution,
                                       applying_evolution,
                                       created_models,
-                                      creating_models)
+                                      creating_models,
+                                      evolved,
+                                      evolving,
+                                      evolving_failed)
 from django_evolution.signature import AppSignature, ProjectSignature
 from django_evolution.support import supports_migrations
 from django_evolution.utils.apps import get_app_label, get_legacy_app_label
@@ -1251,24 +1254,33 @@ class Evolver(object):
                 _('Evolver.evolve() has already been run once. It cannot be '
                   'run again.'))
 
-        self._prepare_tasks()
+        evolving.send(sender=self)
 
-        new_evolutions = []
+        try:
+            self._prepare_tasks()
 
-        for task_cls, tasks in six.iteritems(self._tasks_by_class):
-            # Perform the evolution for the app. This is responsible
-            # for raising any exceptions.
-            task_cls.execute_tasks(evolver=self,
-                                   tasks=tasks)
+            new_evolutions = []
 
-            for task in tasks:
-                new_evolutions += task.new_evolutions
+            for task_cls, tasks in six.iteritems(self._tasks_by_class):
+                # Perform the evolution for the app. This is responsible
+                # for raising any exceptions.
+                task_cls.execute_tasks(evolver=self,
+                                       tasks=tasks)
 
-            # Things may have changed, so rescan the database.
-            self.database_state.rescan_tables()
+                for task in tasks:
+                    new_evolutions += task.new_evolutions
 
-        self._save_project_sig(new_evolutions=new_evolutions)
-        self.evolved = True
+                # Things may have changed, so rescan the database.
+                self.database_state.rescan_tables()
+
+            self._save_project_sig(new_evolutions=new_evolutions)
+            self.evolved = True
+
+            evolved.send(sender=self)
+        except Exception as e:
+            evolving_failed.send(sender=self,
+                                 exception=e)
+            raise
 
     def _prepare_tasks(self):
         """Prepare all queued tasks for further operations.
