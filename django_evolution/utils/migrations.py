@@ -5,25 +5,172 @@ from __future__ import unicode_literals
 from importlib import import_module
 
 import django
+from django.utils import six
 
 try:
     # Django >= 1.7
     from django.core.management.sql import (emit_post_migrate_signal,
                                             emit_pre_migrate_signal)
-    from django.db.migrations.executor import MigrationExecutor
+    from django.db.migrations.executor import (MigrationExecutor as
+                                               DjangoMigrationExecutor)
+    from django.db.migrations.loader import (MigrationLoader as
+                                             DjangoMigrationLoader)
     from django.db.migrations.recorder import MigrationRecorder
     from django.db.migrations.state import ModelState
 except ImportError:
     # Django < 1.7
-    MigrationExecutor = None
+    DjangoMigrationExecutor = object
+    DjangoMigrationLoader = object
     MigrationRecorder = None
     ModelState = None
     emit_post_migrate_signal = None
     emit_pre_migrate_signal = None
 
 from django_evolution.compat.models import get_model
+from django_evolution.errors import (MigrationConflictsError,
+                                     MigrationHistoryError)
+from django_evolution.signals import applied_migration, applying_migration
 from django_evolution.support import supports_migrations
 from django_evolution.utils.apps import get_app_name
+
+
+class MigrationLoader(DjangoMigrationLoader):
+    """Loads migration files from disk.
+
+    This is a specialization of Django's own
+    :py:class:`~django.db.migrations.loader.MigrationLoader` that allows for
+    providing additional migrations not available on disk.
+    """
+
+    def __init__(self, connection, custom_migrations=None, *args, **kwargs):
+        """Initialize the loader.
+
+        Args:
+            connection (django.db.backends.base.BaseDatabaseWrapper):
+                The connection to load applied migrations from.
+
+            custom_migrations (dict, optional):
+                Custom migrations not available on disk. Each key is a tuple
+                of ``(app_label, migration_name)``, and each value is a
+                migration.
+
+            *args (tuple):
+                Additional positional arguments for the parent class.
+
+            **kwargs (dict):
+                Additional keyword arguments for the parent class.
+        """
+        self._custom_migrations = custom_migrations or {}
+
+        super(MigrationLoader, self).__init__(connection, *args, **kwargs)
+
+    def load_disk(self):
+        """Load migrations from disk.
+
+        This will also load any custom migrations.
+        """
+        super(MigrationLoader, self).load_disk()
+
+        for key, migration in six.iteritems(self._custom_migrations):
+            app_label = key[0]
+
+            self.migrated_apps.add(app_label)
+            self.unmigrated_apps.discard(app_label)
+            self.disk_migrations[key] = migration
+
+
+class MigrationExecutor(DjangoMigrationExecutor):
+    """Load and execute migrations.
+
+    This is a specialization of Django's own
+    :py:class:`~django.db.migrations.executor.MigrationExecutor` that allows
+    for providing additional migrations not available on disk, and for
+    emitting our own signals when processing migrations.
+    """
+
+    def __init__(self, connection, custom_migrations=None, signal_sender=None):
+        """Initialize the executor.
+
+        Args:
+            connection (django.db.backends.base.BaseDatabaseWrapper):
+                The connection to load applied migrations from.
+
+            custom_migrations (dict, optional):
+                Custom migrations not available on disk. Each key is a tuple
+                of ``(app_label, migration_name)``, and each value is a
+                migration.
+
+            signal_sender (object, optional):
+                A custom sender to pass when sending signals. This defaults
+                to this instance.
+        """
+        self._signal_sender = signal_sender or self
+
+        super(MigrationExecutor, self).__init__(
+            connection=connection,
+            progress_callback=self._on_progress)
+
+        # Ideally we would be able to replace this during initialization,
+        # or at the very least prevent the default one from loading from
+        # disk, but it's not often that these will be constructed, so it's
+        # probably fine.
+        self.loader = MigrationLoader(connection=connection,
+                                      custom_migrations=custom_migrations)
+
+    def run_checks(self):
+        """Perform checks on the migrations and any history.
+
+        Raises:
+            django_evolution.errors.MigrationConflictsError:
+                There are conflicts between migrations loaded from disk.
+
+            django_evolution.errors.MigrationHistoryError:
+                There are unapplied dependencies to applied migrations.
+        """
+        # Make sure that the migration files in the tree form a proper history.
+        if hasattr(self.loader, 'check_consistent_history'):
+            # Django >= 1.10
+            from django.db.migrations.exceptions import \
+                InconsistentMigrationHistory
+
+            try:
+                self.loader.check_consistent_history(self.connection)
+            except InconsistentMigrationHistory as e:
+                raise MigrationHistoryError(six.text_type(e))
+
+        # Now check that there aren't any conflicts between any migrations that
+        # we may end up working with.
+        conflicts = self.loader.detect_conflicts()
+
+        if conflicts:
+            raise MigrationConflictsError(conflicts)
+
+    def _on_progress(self, action, migration=None, *args, **kwargs):
+        """Handler for progress notifications.
+
+        This will convert certain progress notifications to Django Evolution
+        signals.
+
+        Args:
+            action (unicode):
+                The action reflecting the progress update.
+
+            migration (django.db.migrations.Migration, optional):
+                The migration that the progress update applies to. This is
+                not provided for all progress updates.
+
+            *args (tuple, unused):
+                Additional positional arguments passed for the update.
+
+            **kwargs (dict, unused):
+                Additional keyword arguments passed for the update.
+        """
+        if action == 'apply_start':
+            applying_migration.send(sender=self._signal_sender,
+                                    migration=migration)
+        elif action == 'apply_success':
+            applied_migration.send(sender=self._signal_sender,
+                                   migration=migration)
 
 
 def has_migrations_module(app):

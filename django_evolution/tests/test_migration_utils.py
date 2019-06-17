@@ -4,27 +4,29 @@ from __future__ import unicode_literals
 
 from unittest import SkipTest
 
+import django
 from django.db import DEFAULT_DB_ALIAS, connections, models
 
 try:
     # Django >= 1.7
     from django.db import migrations
-    from django.db.migrations.executor import MigrationExecutor
     from django.db.migrations.recorder import MigrationRecorder
 except ImportError:
     # Django < 1.7
-    MigrationExecutor = None
     MigrationRecorder = None
     migrations = None
 
 from django_evolution.compat.apps import get_app
 from django_evolution.db.state import DatabaseState
+from django_evolution.errors import (MigrationConflictsError,
+                                     MigrationHistoryError)
 from django_evolution.support import supports_migrations
 from django_evolution.tests.base_test_case import (MigrationsTestsMixin,
                                                    TestCase)
 from django_evolution.tests.models import BaseTestModel
 from django_evolution.tests.utils import register_models
-from django_evolution.utils.migrations import (apply_migrations,
+from django_evolution.utils.migrations import (MigrationExecutor,
+                                               apply_migrations,
                                                filter_migration_targets,
                                                get_applied_migrations_by_app,
                                                has_migrations_module,
@@ -68,6 +70,58 @@ if migrations:
 else:
     InitialMigration = None
     AddFieldMigration = None
+
+
+class MigrationExecutorTests(MigrationsTestsMixin, TestCase):
+    """Unit tests for django_evolution.utils.migrations.MigrationExecutor."""
+
+    def test_run_checks_with_bad_history(self):
+        """Testing MigrationExecutor.run_checks with bad history"""
+        if django.VERSION[:2] < (1, 10):
+            raise SkipTest('Not supported on Django < 1.10')
+
+        connection = connections[DEFAULT_DB_ALIAS]
+
+        record_applied_migrations(connection=connection,
+                                  app_label='tests',
+                                  migration_names=['0002_add_field'])
+
+        executor = MigrationExecutor(
+            connection=connection,
+            custom_migrations={
+                ('tests', '0001_initial'):
+                    InitialMigration('0001_initial', 'tests'),
+                ('tests', '0002_add_field'):
+                    AddFieldMigration('0002_add_field', 'tests'),
+            })
+
+        with self.assertRaises(MigrationHistoryError):
+            executor.run_checks()
+
+    def test_run_checks_with_conflicts(self):
+        """Testing MigrationExecutor.run_checks with conflicts"""
+        if django.VERSION[:2] < (1, 7):
+            raise SkipTest('Not supported on Django < 1.7')
+
+        connection = connections[DEFAULT_DB_ALIAS]
+
+        executor = MigrationExecutor(
+            connection=connection,
+            custom_migrations={
+                ('tests', '0001_initial'):
+                    InitialMigration('0001_initial', 'tests'),
+                ('tests', '0002_also_initial'):
+                    InitialMigration('0002_also_initial', 'tests'),
+            })
+
+        message = (
+            "Conflicting migrations detected; multiple leaf nodes in the "
+            "migration graph: (0001_initial, 0002_also_initial in tests).\n"
+            "To fix them run 'python manage.py makemigrations --merge'"
+        )
+
+        with self.assertRaisesMessage(MigrationConflictsError, message):
+            executor.run_checks()
 
 
 class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
@@ -162,38 +216,6 @@ class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
         if not supports_migrations:
             raise SkipTest('Not used on Django < 1.7')
 
-        class MigrationTestModel(BaseTestModel):
-            field1 = models.IntegerField()
-            field2 = models.CharField(max_length=10)
-            field3 = models.BooleanField()
-
-        class InitialMigration(migrations.Migration):
-            operations = [
-                migrations.CreateModel(
-                    name='MigrationTestModel',
-                    fields=[
-                        ('id', models.AutoField(verbose_name='ID',
-                                                serialize=False,
-                                                auto_created=True,
-                                                primary_key=True)),
-                        ('field1', models.IntegerField()),
-                        ('field2', models.CharField(max_length=10)),
-                    ]
-                ),
-            ]
-
-        class AddFieldMigration(migrations.Migration):
-            dependencies = [
-                ('tests', '0001_initial'),
-            ]
-
-            operations = [
-                migrations.AddField(
-                    model_name='MigrationTestModel',
-                    name='field3',
-                    field=models.BooleanField()),
-            ]
-
         database_state = DatabaseState(db_name=DEFAULT_DB_ALIAS)
         register_models(database_state=database_state,
                         models=[('MigrationTestModel', MigrationTestModel)])
@@ -209,16 +231,12 @@ class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
         ]
 
         connection = connections[DEFAULT_DB_ALIAS]
-        executor = MigrationExecutor(connection)
-
-        # Since we're not loading migrations from disk, we need to update
-        # the graph, dependencies, and app label states manually.
-        executor.loader.graph.add_node(targets[0], app_migrations[0])
-        executor.loader.graph.add_node(targets[1], app_migrations[1])
-        executor.loader.graph.add_dependency(app_migrations[1],
-                                             targets[1],
-                                             targets[0])
-        executor.loader.unmigrated_apps.remove('tests')
+        executor = MigrationExecutor(
+            connection,
+            custom_migrations={
+                targets[0]: app_migrations[0],
+                targets[1]: app_migrations[1],
+            })
 
         apply_migrations(
             executor=executor,

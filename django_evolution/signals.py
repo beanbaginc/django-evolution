@@ -25,6 +25,20 @@ applying_evolution = Signal(providing_args=['app_label', 'task'])
 #:         The task that evolved the app.
 applied_evolution = Signal(providing_args=['app_label', 'task'])
 
+#: Emitted when a migration is about to be applied to an app.
+#:
+#: Args:
+#:     migration (django.db.migrations.migration.Migration):
+#:         The migration that's being applied.
+applying_migration = Signal(providing_args=['migration'])
+
+#: Emitted when a migration has been applied to an app.
+#:
+#: Args:
+#:     migration (django.db.migrations.migration.Migration):
+#:         The migration that was applied.
+applied_migration = Signal(providing_args=['migration'])
+
 #: Emitted when creating new models for an app outside of a migration.
 #:
 #: Args:

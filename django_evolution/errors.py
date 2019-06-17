@@ -1,4 +1,8 @@
+"""Standard exceptions for Django Evolution."""
+
 from __future__ import unicode_literals
+
+from django.utils import six
 
 
 class EvolutionException(Exception):
@@ -99,3 +103,37 @@ class InvalidSignatureVersion(EvolutionException):
         """
         super(InvalidSignatureVersion, self).__init__(
             '%s is not a known signature version' % version)
+
+
+class BaseMigrationError(EvolutionException):
+    """Base class for migration errors."""
+
+
+class MigrationHistoryError(BaseMigrationError):
+    """An error with the stored history of migrations.
+
+    This is raised if any applied migrations have unapplied dependencies.
+    """
+
+
+class MigrationConflictsError(BaseMigrationError):
+    """There are conflicts between migrations."""
+
+    def __init__(self, conflicts):
+        """Initialize the error.
+
+        Args:
+            conflicts (dict):
+                A dictionary of conflicts, provided by the migrations system.
+        """
+        # Note that we're using the same error message that Django's migrate
+        # command uses.
+        super(MigrationConflictsError, self).__init__(
+            "Conflicting migrations detected; multiple leaf nodes "
+            "in the migration graph: (%s).\n"
+            "To fix them run 'python manage.py makemigrations "
+            "--merge'"
+            % '; '.join(
+                '%s in %s' % (', '.join(sorted(conflict_names)), app_label)
+                for app_label, conflict_names in six.iteritems(conflicts)
+            ))
