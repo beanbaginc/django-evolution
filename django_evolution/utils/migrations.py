@@ -17,8 +17,14 @@ try:
                                              DjangoMigrationLoader)
     from django.db.migrations.recorder import MigrationRecorder
     from django.db.migrations.state import ModelState
+
+    emit_post_sync_signal = None
+    emit_pre_sync_signal = None
 except ImportError:
     # Django < 1.7
+    from django.core.management.sql import (emit_post_sync_signal,
+                                            emit_pre_sync_signal)
+
     DjangoMigrationExecutor = object
     DjangoMigrationLoader = object
     MigrationRecorder = None
@@ -32,6 +38,9 @@ from django_evolution.errors import (MigrationConflictsError,
 from django_evolution.signals import applied_migration, applying_migration
 from django_evolution.support import supports_migrations
 from django_evolution.utils.apps import get_app_name
+
+
+django_version = django.VERSION[:2]
 
 
 class MigrationLoader(DjangoMigrationLoader):
@@ -69,6 +78,7 @@ class MigrationLoader(DjangoMigrationLoader):
         """
         self._custom_migrations = custom_migrations or {}
         self._applied_migrations = set()
+        self._lock_migrations = False
 
         self.extra_applied_migrations = set()
 
@@ -93,11 +103,30 @@ class MigrationLoader(DjangoMigrationLoader):
         """
         self._applied_migrations = value
 
+    def build_graph(self, reload_migrations=True):
+        """Rebuild the migrations graph.
+
+        Args:
+            reload_migrations (bool, optional):
+                Whether to reload migration instances from disk. If ``False``,
+                the ones loaded before will be used.
+        """
+        if not reload_migrations:
+            self._lock_migrations = True
+
+        try:
+            super(MigrationLoader, self).build_graph()
+        finally:
+            self._lock_migrations = False
+
     def load_disk(self):
         """Load migrations from disk.
 
         This will also load any custom migrations.
         """
+        if self._lock_migrations:
+            return
+
         super(MigrationLoader, self).load_disk()
 
         for key, migration in six.iteritems(self._custom_migrations):
@@ -387,7 +416,31 @@ def is_migration_initial(migration):
     return True
 
 
-def apply_migrations(executor, targets, plan):
+def create_pre_migrate_state(executor):
+    """Create state needed before migrations are applied.
+
+    The return value is dependent on the version of Django.
+
+    Args:
+        executor (django.db.migrations.executor.MigrationExecutor):
+            The migration executor that will handle the migrations.
+
+    Returns:
+        object:
+        The state needed for applying migrations.
+    """
+    assert supports_migrations, \
+        'This cannot be called on Django 1.6 or earlier.'
+
+    if django_version >= (1, 10):
+        # Unfortunately, we have to call into a private method here, just as
+        # the migrate command does. Ideally, this would be official API.
+        return executor._create_project_state(with_applied_migrations=True)
+
+    return None
+
+
+def apply_migrations(executor, targets, plan, pre_migrate_state):
     """Apply migrations to the database.
 
     Migrations will be applied using the ``fake_initial`` mode, which means
@@ -411,18 +464,19 @@ def apply_migrations(executor, targets, plan):
 
         plan (list of tuple):
             The order in which migrations will be applied.
+
+        pre_migrate_state (object):
+            The pre-migration state needed to apply these migrations.
+            This must be generated with :py:func:`create_pre_migrate_state`
+            or a previous call to :py:func:`apply_migrations`.
+
+    Returns:
+        object:
+        The state generated from applying migrations. Any final state must
+        be passed to :py:func:`finalize_migrations`.
     """
     assert supports_migrations, \
         'This cannot be called on Django 1.6 or earlier.'
-
-    db_name = executor.connection.alias
-
-    pre_signal_kwargs = {
-        'db': db_name,
-        'interactive': False,
-        'verbosity': 1,
-    }
-    post_signal_kwargs = pre_signal_kwargs.copy()
 
     migrate_kwargs = {
         'fake': False,
@@ -430,37 +484,34 @@ def apply_migrations(executor, targets, plan):
         'targets': targets,
     }
 
-    django_version = django.VERSION[:2]
-
     # Build version-dependent state needed for the signals and migrate
     # operation.
-    if (1, 7) <= django_version <= (1, 8):
-        pre_signal_kwargs['create_models'] = []
-        post_signal_kwargs['created_models'] = []
-
     if django_version >= (1, 8):
         # Mark any migrations that introduce new models that are already in
         # the database as applied.
         migrate_kwargs['fake_initial'] = True
 
     if django_version >= (1, 10):
-        # Unfortunately, we have to call into a private method here, just as
-        # the migrate command does. Ideally, this would be official API.
-        pre_migrate_state = executor._create_project_state(
-            with_applied_migrations=True)
-        pre_signal_kwargs.update({
-            'apps': pre_migrate_state.apps,
-            'plan': plan,
-        })
         migrate_kwargs['state'] = pre_migrate_state.clone()
-
-    # TODO: Replace with our own signal. Emit this in the management
-    #       command, where verbosity/interactivity can be controlled.
-    emit_pre_migrate_signal(**pre_signal_kwargs)
 
     # Perform the migration and record the result. This only returns a value
     # on Django >= 1.10.
-    post_migrate_state = executor.migrate(**migrate_kwargs)
+    return executor.migrate(**migrate_kwargs)
+
+
+def finalize_migrations(post_migrate_state):
+    """Finalize any migrations operations.
+
+    This will update any internal state in Django for any migrations that
+    were applied and represented by the provided post-migrate state.
+
+    Args:
+        post_migrate_state (object):
+            The state generated from applying migrations. This must be the
+            result of :py:meth:`apply_migrations`.
+    """
+    assert supports_migrations, \
+        'This cannot be called on Django 1.6 or earlier.'
 
     if django_version >= (1, 10):
         # On Django 1.10, we have a few more steps for generating the state
@@ -482,11 +533,108 @@ def apply_migrations(executor, targets, plan):
             for model in model_keys
         ])
 
-        post_signal_kwargs.update({
-            'apps': post_migrate_apps,
+
+def emit_pre_migrate_or_sync(verbosity, interactive, database_name,
+                             create_models, pre_migrate_state, plan):
+    """Emit the pre_migrate and/or pre_sync signals.
+
+    This will emit the :py:data:`~django.db.models.signals.pre_migrate`
+    and/or :py:data:`~django.db.models.signals.pre_sync` signals, providing
+    the appropriate arguments for the current version of Django.
+
+    Args:
+        verbosity (int):
+            The verbosity level for output.
+
+        interactive (bool):
+            Whether handlers of the signal can prompt on the terminal for
+            input.
+
+        database_name (unicode):
+            The name of the database being migrated.
+
+        create_models (list of django.db.models.Model):
+            The list of models being created outside of any migrations.
+
+        pre_migrate_state (django.db.migrations.state.ProjectState):
+            The project state prior to any migrations.
+
+        plan (list):
+            The full migration plan being applied.
+    """
+    emit_kwargs = {
+        'db': database_name,
+        'interactive': interactive,
+        'verbosity': verbosity,
+    }
+
+    if django_version <= (1, 8):
+        emit_kwargs['create_models'] = create_models
+    elif django_version >= (1, 10):
+        if pre_migrate_state:
+            apps = pre_migrate_state.apps
+        else:
+            apps = None
+
+        emit_kwargs.update({
+            'apps': apps,
             'plan': plan,
         })
 
-    # TODO: Replace with our own signal. Emit this in the management
-    #       command, where verbosity/interactivity can be controlled.
-    emit_post_migrate_signal(**post_signal_kwargs)
+    if emit_pre_sync_signal:
+        emit_pre_sync_signal(**emit_kwargs)
+    else:
+        emit_pre_migrate_signal(**emit_kwargs)
+
+
+def emit_post_migrate_or_sync(verbosity, interactive, database_name,
+                              created_models, post_migrate_state, plan):
+    """Emit the post_migrate and/or post_sync signals.
+
+    This will emit the :py:data:`~django.db.models.signals.post_migrate`
+    and/or :py:data:`~django.db.models.signals.post_sync` signals, providing
+    the appropriate arguments for the current version of Django.
+
+    Args:
+        verbosity (int):
+            The verbosity level for output.
+
+        interactive (bool):
+            Whether handlers of the signal can prompt on the terminal for
+            input.
+
+        database_name (unicode):
+            The name of the database that was migrated.
+
+        created_models (list of django.db.models.Model):
+            The list of models created outside of any migrations.
+
+        post_migrate_state (django.db.migrations.state.ProjectState):
+            The project state after applying migrations.
+
+        plan (list):
+            The full migration plan that was applied.
+    """
+    emit_kwargs = {
+        'db': database_name,
+        'interactive': interactive,
+        'verbosity': verbosity,
+    }
+
+    if django_version <= (1, 8):
+        emit_kwargs['created_models'] = created_models
+    elif django_version >= (1, 10):
+        if post_migrate_state:
+            apps = post_migrate_state.apps
+        else:
+            apps = None
+
+        emit_kwargs.update({
+            'apps': apps,
+            'plan': plan,
+        })
+
+    if emit_post_sync_signal:
+        emit_post_sync_signal(**emit_kwargs)
+    else:
+        emit_post_migrate_signal(**emit_kwargs)

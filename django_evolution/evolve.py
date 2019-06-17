@@ -2,6 +2,7 @@
 
 from __future__ import unicode_literals
 
+import itertools
 import logging
 from collections import OrderedDict
 from contextlib import contextmanager
@@ -40,7 +41,11 @@ from django_evolution.utils.evolutions import (get_app_pending_mutations,
                                                get_unapplied_evolutions)
 from django_evolution.utils.migrations import (MigrationExecutor,
                                                apply_migrations,
+                                               create_pre_migrate_state,
+                                               emit_post_migrate_or_sync,
+                                               emit_pre_migrate_or_sync,
                                                filter_migration_targets,
+                                               finalize_migrations,
                                                get_applied_migrations_by_app,
                                                is_migration_initial,
                                                record_applied_migrations)
@@ -377,6 +382,9 @@ class EvolveAppTask(BaseEvolutionTask):
         post_migration_plan = None
         post_migration_targets = None
 
+        full_migration_plan = None
+        pre_migrate_state = None
+
         migration_executor = None
 
         if supports_migrations:
@@ -451,6 +459,20 @@ class EvolveAppTask(BaseEvolutionTask):
                 excluded_targets.update(
                     migration_loader.extra_applied_migrations)
 
+                # First, generate a full migration plan that covers the entire
+                # beginning to end of the process. We'll use this for signal
+                # emissions.
+                full_migration_targets = filter_migration_targets(
+                    targets=migration_loader.graph.leaf_nodes(),
+                    app_labels=migration_app_labels)
+
+                if full_migration_targets:
+                    full_migration_plan = migration_executor.migration_plan(
+                        full_migration_targets)
+
+                pre_migrate_state = \
+                    create_pre_migrate_state(migration_executor)
+
                 # First, try to find all the initial migrations. These will
                 # be ones that are root migrations (have no parents in the
                 # app) and aren't already marked as applied.
@@ -474,7 +496,7 @@ class EvolveAppTask(BaseEvolutionTask):
                     excluded_targets.update(pre_migration_targets)
                     migration_loader.extra_applied_migrations.update(
                         pre_migration_targets)
-                    migration_loader.build_graph()
+                    migration_loader.build_graph(reload_migrations=False)
                     migration_executor.run_checks()
 
                 # Now try to find all the migrations we'd want to apply after
@@ -489,8 +511,15 @@ class EvolveAppTask(BaseEvolutionTask):
                 if post_migration_targets:
                     post_migration_plan = migration_executor.migration_plan(
                         post_migration_targets)
+            else:
+                # We may not be migrating, but we still want this state
+                # for signal emissions, so create it now.
+                pre_migrate_state = \
+                    create_pre_migrate_state(migration_executor)
 
-            # If we don't have anything to do, unset the state.
+            # If we don't have anything to do, unset the state. Everything
+            # but pre_migrate_state, since we'll still want it for signal
+            # emissions.
             if not pre_migration_plan:
                 pre_migration_plan = None
                 pre_migration_targets = None
@@ -501,12 +530,15 @@ class EvolveAppTask(BaseEvolutionTask):
 
             if not pre_migration_plan and not post_migration_plan:
                 migration_executor = None
+                full_migration_plan = None
 
         cls._migration_executor = migration_executor
         cls._pre_migration_plan = pre_migration_plan
         cls._pre_migration_targets = pre_migration_targets
         cls._post_migration_plan = post_migration_plan
         cls._post_migration_targets = post_migration_targets
+        cls._pre_migrate_state = pre_migrate_state
+        cls._full_migration_plan = full_migration_plan
 
     @classmethod
     def execute_tasks(cls, evolver, tasks, **kwargs):
@@ -531,9 +563,16 @@ class EvolveAppTask(BaseEvolutionTask):
                 Keyword arguments to pass to the tasks' `:py:meth:`execute`
                 methods.
         """
-        # If we have any applied migration names we wanted to record, do it
-        # before we begin any migrations.
-        if cls._migration_executor:
+        migrate_state = cls._pre_migrate_state
+        migrating = cls._full_migration_plan is not None
+        new_models = itertools.chain(
+            task.new_models
+            for task in tasks
+        )
+
+        if migrating:
+            # If we have any applied migration names we wanted to record, do it
+            # before we begin any migrations.
             applied_migrations = \
                 cls._migration_executor.loader.extra_applied_migrations
 
@@ -542,16 +581,27 @@ class EvolveAppTask(BaseEvolutionTask):
                     connection=evolver.connection,
                     migration_targets=applied_migrations)
 
-        # First, apply all initial migrations for the apps, generating any
-        # tables that are needed. This ensures that evolution-backed apps
-        # can make references to those.
-        if cls._pre_migration_plan:
-            # TODO: Move syncdb operations here? Django emits its pre-migrate
-            #       signal before syncdb happens, so we want to be consistent.
+        # Let any listeners know that we're beginning the process.
+        emit_pre_migrate_or_sync(verbosity=evolver.verbosity,
+                                 interactive=evolver.interactive,
+                                 database_name=evolver.database_name,
+                                 create_models=new_models,
+                                 pre_migrate_state=migrate_state,
+                                 plan=cls._full_migration_plan)
 
-            apply_migrations(executor=cls._migration_executor,
-                             targets=cls._pre_migration_targets,
-                             plan=cls._pre_migration_plan)
+        if migrating:
+            if migrate_state:
+                migrate_state = migrate_state.clone()
+
+            # First, apply all initial migrations for the apps, generating any
+            # tables that are needed. This ensures that evolution-backed apps
+            # can make references to those.
+            if cls._pre_migration_plan:
+                migrate_state = apply_migrations(
+                    executor=cls._migration_executor,
+                    targets=cls._pre_migration_targets,
+                    plan=cls._pre_migration_plan,
+                    pre_migrate_state=migrate_state)
 
         # Next, create all new database models for all non-migration-backed
         # apps. We can then work on evolving/migrating those apps.
@@ -565,13 +615,18 @@ class EvolveAppTask(BaseEvolutionTask):
                 for task in tasks:
                     task.execute(cursor=cursor, **kwargs)
 
-        if cls._post_migration_plan:
-            # Now finish up by applying any subsequent migrations.
-            apply_migrations(executor=cls._migration_executor,
-                             targets=cls._post_migration_targets,
-                             plan=cls._post_migration_plan)
+        if migrating:
+            if cls._post_migration_plan:
+                # Now finish up by applying any subsequent migrations.
+                migrate_state = apply_migrations(
+                    executor=cls._migration_executor,
+                    targets=cls._post_migration_targets,
+                    plan=cls._post_migration_plan,
+                    pre_migrate_state=migrate_state)
 
-        if cls._pre_migration_plan or cls._post_migration_plan:
+            cls._post_migrate_state = migrate_state
+            finalize_migrations(migrate_state)
+
             # Write the new lists of applied migrations out to the signature.
             applied_migrations = six.iteritems(
                 get_applied_migrations_by_app(evolver.connection))
@@ -580,6 +635,14 @@ class EvolveAppTask(BaseEvolutionTask):
             for app_label, migration_names in applied_migrations:
                 app_sig = project_sig.get_app_sig(app_label, required=True)
                 app_sig.applied_migrations = migration_names
+
+        # Let any listeners know that we've finished the process.
+        emit_post_migrate_or_sync(verbosity=evolver.verbosity,
+                                  interactive=evolver.interactive,
+                                  database_name=evolver.database_name,
+                                  created_models=new_models,
+                                  post_migrate_state=migrate_state,
+                                  plan=cls._full_migration_plan)
 
     def __init__(self, evolver, app, evolutions=None, migrations=None):
         """Initialize the task.
@@ -614,6 +677,7 @@ class EvolveAppTask(BaseEvolutionTask):
         self.app_sig = None
         self.new_models_sql = []
         self.new_model_names = []
+        self.new_models = []
 
         self._evolutions = evolutions
         self._migrations = migrations
@@ -644,6 +708,7 @@ class EvolveAppTask(BaseEvolutionTask):
             app=app,
             db_state=evolver.database_state)
 
+        self.new_models = new_models
         self.new_model_names = [
             model._meta.object_name
             for model in new_models
@@ -941,6 +1006,11 @@ class Evolver(object):
             may result in changes to the database without there being any
             accompanying evolution files backing those changes.
 
+        interactive (bool):
+            Whether the evolution operations are being performed in a
+            way that allows interactivity on the command line. This is
+            passed along to signal emissions.
+
         initial_diff (django_evolution.diff.Diff):
             The initial diff between the stored project signature and the
             current project signature.
@@ -950,13 +1020,18 @@ class Evolver(object):
             signature stored in the database, but will be modified when
             mutations are simulated.
 
+        verbosity (int):
+            The verbosity level for any output. This is passed along to
+            signal emissions.
+
         version (django_evolution.models.Version):
             The project version entry saved as the result of any evolution
             operations. This contains the current version of the project
             signature. It may be ``None`` until :py:meth:`evolve` is called.
     """
 
-    def __init__(self, hinted=False, database_name=DEFAULT_DB_ALIAS):
+    def __init__(self, hinted=False, verbosity=0, interactive=False,
+                 database_name=DEFAULT_DB_ALIAS):
         """Initialize the evolver.
 
         Args:
@@ -964,6 +1039,15 @@ class Evolver(object):
                 Whether to operate against hinted evolutions. This may
                 result in changes to the database without there being any
                 accompanying evolution files backing those changes.
+
+            verbosity (int, optional):
+                The verbosity level for any output. This is passed along to
+                signal emissions.
+
+            interactive (bool, optional):
+                Whether the evolution operations are being performed in a
+                way that allows interactivity on the command line. This is
+                passed along to signal emissions.
 
             database_name (unicode, optional):
                 The name of the database to evolve.
@@ -975,6 +1059,8 @@ class Evolver(object):
         """
         self.database_name = database_name
         self.hinted = hinted
+        self.verbosity = verbosity
+        self.interactive = interactive
 
         self.evolved = False
         self.initial_diff = None
@@ -1254,10 +1340,10 @@ class Evolver(object):
                 _('Evolver.evolve() has already been run once. It cannot be '
                   'run again.'))
 
-        evolving.send(sender=self)
+        self._prepare_tasks()
 
         try:
-            self._prepare_tasks()
+            evolving.send(sender=self)
 
             new_evolutions = []
 

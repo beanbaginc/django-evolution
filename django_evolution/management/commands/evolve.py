@@ -14,6 +14,15 @@ from django.utils import six
 from django.utils.six.moves import input
 from django.utils.translation import ngettext, ugettext as _
 
+try:
+    # Django >= 1.7
+    from django.core.management.sql import (emit_post_migrate_signal,
+                                            emit_pre_migrate_signal)
+except ImportError:
+    # Django < 1.7
+    emit_post_migrate_signal = None
+    emit_pre_migrate_signal = None
+
 from django_evolution.compat.apps import get_app
 from django_evolution.compat.commands import BaseCommand
 from django_evolution.errors import EvolutionException
@@ -141,7 +150,9 @@ class Command(BaseCommand):
 
         try:
             self.evolver = Evolver(database_name=database_name,
-                                   hinted=hint)
+                                   hinted=hint,
+                                   verbosity=self.verbosity,
+                                   interactive=interactive)
 
             # Figure out what tasks we need to add to the evolver. This
             # must be done before we check any state (as that will finalize

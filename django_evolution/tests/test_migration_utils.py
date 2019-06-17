@@ -26,8 +26,11 @@ from django_evolution.tests.base_test_case import (MigrationsTestsMixin,
 from django_evolution.tests.models import BaseTestModel
 from django_evolution.tests.utils import register_models
 from django_evolution.utils.migrations import (MigrationExecutor,
+                                               MigrationLoader,
                                                apply_migrations,
+                                               create_pre_migrate_state,
                                                filter_migration_targets,
+                                               finalize_migrations,
                                                get_applied_migrations_by_app,
                                                has_migrations_module,
                                                is_migration_initial,
@@ -71,6 +74,38 @@ if migrations:
 else:
     InitialMigration = None
     AddFieldMigration = None
+
+
+class MigrationLoadTests(MigrationsTestsMixin, TestCase):
+    """Unit tests for django_evolution.utils.migrations.MigrationLoader."""
+
+    def test_build_graph(self):
+        """Testing MigrationLoader.build_graph"""
+        if django.VERSION[:2] < (1, 7):
+            raise SkipTest('Not supported on Django < 1.7')
+
+        loader = MigrationLoader(connection=connections[DEFAULT_DB_ALIAS])
+        graph = loader.graph
+        migration = loader.get_migration('auth', '0001_initial')
+
+        loader.build_graph()
+        self.assertIsNot(loader.graph, graph)
+        self.assertIsNot(loader.get_migration('auth', '0001_initial'),
+                         migration)
+
+    def test_build_graph_with_reload_migrations_false(self):
+        """Testing MigrationLoader.build_graph with reload_migrations=False"""
+        if django.VERSION[:2] < (1, 7):
+            raise SkipTest('Not supported on Django < 1.7')
+
+        loader = MigrationLoader(connection=connections[DEFAULT_DB_ALIAS])
+        graph = loader.graph
+        migration = loader.get_migration('auth', '0001_initial')
+
+        loader.build_graph(reload_migrations=False)
+        self.assertIsNot(loader.graph, graph)
+        self.assertIs(loader.get_migration('auth', '0001_initial'),
+                      migration)
 
 
 class MigrationExecutorTests(MigrationsTestsMixin, TestCase):
@@ -319,13 +354,15 @@ class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
                 targets[1]: app_migrations[1],
             })
 
-        apply_migrations(
+        migrate_state = apply_migrations(
             executor=executor,
             targets=targets,
             plan=[
                 (app_migrations[0], False),
                 (app_migrations[1], False),
-            ])
+            ],
+            pre_migrate_state=create_pre_migrate_state(executor))
+        finalize_migrations(migrate_state)
 
         # Make sure this is in the database now.
         MigrationTestModel.objects.create(field1=123,
