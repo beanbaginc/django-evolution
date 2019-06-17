@@ -35,6 +35,12 @@ from django_evolution.utils.apps import get_app_label, get_legacy_app_label
 from django_evolution.utils.evolutions import (get_app_pending_mutations,
                                                get_evolution_sequence,
                                                get_unapplied_evolutions)
+from django_evolution.utils.migrations import (MigrationExecutor,
+                                               apply_migrations,
+                                               filter_migration_targets,
+                                               get_applied_migrations_by_app,
+                                               is_migration_initial,
+                                               record_applied_migrations)
 from django_evolution.utils.sql import execute_sql
 
 
@@ -328,6 +334,178 @@ class EvolveAppTask(BaseEvolutionTask):
     """
 
     @classmethod
+    def prepare_tasks(cls, evolver, tasks, **kwargs):
+        """Prepare a list of tasks.
+
+        If migrations are supported, then before preparing any of the tasks,
+        this will begin setting up state needed to apply any migrations for
+        apps that use them (or will use them after any evolutions are applied).
+
+        After tasks are prepared, this will apply any migrations that need to
+        be applied, updating the app's signature appropriately and recording
+        all applied migrations.
+
+        Args:
+            evolver (Evolver):
+                The evolver that's handling the tasks.
+
+            tasks (list of BaseEvolutionTask):
+                The list of tasks to prepare. These will match the current
+                class.
+
+            **kwargs (dict):
+                Keyword arguments to pass to the tasks' `:py:meth:`prepare`
+                methods.
+
+        Raises:
+            django_evolution.errors.BaseMigrationError:
+                There was an error with the setup or validation of migrations.
+                A subclass containing additional details will be raised.
+        """
+        connection = evolver.connection
+
+        # We're going to be performing up to two migration phases. The first
+        # phase ("pre") handles any initial migrations that create tables,
+        # so that any evolution-backed apps can establish relations to them.
+        # The second phase ("post") handles any subsequent migrations.
+        pre_migration_plan = None
+        pre_migration_targets = None
+
+        post_migration_plan = None
+        post_migration_targets = None
+
+        migration_executor = None
+
+        if supports_migrations:
+            custom_migrations = {}
+
+            for task in tasks:
+                for migration in task._migrations or []:
+                    key = (migration.app_label, migration.name)
+                    custom_migrations[key] = migration
+
+            migration_executor = MigrationExecutor(
+                connection=connection,
+                signal_sender=evolver,
+                custom_migrations=custom_migrations)
+            migration_executor.run_checks()
+
+        # Run through the tasks, collecting all the SQL for installing new
+        # models and for applying evolutions to existing ones.
+        super(EvolveAppTask, cls).prepare_tasks(
+            evolver=evolver,
+            tasks=tasks,
+            **kwargs)
+
+        if supports_migrations:
+            # Now that we have updated signatures from any evolutions (which
+            # may have applied MoveToDjangoMigrations mutators), we can start
+            # to figure out the migration plan.
+            migration_loader = migration_executor.loader
+            assert not migration_loader.extra_applied_migrations
+
+            applied_migrations = get_applied_migrations_by_app(connection)
+            migration_app_labels = set()
+
+            # Run through the new applied migrations marked in any app
+            # signatures and find any that we're planning to record.
+            for task in tasks:
+                if (task.app_sig is not None and
+                    task.app_sig.upgrade_method == UpgradeMethod.MIGRATIONS):
+                    app_label = task.app_label
+                    migration_app_labels.add(app_label)
+
+                    # Figure out which applied migrations the mutator or
+                    # signature listed that we don't have in the database.
+                    new_applied_migrations = (
+                        set(task.app_sig.applied_migrations or []) -
+                        applied_migrations.get(app_label, set()))
+
+                    if new_applied_migrations:
+                        # We found some. Mark them as being applied. We'll
+                        # record them during the execution phase.
+                        migration_loader.extra_applied_migrations.update(
+                            (app_label, migration_name)
+                            for migration_name in new_applied_migrations
+                        )
+
+            if migration_app_labels:
+                if migration_loader.extra_applied_migrations:
+                    # Rebuild the migration graph, based on anything we've
+                    # added above, and re-run checks.
+                    migration_loader.build_graph()
+                    migration_executor.run_checks()
+
+                # Build the lists of migration targets we'll be applying. Each
+                # entry lists an app label and a migration name. We're
+                # limiting these to the apps we know we'll be migrating.
+                excluded_targets = set(
+                    (applied_app_label, applied_migration_name)
+                    for applied_app_label, applied_migration_names in
+                        six.iteritems(applied_migrations)
+                    for applied_migration_name in applied_migration_names
+                )
+                excluded_targets.update(
+                    migration_loader.extra_applied_migrations)
+
+                # First, try to find all the initial migrations. These will
+                # be ones that are root migrations (have no parents in the
+                # app) and aren't already marked as applied.
+                pre_migration_targets = []
+                root_migration_targets = filter_migration_targets(
+                    targets=migration_loader.graph.root_nodes(),
+                    app_labels=migration_app_labels,
+                    exclude=excluded_targets)
+
+                for migration_target in root_migration_targets:
+                    migration = \
+                        migration_loader.get_migration(*migration_target)
+
+                    if is_migration_initial(migration):
+                        pre_migration_targets.append(migration_target)
+
+                if pre_migration_targets:
+                    pre_migration_plan = migration_executor.migration_plan(
+                        pre_migration_targets)
+
+                    excluded_targets.update(pre_migration_targets)
+                    migration_loader.extra_applied_migrations.update(
+                        pre_migration_targets)
+                    migration_loader.build_graph()
+                    migration_executor.run_checks()
+
+                # Now try to find all the migrations we'd want to apply after
+                # any evolutions take place. These will be ones that haven't
+                # already been applied and haven't been handled in the pre
+                # migration set.
+                post_migration_targets = filter_migration_targets(
+                    targets=migration_loader.graph.leaf_nodes(),
+                    app_labels=migration_app_labels,
+                    exclude=excluded_targets)
+
+                if post_migration_targets:
+                    post_migration_plan = migration_executor.migration_plan(
+                        post_migration_targets)
+
+            # If we don't have anything to do, unset the state.
+            if not pre_migration_plan:
+                pre_migration_plan = None
+                pre_migration_targets = None
+
+            if not post_migration_plan:
+                post_migration_plan = None
+                post_migration_targets = None
+
+            if not pre_migration_plan and not post_migration_plan:
+                migration_executor = None
+
+        cls._migration_executor = migration_executor
+        cls._pre_migration_plan = pre_migration_plan
+        cls._pre_migration_targets = pre_migration_targets
+        cls._post_migration_plan = post_migration_plan
+        cls._post_migration_targets = post_migration_targets
+
+    @classmethod
     def execute_tasks(cls, evolver, tasks, **kwargs):
         """Execute a list of tasks.
 
@@ -350,19 +528,57 @@ class EvolveAppTask(BaseEvolutionTask):
                 Keyword arguments to pass to the tasks' `:py:meth:`execute`
                 methods.
         """
-        # First, create all new database models for all apps. We can then work
-        # on evolving/migrating those apps.
+        # If we have any applied migration names we wanted to record, do it
+        # before we begin any migrations.
+        if cls._migration_executor:
+            applied_migrations = \
+                cls._migration_executor.loader.extra_applied_migrations
+
+            if applied_migrations:
+                record_applied_migrations(
+                    connection=evolver.connection,
+                    migration_targets=applied_migrations)
+
+        # First, apply all initial migrations for the apps, generating any
+        # tables that are needed. This ensures that evolution-backed apps
+        # can make references to those.
+        if cls._pre_migration_plan:
+            # TODO: Move syncdb operations here? Django emits its pre-migrate
+            #       signal before syncdb happens, so we want to be consistent.
+
+            apply_migrations(executor=cls._migration_executor,
+                             targets=cls._pre_migration_targets,
+                             plan=cls._pre_migration_plan)
+
+        # Next, create all new database models for all non-migration-backed
+        # apps. We can then work on evolving/migrating those apps.
         with evolver.connection.constraint_checks_disabled():
             with evolver.transaction() as cursor:
                 for task in tasks:
                     if task.new_models_sql:
-                        task._create_models(evolver, cursor)
+                        task._create_models(cursor)
 
                 # Process any evolutions for the apps.
                 for task in tasks:
                     task.execute(cursor=cursor, **kwargs)
 
-    def __init__(self, evolver, app, evolutions=None):
+        if cls._post_migration_plan:
+            # Now finish up by applying any subsequent migrations.
+            apply_migrations(executor=cls._migration_executor,
+                             targets=cls._post_migration_targets,
+                             plan=cls._post_migration_plan)
+
+        if cls._pre_migration_plan or cls._post_migration_plan:
+            # Write the new lists of applied migrations out to the signature.
+            applied_migrations = six.iteritems(
+                get_applied_migrations_by_app(evolver.connection))
+            project_sig = evolver.project_sig
+
+            for app_label, migration_names in applied_migrations:
+                app_sig = project_sig.get_app_sig(app_label, required=True)
+                app_sig.applied_migrations = migration_names
+
+    def __init__(self, evolver, app, evolutions=None, migrations=None):
         """Initialize the task.
 
         Args:
@@ -379,6 +595,10 @@ class EvolveAppTask(BaseEvolutionTask):
                 Each dictionary needs a ``label`` key for the evolution label
                 and a ``mutations`` key for a list of
                 :py:class:`~django_evolution.mutations.BaseMutation` instances.
+
+            migrations (list of django.db.migrations.Migration, optional):
+                Optional migrations to use for the app instead of loading from
+                files. This is intended for testing purposes.
         """
         super(EvolveAppTask, self).__init__(
             task_id='evolve-app:%s' % app.__name__,
@@ -388,10 +608,12 @@ class EvolveAppTask(BaseEvolutionTask):
         self.app_label = get_app_label(app)
         self.legacy_app_label = get_legacy_app_label(app)
 
+        self.app_sig = None
         self.new_models_sql = []
         self.new_model_names = []
 
         self._evolutions = evolutions
+        self._migrations = migrations
         self._mutations = None
 
     def prepare(self, hinted=False, **kwargs):
@@ -428,6 +650,7 @@ class EvolveAppTask(BaseEvolutionTask):
         app_sig = (project_sig.get_app_sig(app_label) or
                    project_sig.get_app_sig(self.legacy_app_label))
         app_sig_is_new = app_sig is None
+        orig_upgrade_method = None
 
         target_project_sig = evolver.target_project_sig
         target_app_sig = target_project_sig.get_app_sig(app_label,
@@ -449,7 +672,10 @@ class EvolveAppTask(BaseEvolutionTask):
                 project_sig.add_app_sig(app_sig)
 
                 evolutions = get_evolution_sequence(app)
+                orig_upgrade_method = app_sig.upgrade_method
         else:
+            orig_upgrade_method = app_sig.upgrade_method
+
             # Copy only the models from the target signature that have
             # been created.
             for model in new_models:
@@ -511,8 +737,7 @@ class EvolveAppTask(BaseEvolutionTask):
             # migrations will apply on top of it cleanly).
             use_migrations = (
                 supports_migrations and
-                app_sig_is_new and
-                app_sig.upgrade_method == UpgradeMethod.MIGRATIONS)
+                orig_upgrade_method == UpgradeMethod.MIGRATIONS)
 
             if use_migrations:
                 logger.debug('Using migrations to create models for %s',

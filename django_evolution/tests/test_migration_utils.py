@@ -30,6 +30,7 @@ from django_evolution.utils.migrations import (MigrationExecutor,
                                                filter_migration_targets,
                                                get_applied_migrations_by_app,
                                                has_migrations_module,
+                                               is_migration_initial,
                                                record_applied_migrations,
                                                unrecord_applied_migrations)
 
@@ -241,6 +242,55 @@ class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
                 ('app4', '0001_initial'),
                 ('app4', '0002_more_stuff'),
             ])
+
+    def test_is_migration_initial_with_false(self):
+        """Testing is_migration_initial with Migration.initial = False"""
+        if not supports_migrations:
+            raise SkipTest('Not used on Django < 1.7')
+
+        class MyMigration(migrations.Migration):
+            initial = False
+
+        self.assertFalse(is_migration_initial(MyMigration('0001_initial',
+                                                          'tests')))
+
+    def test_is_migration_initial_with_true(self):
+        """Testing is_migration_initial with Migration.initial = True"""
+        if not supports_migrations:
+            raise SkipTest('Not used on Django < 1.7')
+
+        class MyMigration(migrations.Migration):
+            initial = True
+
+        self.assertTrue(is_migration_initial(MyMigration('0001_initial',
+                                                         'tests')))
+
+    def test_is_migration_initial_with_no_parent_dep_in_app(self):
+        """Testing is_migration_initial with no parent dependency in same app
+        """
+        if not supports_migrations:
+            raise SkipTest('Not used on Django < 1.7')
+
+        class MyMigration(migrations.Migration):
+            dependencies = [
+                ('other_app', 'some_dep'),
+            ]
+
+        self.assertTrue(is_migration_initial(MyMigration('0001_initial',
+                                                         'tests')))
+
+    def test_is_migration_initial_with_parent_dep_in_app(self):
+        """Testing is_migration_initial with parent dependency in same app"""
+        if not supports_migrations:
+            raise SkipTest('Not used on Django < 1.7')
+
+        class MyMigration(migrations.Migration):
+            dependencies = [
+                ('tests', 'some_dep'),
+            ]
+
+        self.assertFalse(is_migration_initial(MyMigration('0001_initial',
+                                                          'tests')))
 
     def test_apply_migrations(self):
         """Testing apply_migrations"""

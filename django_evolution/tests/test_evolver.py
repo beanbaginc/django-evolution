@@ -3,26 +3,43 @@
 from __future__ import unicode_literals
 
 from django.db import DatabaseError, connections, models
-from django.dispatch import receiver
 
-from django_evolution.compat.apps import get_app, get_apps
+try:
+    # Django >= 1.7
+    from django.db import migrations
+except ImportError:
+    # Django < 1.7
+    migrations = None
+
+from nose import SkipTest
+
+from django_evolution.compat.apps import (get_app,
+                                          get_apps,
+                                          register_app_models)
 from django_evolution.compat.db import sql_delete
-from django_evolution.errors import (EvolutionBaselineMissingError,
-                                     EvolutionTaskAlreadyQueuedError,
+from django_evolution.consts import UpgradeMethod
+from django_evolution.errors import (EvolutionTaskAlreadyQueuedError,
                                      QueueEvolverTaskError)
 from django_evolution.evolve import (BaseEvolutionTask, EvolveAppTask,
                                      Evolver, PurgeAppTask)
 from django_evolution.models import Version
-from django_evolution.mutations import AddField, ChangeField
+from django_evolution.mutations import (AddField, ChangeField,
+                                        MoveToDjangoMigrations)
 from django_evolution.signals import (applied_evolution,
+                                      applied_migration,
                                       applying_evolution,
+                                      applying_migration,
                                       created_models,
                                       creating_models)
 from django_evolution.signature import AppSignature, ModelSignature
+from django_evolution.support import supports_migrations
 from django_evolution.tests import models as evo_test
-from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.base_test_case import (EvolutionTestCase,
+                                                   MigrationsTestsMixin)
 from django_evolution.tests.models import BaseTestModel
 from django_evolution.tests.utils import ensure_test_db, execute_transaction
+from django_evolution.utils.migrations import (get_applied_migrations_by_app,
+                                               record_applied_migrations)
 
 
 class DummyTask(BaseEvolutionTask):
@@ -553,7 +570,7 @@ class EvolverTests(BaseEvolverTestCase):
             100)
 
 
-class EvolveAppTaskTests(BaseEvolverTestCase):
+class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
     """Unit tests for django_evolution.evolve.EvolveAppTask."""
 
     def setUp(self):
@@ -572,6 +589,8 @@ class EvolveAppTaskTests(BaseEvolverTestCase):
         self.saw_signals = set()
         applying_evolution.connect(self._on_applying_evolution)
         applied_evolution.connect(self._on_applied_evolution)
+        applying_migration.connect(self._on_applying_migration)
+        applied_migration.connect(self._on_applied_migration)
         creating_models.connect(self._on_creating_models)
         created_models.connect(self._on_created_models)
 
@@ -580,12 +599,378 @@ class EvolveAppTaskTests(BaseEvolverTestCase):
 
         applying_evolution.disconnect(self._on_applying_evolution)
         applied_evolution.disconnect(self._on_applied_evolution)
+        applying_migration.disconnect(self._on_applying_migration)
+        applied_migration.disconnect(self._on_applied_migration)
         creating_models.disconnect(self._on_creating_models)
         created_models.disconnect(self._on_created_models)
 
+    def test_prepare_tasks_with_migrations_new_app(self):
+        """Testing EvolveAppTask.prepare_tasks with migrations for new
+        app
+        """
+        if not supports_migrations:
+            raise SkipTest('Not used on Django < 1.7')
+
+        class MigrationTestModel(BaseTestModel):
+            field1 = models.IntegerField()
+            field3 = models.BooleanField()
+
+        class InitialMigration(migrations.Migration):
+            operations = [
+                migrations.CreateModel(
+                    name='MigrationTestModel',
+                    fields=[
+                        ('id', models.AutoField(verbose_name='ID',
+                                                serialize=False,
+                                                auto_created=True,
+                                                primary_key=True)),
+                        ('field1', models.IntegerField()),
+                        ('field2', models.CharField(max_length=10)),
+                    ]
+                ),
+            ]
+
+        class AddFieldMigration(migrations.Migration):
+            dependencies = [
+                ('tests', '0001_initial'),
+            ]
+
+            operations = [
+                migrations.AddField(
+                    model_name='MigrationTestModel',
+                    name='field3',
+                    field=models.BooleanField()),
+            ]
+
+        class RemoveFieldMigration(migrations.Migration):
+            dependencies = [
+                ('tests', '0002_add_field'),
+            ]
+
+            operations = [
+                migrations.RemoveField(
+                    model_name='MigrationTestModel',
+                    name='field2'),
+            ]
+
+        register_app_models('tests',
+                            [('MigrationTestModel', MigrationTestModel)],
+                            reset=True)
+
+        evolver = Evolver()
+        evolver.project_sig.get_app_sig('tests').upgrade_method = \
+            UpgradeMethod.MIGRATIONS
+
+        app_migrations = [
+            InitialMigration('0001_initial', 'tests'),
+            AddFieldMigration('0002_add_field', 'tests'),
+            RemoveFieldMigration('0003_remove_field', 'tests'),
+        ]
+
+        task = EvolveAppTask(evolver=evolver,
+                             app=evo_test,
+                             migrations=app_migrations)
+        evolver.queue_task(task)
+
+        EvolveAppTask.prepare_tasks(evolver, [task])
+        self.assertIsNotNone(EvolveAppTask._migration_executor)
+        self.assertEqual(
+            EvolveAppTask._pre_migration_plan,
+            [
+                (app_migrations[0], False),
+            ])
+        self.assertEqual(
+            EvolveAppTask._post_migration_plan,
+            [
+                (app_migrations[1], False),
+                (app_migrations[2], False),
+            ])
+        self.assertEqual(
+            EvolveAppTask._pre_migration_targets,
+            [
+                ('tests', '0001_initial'),
+            ])
+        self.assertEqual(
+            EvolveAppTask._post_migration_targets,
+            [
+                ('tests', '0003_remove_field'),
+            ])
+
+    def test_prepare_tasks_with_migrations_some_applied(self):
+        """Testing EvolveAppTask.prepare_tasks with migrations and some
+        already applied
+        """
+        if not supports_migrations:
+            raise SkipTest('Not used on Django < 1.7')
+
+        class MigrationTestModel(BaseTestModel):
+            field1 = models.IntegerField()
+            field3 = models.BooleanField()
+
+        class InitialMigration(migrations.Migration):
+            operations = [
+                migrations.CreateModel(
+                    name='MigrationTestModel',
+                    fields=[
+                        ('id', models.AutoField(verbose_name='ID',
+                                                serialize=False,
+                                                auto_created=True,
+                                                primary_key=True)),
+                        ('field1', models.IntegerField()),
+                        ('field2', models.CharField(max_length=10)),
+                    ]
+                ),
+            ]
+
+        class AddFieldMigration(migrations.Migration):
+            dependencies = [
+                ('tests', '0001_initial'),
+            ]
+
+            operations = [
+                migrations.AddField(
+                    model_name='MigrationTestModel',
+                    name='field3',
+                    field=models.BooleanField()),
+            ]
+
+        class RemoveFieldMigration(migrations.Migration):
+            dependencies = [
+                ('tests', '0002_add_field'),
+            ]
+
+            operations = [
+                migrations.RemoveField(
+                    model_name='MigrationTestModel',
+                    name='field2'),
+            ]
+
+        register_app_models('tests',
+                            [('MigrationTestModel', MigrationTestModel)],
+                            reset=True)
+
+        evolver = Evolver()
+        evolver.project_sig.get_app_sig('tests').upgrade_method = \
+            UpgradeMethod.MIGRATIONS
+
+        record_applied_migrations(
+            connection=evolver.connection,
+            migration_targets=[('tests', '0001_initial')])
+
+        app_migrations = [
+            InitialMigration('0001_initial', 'tests'),
+            AddFieldMigration('0002_add_field', 'tests'),
+            RemoveFieldMigration('0003_remove_field', 'tests'),
+        ]
+
+        task = EvolveAppTask(evolver=evolver,
+                             app=evo_test,
+                             migrations=app_migrations)
+        evolver.queue_task(task)
+
+        EvolveAppTask.prepare_tasks(evolver, [task])
+        self.assertIsNotNone(EvolveAppTask._migration_executor)
+        self.assertIsNone(EvolveAppTask._pre_migration_plan)
+        self.assertIsNone(EvolveAppTask._pre_migration_targets)
+        self.assertEqual(
+            EvolveAppTask._post_migration_plan,
+            [
+                (app_migrations[1], False),
+                (app_migrations[2], False),
+            ])
+        self.assertEqual(
+            EvolveAppTask._post_migration_targets,
+            [
+                ('tests', '0003_remove_field'),
+            ])
+
+    def test_execute_tasks_with_migrations(self):
+        """Testing EvolveAppTask.execute_tasks with migrations"""
+        if not supports_migrations:
+            raise SkipTest('Not used on Django < 1.7')
+
+        class MigrationTestModel(BaseTestModel):
+            field1 = models.IntegerField()
+            field2 = models.CharField(max_length=10)
+            field3 = models.BooleanField()
+
+        class InitialMigration(migrations.Migration):
+            operations = [
+                migrations.CreateModel(
+                    name='TestModel',
+                    fields=[
+                        ('id', models.AutoField(verbose_name='ID',
+                                                serialize=False,
+                                                auto_created=True,
+                                                primary_key=True)),
+                        ('field1', models.IntegerField()),
+                        ('field2', models.CharField(max_length=10)),
+                    ]
+                ),
+            ]
+
+        class AddFieldMigration(migrations.Migration):
+            dependencies = [
+                ('tests', '0001_initial'),
+            ]
+
+            operations = [
+                migrations.AddField(
+                    model_name='TestModel',
+                    name='field3',
+                    field=models.BooleanField()),
+            ]
+
+        self.set_base_model(MigrationTestModel)
+
+        with ensure_test_db():
+            evolver = Evolver()
+            evolver.project_sig.get_app_sig('tests').upgrade_method = \
+                UpgradeMethod.MIGRATIONS
+
+            app_migrations = [
+                InitialMigration('0001_initial', 'tests'),
+                AddFieldMigration('0002_add_field', 'tests'),
+            ]
+
+            task = EvolveAppTask(evolver=evolver,
+                                 app=evo_test,
+                                 migrations=app_migrations)
+            evolver.queue_task(task)
+
+            EvolveAppTask.prepare_tasks(evolver, [task])
+            EvolveAppTask.execute_tasks(evolver, [task])
+
+            self.assertEqual(self.saw_signals,
+                             set(['applying_migration', 'applied_migration']))
+
+            applied_migrations = \
+                get_applied_migrations_by_app(evolver.connection)
+            self.assertEqual(applied_migrations['tests'],
+                             set(['0001_initial', '0002_add_field']))
+
+            # Make sure we can now use the model.
+            MigrationTestModel.objects.create(field1=42,
+                                              field2='foo',
+                                              field3=True)
+
+    def test_execute_tasks_with_evolutions_and_migrations(self):
+        """Testing EvolveAppTask.execute_tasks with evolutions and migrations
+        """
+        if not supports_migrations:
+            raise SkipTest('Not used on Django < 1.7')
+
+        class EvolveMigrateTestModel(BaseTestModel):
+            field1 = models.IntegerField()
+
+        class FinalTestModel(BaseTestModel):
+            field1 = models.IntegerField()
+            field2 = models.CharField(max_length=10)
+            field3 = models.BooleanField()
+
+            class Meta:
+                db_table = 'tests_testmodel'
+
+        class InitialMigration(migrations.Migration):
+            operations = [
+                migrations.CreateModel(
+                    name='TestModel',
+                    fields=[
+                        ('id', models.AutoField(verbose_name='ID',
+                                                serialize=False,
+                                                auto_created=True,
+                                                primary_key=True)),
+                        ('field1', models.IntegerField()),
+                        ('field2', models.CharField(max_length=10)),
+                    ]
+                ),
+            ]
+
+        class AddFieldMigration(migrations.Migration):
+            dependencies = [
+                ('tests', '0001_initial'),
+            ]
+
+            operations = [
+                migrations.AddField(
+                    model_name='TestModel',
+                    name='field3',
+                    field=models.BooleanField()),
+            ]
+
+        self.set_base_model(EvolveMigrateTestModel)
+
+        model_entries = [
+            ('TestModel', EvolveMigrateTestModel),
+        ]
+
+        with ensure_test_db(model_entries=model_entries):
+            evolver = Evolver()
+            app_sig = evolver.project_sig.get_app_sig('tests')
+            app_sig.upgrade_method = UpgradeMethod.EVOLUTIONS
+
+            app_migrations = [
+                InitialMigration('0001_initial', 'tests'),
+                AddFieldMigration('0002_add_field', 'tests'),
+            ]
+
+            task = EvolveAppTask(
+                evolver=evolver,
+                app=evo_test,
+                evolutions=[
+                    {
+                        'label': 'add_field2',
+                        'mutations': [
+                            AddField('TestModel', 'field2',
+                                     models.CharField,
+                                     max_length=10,
+                                     initial=0),
+                        ],
+                    },
+                    {
+                        'label': 'move_to_migrations',
+                        'mutations': [
+                            MoveToDjangoMigrations(
+                                mark_applied=['0001_initial']),
+                        ],
+                    },
+                ],
+                migrations=app_migrations)
+
+            evolver.queue_task(task)
+            EvolveAppTask.prepare_tasks(evolver, [task])
+            EvolveAppTask.execute_tasks(evolver, [task])
+
+            # Check that we've seen all the signals we expect.
+            self.assertEqual(self.saw_signals,
+                             set(['applying_migration', 'applied_migration',
+                                  'applying_evolution', 'applied_evolution']))
+
+            # Check the app signature for the new state.
+            self.assertEqual(app_sig.upgrade_method, UpgradeMethod.MIGRATIONS)
+            self.assertEqual(app_sig.applied_migrations,
+                             set(['0001_initial', '0002_add_field']))
+
+            # Check that all evolutions were recorded.
+            new_evolutions = task.new_evolutions
+            self.assertEqual(len(new_evolutions), 2)
+            self.assertEqual(new_evolutions[0].label, 'add_field2')
+            self.assertEqual(new_evolutions[1].label, 'move_to_migrations')
+
+            # Check that all migrations were recorded.
+            applied_migrations = \
+                get_applied_migrations_by_app(evolver.connection)
+            self.assertEqual(applied_migrations['tests'],
+                             set(['0001_initial', '0002_add_field']))
+
+            # Make sure we can now use the model.
+            self.set_base_model(FinalTestModel)
+            FinalTestModel.objects.create(field1=42,
+                                          field2='foo',
+                                          field3=True)
+
     def test_prepare_with_hinted_false(self):
         """Testing EvolveAppTask.prepare with hinted=False"""
-        from django_evolution.compat.apps import register_app_models
         register_app_models('tests', [('TestModel', EvolverTestModel)],
                             reset=True)
 
@@ -618,7 +1003,6 @@ class EvolveAppTaskTests(BaseEvolverTestCase):
 
     def test_prepare_with_hinted_true(self):
         """Testing EvolveAppTask.prepare with hinted=True"""
-        from django_evolution.compat.apps import register_app_models
         register_app_models('tests', [('TestModel', EvolverTestModel)],
                             reset=True)
 
@@ -638,7 +1022,6 @@ class EvolveAppTaskTests(BaseEvolverTestCase):
 
     def test_prepare_with_new_app(self):
         """Testing EvolveAppTask.prepare with new app"""
-        from django_evolution.compat.apps import register_app_models
         register_app_models('tests', [('TestModel', EvolverTestModel)],
                             reset=True)
 
@@ -659,7 +1042,6 @@ class EvolveAppTaskTests(BaseEvolverTestCase):
 
     def test_prepare_with_new_models(self):
         """Testing EvolveAppTask.prepare with new models"""
-        from django_evolution.compat.apps import register_app_models
         register_app_models('tests', [('TestModel', EvolverTestModel)],
                             reset=True)
 
@@ -763,6 +1145,12 @@ class EvolveAppTaskTests(BaseEvolverTestCase):
 
     def _on_applied_evolution(self, **kwargs):
         self.saw_signals.add('applied_evolution')
+
+    def _on_applying_migration(self, **kwargs):
+        self.saw_signals.add('applying_migration')
+
+    def _on_applied_migration(self, **kwargs):
+        self.saw_signals.add('applied_migration')
 
     def _on_creating_models(self, **kwargs):
         self.saw_signals.add('creating_models')

@@ -40,6 +40,13 @@ class MigrationLoader(DjangoMigrationLoader):
     This is a specialization of Django's own
     :py:class:`~django.db.migrations.loader.MigrationLoader` that allows for
     providing additional migrations not available on disk.
+
+    Attributes:
+        extra_applied_migrations (set of tuple):
+            Migrations to mark as already applied. This can be used to
+            augment the results calculated from the database.
+
+            Each tuple is in the form of ``(app_label, migration_name)``.
     """
 
     def __init__(self, connection, custom_migrations=None, *args, **kwargs):
@@ -61,8 +68,30 @@ class MigrationLoader(DjangoMigrationLoader):
                 Additional keyword arguments for the parent class.
         """
         self._custom_migrations = custom_migrations or {}
+        self._applied_migrations = set()
+
+        self.extra_applied_migrations = set()
 
         super(MigrationLoader, self).__init__(connection, *args, **kwargs)
+
+    @property
+    def applied_migrations(self):
+        """The migrations already applied.
+
+        This will contain both the migrations applied from the database
+        and any set in :py:attr:`extra_applied_migrations`.
+        """
+        return self._applied_migrations | self.extra_applied_migrations
+
+    @applied_migrations.setter
+    def applied_migrations(self, value):
+        """Set the migrations already applied.
+
+        Args:
+            value (set of tuple):
+                The migrations already applied to the database.
+        """
+        self._applied_migrations = value
 
     def load_disk(self):
         """Load migrations from disk.
@@ -314,6 +343,48 @@ def filter_migration_targets(targets, app_labels=None, exclude=None):
         )
 
     return list(targets)
+
+
+def is_migration_initial(migration):
+    """Return whether a migration is an initial migration.
+
+    Initial migrations are those that set up an app or models for the first
+    time. Generally, they should be limited to model creations, or to those
+    adding fields to a (non-migration-aware) model for the first time. They
+    also should not have any dependencies on other migrations within the same
+    app.
+
+    An initial migration should be able to be safely soft-applied (in other
+    words, ignored if the model already appears to exist in the database).
+
+    Migrations on Django 1.9+ may declare themselves as explicitly initial
+    or explicitly not initial.
+
+    Args:
+        migration (django.db.migrations.Migration):
+            The migration to check.
+
+    Returns:
+        bool:
+        ``True`` if the migration appears to be an initial migration.
+        ``False`` if it does not.
+    """
+    # NOTE: The general logic here is based on the checks done in
+    #       MigrationExecutor.detect_soft_applied.
+
+    # Migration.initial was introduced in Django 1.9.
+    initial = getattr(migration, 'initial', None)
+
+    if initial is False:
+        return False
+    elif initial is None:
+        # If the migration has any dependencies within the same app, it can't
+        # be initial.
+        for dep_app_label, dep_app_name in migration.dependencies:
+            if dep_app_label == migration.app_label:
+                return False
+
+    return True
 
 
 def apply_migrations(executor, targets, plan):

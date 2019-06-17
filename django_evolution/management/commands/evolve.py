@@ -19,7 +19,9 @@ from django_evolution.compat.commands import BaseCommand
 from django_evolution.errors import EvolutionException
 from django_evolution.evolve import EvolveAppTask, Evolver, PurgeAppTask
 from django_evolution.signals import (applied_evolution,
+                                      applied_migration,
                                       applying_evolution,
+                                      applying_migration,
                                       created_models,
                                       creating_models)
 from django_evolution.utils.evolutions import get_evolutions_path
@@ -166,12 +168,12 @@ class Command(BaseCommand):
 
             if not self.evolver.get_evolution_required():
                 if self.verbosity > 0:
-                    self.stdout.write(_('No evolution required.\n'))
+                    self.stdout.write(_('No upgrade required.\n'))
             elif execute:
                 if not interactive or self._confirm_execute():
                     self._perform_evolution()
                 else:
-                    self.stderr.write(_('Evolution cancelled.\n'))
+                    self.stderr.write(_('Database upgrade cancelled.\n'))
             elif compile_sql:
                 self._display_compiled_sql()
             else:
@@ -183,7 +185,7 @@ class Command(BaseCommand):
 
                 if simulated:
                     if self.verbosity > 0:
-                        self.stdout.write(_('Trial evolution successful!\n'))
+                        self.stdout.write(_('Trial upgrade successful!\n'))
 
                     if not self.evolver.hinted and self.verbosity > 0:
                         self.stdout.write(_(
@@ -237,7 +239,8 @@ class Command(BaseCommand):
         """
         # List all applications that appear up-to-date.
         for task in self.evolver.tasks:
-            if isinstance(task, EvolveAppTask) and not task.can_evolve:
+            if (isinstance(task, EvolveAppTask) and
+                not task.evolution_required):
                 self.stdout.write(_('Application "%s" is up-to-date\n')
                                   % task.app_label)
 
@@ -321,14 +324,14 @@ class Command(BaseCommand):
             execution should be cancelled.
         """
         prompt = self._wrap_paragraphs(
-            _('You have requested a database evolution. This will alter '
+            _('You have requested a database upgrade. This will alter '
               'tables and data currently in the "%s" database, and may '
-              'result in IRREVERSABLE DATA LOSS. Evolutions should be '
-              '*thoroughly* reviewed prior to execution.\n'
+              'result in IRREVERSABLE DATA LOSS. Upgrades should be '
+              '*thoroughly* reviewed and tested prior to execution.\n'
               '\n'
               'MAKE A BACKUP OF YOUR DATABASE BEFORE YOU CONTINUE!\n'
               '\n'
-              'Are you sure you want to execute the evolutions?\n'
+              'Are you sure you want to execute the database upgrade?\n'
               '\n'
               'Type "yes" to continue, or "no" to cancel:')
             % self.evolver.database_name)
@@ -357,6 +360,12 @@ class Command(BaseCommand):
                     _('Applying database evolution for %s...\n')
                     % task.app_label)
 
+            @receiver(applying_migration, sender=evolver)
+            def _on_applying_migration(migration, **kwargs):
+                self.stdout.write(
+                    _('Applying database migration %s for %s...\n')
+                    % (migration.name, migration.app_label))
+
             @receiver(creating_models, sender=evolver)
             def _on_creating_models(app_label, model_names, **kwargs):
                 if verbosity > 2:
@@ -374,6 +383,12 @@ class Command(BaseCommand):
                 self.stdout.write(
                     _('Successfully applied database evolution for %s.\n')
                     % task.app_label)
+
+            @receiver(applied_migration, sender=evolver)
+            def _on_applied_migration(migration, **kwargs):
+                self.stdout.write(
+                    _('Successfully applied database migration %s for %s.\n')
+                    % (migration.name, migration.app_label))
 
             @receiver(created_models, sender=evolver)
             def _on_created_models(app_label, model_names, **kwargs):
@@ -406,7 +421,7 @@ class Command(BaseCommand):
             raise CommandError(six.text_type(e))
 
         if verbosity > 0:
-            self.stdout.write(_('The evolution was successful!\n'))
+            self.stdout.write(_('The database upgrade was successful!\n'))
 
     def _display_compiled_sql(self):
         """Display the compiled SQL for the evolution run.
