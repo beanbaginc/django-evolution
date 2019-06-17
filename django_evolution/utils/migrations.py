@@ -76,9 +76,6 @@ def get_applied_migrations_by_app(connection):
 def record_applied_migrations(connection, app_label, migration_names):
     """Record a list of applied migrations to the database.
 
-    Note that, due to the underlying mechanisms in Django, this will record
-    each migration one-by-one, using multiple SQL queries.
-
     This can only be called when on Django 1.7 or higher.
 
     Args:
@@ -95,9 +92,43 @@ def record_applied_migrations(connection, app_label, migration_names):
         'This cannot be called on Django 1.6 or earlier.'
 
     recorder = MigrationRecorder(connection)
+    recorder.ensure_schema()
 
-    for migration_name in migration_names:
-        recorder.record_applied(app_label, migration_name)
+    recorder.migration_qs.bulk_create(
+        recorder.Migration(app=app_label,
+                           name=migration_name)
+        for migration_name in migration_names
+    )
+
+
+def unrecord_applied_migrations(connection, app_label, migration_names=None):
+    """Remove the recordings of applied migrations from the database.
+
+    This can only be called when on Django 1.7 or higher.
+
+    Args:
+        connection (django.db.backends.base.BaseDatabaseWrapper):
+            The connection used to unrecord applied migrations.
+
+        app_label (unicode):
+            The app label that the migrations pertain to.
+
+        migration_names (list of unicode, optional):
+            The list of migration names to unrecord. If not provided, all
+            migrations for the app will be unrecorded.
+    """
+    assert supports_migrations, \
+        'This cannot be called on Django 1.6 or earlier.'
+
+    recorder = MigrationRecorder(connection)
+    recorder.ensure_schema()
+
+    queryset = recorder.migration_qs.filter(app=app_label)
+
+    if migration_names:
+        queryset = queryset.filter(name__in=migration_names)
+
+    queryset.delete()
 
 
 def filter_migration_targets(targets, app_labels):

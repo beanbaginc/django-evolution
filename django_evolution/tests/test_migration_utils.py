@@ -4,11 +4,11 @@ from __future__ import unicode_literals
 
 from unittest import SkipTest
 
-from django.db import connections, DEFAULT_DB_ALIAS
+from django.db import DEFAULT_DB_ALIAS, connections, models
 
 try:
     # Django >= 1.7
-    from django.db import migrations, models
+    from django.db import migrations
     from django.db.migrations.executor import MigrationExecutor
     from django.db.migrations.recorder import MigrationRecorder
 except ImportError:
@@ -16,22 +16,61 @@ except ImportError:
     MigrationExecutor = None
     MigrationRecorder = None
     migrations = None
-    models = None
 
 from django_evolution.compat.apps import get_app
 from django_evolution.db.state import DatabaseState
 from django_evolution.support import supports_migrations
-from django_evolution.tests.base_test_case import TestCase
+from django_evolution.tests.base_test_case import (MigrationsTestsMixin,
+                                                   TestCase)
 from django_evolution.tests.models import BaseTestModel
 from django_evolution.tests.utils import register_models
 from django_evolution.utils.migrations import (apply_migrations,
                                                filter_migration_targets,
                                                get_applied_migrations_by_app,
                                                has_migrations_module,
-                                               record_applied_migrations)
+                                               record_applied_migrations,
+                                               unrecord_applied_migrations)
 
 
-class MigrationUtilsTests(TestCase):
+class MigrationTestModel(BaseTestModel):
+    field1 = models.IntegerField()
+    field2 = models.CharField(max_length=10)
+    field3 = models.BooleanField()
+
+
+if migrations:
+    class InitialMigration(migrations.Migration):
+        operations = [
+            migrations.CreateModel(
+                name='MigrationTestModel',
+                fields=[
+                    ('id', models.AutoField(verbose_name='ID',
+                                            serialize=False,
+                                            auto_created=True,
+                                            primary_key=True)),
+                    ('field1', models.IntegerField()),
+                    ('field2', models.CharField(max_length=10)),
+                ]
+            ),
+        ]
+
+    class AddFieldMigration(migrations.Migration):
+        dependencies = [
+            ('tests', '0001_initial'),
+        ]
+
+        operations = [
+            migrations.AddField(
+                model_name='MigrationTestModel',
+                name='field3',
+                field=models.BooleanField()),
+        ]
+else:
+    InitialMigration = None
+    AddFieldMigration = None
+
+
+class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
     """Unit tests for django_evolution.utils.migrations."""
 
     def test_has_migrations_module(self):
@@ -75,6 +114,28 @@ class MigrationUtilsTests(TestCase):
 
         self.assertIn(('tests', '0001_initial'), applied_migrations)
         self.assertIn(('tests', '0002_stuff'), applied_migrations)
+
+    def test_unrecord_applied_migrations(self):
+        """Testing unrecord_applied_migrations"""
+        if not supports_migrations:
+            raise SkipTest('Not used on Django < 1.7')
+
+        connection = connections[DEFAULT_DB_ALIAS]
+        record_applied_migrations(connection=connection,
+                                  app_label='tests',
+                                  migration_names=['0001_initial',
+                                                   '0002_stuff'])
+
+        unrecord_applied_migrations(connection=connection,
+                                    app_label='tests',
+                                    migration_names=['0001_initial',
+                                                     '0002_stuff'])
+
+        recorder = MigrationRecorder(connection)
+        applied_migrations = recorder.applied_migrations()
+
+        self.assertNotIn(('tests', '0001_initial'), applied_migrations)
+        self.assertNotIn(('tests', '0002_stuff'), applied_migrations)
 
     def test_filter_migration_targets(self):
         """Testing filter_migration_targets"""

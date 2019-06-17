@@ -4,7 +4,7 @@ import copy
 import re
 from contextlib import contextmanager
 
-from django.db import ConnectionRouter, router
+from django.db import ConnectionRouter, DEFAULT_DB_ALIAS, connections, router
 from django.test.testcases import TransactionTestCase
 from django.test.utils import override_settings
 
@@ -12,10 +12,12 @@ from django_evolution.compat.apps import unregister_app
 from django_evolution.db.state import DatabaseState
 from django_evolution.diff import Diff
 from django_evolution.mutators import AppMutator
+from django_evolution.support import supports_migrations
 from django_evolution.tests.utils import (create_test_project_sig,
                                           execute_test_sql,
                                           get_sql_mappings,
                                           register_models)
+from django_evolution.utils.migrations import unrecord_applied_migrations
 
 
 class TestCase(TransactionTestCase):
@@ -37,6 +39,22 @@ class TestCase(TransactionTestCase):
             doc = self.ws_re.sub(' ', doc).strip()
 
         return doc
+
+
+class MigrationsTestsMixin(object):
+    """Mixin for test suites that work with migrations.
+
+    This will ensure that no test migrations are marked as applied before
+    the tests run.
+    """
+
+    def setUp(self):
+        super(MigrationsTestsMixin, self).setUp()
+
+        if supports_migrations:
+            unrecord_applied_migrations(
+                connection=connections[DEFAULT_DB_ALIAS],
+                app_label='tests')
 
 
 class EvolutionTestCase(TestCase):
