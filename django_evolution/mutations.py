@@ -1698,14 +1698,17 @@ class MoveToDjangoMigrations(BaseMutation):
     Once this mutation is used, no further mutations can be added for the app.
     """
 
-    def __init__(self, migration_id='0001_initial'):
+    def __init__(self, mark_applied=['0001_initial']):
         """Initialize the mutation.
 
         Args:
-            migration_id (unicode, optional):
-                The starting migration for the app.
+            mark_applied (unicode, optional):
+                The list of migrations to mark as applied. Each of these
+                should have been covered by the initial table or subsequent
+                evolutions. By default, this covers the ``0001_initial``
+                migration.
         """
-        self.migration_id = migration_id
+        self.mark_applied = set(mark_applied)
 
     def is_mutable(self, *args, **kwargs):
         """Return whether the mutation can be applied to the database.
@@ -1735,8 +1738,7 @@ class MoveToDjangoMigrations(BaseMutation):
         """
         app_sig = simulation.get_app_sig()
         app_sig.upgrade_method = UpgradeMethod.MIGRATIONS
-        app_sig.start_migration_id = self.migration_id
-        app_sig.last_applied_migration_id = None
+        app_sig.applied_migrations = self.mark_applied
 
     def mutate(self, mutator):
         """Schedule an app mutation on the mutator.

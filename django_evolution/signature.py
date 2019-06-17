@@ -66,10 +66,7 @@ Version 2:
                 '<app_label>': {
                     'legacy_app_label': '<legacy app_label>',
                     'upgrade_method': 'migrations'|'evolutions'|None,
-                    'migrations': {
-                        'start': '<migration ID>'|None,
-                        'last_applied': '<migration ID>'|None,
-                    },
+                    'applied_migrations' ['<migration name>', ...],
                     'models': {
                         '<model_name>': {
                             'meta': {
@@ -619,17 +616,13 @@ class AppSignature(BaseSignature):
 
         legacy_app_label = None
         upgrade_method = None
-        start_migration_id = None
-        last_applied_migration_id = None
+        applied_migrations = None
 
         if sig_version == 2:
             model_sigs_dict = app_sig_dict['models']
             legacy_app_label = app_sig_dict['legacy_app_label']
             upgrade_method = app_sig_dict.get('upgrade_method')
-
-            migrations = app_sig_dict.get('migrations', {})
-            start_migration_id = migrations.get('start')
-            last_applied_migration_id = migrations.get('last_applied')
+            applied_migrations = app_sig_dict.get('applied_migrations')
         elif sig_version == 1:
             model_sigs_dict = app_sig_dict
             legacy_app_label = app_id
@@ -654,8 +647,7 @@ class AppSignature(BaseSignature):
         app_sig = cls(app_id=app_id,
                       legacy_app_label=legacy_app_label,
                       upgrade_method=upgrade_method,
-                      start_migration_id=start_migration_id,
-                      last_applied_migration_id=last_applied_migration_id)
+                      applied_migrations=applied_migrations)
         app_sig._loaded_sig_version = sig_version
 
         for model_name, model_sig_dict in six.iteritems(model_sigs_dict):
@@ -667,7 +659,7 @@ class AppSignature(BaseSignature):
         return app_sig
 
     def __init__(self, app_id, legacy_app_label=None, upgrade_method=None,
-                 start_migration_id=None, last_applied_migration_id=None):
+                 applied_migrations=None):
         """Initialize the signature.
 
         Args:
@@ -686,19 +678,16 @@ class AppSignature(BaseSignature):
                 :py:class:`~django_evolution.evolve.UpgradeMethod`, or
                 ``None``.
 
-            start_migration_id (unicode, optional):
-                The starting migration ID, if using Django Migrations for the
-                app.
-
-            last_applied_migration_id (unicode, optional):
-                The last applied migration ID, if using Django Migrations
-                for the app.
+            applied_migrations (set of unicode, optional):
+                The migration names that are applied as of this signature.
         """
+        if applied_migrations is not None:
+            applied_migrations = set(applied_migrations)
+
         self.app_id = app_id
         self.legacy_app_label = legacy_app_label or app_id
         self.upgrade_method = upgrade_method
-        self.start_migration_id = start_migration_id
-        self.last_applied_migration_id = last_applied_migration_id
+        self.applied_migrations = applied_migrations
 
         self._loaded_sig_version = None
         self._model_sigs = OrderedDict()
@@ -929,8 +918,7 @@ class AppSignature(BaseSignature):
             app_id=self.app_id,
             legacy_app_label=self.legacy_app_label,
             upgrade_method=self.upgrade_method,
-            start_migration_id=self.start_migration_id,
-            last_applied_migration_id=self.last_applied_migration_id)
+            applied_migrations=deepcopy(self.applied_migrations))
 
         for model_sig in self.model_sigs:
             cloned_sig.add_model_sig(model_sig.clone())
@@ -964,10 +952,8 @@ class AppSignature(BaseSignature):
                 app_sig_dict['upgrade_method'] = self.upgrade_method
 
                 if self.upgrade_method == UpgradeMethod.MIGRATIONS:
-                    app_sig_dict['migrations'] = {
-                        'start': self.start_migration_id,
-                        'last_applied': self.last_applied_migration_id,
-                    }
+                    app_sig_dict['applied_migrations'] = \
+                        sorted(self.applied_migrations or [])
 
             # Add an ordered dictionary of models to the signature.
             model_sigs_dict = OrderedDict()
@@ -996,9 +982,7 @@ class AppSignature(BaseSignature):
                 self.app_id == other.app_id and
                 self.legacy_app_label == other.legacy_app_label and
                 self.upgrade_method == other.upgrade_method and
-                self.start_migration_id == other.start_migration_id and
-                (self.last_applied_migration_id ==
-                 other.last_applied_migration_id) and
+                self.applied_migrations == other.applied_migrations and
                 dict.__eq__(self._model_sigs, other._model_sigs))
 
     def __repr__(self):

@@ -25,9 +25,9 @@ class MoveToDjangoMigrationsTests(EvolutionTestCase):
         app_sig = end_sig.get_app_sig('tests')
         app_sig.upgrade_method = UpgradeMethod.MIGRATIONS
 
-        mutation = MoveToDjangoMigrations('0001_initial')
+        mutation = MoveToDjangoMigrations(mark_applied=['0001_initial'])
         new_sig = self.perform_simulations([mutation], end_sig)
 
         new_app_sig = new_sig.get_app_sig('tests')
         self.assertEqual(new_app_sig.upgrade_method, UpgradeMethod.MIGRATIONS)
-        self.assertEqual(new_app_sig.start_migration_id, '0001_initial')
+        self.assertEqual(new_app_sig.applied_migrations, set(['0001_initial']))
