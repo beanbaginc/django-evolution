@@ -1,9 +1,11 @@
 from __future__ import unicode_literals
 
+from django.contrib.auth.models import User
 from django.test.testcases import TestCase
 
 from django_evolution.db.state import DatabaseState, IndexState
 from django_evolution.errors import DatabaseStateError
+from django_evolution.models import Evolution
 
 
 class DatabaseStateTests(TestCase):
@@ -52,6 +54,25 @@ class DatabaseStateTests(TestCase):
 
         database_state.add_table('my_test_table')
         self.assertTrue(database_state.has_table('my_test_table'))
+
+    def test_has_model(self):
+        """Testing DatabaseState.has_model"""
+        database_state = DatabaseState(db_name='default', scan=False)
+        self.assertFalse(database_state.has_model(Evolution))
+
+        database_state.rescan_tables()
+        self.assertTrue(database_state.has_model(Evolution))
+
+    def test_has_model_with_auto_created(self):
+        """Testing DatabaseState.has_model with auto-created model"""
+        model = User._meta.get_field('groups').rel.through
+        self.assertTrue(model._meta.auto_created)
+
+        database_state = DatabaseState(db_name='default', scan=False)
+        self.assertFalse(database_state.has_model(model))
+
+        database_state.rescan_tables()
+        self.assertTrue(database_state.has_model(model))
 
     def test_add_index(self):
         """Testing DatabaseState.add_index"""

@@ -197,7 +197,7 @@ class EvolutionTestCase(TestCase):
                           rescan_indexes=True, db_name=None):
         def run_mutations():
             if rescan_indexes:
-                self.test_database_state.rescan_indexes()
+                self.test_database_state.rescan_tables()
 
             app_mutator = AppMutator(app_label='tests',
                                      project_sig=test_sig,
