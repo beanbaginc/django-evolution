@@ -23,7 +23,7 @@ class NullFieldInitialCallback(object):
 
     This is used in place of an initial value in mutations for fields that
     don't allow NULL values and don't have an explicit initial value set.
-    It will show up in hinted evolutions as ``<<USER VALUE REQUIRED>>` and
+    It will show up in hinted evolutions as ``<<USER VALUE REQUIRED>>`` and
     will fail to evolve.
     """
 

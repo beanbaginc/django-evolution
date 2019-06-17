@@ -40,7 +40,7 @@ class SQLResult(object):
                              % (type(sql_or_result), sql_or_result))
 
     def add_pre_sql(self, sql_or_result):
-        """Adds a list of SQL statements or an SQLResult to ``pre_sql`.
+        """Adds a list of SQL statements or an SQLResult to ``pre_sql``.
 
         If an SQLResult is passed, it will be converted into a list of SQL
         statements.

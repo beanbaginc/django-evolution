@@ -355,7 +355,7 @@ class MockMeta(object):
             * Whether this field is owned by this model (hard-coded as
               ``True``)
             * Whether this is for a many-to-many relationship (hard-coded as
-             ``None``)
+              ``None``)
 
         Raises:
             django.db.models.fields.FieldDoesNotExist:
@@ -455,7 +455,7 @@ class MockModel(object):
 
         Returns:
             bool:
-            ``True`` if both are equal. ``False` if they are not.
+            ``True`` if both are equal. ``False`` if they are not.
         """
         # For our purposes, we don't want to appear equal to "self".
         # Really, Django 1.2 should be checking if this is a string before
