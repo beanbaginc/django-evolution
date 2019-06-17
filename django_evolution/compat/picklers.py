@@ -4,8 +4,35 @@ from __future__ import unicode_literals
 
 import pickle
 
+from django_evolution.compat.datastructures import OrderedDict
 
-class DjangoCompatUnpickler(pickle.Unpickler):
+
+class SortedDict(dict):
+    """Compatibility for unpickling a SortedDict.
+
+    Old signatures may use an old Django ``SortedDict`` structure, which does
+    not exist in modern versions. This changes any construction of this
+    data structure into a :py:class:`collections.OrderedDict`.
+    """
+
+    def __new__(cls, *args, **kwargs):
+        """Construct an instance of the class.
+
+        Args:
+            *args (tuple):
+                Positional arguments to pass to the constructor.
+
+            **kwargs (dict):
+                Keyword arguments to pass to the constructor.
+
+        Returns:
+            collections.OrderedDict:
+            The new instance.
+        """
+        return OrderedDict.__new__(cls, *args, **kwargs)
+
+
+class DjangoCompatUnpickler(pickle._Unpickler):
     """Unpickler compatible with changes to Django class/module paths.
 
     This provides compatibility across Django versions for various field types,
@@ -35,7 +62,9 @@ class DjangoCompatUnpickler(pickle.Unpickler):
             AttributeError:
                 The class could not be found in the module.
         """
-        if module == 'django.db.models.fields':
+        if module == 'django.utils.datastructures' and name == 'SortedDict':
+            return SortedDict
+        elif module == 'django.db.models.fields':
             module = 'django.db.models'
 
         return super(DjangoCompatUnpickler, self).find_class(module, name)
