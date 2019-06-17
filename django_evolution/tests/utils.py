@@ -16,7 +16,8 @@ from django_evolution.compat.apps import (is_app_registered, register_app,
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.db import (atomic, create_index_name,
                                         create_index_together_name, digest,
-                                        sql_create, sql_delete, truncate_name)
+                                        sql_create_app, sql_delete,
+                                        truncate_name)
 from django_evolution.compat.models import (all_models,
                                             get_model_name,
                                             get_remote_field,
@@ -336,7 +337,8 @@ def ensure_test_db(model_entries, app_label='tests',
     register_app_models(app_label, model_entries, reset=True)
 
     # Install the initial tables and indexes.
-    execute_transaction(sql_create(evo_test, database),
+    execute_transaction(sql_create_app(app=evo_test,
+                                       db_name=database),
                         database)
 
     try:

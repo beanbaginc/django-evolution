@@ -10,7 +10,7 @@ from __future__ import unicode_literals
 from contextlib import contextmanager
 
 import django
-from django.core.management import color, sql
+from django.core.management import color, sql as sql_utils
 from django.db import connections, router, transaction
 from django.db.utils import DEFAULT_DB_ALIAS
 from django.utils import six
@@ -40,6 +40,7 @@ except ImportError:
 
 from django_evolution.compat.models import get_models, get_remote_field
 from django_evolution.support import supports_index_together
+from django_evolution.utils.apps import get_app_label
 
 
 @contextmanager
@@ -109,7 +110,75 @@ def digest(connection, *args):
         return connection.creation._digest(*args)
 
 
-def sql_create(app, db_name=None):
+def sql_create_models(models, tables=None, db_name=None):
+    """Return SQL statements for creating a list of models.
+
+    This provides compatibility with all supported versions of Django.
+
+    It's recommended that callers include auto-created models in the list,
+    to ensure all references are correct.
+
+    Args:
+        models (list of type):
+            The list of :py:class:`~django.db.models.Model` subclasses.
+
+        tables (list of unicode, optional):
+            A list of existing table names from the database. If not provided,
+            this will be introspected from the database.
+
+        db_name (str, optional):
+            The database connection name. Defaults to the default database
+            connection.
+
+    Returns:
+        list:
+        The list of SQL statements used to create the models for the app.
+    """
+    connection = connections[db_name or DEFAULT_DB_ALIAS]
+
+    if BaseDatabaseSchemaEditor:
+        # Django >= 1.7
+        with connection.schema_editor(collect_sql=True) as schema_editor:
+            for model in models:
+                schema_editor.create_model(model)
+
+        return schema_editor.collected_sql
+    else:
+        # Django < 1.7
+        creation = connection.creation
+        style = color.no_style()
+        pending_references = {}
+
+        if tables is None:
+            tables = connection.introspection.table_names()
+
+        seen_models = connection.introspection.installed_models(tables)
+        sql = []
+
+        for model in models:
+            model_sql, references = creation.sql_create_model(
+                model, style, seen_models)
+            seen_models.add(model)
+
+            sql += model_sql
+
+            for ref_to, refs in six.iteritems(references):
+                pending_references.setdefault(ref_to, []).extend(refs)
+
+                if ref_to in seen_models:
+                    sql += creation.sql_for_pending_references(
+                        model, style, pending_references)
+
+            sql += creation.sql_for_pending_references(
+                model, style, pending_references)
+
+        for model in models:
+            sql += creation.sql_indexes_for_model(model, style)
+
+        return sql
+
+
+def sql_create_app(app, db_name=None):
     """Return SQL statements for creating all models for an app.
 
     This provides compatibility with all supported versions of Django.
@@ -126,21 +195,13 @@ def sql_create(app, db_name=None):
         list:
         The list of SQL statements used to create the models for the app.
     """
-    connection = connections[db_name or DEFAULT_DB_ALIAS]
+    # On Django >= 1.7, models for a M2M field will be created automatically,
+    # so we don't want to include them in any results.
+    #
+    # On Django < 1.7, we need to explicitly return these models.
+    models = get_models(app, include_auto_created=apps is None)
 
-    if BaseDatabaseSchemaEditor:
-        # Django >= 1.7
-        with connection.schema_editor(collect_sql=True) as schema_editor:
-            for model in get_models(app):
-                schema_editor.create_model(model)
-
-        return schema_editor.collected_sql
-    else:
-        # Django < 1.7
-        style = color.no_style()
-
-        return (sql.sql_create(app, style, connection) +
-                sql.sql_indexes(app, style, connection))
+    return sql_create_models(models, db_name=db_name)
 
 
 def sql_delete(app, db_name=None):
@@ -184,7 +245,7 @@ def sql_delete(app, db_name=None):
         # Django < 1.7
         style = color.no_style()
 
-        return sql.sql_delete(app, style, connection)
+        return sql_utils.sql_delete(app, style, connection)
 
 
 def sql_create_for_many_to_many_field(connection, model, field):
@@ -690,17 +751,73 @@ def db_router_allows_migrate(database, app_label, model_cls):
         return False
 
 
+def db_router_allows_schema_upgrade(database, app_label, model_cls):
+    """Return whether a database router allows a schema upgrade for a model.
+
+    This is a convenience wrapper around :py:func:`db_router_allows_migrate`
+    and :py:func:`db_router_allows_syncdb`.
+
+    Args:
+        database (unicode):
+            The name of the database.
+
+        app_label (unicode):
+            The application label.
+
+        model_cls (type):
+            The model class.
+
+    Returns:
+        bool:
+        ``True`` if routers allow migrate for this model.
+    """
+    if django.VERSION[:2] >= (1, 7):
+        return db_router_allows_migrate(database, app_label, model_cls)
+    else:
+        return db_router_allows_syncdb(database, model_cls)
+
+
+def db_get_installable_models_for_app(app, db_state):
+    """Return models that can be installed in a database.
+
+    Args:
+        app (module):
+            The models module for the app.
+
+        db_state (django_evolution.db.state.DatabaseState):
+            The introspected state of the database.
+    """
+    app_label = get_app_label(app)
+
+    # On Django >= 1.7, models for a M2M field will be created automatically,
+    # so we don't want to include them in any results.
+    #
+    # On Django < 1.7, we need to explicitly return these models.
+    include_auto_created = apps is None
+
+    return [
+        model
+        for model in get_models(app, include_auto_created=include_auto_created)
+        if (not db_state.has_model(model) and
+            db_router_allows_schema_upgrade(db_state.db_name, app_label,
+                                            model))
+    ]
+
+
 __all__ = [
     'atomic',
     'create_constraint_name',
     'create_index_name',
     'create_index_together_name',
-    'digest',
-    'db_router_allows_syncdb',
+    'db_get_installable_models_for_app',
     'db_router_allows_migrate',
+    'db_router_allows_schema_upgrade',
+    'db_router_allows_syncdb',
+    'digest',
     'sql_add_constraints',
     'sql_delete_constraints',
-    'sql_create',
+    'sql_create_app',
+    'sql_create_models',
     'sql_create_for_many_to_many_field',
     'sql_delete',
     'sql_indexes_for_field',

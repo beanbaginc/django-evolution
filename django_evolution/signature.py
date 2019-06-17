@@ -120,8 +120,7 @@ from django.utils.translation import ugettext as _
 
 from django_evolution.compat.apps import get_apps, get_app
 from django_evolution.compat.datastructures import OrderedDict
-from django_evolution.compat.db import (db_router_allows_migrate,
-                                        db_router_allows_syncdb)
+from django_evolution.compat.db import db_router_allows_schema_upgrade
 from django_evolution.compat.models import (GenericRelation,
                                             get_models,
                                             get_remote_field,
@@ -579,15 +578,7 @@ class AppSignature(BaseSignature):
             applied_migrations=app_upgrade_info.get('applied_migrations'))
 
         for model in get_models(app):
-            # Only include those models that can be synced.
-            #
-            # On Django 1.7 and up, we need to check if the model allows for
-            # migrations (using allow_migrate_model).
-            #
-            # On older versions of Django, we check if the model allows for
-            # synchronization to the database (allow_syncdb).
-            if (db_router_allows_migrate(database, app_label, model) or
-                db_router_allows_syncdb(database, model)):
+            if db_router_allows_schema_upgrade(database, app_label, model):
                 app_sig.add_model(model)
 
         return app_sig
