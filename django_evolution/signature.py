@@ -130,7 +130,7 @@ from django_evolution.consts import UpgradeMethod
 from django_evolution.errors import (InvalidSignatureVersion,
                                      MissingSignatureError)
 from django_evolution.utils.apps import get_app_label, get_legacy_app_label
-from django_evolution.utils.evolutions import get_app_upgrade_method
+from django_evolution.utils.evolutions import get_app_upgrade_info
 
 
 #: The latest signature version.
@@ -570,11 +570,13 @@ class AppSignature(BaseSignature):
             The application signature based on the application.
         """
         app_label = get_app_label(app)
+        app_upgrade_info = get_app_upgrade_info(app, simulate_applied=True)
 
         app_sig = cls(
             app_id=app_label,
             legacy_app_label=get_legacy_app_label(app),
-            upgrade_method=get_app_upgrade_method(app, simulate_applied=True))
+            upgrade_method=app_upgrade_info.get('upgrade_method'),
+            applied_migrations=app_upgrade_info.get('applied_migrations'))
 
         for model in get_models(app):
             # Only include those models that can be synced.
@@ -636,8 +638,10 @@ class AppSignature(BaseSignature):
             # methods, and when all else fails, explicit mutations can be
             # added to set the record straight.
             try:
-                upgrade_method = get_app_upgrade_method(get_app(app_id),
-                                                        scan_evolutions=False)
+                upgrade_info = get_app_upgrade_info(get_app(app_id),
+                                                    scan_evolutions=False)
+                upgrade_method = upgrade_info.get('upgrade_method')
+                applied_migrations = upgrade_info.get('applied_migrations')
             except ImproperlyConfigured:
                 # An app with the ID couldn't be found. This is likely either
                 # an issue with an app label change, a deleted app, or an

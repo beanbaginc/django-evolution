@@ -6,13 +6,16 @@ import os
 from importlib import import_module
 
 from django.conf import settings
+from django.db import connections
 from django.db.utils import DEFAULT_DB_ALIAS
 
 from django_evolution.builtin_evolutions import BUILTIN_SEQUENCES
 from django_evolution.consts import EvolutionsSource, UpgradeMethod
 from django_evolution.errors import EvolutionException
+from django_evolution.support import supports_migrations
 from django_evolution.utils.apps import get_app_label, get_app_name
-from django_evolution.utils.migrations import has_migrations_module
+from django_evolution.utils.migrations import (get_applied_migrations_by_app,
+                                               has_migrations_module)
 
 
 def has_evolutions_module(app):
@@ -348,8 +351,9 @@ def get_app_pending_mutations(app, evolution_labels,
     return mutations
 
 
-def get_app_upgrade_method(app, scan_evolutions=True, simulate_applied=False):
-    """Return the upgrade method to use for a given app.
+def get_app_upgrade_info(app, scan_evolutions=True, simulate_applied=False,
+                         database=None):
+    """Return the upgrade information to use for a given app.
 
     This will determine if the app should be using Django Evolution or
     Django Migrations for any schema upgrades.
@@ -386,36 +390,76 @@ def get_app_upgrade_method(app, scan_evolutions=True, simulate_applied=False):
 
             This is ignored if passing ``scan_evolutions=False``.
 
+        database (unicode, optional):
+            The database to use for accessing stored evolution and migration
+            information.
+
     Returns:
-        unicode:
-        The upgrade method. This will be a value from
-        :py:class:`~django_evolution.consts.UpgradeMethod`, or ``None`` if
-        a clear determination could not be made.
+        dict:
+        A dictionary of information containing the following keys:
+
+        ``applied_migrations`` (list of :py:class:`unicode`):
+            A list of migrations that have been applied to this app through
+            any mutations. This will only be present if the upgrade method is
+            set to use migrations and if running on a version of Django that
+            supports migrations.
+
+        ``has_evolutions`` (:py:class:`bool`):
+            Whether there are any evolutions for this app. This may come from
+            the app, project, or Django Evolution.
+
+        ``has_migrations`` (:py:class:`bool`):
+            Whether there are any migrations for this app.
+
+        ``upgrade_method`` (:py:class:`unicode`):
+            The upgrade method. This will be a value from
+            :py:class:`~django_evolution.consts.UpgradeMethod`, or ``None``
+            if a clear determination could not be made.
     """
     # Avoids a nasty circular import. Util modules should always be
     # importable, so we compensate here.
     from django_evolution.mutations import MoveToDjangoMigrations
 
-    if has_evolutions_module(app):
+    upgrade_method = None
+    applied_migrations = None
+    has_evolutions = has_evolutions_module(app)
+    has_migrations = has_migrations_module(app)
+
+    if has_evolutions:
         # This app made use of Django Evolution. See if we're still using
         # that, or if it's handed control over to Django migrations.
-
         if scan_evolutions:
             if simulate_applied:
                 evolutions = None
             else:
-                evolutions = get_applied_evolutions(app)
+                evolutions = get_applied_evolutions(app,
+                                                    database=database)
 
             mutations = get_app_mutations(app=app,
                                           evolution_labels=evolutions)
 
             for mutation in reversed(mutations):
                 if isinstance(mutation, MoveToDjangoMigrations):
-                    return UpgradeMethod.MIGRATIONS
+                    upgrade_method = UpgradeMethod.MIGRATIONS
+                    applied_migrations = mutation.mark_applied
+                    break
 
-        return UpgradeMethod.EVOLUTIONS
+        if not upgrade_method:
+            upgrade_method = UpgradeMethod.EVOLUTIONS
 
-    if has_migrations_module(app):
-        return UpgradeMethod.MIGRATIONS
+    if has_migrations:
+        if not upgrade_method:
+            upgrade_method = UpgradeMethod.MIGRATIONS
 
-    return None
+        if supports_migrations:
+            connection = connections[database or DEFAULT_DB_ALIAS]
+            app_label = get_app_label(app)
+            applied_migrations = \
+                get_applied_migrations_by_app(connection).get(app_label)
+
+    return {
+        'applied_migrations': applied_migrations,
+        'has_evolutions': has_evolutions,
+        'has_migrations': has_migrations,
+        'upgrade_method': upgrade_method,
+    }

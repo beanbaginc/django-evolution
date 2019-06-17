@@ -10,7 +10,7 @@ from django_evolution.consts import EvolutionsSource, UpgradeMethod
 from django_evolution.models import Evolution
 from django_evolution.support import supports_migrations
 from django_evolution.tests.base_test_case import TestCase
-from django_evolution.utils.evolutions import (get_app_upgrade_method,
+from django_evolution.utils.evolutions import (get_app_upgrade_info,
                                                get_applied_evolutions,
                                                get_evolution_sequence,
                                                get_evolutions_module,
@@ -151,34 +151,49 @@ class GetEvolutionsSourceTests(TestCase):
                          EvolutionsSource.APP)
 
 
-class GetAppUpgradeMethodTests(TestCase):
-    """Unit tests for get_app_upgrade_method."""
+class GetAppUpgradeInfoTests(TestCase):
+    """Unit tests for get_app_upgrade_info."""
+
+    maxDiff = None
 
     def test_with_evolutions(self):
-        """Testing get_app_upgrade_method with evolutions"""
+        """Testing get_app_upgrade_info with evolutions"""
         app = get_app('evolutions_app')
 
-        self.assertEqual(get_app_upgrade_method(app),
-                         UpgradeMethod.EVOLUTIONS)
-        self.assertEqual(get_app_upgrade_method(app, simulate_applied=True),
-                         UpgradeMethod.EVOLUTIONS)
+        upgrade_info = get_app_upgrade_info(app)
+
+        self.assertEqual(
+            upgrade_info,
+            {
+                'applied_migrations': None,
+                'has_evolutions': True,
+                'has_migrations': False,
+                'upgrade_method': UpgradeMethod.EVOLUTIONS,
+            })
+        self.assertEqual(
+            get_app_upgrade_info(app, simulate_applied=True),
+            upgrade_info)
 
     def test_with_migrations(self):
-        """Testing get_app_upgrade_method with migrations only"""
+        """Testing get_app_upgrade_info with migrations only"""
         app = get_app('migrations_app')
 
-        if supports_migrations:
-            expected_value = UpgradeMethod.MIGRATIONS
-        else:
-            expected_value = None
+        upgrade_info = get_app_upgrade_info(app)
 
-        self.assertEqual(get_app_upgrade_method(app),
-                         expected_value)
-        self.assertEqual(get_app_upgrade_method(app, simulate_applied=True),
-                         expected_value)
+        self.assertEqual(
+            upgrade_info,
+            {
+                'applied_migrations': None,
+                'has_evolutions': False,
+                'has_migrations': True,
+                'upgrade_method': UpgradeMethod.MIGRATIONS,
+            })
+        self.assertEqual(
+            get_app_upgrade_info(app, simulate_applied=True),
+            upgrade_info)
 
     def test_with_unapplied_move_to_migrations(self):
-        """Testing get_app_upgrade_method with unapplied MoveToDjangoMigrations
+        """Testing get_app_upgrade_info with unapplied MoveToDjangoMigrations
         """
         app = get_app('auth')
 
@@ -186,18 +201,50 @@ class GetAppUpgradeMethodTests(TestCase):
         self.assertNotIn('auth_move_to_migrations',
                          get_applied_evolutions(app))
 
-        self.assertEqual(get_app_upgrade_method(app),
+        # Check without the evolutions applied.
+        upgrade_info = get_app_upgrade_info(app)
+
+        if supports_migrations:
+            self.assertIn('0001_initial', upgrade_info['applied_migrations'])
+        else:
+            self.assertIsNone(upgrade_info['applied_migrations'])
+
+        self.assertTrue(upgrade_info['has_evolutions'])
+        self.assertEqual(upgrade_info['has_migrations'],
+                         supports_migrations)
+        self.assertEqual(upgrade_info['upgrade_method'],
                          UpgradeMethod.EVOLUTIONS)
-        self.assertEqual(get_app_upgrade_method(app, simulate_applied=True),
+
+        # Check with the evolutions applied.
+        upgrade_info = get_app_upgrade_info(app, simulate_applied=True)
+
+        self.assertIn('0001_initial', upgrade_info['applied_migrations'])
+        self.assertTrue(upgrade_info['has_evolutions'])
+        self.assertEqual(upgrade_info['has_migrations'],
+                         supports_migrations)
+        self.assertEqual(upgrade_info['upgrade_method'],
                          UpgradeMethod.MIGRATIONS)
 
     def test_with_applied_move_to_migrations(self):
-        """Testing get_app_upgrade_method with applied MoveToDjangoMigrations
+        """Testing get_app_upgrade_info with applied MoveToDjangoMigrations
         """
         app = get_app('auth')
 
         self.assertIn('auth_move_to_migrations', get_applied_evolutions(app))
-        self.assertEqual(get_app_upgrade_method(app),
+
+        # Check without the evolutions applied.
+        upgrade_info = get_app_upgrade_info(app)
+
+        if supports_migrations:
+            self.assertTrue(upgrade_info['has_migrations'])
+        else:
+            self.assertFalse(upgrade_info['has_migrations'])
+
+        self.assertIn('0001_initial', upgrade_info['applied_migrations'])
+        self.assertTrue(upgrade_info['has_evolutions'])
+        self.assertEqual(upgrade_info['upgrade_method'],
                          UpgradeMethod.MIGRATIONS)
-        self.assertEqual(get_app_upgrade_method(app, simulate_applied=True),
-                         UpgradeMethod.MIGRATIONS)
+
+        # Check with the evolutions applied.
+        self.assertEqual(get_app_upgrade_info(app, simulate_applied=True),
+                         upgrade_info)
