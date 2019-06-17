@@ -5,10 +5,11 @@ from __future__ import unicode_literals
 import os
 from importlib import import_module
 
+from django.conf import settings
 from django.db.utils import DEFAULT_DB_ALIAS
 
 from django_evolution.builtin_evolutions import BUILTIN_SEQUENCES
-from django_evolution.consts import UpgradeMethod
+from django_evolution.consts import EvolutionsSource, UpgradeMethod
 from django_evolution.errors import EvolutionException
 from django_evolution.utils.apps import get_app_label, get_app_name
 from django_evolution.utils.migrations import has_migrations_module
@@ -23,10 +24,35 @@ def has_evolutions_module(app):
 
     Returns:
         bool:
-        ``True`` if the app has a ``evolutions`` module. ``False`` if it
+        ``True`` if the app has an ``evolutions`` module. ``False`` if it
         does not.
     """
     return get_evolutions_module(app) is not None
+
+
+def get_evolutions_source(app):
+    """Return the source for evolutions.
+
+    This is used to determine where evolutions are coming from. They can be
+    provided by the app, project, or built into Django Evolution.
+
+    Args:
+        app (module):
+            The app module.
+
+    Returns:
+        unicode:
+        The evolution source. This is an entry from
+        :py:class:`~django_evolution.consts.EvolutionsSource`.
+    """
+    app_name = get_app_name(app)
+
+    if app_name in BUILTIN_SEQUENCES:
+        return EvolutionsSource.BUILTIN
+    elif app_name in getattr(settings, 'CUSTOM_EVOLUTIONS', {}):
+        return EvolutionsSource.PROJECT
+    else:
+        return EvolutionsSource.APP
 
 
 def get_evolutions_module(app):
@@ -45,6 +71,8 @@ def get_evolutions_module(app):
 
     if app_name in BUILTIN_SEQUENCES:
         module_name = 'django_evolution.builtin_evolutions'
+    elif app_name in getattr(settings, 'CUSTOM_EVOLUTIONS', {}):
+        module_name = settings.CUSTOM_EVOLUTIONS[app_name]
     else:
         module_name = '%s.evolutions' % app_name
 
@@ -90,10 +118,12 @@ def get_evolution_sequence(app):
     if app_name in BUILTIN_SEQUENCES:
         return BUILTIN_SEQUENCES[app_name]
 
-    try:
-        return import_module('%s.evolutions' % app_name).SEQUENCE
-    except Exception:
-        return []
+    module = get_evolutions_module(app)
+
+    if module is not None:
+        return module.SEQUENCE
+
+    return []
 
 
 def get_unapplied_evolutions(app, database=DEFAULT_DB_ALIAS):
