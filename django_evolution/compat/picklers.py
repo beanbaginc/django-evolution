@@ -2,7 +2,12 @@
 
 from __future__ import unicode_literals
 
-import pickle
+try:
+    # Python 3.x
+    from pickle import _Unpickler as Unpickler
+except ImportError:
+    # Python 2.x
+    from pickle import Unpickler
 
 from django_evolution.compat.datastructures import OrderedDict
 
@@ -32,7 +37,7 @@ class SortedDict(dict):
         return OrderedDict.__new__(cls, *args, **kwargs)
 
 
-class DjangoCompatUnpickler(pickle._Unpickler):
+class DjangoCompatUnpickler(Unpickler):
     """Unpickler compatible with changes to Django class/module paths.
 
     This provides compatibility across Django versions for various field types,
@@ -67,4 +72,4 @@ class DjangoCompatUnpickler(pickle._Unpickler):
         elif module == 'django.db.models.fields':
             module = 'django.db.models'
 
-        return super(DjangoCompatUnpickler, self).find_class(module, name)
+        return Unpickler.find_class(self, module, name)
