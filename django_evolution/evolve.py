@@ -3,13 +3,15 @@
 from __future__ import unicode_literals
 
 from collections import OrderedDict
+from contextlib import contextmanager
 
-from django.db import connections, transaction
+from django.db import connections
 from django.db.utils import DEFAULT_DB_ALIAS
 from django.utils import six
 from django.utils.translation import ugettext as _
 
 from django_evolution.compat.apps import get_apps
+from django_evolution.compat.db import atomic
 from django_evolution.db.state import DatabaseState
 from django_evolution.diff import Diff
 from django_evolution.errors import (EvolutionBaselineMissingError,
@@ -59,6 +61,64 @@ class BaseEvolutionTask(object):
             be a string or tuple accepted by
             :py:func:`~django_evolution.utils.execute_sql`.
     """
+
+    @classmethod
+    def prepare_tasks(cls, evolver, tasks, **kwargs):
+        """Prepare a list of tasks.
+
+        This is responsible for calling :py:meth:`prepare` on each of the
+        provided tasks. It can augment this by calculating any other state
+        needed in order to influence the tasks or react to them.
+
+        If this applies state to the class, it should always be careful to
+        completely reset the state on each run, in case there are multiple
+        :py:class:`Evolver` instances at work within a process.
+
+        Args:
+            evolver (Evolver):
+                The evolver that's handling the tasks.
+
+            tasks (list of BaseEvolutionTask):
+                The list of tasks to prepare. These will match the current
+                class.
+
+            **kwargs (dict):
+                Keyword arguments to pass to the tasks' `:py:meth:`prepare`
+                methods.
+        """
+        for task in tasks:
+            task.prepare(**kwargs)
+
+    @classmethod
+    def execute_tasks(cls, evolver, tasks, **kwargs):
+        """Execute a list of tasks.
+
+        This is responsible for calling :py:meth:`execute` on each of the
+        provided tasks. It can augment this by executing any steps before or
+        after the tasks.
+
+        If this applies state to the class, it should always be careful to
+        completely reset the state on each run, in case there are multiple
+        :py:class:`Evolver` instances at work within a process.
+
+        This may depend on state from :py:meth:`prepare_tasks`.
+
+        Args:
+            evolver (Evolver):
+                The evolver that's handling the tasks.
+
+            tasks (list of BaseEvolutionTask):
+                The list of tasks to execute. These will match the current
+                class.
+
+            **kwargs (dict):
+                Keyword arguments to pass to the tasks' `:py:meth:`execute`
+                methods.
+        """
+        with evolver.connection.constraint_checks_disabled():
+            with evolver.transaction() as cursor:
+                for task in tasks:
+                    task.execute(cursor=cursor, **kwargs)
 
     def __init__(self, task_id, evolver):
         """Initialize the task.
@@ -456,6 +516,11 @@ class Evolver(object):
     can even be written by an application if very specific database
     operations need to be made outside of what's available in an evolution.
 
+    Tasks are executed in order, but batched by the task type. That is, if
+    two instances of ``TaskType1`` are queued, followed by an instance of
+    ``TaskType2``, and another of ``TaskType1``, all 3 tasks of ``TaskType1``
+    will be executed at once, with the ``TaskType2`` task following.
+
     Callers are expected to create an instance and queue up one or more tasks.
     Once all tasks are queued, the changes can be made using :py:meth:`evolve`.
     Alternatively, evolution hints can be generated using
@@ -465,11 +530,23 @@ class Evolver(object):
     Django management command.
 
     Attributes:
+        connection (django.db.backends.base.base.BaseDatabaseWrapper):
+            The database connection object being used for the evolver.
+
         database_name (unicode):
             The name of the database being evolved.
 
         database_state (django_evolution.db.state.DatabaseState):
             The state of the database, for evolution purposes.
+
+        evolved (bool):
+            Whether the evolver has already performed its evolutions. These
+            can only be done once per evolver.
+
+        hinted (bool):
+            Whether the evolver is operating against hinted evolutions. This
+            may result in changes to the database without there being any
+            accompanying evolution files backing those changes.
 
         initial_diff (django_evolution.diff.Diff):
             The initial diff between the stored project signature and the
@@ -485,6 +562,11 @@ class Evolver(object):
         """Initialize the evolver.
 
         Args:
+            hinted (bool, optional):
+                Whether to operate against hinted evolutions. This may
+                result in changes to the database without there being any
+                accompanying evolution files backing those changes.
+
             database_name (unicode, optional):
                 The name of the database to evolve.
 
@@ -495,16 +577,23 @@ class Evolver(object):
         """
         self.database_name = database_name
         self.hinted = hinted
-        self.initial_diff = None
-        self.database_state = None
-        self.project_sig = None
+
         self.evolved = False
+        self.initial_diff = None
+        self.project_sig = None
+
+        self.connection = connections[database_name]
+
+        if hasattr(self.connection, 'prepare_database'):
+            # Django >= 1.8
+            self.connection.prepare_database()
 
         self.database_state = DatabaseState(self.database_name)
         self._target_project_sig = \
             ProjectSignature.from_database(database_name)
 
-        self._tasks = OrderedDict()
+        self._tasks_by_class = OrderedDict()
+        self._tasks_by_id = OrderedDict()
         self._tasks_prepared = False
 
         try:
@@ -533,7 +622,7 @@ class Evolver(object):
         # all the tasks before we can return any of them.
         self._prepare_tasks()
 
-        return six.itervalues(self._tasks)
+        return six.itervalues(self._tasks_by_id)
 
     def can_simulate(self):
         """Return whether all queued tasks can be simulated.
@@ -709,12 +798,13 @@ class Evolver(object):
                 _('Evolution tasks have already been prepared. New tasks '
                   'cannot be added.'))
 
-        if task.id in self._tasks:
+        if task.id in self._tasks_by_id:
             raise EvolutionTaskAlreadyQueuedError(
                 _('A task with ID "%s" is already queued.')
                 % task.id)
 
-        self._tasks[task.id] = task
+        self._tasks_by_id[task.id] = task
+        self._tasks_by_class.setdefault(type(task), []).append(task)
 
     def evolve(self):
         """Perform the evolution.
@@ -741,36 +831,34 @@ class Evolver(object):
 
         self._prepare_tasks()
 
-        connection = connections[self.database_name]
+        new_evolutions = []
 
-        with connection.constraint_checks_disabled():
-            with transaction.atomic(using=self.database_name):
-                cursor = connection.cursor()
-                new_evolutions = []
+        for task_cls, tasks in six.iteritems(self._tasks_by_class):
+            # Perform the evolution for the app. This is responsible
+            # for raising any exceptions.
+            task_cls.execute_tasks(evolver=self,
+                                   tasks=tasks)
 
-                try:
-                    for task in self.tasks:
-                        # Perform the evolution for the app. This is
-                        # responsible for raising any exceptions.
-                        task.execute(cursor)
-                        new_evolutions += task.new_evolutions
-                finally:
-                    cursor.close()
+            for task in tasks:
+                new_evolutions += task.new_evolutions
 
-                try:
-                    # Now save the current signature and version.
-                    version = Version.objects.create(
-                        signature=self.project_sig)
+            # Things may have changed, so rescan the database.
+            self.database_state.rescan_tables()
 
-                    for evolution in new_evolutions:
-                        evolution.version = version
+        try:
+            # Now save the current signature and version.
+            version = Version.objects.create(
+                signature=self.project_sig)
 
-                    Evolution.objects.bulk_create(new_evolutions)
-                except Exception as e:
-                    raise EvolutionExecutionError(
-                        _('Error saving new evolution version information: %s')
-                        % e,
-                        detailed_error=six.text_type(e))
+            for evolution in new_evolutions:
+                evolution.version = version
+
+            Evolution.objects.bulk_create(new_evolutions)
+        except Exception as e:
+            raise EvolutionExecutionError(
+                _('Error saving new evolution version information: %s')
+                % e,
+                detailed_error=six.text_type(e))
 
         self.evolved = True
 
@@ -783,5 +871,26 @@ class Evolver(object):
         if not self._tasks_prepared:
             self._tasks_prepared = True
 
-            for task in self.tasks:
-                task.prepare(hinted=self.hinted)
+            for task_cls, tasks in six.iteritems(self._tasks_by_class):
+                task_cls.prepare_tasks(evolver=self,
+                                       tasks=tasks,
+                                       hinted=self.hinted)
+
+    @contextmanager
+    def transaction(self):
+        """Execute database operations in a transaction.
+
+        This is a convenience method for executing in a transaction using
+        the evolver's current database.
+
+        Context:
+            django.db.backends.util.CursorWrapper:
+            The cursor used to execute statements.
+        """
+        with atomic(using=self.database_name):
+            cursor = self.connection.cursor()
+
+            try:
+                yield cursor
+            finally:
+                cursor.close()
