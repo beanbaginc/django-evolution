@@ -103,6 +103,7 @@ class MigrationUtilsTests(TestCase):
         class MigrationTestModel(models.Model):
             field1 = models.IntegerField()
             field2 = models.CharField(max_length=10)
+            field3 = models.BooleanField()
 
         class InitialMigration(migrations.Migration):
             operations = [
@@ -119,22 +120,53 @@ class MigrationUtilsTests(TestCase):
                 ),
             ]
 
+        class AddFieldMigration(migrations.Migration):
+            dependencies = [
+                ('tests', '0001_initial'),
+            ]
+
+            operations = [
+                migrations.AddField(
+                    model_name='MigrationTestModel',
+                    name='field3',
+                    field=models.BooleanField()),
+            ]
+
         database_state = DatabaseState(db_name=DEFAULT_DB_ALIAS)
         register_models(database_state=database_state,
                         models=[('MigrationTestModel', MigrationTestModel)])
 
-        migration = InitialMigration('0001_initial', 'tests')
-        target = ('tests', '0001_initial')
+        app_migrations = [
+            InitialMigration('0001_initial', 'tests'),
+            AddFieldMigration('0002_add_field', 'tests'),
+        ]
+
+        targets = [
+            ('tests', '0001_initial'),
+            ('tests', '0002_add_field'),
+        ]
 
         connection = connections[DEFAULT_DB_ALIAS]
         executor = MigrationExecutor(connection)
-        executor.loader.graph.add_node(target, migration)
+
+        # Since we're not loading migrations from disk, we need to update
+        # the graph, dependencies, and app label states manually.
+        executor.loader.graph.add_node(targets[0], app_migrations[0])
+        executor.loader.graph.add_node(targets[1], app_migrations[1])
+        executor.loader.graph.add_dependency(app_migrations[1],
+                                             targets[1],
+                                             targets[0])
+        executor.loader.unmigrated_apps.remove('tests')
 
         apply_migrations(
             executor=executor,
-            targets=[target],
-            plan=[(migration, False)])
+            targets=targets,
+            plan=[
+                (app_migrations[0], False),
+                (app_migrations[1], False),
+            ])
 
         # Make sure this is in the database now.
         MigrationTestModel.objects.create(field1=123,
-                                          field2='abc')
+                                          field2='abc',
+                                          field3=True)

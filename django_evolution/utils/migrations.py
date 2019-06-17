@@ -4,17 +4,17 @@ from __future__ import unicode_literals
 
 from importlib import import_module
 
+import django
+
 try:
     # Django >= 1.7
     from django.core.management.sql import (emit_post_migrate_signal,
                                             emit_pre_migrate_signal)
     from django.db.migrations.executor import MigrationExecutor
-    from django.db.migrations.exceptions import InconsistentMigrationHistory
     from django.db.migrations.recorder import MigrationRecorder
     from django.db.migrations.state import ModelState
 except ImportError:
     # Django < 1.7
-    InconsistentMigrationHistory = None
     MigrationExecutor = None
     MigrationRecorder = None
     ModelState = None
@@ -154,46 +154,76 @@ def apply_migrations(executor, targets, plan):
 
     db_name = executor.connection.alias
 
-    # Unfortunately, we have to call into a private method here, just as the
-    # migrate command does. Ideally, this would be official API.
-    pre_migrate_state = executor._create_project_state(
-        with_applied_migrations=True)
+    pre_signal_kwargs = {
+        'db': db_name,
+        'interactive': False,
+        'verbosity': 1,
+    }
+    post_signal_kwargs = pre_signal_kwargs.copy()
+
+    migrate_kwargs = {
+        'fake': False,
+        'plan': plan,
+        'targets': targets,
+    }
+
+    django_version = django.VERSION[:2]
+
+    # Build version-dependent state needed for the signals and migrate
+    # operation.
+    if (1, 7) <= django_version <= (1, 8):
+        pre_signal_kwargs['create_models'] = []
+        post_signal_kwargs['created_models'] = []
+
+    if django_version >= (1, 8):
+        # Mark any migrations that introduce new models that are already in
+        # the database as applied.
+        migrate_kwargs['fake_initial'] = True
+
+    if django_version >= (1, 10):
+        # Unfortunately, we have to call into a private method here, just as
+        # the migrate command does. Ideally, this would be official API.
+        pre_migrate_state = executor._create_project_state(
+            with_applied_migrations=True)
+        pre_signal_kwargs.update({
+            'apps': pre_migrate_state.apps,
+            'plan': plan,
+        })
+        migrate_kwargs['state'] = pre_migrate_state.clone()
 
     # TODO: Replace with our own signal. Emit this in the management
     #       command, where verbosity/interactivity can be controlled.
-    emit_pre_migrate_signal(
-        verbosity=1,
-        interactive=False,
-        db=db_name,
-        apps=pre_migrate_state.apps,
-        plan=plan)
+    emit_pre_migrate_signal(**pre_signal_kwargs)
 
-    post_migrate_state = executor.migrate(
-        targets,
-        plan=plan,
-        state=pre_migrate_state.clone(),
-        fake_initial=True)
-    post_migrate_state.clear_delayed_apps_cache()
+    # Perform the migration and record the result. This only returns a value
+    # on Django >= 1.10.
+    post_migrate_state = executor.migrate(**migrate_kwargs)
 
-    post_migrate_apps = post_migrate_state.apps
-    model_keys = []
+    if django_version >= (1, 10):
+        # On Django 1.10, we have a few more steps for generating the state
+        # needed for the signal.
+        if django_version >= (1, 11):
+            post_migrate_state.clear_delayed_apps_cache()
 
-    with post_migrate_apps.bulk_update():
-        for model_state in post_migrate_apps.real_models:
-            model_key = (model_state.app_label, model_state.name_lower)
-            model_keys.append(model_key)
-            post_migrate_apps.unregister_model(*model_key)
+        post_migrate_apps = post_migrate_state.apps
+        model_keys = []
 
-    post_migrate_apps.render_multiple([
-        ModelState.from_model(get_model(*model))
-        for model in model_keys
-    ])
+        with post_migrate_apps.bulk_update():
+            for model_state in post_migrate_apps.real_models:
+                model_key = (model_state.app_label, model_state.name_lower)
+                model_keys.append(model_key)
+                post_migrate_apps.unregister_model(*model_key)
+
+        post_migrate_apps.render_multiple([
+            ModelState.from_model(get_model(*model))
+            for model in model_keys
+        ])
+
+        post_signal_kwargs.update({
+            'apps': post_migrate_apps,
+            'plan': plan,
+        })
 
     # TODO: Replace with our own signal. Emit this in the management
     #       command, where verbosity/interactivity can be controlled.
-    emit_post_migrate_signal(
-        verbosity=1,
-        interactive=False,
-        db=db_name,
-        apps=post_migrate_apps,
-        plan=plan)
+    emit_post_migrate_signal(**post_signal_kwargs)
