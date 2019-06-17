@@ -11,6 +11,7 @@ from django_evolution.signature import (AppSignature,
                                         ModelSignature,
                                         ProjectSignature)
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.models import BaseTestModel
 
 
 class AddSequenceFieldInitial(object):
@@ -21,27 +22,27 @@ class AddSequenceFieldInitial(object):
         return connection.ops.quote_name('int_field')
 
 
-class AddAnchor1(models.Model):
+class AddAnchor1(BaseTestModel):
     value = models.IntegerField()
 
 
-class AddAnchor2(models.Model):
+class AddAnchor2(BaseTestModel):
     value = models.IntegerField()
 
-    class Meta:
+    class Meta(BaseTestModel.Meta):
         db_table = 'custom_add_anchor_table'
 
 
-class AddBaseModel(models.Model):
+class AddBaseModel(BaseTestModel):
     char_field = models.CharField(max_length=20)
     int_field = models.IntegerField()
 
 
-class CustomAddTableModel(models.Model):
+class CustomAddTableModel(BaseTestModel):
     value = models.IntegerField()
     alt_value = models.CharField(max_length=20)
 
-    class Meta:
+    class Meta(BaseTestModel.Meta):
         db_table = 'custom_table_name'
 
 
@@ -118,7 +119,7 @@ class AddFieldTests(EvolutionTestCase):
     def test_add_non_null_column_no_initial_hinted_raises_exception(self):
         """Testing AddField with non-NULL column, no initial value and
         hinted mutation raises EvolutionException"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.IntegerField()
@@ -144,7 +145,7 @@ class AddFieldTests(EvolutionTestCase):
     def test_add_non_null_column_no_initial_raises_exception(self):
         """Testing AddField with non-NULL column, no initial value
         raises EvolutionException"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.IntegerField()
@@ -170,7 +171,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_non_null_column_with_initial(self):
         """Testing AddField with non-NULL column with initial value"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.IntegerField()
@@ -190,7 +191,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_non_null_column_with_callable_initial(self):
         """Testing AddField with non-NULL column with callable initial value"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.IntegerField()
@@ -211,7 +212,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def tst_add_null_column(self):
         """Testing AddField with NULL column"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.IntegerField(null=True)
@@ -231,7 +232,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_null_column_with_initial(self):
         """Testing AddField with NULL column with initial value"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.IntegerField(null=True)
@@ -251,7 +252,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_with_initial_string(self):
         """Testing AddField with string-based initial value"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.CharField(max_length=10)
@@ -271,7 +272,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_with_blank_initial_string(self):
         """Testing AddField with blank string initial value"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.CharField(max_length=10, blank=True)
@@ -291,7 +292,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_datetime_field(self):
         """Testing AddField with DateTimeField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.DateTimeField()
@@ -311,7 +312,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_with_default(self):
         """Testing AddField with default value"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.IntegerField(default=42)
@@ -333,7 +334,7 @@ class AddFieldTests(EvolutionTestCase):
         """Testing AddField with BooleanField and initial value different from
         model definition
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.BooleanField(default=True)
@@ -353,7 +354,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_with_empty_string_default(self):
         """Testing AddField with empty string as default value"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.CharField(max_length=20, default='')
@@ -373,7 +374,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_with_custom_column_name(self):
         """Testing AddField with custom column name"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.IntegerField(db_column='non-default_column',
@@ -394,12 +395,12 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_with_custom_table_name(self):
         """Testing AddField with custom table name"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             value = models.IntegerField()
             alt_value = models.CharField(max_length=20)
             added_field = models.IntegerField(null=True)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 db_table = 'custom_table_name'
 
         self.set_base_model(CustomAddTableModel, name='CustomTableModel')
@@ -421,7 +422,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_primary_key_with_delete_old_fails(self):
         """Testing AddField with primary key and deleting old key fails"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_primary_key = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
@@ -454,7 +455,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_indexed_column(self):
         """Testing AddField with indexed column"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             add_field = models.IntegerField(db_index=True, null=True)
@@ -483,7 +484,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_unique_column(self):
         """Testing AddField with unique column"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.IntegerField(unique=True, null=True)
@@ -512,7 +513,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_unique_indexed_column(self):
         """Testing AddField with unique indexed column"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.IntegerField(unique=True, db_index=True,
@@ -544,7 +545,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_foreign_key(self):
         """Testing AddField with ForeignKey"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.ForeignKey(AddAnchor1,
@@ -567,7 +568,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_many_to_many_field(self):
         """Testing AddField with ManyToManyField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.ManyToManyField(AddAnchor1)
@@ -588,7 +589,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_many_to_many_field_custom_table_name(self):
         """Testing AddField with ManyToManyField and custom table name"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.ManyToManyField(AddAnchor2)
@@ -609,7 +610,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_many_to_many_field_to_self(self):
         """Testing AddField with ManyToManyField to self"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.ManyToManyField('self')
@@ -630,7 +631,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_with_custom_database(self):
         """Testing AddField with custom database"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.ForeignKey(AddAnchor1,
@@ -659,7 +660,7 @@ class AddFieldTests(EvolutionTestCase):
 
     def test_add_many_to_many_field_and_custom_database(self):
         """Testing AddField with ManyToManyField and custom database"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             added_field = models.ManyToManyField(AddAnchor1)

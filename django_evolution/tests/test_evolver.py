@@ -20,6 +20,7 @@ from django_evolution.signals import (applied_evolution,
 from django_evolution.signature import AppSignature, ModelSignature
 from django_evolution.tests import models as evo_test
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.models import BaseTestModel
 from django_evolution.tests.utils import ensure_test_db
 
 
@@ -37,7 +38,7 @@ class DummyTask(BaseEvolutionTask):
         return 'Dummy Task'
 
 
-class EvolverTestModel(models.Model):
+class EvolverTestModel(BaseTestModel):
     value = models.CharField(max_length=100)
 
 

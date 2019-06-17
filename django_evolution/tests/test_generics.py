@@ -6,9 +6,10 @@ from django.db import models
 from django_evolution.compat.models import GenericForeignKey, GenericRelation
 from django_evolution.mutations import DeleteField
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.models import BaseTestModel
 
 
-class GenericAnchor(models.Model):
+class GenericAnchor(BaseTestModel):
     value = models.IntegerField()
 
     # Host a generic key here, too
@@ -18,7 +19,7 @@ class GenericAnchor(models.Model):
     content_object = GenericForeignKey('content_type', 'object_id')
 
 
-class GenericBaseModel(models.Model):
+class GenericBaseModel(BaseTestModel):
     char_field = models.CharField(max_length=20)
     int_field = models.IntegerField()
 
@@ -48,7 +49,7 @@ class GenericRelationsTests(EvolutionTestCase):
 
     def test_delete_column(self):
         """Testing generic relations and deleting column"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field = models.IntegerField()
 
             # Plus a generic foreign key - the Generic itself should be ignored

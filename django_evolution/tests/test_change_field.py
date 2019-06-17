@@ -11,6 +11,7 @@ from django_evolution.signature import (AppSignature,
                                         ModelSignature,
                                         ProjectSignature)
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.models import BaseTestModel
 
 
 class ChangeSequenceFieldInitial(object):
@@ -21,11 +22,11 @@ class ChangeSequenceFieldInitial(object):
         return connection.ops.quote_name('char_field')
 
 
-class ChangeAnchor1(models.Model):
+class ChangeAnchor1(BaseTestModel):
     value = models.IntegerField()
 
 
-class ChangeBaseModel(models.Model):
+class ChangeBaseModel(BaseTestModel):
     my_id = models.AutoField(primary_key=True)
     alt_pk = models.IntegerField()
     int_field = models.IntegerField(db_column='custom_db_column')
@@ -107,7 +108,7 @@ class ChangeFieldTests(EvolutionTestCase):
 
     def test_set_null_false_without_initial_value_raises_exception(self):
         """Testing ChangeField with setting null=False without initial value"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -145,7 +146,7 @@ class ChangeFieldTests(EvolutionTestCase):
         """Testing ChangeField with setting null=False and null initial
         value
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -182,7 +183,7 @@ class ChangeFieldTests(EvolutionTestCase):
 
     def test_set_null_false_and_initial_value(self):
         """Testing ChangeField with setting null=False and initial value"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -213,7 +214,7 @@ class ChangeFieldTests(EvolutionTestCase):
 
     def test_set_null_false_and_initial_callable(self):
         """Testing ChangeField with setting null=False and initial callable"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -246,7 +247,7 @@ class ChangeFieldTests(EvolutionTestCase):
 
     def test_set_null_true(self):
         """Testing ChangeField with setting null=True"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -279,7 +280,7 @@ class ChangeFieldTests(EvolutionTestCase):
         """Testing ChangeField with setting null=True when already True
         is noop
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -307,7 +308,7 @@ class ChangeFieldTests(EvolutionTestCase):
 
     def test_increase_max_length(self):
         """Testing ChangeField with increasing max_length of CharField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -338,7 +339,7 @@ class ChangeFieldTests(EvolutionTestCase):
 
     def test_decrease_max_length(self):
         """Testing ChangeField with decreasing max_length of CharField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -369,7 +370,7 @@ class ChangeFieldTests(EvolutionTestCase):
 
     def test_change_db_column(self):
         """Testing ChangeField with setting db_column"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='customised_db_column')
@@ -400,7 +401,7 @@ class ChangeFieldTests(EvolutionTestCase):
 
     def test_change_m2m_db_table(self):
         """Testing ChangeField with setting db_table on ManyToManyField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -431,7 +432,7 @@ class ChangeFieldTests(EvolutionTestCase):
 
     def test_set_db_index_true(self):
         """Testing ChangeField with setting db_index=True"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -472,7 +473,7 @@ class ChangeFieldTests(EvolutionTestCase):
         """Testing ChangeField with setting db_index=True and existing index
         in the database
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -522,7 +523,7 @@ class ChangeFieldTests(EvolutionTestCase):
 
     def test_set_db_index_false(self):
         """Testing ChangeField with setting db_index=False"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -563,7 +564,7 @@ class ChangeFieldTests(EvolutionTestCase):
         """Testing ChangeField with setting db_index=False without an
         existing index in the database
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -605,7 +606,7 @@ class ChangeFieldTests(EvolutionTestCase):
 
     def test_set_unique_true(self):
         """Testing ChangeField with setting unique=True"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -646,7 +647,7 @@ class ChangeFieldTests(EvolutionTestCase):
 
     def test_set_unique_false(self):
         """Testing ChangeField with setting unique=False"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -687,7 +688,7 @@ class ChangeFieldTests(EvolutionTestCase):
 
     def test_change_multiple_attrs_multi_fields(self):
         """Testing ChangeField with multiple attributes on different fields"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column2')
@@ -732,7 +733,7 @@ class ChangeFieldTests(EvolutionTestCase):
 
     def test_change_multiple_attrs_one_field(self):
         """Testing ChangeField with multiple attributes on one field"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -764,7 +765,7 @@ class ChangeFieldTests(EvolutionTestCase):
 
     def test_redundant_attributes(self):
         """Testing ChangeField with redundant attributes"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column3')
@@ -814,7 +815,7 @@ class ChangeFieldTests(EvolutionTestCase):
             def get_internal_type(self):
                 return 'IntegerField'
 
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -837,7 +838,7 @@ class ChangeFieldTests(EvolutionTestCase):
 
     def test_change_with_custom_database(self):
         """Testing ChangeField with custom database"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')
@@ -871,15 +872,15 @@ class ChangeFieldTests(EvolutionTestCase):
         """Testing ChangeField with same field name as that added in
         another model
         """
-        class OtherModel(models.Model):
+        class OtherModel(BaseTestModel):
             int_field = models.IntegerField()
             test_field = models.CharField(max_length=32, null=True)
 
-        class OtherDestModel(models.Model):
+        class OtherDestModel(BaseTestModel):
             int_field = models.IntegerField()
             test_field = models.CharField(max_length=32, null=False)
 
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             alt_pk = models.IntegerField()
             int_field = models.IntegerField(db_column='custom_db_column')

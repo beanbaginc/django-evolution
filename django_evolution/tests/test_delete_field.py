@@ -8,25 +8,26 @@ from django_evolution.signature import (AppSignature,
                                         ModelSignature,
                                         ProjectSignature)
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.models import BaseTestModel
 
 
-class DeleteAnchor1(models.Model):
+class DeleteAnchor1(BaseTestModel):
     value = models.IntegerField()
 
 
-class DeleteAnchor2(models.Model):
+class DeleteAnchor2(BaseTestModel):
     value = models.IntegerField()
 
 
-class DeleteAnchor3(models.Model):
+class DeleteAnchor3(BaseTestModel):
     value = models.IntegerField()
 
 
-class DeleteAnchor4(models.Model):
+class DeleteAnchor4(BaseTestModel):
     value = models.IntegerField()
 
 
-class DeleteBaseModel(models.Model):
+class DeleteBaseModel(BaseTestModel):
     my_id = models.AutoField(primary_key=True)
     char_field = models.CharField(max_length=20)
     int_field = models.IntegerField()
@@ -39,11 +40,11 @@ class DeleteBaseModel(models.Model):
                                         db_table='non-default_m2m_table')
 
 
-class CustomDeleteTableModel(models.Model):
+class CustomDeleteTableModel(BaseTestModel):
     value = models.IntegerField()
     alt_value = models.CharField(max_length=20)
 
-    class Meta:
+    class Meta(BaseTestModel.Meta):
         db_table = 'custom_table_name'
 
 
@@ -117,7 +118,7 @@ class DeleteFieldTests(EvolutionTestCase):
 
     def test_delete(self):
         """Testing DeleteField with a typical column"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             int_field2 = models.IntegerField(db_column='non-default_db_column')
@@ -143,7 +144,7 @@ class DeleteFieldTests(EvolutionTestCase):
 
     def test_delete_with_custom_column_name(self):
         """Testing DeleteField with custom column name"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
@@ -169,7 +170,7 @@ class DeleteFieldTests(EvolutionTestCase):
 
     def test_delete_with_unique(self):
         """Testing DeleteField with unique=True"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
@@ -195,7 +196,7 @@ class DeleteFieldTests(EvolutionTestCase):
 
     def test_delete_many_to_many_field(self):
         """Testing DeleteField with ManyToManyField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
@@ -221,7 +222,7 @@ class DeleteFieldTests(EvolutionTestCase):
 
     def test_delete_many_to_many_field_custom_table(self):
         """Testing DeleteField with ManyToManyField and custom table"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
@@ -245,7 +246,7 @@ class DeleteFieldTests(EvolutionTestCase):
 
     def test_delete_foreign_key(self):
         """Testing DeleteField with ForeignKey"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
@@ -270,10 +271,10 @@ class DeleteFieldTests(EvolutionTestCase):
 
     def test_delete_column_from_custom_table(self):
         """Testing DeleteField with custom table name"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             alt_value = models.CharField(max_length=20)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 db_table = 'custom_table_name'
 
         self.set_base_model(CustomDeleteTableModel, name='CustomTableModel')

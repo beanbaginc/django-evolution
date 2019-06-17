@@ -6,17 +6,18 @@ from django.db import models
 from django_evolution.compat.models import GenericForeignKey
 from django_evolution.diff import Diff
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.models import BaseTestModel
 
 
-class DiffAnchor1(models.Model):
+class DiffAnchor1(BaseTestModel):
     value = models.IntegerField()
 
 
-class DiffAnchor2(models.Model):
+class DiffAnchor2(BaseTestModel):
     value = models.IntegerField()
 
 
-class DiffAnchor3(models.Model):
+class DiffAnchor3(BaseTestModel):
     value = models.IntegerField()
 
     # Host a generic key here, too.
@@ -26,7 +27,7 @@ class DiffAnchor3(models.Model):
     content_object = GenericForeignKey('content_type', 'object_id')
 
 
-class DiffBaseModel(models.Model):
+class DiffBaseModel(BaseTestModel):
     name = models.CharField(max_length=20)
     age = models.IntegerField()
     ref = models.ForeignKey(DiffAnchor1,
@@ -45,7 +46,7 @@ class DiffTests(EvolutionTestCase):
 
     def test_diff_identical_model(self):
         """Testing Diff with identical signatures"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             name = models.CharField(max_length=20)
             age = models.IntegerField()
             ref = models.ForeignKey(DiffAnchor1,

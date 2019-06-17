@@ -25,17 +25,18 @@ from django_evolution.signature import (AppSignature, FieldSignature,
                                         IndexSignature, ModelSignature,
                                         ProjectSignature)
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.models import BaseTestModel
 
 
-class SignatureAnchor1(models.Model):
+class SignatureAnchor1(BaseTestModel):
     value = models.IntegerField()
 
 
-class SignatureAnchor2(models.Model):
+class SignatureAnchor2(BaseTestModel):
     value = models.IntegerField()
 
 
-class SignatureAnchor3(models.Model):
+class SignatureAnchor3(BaseTestModel):
     value = models.IntegerField()
 
     # Host a generic key here, too.
@@ -45,7 +46,7 @@ class SignatureAnchor3(models.Model):
     content_object = GenericForeignKey('content_type', 'object_id')
 
 
-class SignatureFullModel(models.Model):
+class SignatureFullModel(BaseTestModel):
     char_field = models.CharField(max_length=20)
     int_field = models.IntegerField()
     null_field = models.IntegerField(null=True, db_column='size_column')
@@ -77,15 +78,15 @@ class SignatureFullModel(models.Model):
     generic = GenericRelation(SignatureAnchor3)
 
 
-class SignatureDefaultsModel(models.Model):
-    char_field = models.CharField()
+class SignatureDefaultsModel(BaseTestModel):
+    char_field = models.CharField(max_length=100)
     dec_field = models.DecimalField()
     m2m_field = models.ManyToManyField('self')
     fkey_field = models.ForeignKey(SignatureAnchor1,
                                    on_delete=models.CASCADE)
 
 
-class SignatureParentModel(models.Model):
+class SignatureParentModel(BaseTestModel):
     parent_field = models.CharField(max_length=20)
 
 
@@ -1001,6 +1002,7 @@ class FieldSignatureTests(BaseSignatureTestCase):
             field_sig.serialize(sig_version=1),
             {
                 'field_type': models.CharField,
+                'max_length': 100,
             })
 
         field_sig = FieldSignature.from_field(meta.get_field('dec_field'))
@@ -1069,6 +1071,9 @@ class FieldSignatureTests(BaseSignatureTestCase):
             field_sig.serialize(sig_version=2),
             {
                 'type': 'django.db.models.CharField',
+                'attrs': {
+                    'max_length': 100,
+                },
             })
 
         field_sig = FieldSignature.from_field(meta.get_field('dec_field'))
@@ -1209,12 +1214,12 @@ class ModelSignatureTests(BaseSignatureTestCase):
 
     def test_from_model(self):
         """Testing ModelSignature.from_model"""
-        class ModelSignatureFromModelTestModel(models.Model):
+        class ModelSignatureFromModelTestModel(BaseTestModel):
             field1 = models.CharField(max_length=100)
             field2 = models.IntegerField(null=True)
             field3 = models.BooleanField()
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 db_table = 'my_table'
                 db_tablespace = 'my_tablespace'
                 index_together = (('field1', 'field2'),)

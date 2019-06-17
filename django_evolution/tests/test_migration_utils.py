@@ -22,6 +22,7 @@ from django_evolution.compat.apps import get_app
 from django_evolution.db.state import DatabaseState
 from django_evolution.support import supports_migrations
 from django_evolution.tests.base_test_case import TestCase
+from django_evolution.tests.models import BaseTestModel
 from django_evolution.tests.utils import register_models
 from django_evolution.utils.migrations import (apply_migrations,
                                                filter_migration_targets,
@@ -100,7 +101,7 @@ class MigrationUtilsTests(TestCase):
         if not supports_migrations:
             raise SkipTest('Not used on Django < 1.7')
 
-        class MigrationTestModel(models.Model):
+        class MigrationTestModel(BaseTestModel):
             field1 = models.IntegerField()
             field2 = models.CharField(max_length=10)
             field3 = models.BooleanField()

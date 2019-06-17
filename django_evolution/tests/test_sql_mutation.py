@@ -6,14 +6,15 @@ from django_evolution.errors import CannotSimulate
 from django_evolution.mutations import SQLMutation
 from django_evolution.signature import FieldSignature, ProjectSignature
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.models import BaseTestModel
 
 
-class SQLBaseModel(models.Model):
+class SQLBaseModel(BaseTestModel):
     char_field = models.CharField(max_length=20)
     int_field = models.IntegerField()
 
 
-class AddFieldsModel(models.Model):
+class AddFieldsModel(BaseTestModel):
     char_field = models.CharField(max_length=20)
     int_field = models.IntegerField()
     added_field1 = models.IntegerField(null=True)

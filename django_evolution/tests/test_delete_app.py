@@ -9,20 +9,21 @@ from django_evolution.mutations import DeleteApplication
 from django_evolution.mutators import AppMutator
 from django_evolution.signature import ProjectSignature
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.models import BaseTestModel
 
 
-class AppDeleteAnchor1(models.Model):
+class AppDeleteAnchor1(BaseTestModel):
     value = models.IntegerField()
 
 
-class AppDeleteAnchor2(models.Model):
+class AppDeleteAnchor2(BaseTestModel):
     value = models.IntegerField()
 
-    class Meta:
+    class Meta(BaseTestModel.Meta):
         db_table = 'app_delete_custom_add_anchor_table'
 
 
-class AppDeleteBaseModel(models.Model):
+class AppDeleteBaseModel(BaseTestModel):
     char_field = models.CharField(max_length=20)
     int_field = models.IntegerField()
     anchor_fk = models.ForeignKey(AppDeleteAnchor1,
@@ -30,11 +31,11 @@ class AppDeleteBaseModel(models.Model):
     anchor_m2m = models.ManyToManyField(AppDeleteAnchor2)
 
 
-class AppDeleteCustomTableModel(models.Model):
+class AppDeleteCustomTableModel(BaseTestModel):
     value = models.IntegerField()
     alt_value = models.CharField(max_length=20)
 
-    class Meta:
+    class Meta(BaseTestModel.Meta):
         db_table = 'app_delete_custom_table_name'
 
 

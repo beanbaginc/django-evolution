@@ -15,22 +15,23 @@ except ImportError:
 from django_evolution.mutations import ChangeMeta
 from django_evolution.support import supports_indexes, supports_index_together
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.models import BaseTestModel
 
 
-class ChangeMetaPlainBaseModel(models.Model):
+class ChangeMetaPlainBaseModel(BaseTestModel):
     int_field1 = models.IntegerField()
     int_field2 = models.IntegerField()
     char_field1 = models.CharField(max_length=20)
     char_field2 = models.CharField(max_length=40)
 
 
-class ChangeMetaIndexesBaseModel(models.Model):
+class ChangeMetaIndexesBaseModel(BaseTestModel):
     int_field1 = models.IntegerField()
     int_field2 = models.IntegerField()
     char_field1 = models.CharField(max_length=20)
     char_field2 = models.CharField(max_length=40)
 
-    class Meta:
+    class Meta(BaseTestModel.Meta):
         if Index:
             indexes = [
                 Index(fields=['int_field1']),
@@ -39,23 +40,23 @@ class ChangeMetaIndexesBaseModel(models.Model):
             ]
 
 
-class ChangeMetaIndexTogetherBaseModel(models.Model):
+class ChangeMetaIndexTogetherBaseModel(BaseTestModel):
     int_field1 = models.IntegerField()
     int_field2 = models.IntegerField()
     char_field1 = models.CharField(max_length=20)
     char_field2 = models.CharField(max_length=40)
 
-    class Meta:
+    class Meta(BaseTestModel.Meta):
         index_together = [('int_field1', 'char_field1')]
 
 
-class ChangeMetaUniqueTogetherBaseModel(models.Model):
+class ChangeMetaUniqueTogetherBaseModel(BaseTestModel):
     int_field1 = models.IntegerField()
     int_field2 = models.IntegerField()
     char_field1 = models.CharField(max_length=20)
     char_field2 = models.CharField(max_length=40)
 
-    class Meta:
+    class Meta(BaseTestModel.Meta):
         unique_together = [('int_field1', 'char_field1')]
 
 
@@ -79,13 +80,13 @@ class ChangeMetaIndexesTests(EvolutionTestCase):
 
     def test_keeping_empty(self):
         """Testing ChangeMeta(indexes) and keeping list empty"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 indexes = []
 
         self.set_base_model(ChangeMetaPlainBaseModel)
@@ -101,13 +102,13 @@ class ChangeMetaIndexesTests(EvolutionTestCase):
 
     def test_setting_from_empty(self):
         """Testing ChangeMeta(indexes) and setting to valid list"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 indexes = [
                     Index(fields=['int_field1']),
                     Index(fields=['char_field1', '-char_field2'],
@@ -142,13 +143,13 @@ class ChangeMetaIndexesTests(EvolutionTestCase):
 
     def test_replace_list(self):
         """Testing ChangeMeta(indexes) and replacing list"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 indexes = [
                     Index(fields=['int_field2']),
                 ]
@@ -169,13 +170,13 @@ class ChangeMetaIndexesTests(EvolutionTestCase):
 
     def test_append_list(self):
         """Testing ChangeMeta(indexes) and appending list"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 indexes = [
                     Index(fields=['int_field1']),
                     Index(fields=['char_field1', '-char_field2'],
@@ -215,7 +216,7 @@ class ChangeMetaIndexesTests(EvolutionTestCase):
 
     def test_removing(self):
         """Testing ChangeMeta(indexes) and removing property"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
@@ -235,13 +236,13 @@ class ChangeMetaIndexesTests(EvolutionTestCase):
 
     def test_missing_indexes(self):
         """Testing ChangeMeta(indexes) and old missing indexes"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 indexes = [
                     Index(fields=['int_field2']),
                 ]
@@ -287,13 +288,13 @@ class ChangeMetaIndexTogetherTests(EvolutionTestCase):
 
     def test_keeping_empty(self):
         """Testing ChangeMeta(index_together) and keeping list empty"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 index_together = []
 
         self.set_base_model(ChangeMetaPlainBaseModel)
@@ -309,13 +310,13 @@ class ChangeMetaIndexTogetherTests(EvolutionTestCase):
 
     def test_setting_from_empty(self):
         """Testing ChangeMeta(index_together) and setting to valid list"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 index_together = [('int_field1', 'char_field1')]
 
         self.set_base_model(ChangeMetaPlainBaseModel)
@@ -334,13 +335,13 @@ class ChangeMetaIndexTogetherTests(EvolutionTestCase):
 
     def test_replace_list(self):
         """Testing ChangeMeta(index_together) and replacing list"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 index_together = [('int_field2', 'char_field2')]
 
         self.set_base_model(ChangeMetaIndexTogetherBaseModel)
@@ -359,13 +360,13 @@ class ChangeMetaIndexTogetherTests(EvolutionTestCase):
 
     def test_append_list(self):
         """Testing ChangeMeta(index_together) and appending list"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 index_together = [('int_field1', 'char_field1'),
                                   ('int_field2', 'char_field2')]
 
@@ -387,7 +388,7 @@ class ChangeMetaIndexTogetherTests(EvolutionTestCase):
 
     def test_removing(self):
         """Testing ChangeMeta(index_together) and removing property"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
@@ -407,13 +408,13 @@ class ChangeMetaIndexTogetherTests(EvolutionTestCase):
 
     def test_missing_indexes(self):
         """Testing ChangeMeta(index_together) and old missing indexes"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 index_together = [('char_field1', 'char_field2')]
 
         self.set_base_model(ChangeMetaIndexTogetherBaseModel)
@@ -449,13 +450,13 @@ class ChangeMetaUniqueTogetherTests(EvolutionTestCase):
 
     def test_keeping_empty(self):
         """Testing ChangeMeta(unique_together) and keeping list empty"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 unique_together = []
 
         self.set_base_model(ChangeMetaPlainBaseModel)
@@ -471,13 +472,13 @@ class ChangeMetaUniqueTogetherTests(EvolutionTestCase):
 
     def test_setting_from_empty(self):
         """Testing ChangeMeta(unique_together) and setting to valid list"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 unique_together = [('int_field1', 'char_field1')]
 
         self.set_base_model(ChangeMetaPlainBaseModel)
@@ -496,13 +497,13 @@ class ChangeMetaUniqueTogetherTests(EvolutionTestCase):
 
     def test_replace_list(self):
         """Testing ChangeMeta(unique_together) and replacing list"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 unique_together = [('int_field2', 'char_field2')]
 
         self.set_base_model(ChangeMetaUniqueTogetherBaseModel)
@@ -521,13 +522,13 @@ class ChangeMetaUniqueTogetherTests(EvolutionTestCase):
 
     def test_append_list(self):
         """Testing ChangeMeta(unique_together) and appending list"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 unique_together = [('int_field1', 'char_field1'),
                                    ('int_field2', 'char_field2')]
 
@@ -549,7 +550,7 @@ class ChangeMetaUniqueTogetherTests(EvolutionTestCase):
 
     def test_removing(self):
         """Testing ChangeMeta(unique_together) and removing property"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
@@ -571,13 +572,13 @@ class ChangeMetaUniqueTogetherTests(EvolutionTestCase):
         """Testing ChangeMeta(unique_together) and setting indexes and removing
         one
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 unique_together = [('int_field1', 'char_field1')]
 
         self.set_base_model(ChangeMetaPlainBaseModel)
@@ -599,13 +600,13 @@ class ChangeMetaUniqueTogetherTests(EvolutionTestCase):
 
     def test_missing_indexes(self):
         """Testing ChangeMeta(unique_together) and old missing indexes"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 unique_together = [('char_field1', 'char_field2')]
 
         self.set_base_model(ChangeMetaUniqueTogetherBaseModel)
@@ -631,13 +632,13 @@ class ChangeMetaUniqueTogetherTests(EvolutionTestCase):
     def test_upgrade_from_v1_sig_no_indexes(self):
         """Testing ChangeMeta(unique_together) and upgrade from v1 signature
         with no changes and no indexes in database"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 unique_together = [('int_field1', 'char_field1')]
 
         self.set_base_model(ChangeMetaPlainBaseModel)
@@ -668,13 +669,13 @@ class ChangeMetaUniqueTogetherTests(EvolutionTestCase):
     def test_upgrade_from_v1_sig_with_indexes(self):
         """Testing ChangeMeta(unique_together) and upgrade from v1 signature
         with no changes and with indexes in database"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
             char_field1 = models.CharField(max_length=20)
             char_field2 = models.CharField(max_length=40)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 unique_together = [('int_field1', 'char_field1')]
 
         self.set_base_model(ChangeMetaUniqueTogetherBaseModel)

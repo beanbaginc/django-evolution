@@ -7,9 +7,10 @@ from django.db import models
 from django_evolution.consts import UpgradeMethod
 from django_evolution.mutations import MoveToDjangoMigrations
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.models import BaseTestModel
 
 
-class MoveToDjangoMigrationsBaseModel(models.Model):
+class MoveToDjangoMigrationsBaseModel(BaseTestModel):
     char_field = models.CharField(max_length=20)
 
 

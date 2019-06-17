@@ -6,9 +6,10 @@ from django_evolution.errors import SimulationFailure
 from django_evolution.mutations import DeleteModel
 from django_evolution.signature import AppSignature, ProjectSignature
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.models import BaseTestModel
 
 
-class DeleteModelAnchor(models.Model):
+class DeleteModelAnchor(BaseTestModel):
     value = models.IntegerField()
 
 
@@ -49,7 +50,7 @@ class DeleteModelTests(EvolutionTestCase):
 
     def test_delete_model(self):
         """Testing DeleteModel"""
-        class BasicModel(models.Model):
+        class BasicModel(BaseTestModel):
             value = models.IntegerField()
 
         self.set_base_model(BasicModel, 'BasicModel')
@@ -75,7 +76,7 @@ class DeleteModelTests(EvolutionTestCase):
 
     def test_delete_model_with_m2m_field(self):
         """Testing DeleteModel with a model containing a ManyToManyField"""
-        class BasicWithM2MModel(models.Model):
+        class BasicWithM2MModel(BaseTestModel):
             value = models.IntegerField()
             m2m = models.ManyToManyField(DeleteModelAnchor)
 
@@ -105,10 +106,10 @@ class DeleteModelTests(EvolutionTestCase):
 
     def test_delete_model_with_custom_table(self):
         """Testing DeleteModel with a model and custom table name"""
-        class CustomTableModel(models.Model):
+        class CustomTableModel(BaseTestModel):
             value = models.IntegerField()
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 db_table = 'custom_table_name'
 
         self.set_base_model(CustomTableModel, 'CustomTableModel')
@@ -136,11 +137,11 @@ class DeleteModelTests(EvolutionTestCase):
         """Testing DeleteModel with a model and custom table name and
         ManyToManyField
         """
-        class CustomTableWithM2MModel(models.Model):
+        class CustomTableWithM2MModel(BaseTestModel):
             value = models.IntegerField()
             m2m = models.ManyToManyField(DeleteModelAnchor)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 db_table = 'another_custom_table_name'
 
         self.set_base_model(
@@ -170,7 +171,7 @@ class DeleteModelTests(EvolutionTestCase):
 
     def test_delete_model_with_custom_database(self):
         """Testing DeleteModel with custom database"""
-        class BasicModel(models.Model):
+        class BasicModel(BaseTestModel):
             value = models.IntegerField()
 
         self.set_base_model(BasicModel, 'BasicModel', db_name='db_multi')

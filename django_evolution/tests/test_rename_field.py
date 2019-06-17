@@ -8,24 +8,25 @@ from django_evolution.signature import (AppSignature,
                                         ModelSignature,
                                         ProjectSignature)
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.models import BaseTestModel
 
 
-class RenameAnchor1(models.Model):
+class RenameAnchor1(BaseTestModel):
     value = models.IntegerField()
 
 
-class RenameAnchor2(models.Model):
+class RenameAnchor2(BaseTestModel):
     value = models.IntegerField()
 
-    class Meta:
+    class Meta(BaseTestModel.Meta):
         db_table = 'custom_rename_anchor_table'
 
 
-class RenameAnchor3(models.Model):
+class RenameAnchor3(BaseTestModel):
     value = models.IntegerField()
 
 
-class RenameFieldBaseModel(models.Model):
+class RenameFieldBaseModel(BaseTestModel):
     char_field = models.CharField(max_length=20)
     int_field = models.IntegerField()
     int_field_named = models.IntegerField(db_column='custom_db_col_name')
@@ -39,11 +40,11 @@ class RenameFieldBaseModel(models.Model):
         RenameAnchor3, db_table='non-default_db_table')
 
 
-class CustomRenameTableModel(models.Model):
+class CustomRenameTableModel(BaseTestModel):
     value = models.IntegerField()
     alt_value = models.CharField(max_length=20)
 
-    class Meta:
+    class Meta(BaseTestModel.Meta):
         db_table = 'custom_rename_table_name'
 
 
@@ -116,7 +117,7 @@ class RenameFieldTests(EvolutionTestCase):
 
     def test_rename(self):
         """Testing RenameField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             renamed_field = models.IntegerField()
             int_field_named = models.IntegerField(
@@ -149,7 +150,7 @@ class RenameFieldTests(EvolutionTestCase):
         """Testing RenameField with custom table name for non-ManyToManyField
         is ignored
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             renamed_field = models.IntegerField()
             int_field_named = models.IntegerField(
@@ -181,7 +182,7 @@ class RenameFieldTests(EvolutionTestCase):
 
     def test_rename_with_primary_key(self):
         """Testing RenameField with primary key"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_pk_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
@@ -213,7 +214,7 @@ class RenameFieldTests(EvolutionTestCase):
 
     def test_rename_with_foreign_key(self):
         """Testing RenameField with ForeignKey"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             int_field_named = models.IntegerField(
@@ -245,7 +246,7 @@ class RenameFieldTests(EvolutionTestCase):
 
     def test_rename_with_custom_column_name(self):
         """Testing RenameField with custom column name"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             renamed_field = models.IntegerField()
@@ -277,7 +278,7 @@ class RenameFieldTests(EvolutionTestCase):
         """Testing RenameField with custom column name to a new custom column
         name
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             renamed_field = models.IntegerField(
@@ -312,7 +313,7 @@ class RenameFieldTests(EvolutionTestCase):
         """Testing RenameField with custom column and ignored
         custom table name
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             renamed_field = models.IntegerField(
@@ -346,11 +347,11 @@ class RenameFieldTests(EvolutionTestCase):
 
     def test_rename_in_custom_table_name(self):
         """Testing RenameField with custom table name"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             renamed_field = models.IntegerField()
             alt_value = models.CharField(max_length=20)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 db_table = 'custom_rename_table_name'
 
         self.set_base_model(CustomRenameTableModel,
@@ -376,7 +377,7 @@ class RenameFieldTests(EvolutionTestCase):
 
     def test_rename_m2m_table(self):
         """Testing RenameField with renaming ManyToManyField table name"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             int_field_named = models.IntegerField(
@@ -410,7 +411,7 @@ class RenameFieldTests(EvolutionTestCase):
         """Testing RenameField with renaming ManyToManyField db_column is
         ignored
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             int_field_named = models.IntegerField(
@@ -445,7 +446,7 @@ class RenameFieldTests(EvolutionTestCase):
         """Testing RenameField with renaming ManyToManyField custom table
         name to default name
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             int_field_named = models.IntegerField(

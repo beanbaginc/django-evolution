@@ -6,9 +6,10 @@ from django_evolution.errors import SimulationFailure
 from django_evolution.mutations import RenameModel
 from django_evolution.signature import AppSignature, ProjectSignature
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.models import BaseTestModel
 
 
-class RenameModelBaseModel(models.Model):
+class RenameModelBaseModel(BaseTestModel):
     char_field = models.CharField(max_length=20)
     int_field = models.IntegerField()
 
@@ -53,7 +54,7 @@ class RenameModelTests(EvolutionTestCase):
 
     def test_rename(self):
         """Testing RenameModel with changed db_table"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
 
@@ -72,11 +73,11 @@ class RenameModelTests(EvolutionTestCase):
 
     def test_rename_unchanged_db_table(self):
         """Testing RenameModel with unchanged db_table"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 db_table = 'tests_testmodel'
 
         self.perform_evolution_tests(
@@ -94,11 +95,11 @@ class RenameModelTests(EvolutionTestCase):
 
     def test_rename_updates_foreign_key_refs(self):
         """Testing RenameModel updates ForeignKey references in signature"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
 
-        class RefModel(models.Model):
+        class RefModel(BaseTestModel):
             my_ref = models.ForeignKey(RenameModelBaseModel,
                                        on_delete=models.CASCADE)
 
@@ -138,14 +139,14 @@ class RenameModelTests(EvolutionTestCase):
         """Testing RenameModel updates ForeignKey references in signature
         and unchanged db_table
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 db_table = 'tests_testmodel'
 
-        class RefModel(models.Model):
+        class RefModel(BaseTestModel):
             my_ref = models.ForeignKey(RenameModelBaseModel,
                                        on_delete=models.CASCADE)
 
@@ -184,11 +185,11 @@ class RenameModelTests(EvolutionTestCase):
         """Testing RenameModel updates ManyToManyField references in
         signature and changed db_table
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
 
-        class RefModel(models.Model):
+        class RefModel(BaseTestModel):
             my_ref = models.ManyToManyField(RenameModelBaseModel)
 
         self.set_base_model(self.default_base_model,
@@ -227,14 +228,14 @@ class RenameModelTests(EvolutionTestCase):
         """Testing RenameModel updates ManyToManyField references in
         signature and unchanged db_table
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 db_table = 'tests_testmodel'
 
-        class RefModel(models.Model):
+        class RefModel(BaseTestModel):
             my_ref = models.ManyToManyField(RenameModelBaseModel)
 
         self.set_base_model(self.default_base_model,

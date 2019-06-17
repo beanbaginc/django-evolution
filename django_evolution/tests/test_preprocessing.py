@@ -6,14 +6,15 @@ from django_evolution.mutations import (AddField, ChangeField, DeleteField,
                                         DeleteModel, RenameField, RenameModel,
                                         SQLMutation)
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.models import BaseTestModel
 
 
-class PreprocBaseModel(models.Model):
+class PreprocBaseModel(BaseTestModel):
     my_id = models.AutoField(primary_key=True)
     char_field = models.CharField(max_length=20)
 
 
-class ReffedPreprocModel(models.Model):
+class ReffedPreprocModel(BaseTestModel):
     value = models.IntegerField()
 
 
@@ -24,7 +25,7 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_add_delete_field(self):
         """Testing pre-processing AddField + DeleteField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
 
@@ -42,7 +43,7 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_add_delete_add_field(self):
         """Testing pre-processing AddField + DeleteField + AddField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             added_field = models.IntegerField()
@@ -68,7 +69,7 @@ class PreprocessingTests(EvolutionTestCase):
         """Testing pre-processing AddField + DeleteField + AddField +
         RenameField
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             renamed_field = models.IntegerField()
@@ -93,7 +94,7 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_add_change_field(self):
         """Testing pre-processing AddField + ChangeField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             added_field = models.CharField(max_length=50, null=True)
@@ -116,7 +117,7 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_add_change_change_field(self):
         """Testing pre-processing AddField + ChangeField + ChangeField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             added_field = models.CharField(max_length=50, null=True)
@@ -141,7 +142,7 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_add_change_delete_field(self):
         """Testing pre-processing AddField + ChangeField + DeleteField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
 
@@ -160,7 +161,7 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_add_change_rename_field(self):
         """Testing pre-processing AddField + ChangeField + RenameField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             renamed_field = models.CharField(max_length=50, null=True)
@@ -184,7 +185,7 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_add_rename_change_field(self):
         """Testing pre-processing AddField + RenameField + ChangeField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             renamed_field = models.CharField(max_length=50, null=True)
@@ -210,7 +211,7 @@ class PreprocessingTests(EvolutionTestCase):
         """Testing pre-processing AddField + RenameField + ChangeField +
         RenameField + ChangeField
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             renamed_field = models.CharField(max_length=50, null=True)
@@ -235,7 +236,7 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_add_rename_delete(self):
         """Testing pre-processing AddField + RenameField + DeleteField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
 
@@ -256,7 +257,7 @@ class PreprocessingTests(EvolutionTestCase):
         """Testing pre-processing AddField + RenameField with
         RenameField.db_column
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             renamed_field = models.CharField(max_length=50, null=True,
@@ -280,13 +281,13 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_add_field_rename_model(self):
         """Testing pre-processing AddField + RenameModel"""
-        class RenamedReffedPreprocModel(models.Model):
+        class RenamedReffedPreprocModel(BaseTestModel):
             value = models.IntegerField()
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 db_table = 'tests_reffedpreprocmodel'
 
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             added_field = models.ForeignKey(RenamedReffedPreprocModel,
@@ -338,13 +339,13 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_add_rename_field_rename_model(self):
         """Testing pre-processing AddField + RenameField + RenameModel"""
-        class RenamedReffedPreprocModel(models.Model):
+        class RenamedReffedPreprocModel(BaseTestModel):
             value = models.IntegerField()
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 db_table = 'tests_reffedpreprocmodel'
 
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
             renamed_field = models.ForeignKey(RenamedReffedPreprocModel,
@@ -398,7 +399,7 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_add_sql_delete(self):
         """Testing pre-processing AddField + SQLMutation + DeleteField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
 
@@ -421,7 +422,7 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_change_delete_field(self):
         """Testing pre-processing ChangeField + DeleteField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
 
         self.perform_evolution_tests(
@@ -439,7 +440,7 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_change_rename_field(self):
         """Testing pre-processing ChangeField + RenameField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             renamed_field = models.CharField(max_length=20, null=True)
 
@@ -464,7 +465,7 @@ class PreprocessingTests(EvolutionTestCase):
         """Testing pre-processing ChangeField + RenameField + ChangeField +
         RenameField
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             renamed_field = models.CharField(max_length=30, null=True)
 
@@ -489,7 +490,7 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_change_rename_delete_field(self):
         """Testing pre-processing ChangeField + RenameField + DeleteField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
 
         self.perform_evolution_tests(
@@ -508,7 +509,7 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_rename_add_field(self):
         """Testing pre-processing RenameField + AddField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             renamed_field = models.CharField(max_length=20)
             char_field = models.CharField(max_length=50, null=True)
@@ -536,7 +537,7 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_rename_delete_field(self):
         """Testing pre-processing RenameField + DeleteField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
 
         self.perform_evolution_tests(
@@ -554,7 +555,7 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_rename_change_delete_field(self):
         """Testing pre-processing RenameField + ChangeField + DeleteField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
 
         self.perform_evolution_tests(
@@ -575,7 +576,7 @@ class PreprocessingTests(EvolutionTestCase):
         """Testing pre-processing RenameField + ChangeField + RenameField +
         ChangeField
         """
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             renamed_field = models.CharField(max_length=50, null=True)
 
@@ -601,7 +602,7 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_rename_rename_field(self):
         """Testing pre-processing RenameField + RenameField"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             renamed_field = models.CharField(max_length=20)
 
@@ -624,11 +625,11 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_rename_rename_model(self):
         """Testing pre-processing RenameModel + RenameModel"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 db_table = 'tests_testmodel'
 
         self.perform_evolution_tests(
@@ -648,11 +649,11 @@ class PreprocessingTests(EvolutionTestCase):
 
     def test_rename_delete_model(self):
         """Testing pre-processing RenameModel + DeleteModel"""
-        class DestModel(models.Model):
+        class DestModel(BaseTestModel):
             my_id = models.AutoField(primary_key=True)
             char_field = models.CharField(max_length=20)
 
-            class Meta:
+            class Meta(BaseTestModel.Meta):
                 db_table = 'tests_testmodel'
 
         self.perform_evolution_tests(
