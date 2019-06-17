@@ -313,7 +313,7 @@ def execute_transaction(sql, database=DEFAULT_DB_ALIAS):
 
 
 @contextmanager
-def ensure_test_db(model_entries, app_label='tests',
+def ensure_test_db(model_entries=[], app_label='tests',
                    database=DEFAULT_DB_ALIAS):
     """Ensure tables are created and destroyed when running code.
 
@@ -322,7 +322,7 @@ def ensure_test_db(model_entries, app_label='tests',
     completed, the models and indexes will be destroyed.
 
     Args:
-        model_entries (list of tuple):
+        model_entries (list of tuple, optional):
             The list of model entries to add to the database. Each entry
             is a tuple containing the model class and the name to register
             for it.
@@ -334,12 +334,13 @@ def ensure_test_db(model_entries, app_label='tests',
             The name of the database to execute on.
     """
     # Set up the initial state of the app cache.
-    register_app_models(app_label, model_entries, reset=True)
+    if model_entries:
+        register_app_models(app_label, model_entries, reset=True)
 
-    # Install the initial tables and indexes.
-    execute_transaction(sql_create_app(app=evo_test,
-                                       db_name=database),
-                        database)
+        # Install the initial tables and indexes.
+        execute_transaction(sql_create_app(app=evo_test,
+                                           db_name=database),
+                            database)
 
     try:
         yield

@@ -1191,3 +1191,22 @@ evolver = {
         'DROP TABLE `tests_testmodel`;'
     ),
 }
+
+if django.VERSION[:2] >= (1, 7):
+    evolver.update({
+        'create_table': (
+            'CREATE TABLE `tests_testmodel` '
+            '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+            ' `value` varchar(100) NOT NULL);'
+        ),
+    })
+else:
+    evolver.update({
+        'create_table': '\n'.join([
+            'CREATE TABLE `tests_testmodel` (',
+            '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
+            '    `value` varchar(100) NOT NULL',
+            ')',
+            ';',
+        ]),
+    })

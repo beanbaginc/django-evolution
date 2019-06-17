@@ -13,7 +13,10 @@ from django_evolution.evolve import (BaseEvolutionTask, EvolveAppTask,
                                      Evolver, PurgeAppTask)
 from django_evolution.models import Version
 from django_evolution.mutations import AddField, ChangeField
-from django_evolution.signals import applied_evolution, applying_evolution
+from django_evolution.signals import (applied_evolution,
+                                      applying_evolution,
+                                      created_models,
+                                      creating_models)
 from django_evolution.signature import AppSignature, ModelSignature
 from django_evolution.tests import models as evo_test
 from django_evolution.tests.base_test_case import EvolutionTestCase
@@ -545,31 +548,48 @@ class EvolveAppTaskTests(BaseEvolverTestCase):
         version.signature.add_app_sig(app_sig)
         version.save()
 
+        self.saw_signals = set()
+        applying_evolution.connect(self._on_applying_evolution)
+        applied_evolution.connect(self._on_applied_evolution)
+        creating_models.connect(self._on_creating_models)
+        created_models.connect(self._on_created_models)
+
+    def tearDown(self):
+        super(EvolveAppTaskTests, self).tearDown()
+
+        applying_evolution.disconnect(self._on_applying_evolution)
+        applied_evolution.disconnect(self._on_applied_evolution)
+        creating_models.disconnect(self._on_creating_models)
+        created_models.disconnect(self._on_created_models)
+
     def test_prepare_with_hinted_false(self):
         """Testing EvolveAppTask.prepare with hinted=False"""
         from django_evolution.compat.apps import register_app_models
         register_app_models('tests', [('TestModel', EvolverTestModel)],
                             reset=True)
 
-        evolver = Evolver()
-        task = EvolveAppTask(
-            evolver=evolver,
-            app=evo_test,
-            evolutions=[
-                {
-                    'label': 'my_evolution1',
-                    'mutations': [
-                        ChangeField('TestModel', 'value', max_length=100),
-                    ],
-                },
-            ])
-        task.prepare(hinted=False)
+        with ensure_test_db(model_entries=[('TestModel', EvolverTestModel)]):
+            evolver = Evolver()
+            task = EvolveAppTask(
+                evolver=evolver,
+                app=evo_test,
+                evolutions=[
+                    {
+                        'label': 'my_evolution1',
+                        'mutations': [
+                            ChangeField('TestModel', 'value', max_length=100),
+                        ],
+                    },
+                ])
+            task.prepare(hinted=False)
 
         self.assertTrue(task.evolution_required)
         self.assertTrue(task.can_simulate)
         self.assertEqual('\n'.join(task.sql),
                          self.get_sql_mapping('evolve_app_task'))
         self.assertEqual(len(task.new_evolutions), 1)
+        self.assertEqual(task.new_model_names, [])
+        self.assertEqual(task.new_models_sql, [])
 
         evolution = task.new_evolutions[0]
         self.assertEqual(evolution.app_label, 'tests')
@@ -581,51 +601,112 @@ class EvolveAppTaskTests(BaseEvolverTestCase):
         register_app_models('tests', [('TestModel', EvolverTestModel)],
                             reset=True)
 
-        evolver = Evolver(hinted=True)
-        task = EvolveAppTask(evolver=evolver,
-                             app=evo_test)
-        task.prepare(hinted=True)
+        with ensure_test_db(model_entries=[('TestModel', EvolverTestModel)]):
+            evolver = Evolver(hinted=True)
+            task = EvolveAppTask(evolver=evolver,
+                                 app=evo_test)
+            task.prepare(hinted=True)
 
         self.assertTrue(task.evolution_required)
         self.assertTrue(task.can_simulate)
         self.assertEqual('\n'.join(task.sql),
                          self.get_sql_mapping('evolve_app_task'))
         self.assertEqual(len(task.new_evolutions), 0)
+        self.assertEqual(task.new_model_names, [])
+        self.assertEqual(task.new_models_sql, [])
+
+    def test_prepare_with_new_app(self):
+        """Testing EvolveAppTask.prepare with new app"""
+        from django_evolution.compat.apps import register_app_models
+        register_app_models('tests', [('TestModel', EvolverTestModel)],
+                            reset=True)
+
+        evolver = Evolver(hinted=True)
+        evolver.project_sig.remove_app_sig('tests')
+
+        task = EvolveAppTask(evolver=evolver,
+                             app=evo_test)
+        task.prepare(hinted=False)
+
+        self.assertTrue(task.evolution_required)
+        self.assertTrue(task.can_simulate)
+        self.assertEqual(task.sql, [])
+        self.assertEqual(len(task.new_evolutions), 0)
+        self.assertEqual(task.new_model_names, ['TestModel'])
+        self.assertEqual('\n'.join(task.new_models_sql),
+                         self.get_sql_mapping('create_table'))
+
+    def test_prepare_with_new_models(self):
+        """Testing EvolveAppTask.prepare with new models"""
+        from django_evolution.compat.apps import register_app_models
+        register_app_models('tests', [('TestModel', EvolverTestModel)],
+                            reset=True)
+
+        evolver = Evolver(hinted=True)
+        evolver.project_sig.get_app_sig('tests').remove_model_sig('TestModel')
+
+        task = EvolveAppTask(evolver=evolver,
+                             app=evo_test)
+        task.prepare(hinted=False)
+
+        self.assertTrue(task.evolution_required)
+        self.assertTrue(task.can_simulate)
+        self.assertEqual(task.sql, [])
+        self.assertEqual(len(task.new_evolutions), 0)
+        self.assertEqual(task.new_model_names, ['TestModel'])
+        self.assertEqual('\n'.join(task.new_models_sql),
+                         self.get_sql_mapping('create_table'))
 
     def test_execute(self):
         """Testing EvolveAppTask.execute"""
-        saw = set()
-
-        @receiver(applying_evolution)
-        def _on_applying(sender, **kwargs):
-            saw.add('on_applying')
-            self.assertIs(sender, evolver)
-            self.assertIs(kwargs['task'], task)
-
-        @receiver(applied_evolution)
-        def _on_applied(sender, **kwargs):
-            saw.add('on_applied')
-            self.assertIs(sender, evolver)
-            self.assertIs(kwargs['task'], task)
-
-        evolver = Evolver()
-        task = EvolveAppTask(
-            evolver=evolver,
-            app=evo_test,
-            evolutions=[
-                {
-                    'label': 'my_evolution1',
-                    'mutations': [
-                        ChangeField('TestModel', 'value', max_length=100),
-                    ],
-                },
-            ])
-        task.prepare(hinted=False)
-
         with ensure_test_db(model_entries=[('TestModel', EvolverTestModel)]):
+            evolver = Evolver()
+            task = EvolveAppTask(
+                evolver=evolver,
+                app=evo_test,
+                evolutions=[
+                    {
+                        'label': 'my_evolution1',
+                        'mutations': [
+                            ChangeField('TestModel', 'value', max_length=100),
+                        ],
+                    },
+                ])
+            task.prepare(hinted=False)
             task.execute(connections['default'].cursor())
 
-        self.assertEqual(saw, set(['on_applying', 'on_applied']))
+        self.assertEqual(self.saw_signals, set(['applying_evolution',
+                                                'applied_evolution']))
+
+    def test_execute_with_new_models(self):
+        """Testing EvolveAppTask.execute with new models and default behavior
+        """
+        evolver = Evolver()
+        evolver.project_sig.remove_app_sig('tests')
+
+        task = EvolveAppTask(evolver=evolver,
+                             app=evo_test)
+        task.prepare(hinted=False)
+        task.execute(connections['default'].cursor())
+
+        self.assertEqual(self.saw_signals, set())
+
+    def test_execute_with_new_models_and_create_models_now(self):
+        """Testing EvolveAppTask.execute with new models and
+        create_models_now=True
+        """
+        evolver = Evolver()
+        evolver.project_sig.remove_app_sig('tests')
+
+        with ensure_test_db():
+            task = EvolveAppTask(evolver=evolver,
+                                 app=evo_test)
+            task.prepare(hinted=False)
+            task.execute(connections['default'].cursor(),
+                         create_models_now=True)
+
+        self.assertEqual(self.saw_signals, set(['creating_models',
+                                                'created_models']))
 
     def test_get_evolution_content(self):
         """Testing EvolveAppTask.get_evolution_content"""
@@ -655,6 +736,18 @@ class EvolveAppTaskTests(BaseEvolverTestCase):
             "    ChangeField('TestModel', 'value', initial=None,"
             " max_length=100),\n"
             "]")
+
+    def _on_applying_evolution(self, **kwargs):
+        self.saw_signals.add('applying_evolution')
+
+    def _on_applied_evolution(self, **kwargs):
+        self.saw_signals.add('applied_evolution')
+
+    def _on_creating_models(self, **kwargs):
+        self.saw_signals.add('creating_models')
+
+    def _on_created_models(self, **kwargs):
+        self.saw_signals.add('created_models')
 
 
 class PurgeAppTaskTests(BaseEvolverTestCase):

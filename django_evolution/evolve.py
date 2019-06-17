@@ -2,6 +2,7 @@
 
 from __future__ import unicode_literals
 
+import logging
 from collections import OrderedDict
 from contextlib import contextmanager
 
@@ -11,7 +12,10 @@ from django.utils import six
 from django.utils.translation import ugettext as _
 
 from django_evolution.compat.apps import get_apps
-from django_evolution.compat.db import atomic
+from django_evolution.compat.db import (atomic,
+                                        db_get_installable_models_for_app,
+                                        sql_create_models)
+from django_evolution.consts import UpgradeMethod
 from django_evolution.db.state import DatabaseState
 from django_evolution.diff import Diff
 from django_evolution.errors import (EvolutionBaselineMissingError,
@@ -22,12 +26,20 @@ from django_evolution.errors import (EvolutionBaselineMissingError,
 from django_evolution.models import Evolution, Version
 from django_evolution.mutations import AddField, DeleteApplication
 from django_evolution.mutators import AppMutator
-from django_evolution.signals import applied_evolution, applying_evolution
+from django_evolution.signals import (applied_evolution,
+                                      applying_evolution,
+                                      created_models,
+                                      creating_models)
 from django_evolution.signature import ProjectSignature
+from django_evolution.support import supports_migrations
 from django_evolution.utils.apps import get_app_label, get_legacy_app_label
 from django_evolution.utils.evolutions import (get_app_pending_mutations,
+                                               get_evolution_sequence,
                                                get_unapplied_evolutions)
 from django_evolution.utils.sql import execute_sql
+
+
+logger = logging.getLogger(__name__)
 
 
 class BaseEvolutionTask(object):
@@ -316,6 +328,41 @@ class EvolveAppTask(BaseEvolutionTask):
             The app label for the app to evolve.
     """
 
+    @classmethod
+    def execute_tasks(cls, evolver, tasks, **kwargs):
+        """Execute a list of tasks.
+
+        This is responsible for calling :py:meth:`execute` on each of the
+        provided tasks. It can augment this by executing any steps before or
+        after the tasks.
+
+        Args:
+            evolver (Evolver):
+                The evolver that's handling the tasks.
+
+            tasks (list of BaseEvolutionTask):
+                The list of tasks to execute. These will match the current
+                class.
+
+            cursor (django.db.backends.util.CursorWrapper):
+                The database cursor used to execute queries.
+
+            **kwargs (dict):
+                Keyword arguments to pass to the tasks' `:py:meth:`execute`
+                methods.
+        """
+        # First, create all new database models for all apps. We can then work
+        # on evolving/migrating those apps.
+        with evolver.connection.constraint_checks_disabled():
+            with evolver.transaction() as cursor:
+                for task in tasks:
+                    if task.new_models_sql:
+                        task._create_models(evolver, cursor)
+
+                # Process any evolutions for the apps.
+                for task in tasks:
+                    task.execute(cursor=cursor, **kwargs)
+
     def __init__(self, evolver, app, evolutions=None):
         """Initialize the task.
 
@@ -341,17 +388,21 @@ class EvolveAppTask(BaseEvolutionTask):
         self.app = app
         self.app_label = get_app_label(app)
         self.legacy_app_label = get_legacy_app_label(app)
+
+        self.new_models_sql = []
+        self.new_model_names = []
+
         self._evolutions = evolutions
         self._mutations = None
 
-    def prepare(self, hinted, **kwargs):
+    def prepare(self, hinted=False, **kwargs):
         """Prepare state for this task.
 
         This will determine if there are any unapplied evolutions in the app,
         and record that state and the SQL needed to apply the evolutions.
 
         Args:
-            hinted (bool):
+            hinted (bool, optional):
                 Whether to prepare the task for hinted evolutions.
 
             **kwargs (dict, unused):
@@ -361,50 +412,125 @@ class EvolveAppTask(BaseEvolutionTask):
         app_label = self.app_label
         evolver = self.evolver
         database_name = evolver.database_name
+        project_sig = evolver.project_sig
 
-        if self._evolutions is not None:
-            evolutions = []
-            pending_mutations = []
+        # Check if there are any models for this app that don't yet exist
+        # in the database.
+        new_models = db_get_installable_models_for_app(
+            app=app,
+            db_state=evolver.database_state)
 
-            for evolution in self._evolutions:
-                evolutions.append(evolution['label'])
-                pending_mutations += evolution['mutations']
-        elif hinted:
-            evolutions = []
-            hinted_evolution = evolver.initial_diff.evolution()
-            pending_mutations = hinted_evolution.get(self.app_label, [])
-        else:
-            evolutions = get_unapplied_evolutions(app=app,
-                                                  database=database_name)
-            pending_mutations = get_app_pending_mutations(
-                app=app,
-                evolution_labels=evolutions,
-                database=database_name)
-
-        mutations = [
-            mutation
-            for mutation in pending_mutations
-            if self.is_mutation_mutable(mutation, app_label=self.app_label)
+        self.new_model_names = [
+            model._meta.object_name
+            for model in new_models
         ]
 
-        if mutations:
-            app_mutator = AppMutator.from_evolver(
-                evolver=evolver,
-                app_label=self.app_label,
-                legacy_app_label=self.legacy_app_label)
-            app_mutator.run_mutations(mutations)
+        # See if we're already tracking this app in the signature.
+        app_sig = (project_sig.get_app_sig(app_label) or
+                   project_sig.get_app_sig(self.legacy_app_label))
+        app_sig_is_new = app_sig is None
 
-            self.can_simulate = app_mutator.can_simulate
-            self.sql = app_mutator.to_sql()
+        target_project_sig = evolver.target_project_sig
+        target_app_sig = target_project_sig.get_app_sig(app_label,
+                                                        required=True)
+        evolutions = []
+
+        if new_models:
+            # Record what we know so far about the state. We might find that
+            # we can't simulate once we process evolutions.
+            self.can_simulate = True
             self.evolution_required = True
-            self.new_evolutions = [
-                Evolution(app_label=app_label,
-                          label=label)
-                for label in evolutions
-            ]
-            self._mutations = mutations
 
-    def execute(self, cursor):
+        if app_sig_is_new:
+            # We're adding this app for the first time. If there are models
+            # here, then copy the entire signature from the target, and mark
+            # all evolutions for the app as applied.
+            if new_models:
+                app_sig = target_app_sig.clone()
+                project_sig.add_app_sig(app_sig)
+
+                evolutions = get_evolution_sequence(app)
+        else:
+            # Copy only the models from the target signature that have
+            # been created.
+            for model in new_models:
+                target_model_sig = target_app_sig.get_model_sig(
+                    model._meta.object_name,
+                    required=True)
+
+                app_sig.add_model_sig(target_model_sig.clone())
+
+            if app_sig.upgrade_method != UpgradeMethod.MIGRATIONS:
+                # We're processing this as evolutions. Find out if we're
+                # applying/generating selective evolutions, hinted evolutions,
+                # or existing unapplied evolutions.
+                if self._evolutions is not None:
+                    evolutions = []
+                    pending_mutations = []
+
+                    for evolution in self._evolutions:
+                        evolutions.append(evolution['label'])
+                        pending_mutations += evolution['mutations']
+                elif hinted:
+                    evolutions = []
+                    hinted_evolution = evolver.initial_diff.evolution()
+                    pending_mutations = hinted_evolution.get(self.app_label,
+                                                             [])
+                else:
+                    evolutions = get_unapplied_evolutions(
+                        app=app,
+                        database=database_name)
+                    pending_mutations = get_app_pending_mutations(
+                        app=app,
+                        evolution_labels=evolutions,
+                        database=database_name)
+
+                mutations = [
+                    mutation
+                    for mutation in pending_mutations
+                    if self.is_mutation_mutable(mutation,
+                                                app_label=self.app_label)
+                ]
+
+                if mutations:
+                    app_mutator = AppMutator.from_evolver(
+                        evolver=evolver,
+                        app_label=self.app_label,
+                        legacy_app_label=self.legacy_app_label)
+                    app_mutator.run_mutations(mutations)
+
+                    self.can_simulate = app_mutator.can_simulate
+                    self.sql = app_mutator.to_sql()
+                    self.evolution_required = True
+                    self._mutations = mutations
+
+        if new_models:
+            # We're creating the models for the first time. We want to do this
+            # in the most appropriate way. If we're working with a brand-new
+            # app, which ultimately uses migrations, then we want to use
+            # those migrations in order to build the models (so subsequent
+            # migrations will apply on top of it cleanly).
+            use_migrations = (
+                supports_migrations and
+                app_sig_is_new and
+                app_sig.upgrade_method == UpgradeMethod.MIGRATIONS)
+
+            if use_migrations:
+                logger.debug('Using migrations to create models for %s',
+                             app_label)
+            else:
+                logger.debug('Using SQL to create models for %s',
+                             app_label)
+                self.new_models_sql = sql_create_models(new_models)
+
+        self.app_sig = app_sig
+        self.new_evolutions = [
+            Evolution(app_label=app_label,
+                      label=label)
+            for label in evolutions
+        ]
+
+    def execute(self, cursor, create_models_now=False):
         """Execute the task.
 
         This will apply any evolutions queued up for the app.
@@ -418,11 +544,20 @@ class EvolveAppTask(BaseEvolutionTask):
             cursor (django.db.backends.util.CursorWrapper):
                 The database cursor used to execute queries.
 
+            create_models_now (bool, optional):
+                Whether to create models as part of this execution. Normally,
+                this is handled in :py:meth:`execute_tasks`, but this flag
+                allows for more fine-grained control of table creation in
+                limited circumstances (intended only by :py:class:`Evolver`).
+
         Raises:
             django_evolution.errors.EvolutionExecutionError:
                 The evolution task failed. Details are in the error.
         """
-        if self.evolution_required:
+        if create_models_now and self.new_models_sql:
+            self._create_models(cursor)
+
+        if self.sql:
             applying_evolution.send(sender=self.evolver,
                                     task=self)
 
@@ -505,6 +640,37 @@ class EvolveAppTask(BaseEvolutionTask):
             The string description.
         """
         return 'Evolve application "%s"' % self.app_label
+
+    def _create_models(self, cursor):
+        """Create tables for models in the database.
+
+        Args:
+            cursor (django.db.backends.util.CursorWrapper):
+                The database cursor used to install the models.
+        """
+        app_label = self.app_label
+        evolver = self.evolver
+        new_model_names = self.new_model_names
+
+        creating_models.send(sender=evolver,
+                             app_label=app_label,
+                             model_names=new_model_names)
+
+        try:
+            execute_sql(cursor,
+                        self.new_models_sql,
+                        evolver.database_name)
+        except Exception as e:
+            raise EvolutionExecutionError(
+                _('Error creating database models for %s: %s')
+                % (app_label, e),
+                app_label=app_label,
+                detailed_error=six.text_type(e),
+                last_sql_statement=getattr(e, 'last_sql_statement'))
+
+        created_models.send(sender=evolver,
+                            app_label=app_label,
+                            model_names=new_model_names)
 
 
 class Evolver(object):
@@ -589,7 +755,7 @@ class Evolver(object):
             self.connection.prepare_database()
 
         self.database_state = DatabaseState(self.database_name)
-        self._target_project_sig = \
+        self.target_project_sig = \
             ProjectSignature.from_database(database_name)
 
         self._tasks_by_class = OrderedDict()
@@ -602,7 +768,7 @@ class Evolver(object):
 
             self.project_sig = latest_version.signature
             self.initial_diff = Diff(self.project_sig,
-                                     self._target_project_sig)
+                                     self.target_project_sig)
         except Version.DoesNotExist:
             # TODO: Once we're automatically running syncdb/migrate, this
             #       shouldn't be an issue, and we can remove the error.
@@ -671,7 +837,7 @@ class Evolver(object):
         """
         self._prepare_tasks()
 
-        return Diff(self.project_sig, self._target_project_sig)
+        return Diff(self.project_sig, self.target_project_sig)
 
     def iter_evolution_content(self):
         """Generate the evolution content for all queued tasks.

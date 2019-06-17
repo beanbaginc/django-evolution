@@ -18,7 +18,10 @@ from django_evolution.compat.apps import get_app
 from django_evolution.compat.commands import BaseCommand
 from django_evolution.errors import EvolutionException
 from django_evolution.evolve import EvolveAppTask, Evolver, PurgeAppTask
-from django_evolution.signals import applied_evolution, applying_evolution
+from django_evolution.signals import (applied_evolution,
+                                      applying_evolution,
+                                      created_models,
+                                      creating_models)
 from django_evolution.utils.evolutions import get_evolutions_path
 from django_evolution.utils.sql import write_sql
 
@@ -354,12 +357,35 @@ class Command(BaseCommand):
                     _('Applying database evolution for %s...\n')
                     % task.app_label)
 
+            @receiver(creating_models, sender=evolver)
+            def _on_creating_models(app_label, model_names, **kwargs):
+                if verbosity > 2:
+                    self.stdout.write(
+                        _('Creating new database models for %s (%s)...\n')
+                        % (app_label, ', '.join(model_names)))
+                else:
+                    self.stdout.write(
+                        _('Creating new database models for %s...\n')
+                        % app_label)
+
         if verbosity > 1:
             @receiver(applied_evolution, sender=evolver)
             def _on_applied_evolution(task, **kwargs):
                 self.stdout.write(
                     _('Successfully applied database evolution for %s.\n')
                     % task.app_label)
+
+            @receiver(created_models, sender=evolver)
+            def _on_created_models(app_label, model_names, **kwargs):
+                if verbosity > 2:
+                    self.stdout.write(
+                        _('Successfully created new database models for '
+                          '%s (%s).\n')
+                        % (app_label, ', '.join(model_names)))
+                else:
+                    self.stdout.write(
+                        _('Successfully created new database models for %s.\n')
+                        % app_label)
 
         self.stdout.write(
             '\n%s\n\n'

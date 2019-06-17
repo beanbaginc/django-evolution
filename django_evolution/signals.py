@@ -24,3 +24,23 @@ applying_evolution = Signal(providing_args=['app_label', 'task'])
 #:     task (django_evolution.evolve.EvolveAppTask):
 #:         The task that evolved the app.
 applied_evolution = Signal(providing_args=['app_label', 'task'])
+
+#: Emitted when creating new models for an app outside of a migration.
+#:
+#: Args:
+#:     app_label (unicode):
+#:         The app label for the models being created.
+#:
+#:     model_names (list of unicode):
+#:         The list of models being created.
+creating_models = Signal(providing_args=['app_label', 'model_names'])
+
+#: Emitted when finished creating new models for an app outside of a migration.
+#:
+#: Args:
+#:     migration (django.db.migrations.migration.Migration):
+#:         The migration that was applied.
+#:
+#:     model_names (list of unicode):
+#:         The list of models that were created.
+created_models = Signal(providing_args=['app_label', 'model_names'])
