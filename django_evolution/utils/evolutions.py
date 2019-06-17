@@ -11,27 +11,7 @@ from django_evolution.builtin_evolutions import BUILTIN_SEQUENCES
 from django_evolution.consts import UpgradeMethod
 from django_evolution.errors import EvolutionException
 from django_evolution.utils.apps import get_app_label, get_app_name
-
-
-def has_migrations_module(app):
-    """Return whether an app has a migrations module.
-
-    Args:
-        app (module):
-            The app module.
-
-    Returns:
-        bool:
-        ``True`` if the app has a ``migrations`` module. ``False`` if it
-        does not.
-    """
-    app_name = get_app_name(app)
-
-    try:
-        import_module('%s.migrations' % app_name)
-        return True
-    except ImportError:
-        return False
+from django_evolution.utils.migrations import has_migrations_module
 
 
 def has_evolutions_module(app):
