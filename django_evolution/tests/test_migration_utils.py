@@ -82,9 +82,9 @@ class MigrationExecutorTests(MigrationsTestsMixin, TestCase):
 
         connection = connections[DEFAULT_DB_ALIAS]
 
-        record_applied_migrations(connection=connection,
-                                  app_label='tests',
-                                  migration_names=['0002_add_field'])
+        record_applied_migrations(
+            connection=connection,
+            migration_targets=[('tests', '0002_add_field')])
 
         executor = MigrationExecutor(
             connection=connection,
@@ -158,10 +158,12 @@ class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
         # cache state and performs repeated queries for the same list of
         # installed table names, followed by new transactions. That might
         # differ depending on the type of database being used.
-        record_applied_migrations(connection=connection,
-                                  app_label='tests',
-                                  migration_names=['0001_initial',
-                                                   '0002_stuff'])
+        record_applied_migrations(
+            connection=connection,
+            migration_targets=[
+                ('tests', '0001_initial'),
+                ('tests', '0002_stuff'),
+            ])
 
         recorder = MigrationRecorder(connection)
         applied_migrations = recorder.applied_migrations()
@@ -175,10 +177,12 @@ class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
             raise SkipTest('Not used on Django < 1.7')
 
         connection = connections[DEFAULT_DB_ALIAS]
-        record_applied_migrations(connection=connection,
-                                  app_label='tests',
-                                  migration_names=['0001_initial',
-                                                   '0002_stuff'])
+        record_applied_migrations(
+            connection=connection,
+            migration_targets=[
+                ('tests', '0001_initial'),
+                ('tests', '0002_stuff'),
+            ])
 
         unrecord_applied_migrations(connection=connection,
                                     app_label='tests',
@@ -191,8 +195,8 @@ class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
         self.assertNotIn(('tests', '0001_initial'), applied_migrations)
         self.assertNotIn(('tests', '0002_stuff'), applied_migrations)
 
-    def test_filter_migration_targets(self):
-        """Testing filter_migration_targets"""
+    def test_filter_migration_targets_with_app_labels(self):
+        """Testing filter_migration_targets with app_labels=..."""
         targets = [
             ('app1', '0001_initial'),
             ('app1', '0002_stuff'),
@@ -203,10 +207,37 @@ class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
         ]
 
         self.assertEqual(
-            filter_migration_targets(targets, ['app1', 'app4']),
+            filter_migration_targets(targets=targets,
+                                     app_labels=['app1', 'app4']),
             [
                 ('app1', '0001_initial'),
                 ('app1', '0002_stuff'),
+                ('app4', '0001_initial'),
+                ('app4', '0002_more_stuff'),
+            ])
+
+    def test_filter_migration_targets_with_exclude(self):
+        """Testing filter_migration_targets with exclude=..."""
+        targets = [
+            ('app1', '0001_initial'),
+            ('app1', '0002_stuff'),
+            ('app2', '0001_initial'),
+            ('app3', '0001_initial'),
+            ('app4', '0001_initial'),
+            ('app4', '0002_more_stuff'),
+        ]
+
+        self.assertEqual(
+            filter_migration_targets(
+                targets=targets,
+                exclude=[
+                    ('app3', '0001_initial'),
+                    ('app1', '0002_stuff'),
+                ]
+            ),
+            [
+                ('app1', '0001_initial'),
+                ('app2', '0001_initial'),
                 ('app4', '0001_initial'),
                 ('app4', '0002_more_stuff'),
             ])

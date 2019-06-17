@@ -220,7 +220,7 @@ def get_applied_migrations_by_app(connection):
     return by_app
 
 
-def record_applied_migrations(connection, app_label, migration_names):
+def record_applied_migrations(connection, migration_targets):
     """Record a list of applied migrations to the database.
 
     This can only be called when on Django 1.7 or higher.
@@ -229,11 +229,9 @@ def record_applied_migrations(connection, app_label, migration_names):
         connection (django.db.backends.base.BaseDatabaseWrapper):
             The connection used to record applied migrations.
 
-        app_label (unicode):
-            The app label that the migrations pertain to.
-
-        migration_names (list of unicode):
-            The list of migration names to record as applied.
+        migration_targets (list of tuple):
+            The list of migration targets to record as applied. Each tuple
+            is in the form of ``(app_label, migration_name)``.
     """
     assert supports_migrations, \
         'This cannot be called on Django 1.6 or earlier.'
@@ -244,7 +242,7 @@ def record_applied_migrations(connection, app_label, migration_names):
     recorder.migration_qs.bulk_create(
         recorder.Migration(app=app_label,
                            name=migration_name)
-        for migration_name in migration_names
+        for app_label, migration_name in migration_targets
     )
 
 
@@ -278,28 +276,44 @@ def unrecord_applied_migrations(connection, app_label, migration_names=None):
     queryset.delete()
 
 
-def filter_migration_targets(targets, app_labels):
-    """Filter migration execution targets to those in the specified app labels.
+def filter_migration_targets(targets, app_labels=None, exclude=None):
+    """Filter migration execution targets based on the given criteria.
 
     Args:
         targets (list of tuple):
             The migration targets to be executed.
 
-        app_labels (set of unicode):
+        app_labels (set of unicode, optional):
             The app labels to limit the targets to.
+
+        exclude (set, optional):
+            Explicit targets to exclude.
 
     Returns:
         list of tuple:
         The resulting list of migration targets.
     """
-    if not isinstance(app_labels, set):
-        app_labels = set(app_labels)
+    if app_labels is not None:
+        if not isinstance(app_labels, set):
+            app_labels = set(app_labels)
 
-    return [
-        key
-        for key in targets
-        if key[0] in app_labels
-    ]
+        targets = (
+            target
+            for target in targets
+            if target[0] in app_labels
+        )
+
+    if exclude:
+        if not isinstance(exclude, set):
+            exclude = set(exclude)
+
+        targets = (
+            target
+            for target in targets
+            if target not in exclude
+        )
+
+    return list(targets)
 
 
 def apply_migrations(executor, targets, plan):
