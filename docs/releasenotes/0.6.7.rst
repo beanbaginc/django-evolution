@@ -1,0 +1,22 @@
+======================
+Django Evolution 0.6.7
+======================
+
+**Release date:** April 12, 2012
+
+
+Bug Fixes
+=========
+
+* Don't fail when an app doesn't contain any models.
+
+  Installing a baseline for apps without models was failing. The code to
+  install a baseline evolution assumed that all installed apps would have
+  models defined, but this wasn't always true. We now handle this case and
+  just skip over such apps.
+
+
+Contributors
+============
+
+* Christian Hammond

@@ -1,0 +1,31 @@
+======================
+Django Evolution 0.7.5
+======================
+
+**Release date:** April 13, 2015
+
+
+Bug Fixes
+=========
+
+* Mutations on fields with the same name across different models no longer
+  results in conflicts.
+
+  With the new optimizer in :doc:`0.7`, it was possible for mutations to be
+  incorrectly optimized out if, for example, a field was added in one model
+  and then later changed in another model, if both fields had the same name.
+  This was due to the way in which we mapped mutations, and would result in an
+  error in the validation stage before attempting any database modifications.
+  There are no longer any conflicts between same-named field.
+
+* Indexes are no longer created/deleted unnecessarily.
+
+  If setting an index for a field, and it already exists in the database,
+  there's no longer an attempt at creating it. Likewise, there's no longer an
+  attempt at deleting an index that does not exist.
+
+
+Contributors
+============
+
+* Christian Hammond

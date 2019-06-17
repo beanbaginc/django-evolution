@@ -1,0 +1,22 @@
+======================
+Django Evolution 0.7.1
+======================
+
+**Release date:** May 21, 2014
+
+
+New Features
+============
+
+* Fixed a crash from no-op column renames on MySQL.
+
+  When attempting to rename a column on MySQL and specifying a
+  "new" name that was the same as the old name, the result would
+  be a crash. Likewise, there were crashes when renaming a
+  :py:class:`~django.db.models.ManyToManyField`.
+
+
+Contributors
+============
+
+* Christian Hammond

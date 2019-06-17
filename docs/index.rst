@@ -66,4 +66,10 @@ Reference
    coderef/index
 
 
+.. toctree::
+   :maxdepth: 3
+
+   releasenotes/index
+
+
 .. _Django: https://www.djangoproject.com/

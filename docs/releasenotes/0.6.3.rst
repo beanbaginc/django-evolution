@@ -1,0 +1,35 @@
+======================
+Django Evolution 0.6.3
+======================
+
+**Release date:** May 9, 2011
+
+
+Bug Fixes
+=========
+
+* Fixed multi-database support with different database backends.
+
+  The multi-database support only worked when the database backends matched.
+  Now it should work with different types. The unit tests have been verified
+  to work now with different types of databases.
+
+* Fixed a breaking with PostgreSQL when adding non-null columns with default
+  values. (Bugs #58 and #74)
+
+  Adding new columns that are non-null and have a default value would break
+  with PostgreSQL when the table otherwise had data in it. The SQL for adding
+  a column is an ``ALTER TABLE`` followed by an ``UPDATE`` to set all existing
+  records to have the new default value. PostgreSQL, however, doesn't allow
+  this within the same transaction.
+
+  Now we use two ``ALTER TABLEs``. The first adds the column with a default
+  value, which should affect existing records. The second drops the default.
+  This should ensure that the tables have the data we expect while at the same
+  time keeping the field attributes the same as what Django would generate.
+
+
+Contributors
+============
+
+* Christian Hammond

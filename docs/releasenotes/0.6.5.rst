@@ -1,0 +1,35 @@
+======================
+Django Evolution 0.6.5
+======================
+
+**Release date:** August 15, 2011
+
+
+New Features
+============
+
+* Added a built-in evolution to remove the Message model in Django 1.4 SVN.
+
+  Django 1.4 SVN removes the :py:class:`~django.contrib.auth.models.Message`
+  model from :py:mod:`django.contrib.auth`. This would break evolutions, since
+  there wasn't an evolution for this. We now install one if we detect that
+  the :py:class:`~django.contrib.auth.models.Message` model is gone.
+
+
+Bug Fixes
+=========
+
+* Fixed the version association for baseline evolutions for apps.
+
+  The new code for installing a baseline evolution for new apps in
+  :doc:`0.6.4` was associating the wrong
+  :py:class:`~django_evolution.models.Version` model with the
+  :py:class:`~django_evolution.models.Evolution`. This doesn't appear to cause
+  any real-world problems, but it does make it harder to see the proper
+  evolution history in the database.
+
+
+Contributors
+============
+
+* Christian Hammond

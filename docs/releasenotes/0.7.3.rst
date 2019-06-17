@@ -1,0 +1,28 @@
+======================
+Django Evolution 0.7.3
+======================
+
+**Release date:** July 24, 2014
+
+
+Bug Fixes
+=========
+
+* Fixed issues evolving ``unique_together`` attributes on models.
+
+  When adding ``unique_together`` constraints and then changing them within a
+  single evolve operation, any constraints listed more than once would result
+  in unnecessary duplicate SQL statements. These would cause errors that would
+  prevent the transaction from completing.
+
+* Adding and removing a ``unique_together`` constraint within an evolve
+  operation no longer breaks on PostgreSQL.
+
+* Errors importing a database backend on a modern Django no longer results in
+  unrelated errors about ``settings.DATABASE_ENGINE``.
+
+
+Contributors
+============
+
+* Christian Hammond

@@ -1,0 +1,23 @@
+======================
+Django Evolution 0.7.4
+======================
+
+**Release date:** September 15, 2014
+
+
+New Features
+============
+
+* Add a :ref:`mutation-rename-model` mutation for handling model renames.
+
+  The new :ref:`mutation-rename-model` mutation allows an evolution to
+  indicate that a model has been renamed. This handles updating the signature
+  for any related :py:class:`~django.db.models.ForeignKey` or
+  :py:class:`~django.db.models.ManyToManyField` fields and generating any SQL
+  to perform the table rename (if needed).
+
+
+Contributors
+============
+
+* Christian Hammond

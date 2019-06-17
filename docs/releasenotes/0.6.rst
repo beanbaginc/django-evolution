@@ -1,0 +1,25 @@
+====================
+Django Evolution 0.6
+====================
+
+**Release date:** October 24, 2010
+
+
+New Features
+============
+
+* Added support for Django 1.2's ability to use multiple databases.
+
+  This should use the existing routers used in your project. By default,
+  operations will happen on the 'default' database. This can be overridden
+  during evolution by passing ``--database=<dbname>`` to the
+  :ref:`command-evolve` command.
+
+  Patch by Marc Bee and myself.
+
+
+Contributors
+============
+
+* Christian Hammond
+* Marc Bee

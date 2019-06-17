@@ -1,0 +1,27 @@
+======================
+Django Evolution 0.6.8
+======================
+
+**Release date:** February 8, 2013
+
+
+New Features
+============
+
+* Added two new management commands: :ref:`command-list-evolutions` and
+  :ref:`command-wipe-evolution`.
+
+  :ref:`command-list-evolutions` lists all applied evolutions. It can take one
+  or more app labels, and will restrict the output to those apps.
+
+  :ref:`command-wipe-evolution` will wipe one or more evolutions from the
+  database. This should only be used if absolutely necessary, and can cause
+  problems. It is useful if there's some previously applied evolutions getting
+  in the way, which can happen if a person is uncareful with downgrading and
+  upgrading again.
+
+
+Contributors
+============
+
+* Christian Hammond

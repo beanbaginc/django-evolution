@@ -1,0 +1,42 @@
+======================
+Django Evolution 0.6.4
+======================
+
+**Release date:** June 22, 2011
+
+
+New Features
+============
+
+* Install a baseline evolution history for any new apps.
+
+  When upgrading an older database using Django Evolution when a new model
+  has been added and subsequent evolutions were made on that model, the
+  upgrade would fail. It would attempt to apply those evolutions on that
+  model, which, being newly created, would already have those new field
+  changes.
+
+  Now, like with an initial database, we install a baseline evolution
+  history for any new apps. This will ensure that those evolutions aren't
+  applied to the models in that app.
+
+
+Bug Fixes
+=========
+
+* Fixed compatibility with Django SVN in the unit tests.
+
+  In Django SVN r16053, ``get_model()`` and ``get_models()`` only return
+  installed modules by default. This is calculated in part by a new
+  ``AppCache.app_labels`` dictionary, along with an existing
+  ``AppCache.app_store``, neither of which we properly populated.
+
+  We now set both of these (though, ``app_labels`` only on versions of Django
+  that have it). This allows the unit tests to pass, both with older versions
+  of Django and Django SVN.
+
+
+Contributors
+============
+
+* Christian Hammond

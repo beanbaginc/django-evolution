@@ -1,0 +1,17 @@
+======================
+Django Evolution 0.6.1
+======================
+
+**Release date:** October 25, 2010
+
+
+Bug Fixes
+=========
+
+* Fixed compatibility problems with both Django 1.1 and Python 2.4.
+
+
+Contributors
+============
+
+* Christian Hammond

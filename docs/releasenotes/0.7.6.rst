@@ -1,0 +1,37 @@
+======================
+Django Evolution 0.7.6
+======================
+
+**Release date:** December 1, 2015
+
+
+Bug Fixes
+=========
+
+* Fixed a false positive with schema errors when applying evolutions on MySQL.
+
+  When applying new evolutions along with baseline schemas for new models, two
+  version history entries are created, one for the new baselines, and one for
+  the new, final schema. On MySQL, this can happen so quickly that they'll end
+  up with the same timestamp (as there isn't a lot of precision in these
+  fields).
+
+  Due to internal sort orders, the next evolution then finds the version entry
+  for the baseline schema, and not the final evolved schema, causing it to
+  fail saying that there are changes that couldn't be applied.
+
+  This fixes this problem by improving the sorting order.
+
+* Fixed issues evolving certain changes from old database schemas.
+
+  Old database schemas didn't track certain information, like the
+  ``index_together`` information. The code was previously assuming the
+  existence of this information and failing if it wasn't there.  Evolving from
+  these older schemas now works.
+
+
+Contributors
+============
+
+* Barret Rennie
+* Christian Hammond

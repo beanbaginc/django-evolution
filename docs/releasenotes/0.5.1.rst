@@ -1,0 +1,47 @@
+======================
+Django Evolution 0.5.1
+======================
+
+**Release date:** October 13, 2010
+
+
+New Features
+============
+
+* Made the :ref:`command-evolve` management command raise
+  :py:class:`~django.core.management.CommandError` instead of
+  :py:func:`sys.exit` on failure. This makes it callable from third party
+  software.
+
+  Patch by Mike Conley.
+
+* Made the :ref:`command-evolve` functionality available through an
+  ``evolve()`` function in the management command, allowing the rest of the
+  command-specific logic to be skipped (such as console output and prompting).
+
+  Patch by Mike Conley.
+
+
+Bug Fixes
+=========
+
+* Fixed incorrect defaults on SQLite when adding null fields. (Bug #49)
+
+  On SQLite, adding a null field without a default value would cause the field
+  name to be the default. This was due to attempting to select the field name
+  from the temporary table, but since the table didn't exist, the field name
+  itself was being used as the value.
+
+  We are now more explicit about the fields being selected and populated.  We
+  have two lists, and no longer assume both are identical. We also use NULL
+  columns for temporary table fields unconditionally.
+
+  Patch by myself and Chris Beaven.
+
+
+Contributors
+============
+
+* Chris Beaven
+* Christian Hammond
+* Mike Conley

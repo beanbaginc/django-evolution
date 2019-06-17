@@ -1,0 +1,35 @@
+======================
+Django Evolution 0.6.6
+======================
+
+**Release date:** April 1, 2012
+
+
+New Features
+============
+
+* Generate more accurate sample evolutions.
+
+  The sample evolutions generated with :option:`evolve --hint` should now
+  properly take into account import paths for third-party database modules.
+  Prior to this, such an evolution had to be modified by hand to work.
+
+* Generate PEP-8-compliant sample evolutions.
+
+  The evolutions are now generated according to the standards of PEP-8. This
+  mainly influences blank lines around imports and the grouping of imports.
+
+* Support Django 1.4's timezone awareness in the
+  :py:class:`~django_evolution.models.Version` model.
+
+  The :py:class:`~django_evolution.models.Version` model was generating
+  runtime warnings when creating an instance of the model under Django 1.4,
+  due to using a naive (non-timezone-aware) datetime. We now try to use
+  Django's functionality for this, and fall back on the older methods for
+  older versions of Django.
+
+
+Contributors
+============
+
+* Christian Hammond

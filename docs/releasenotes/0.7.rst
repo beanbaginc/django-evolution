@@ -1,0 +1,112 @@
+====================
+Django Evolution 0.7
+====================
+
+**Release date:** February 3, 2014
+
+
+Packaging
+=========
+
+* Fixed the unit tests module being accidentally bundled with the package.
+  (Bug #134)
+
+* Fixed the missing :file:`NEWS` file in the releases. (Bug #130)
+
+
+Compatibility Changes
+=====================
+
+* Added compatibility with Django 1.5 and 1.6 (Bug #136).
+
+* Dropped compatibility for versions of Django prior to 1.4.10.
+
+
+New Features
+============
+
+* Added better support for dealing with indexes in the database.
+
+  Django changed how index names were generated over time, leading to issues
+  when evolving old databases. We now scan the database prior to evolution,
+  gather the indexes, and look them up based on field data dynamically,
+  guaranteeing we find the correct index.
+
+  It's also more resilient now when using custom indexes placed by an
+  administrator.
+
+* Added support for evolving ``unique_together`` and ``index_together``
+  fields.
+
+  ``unique_together`` was previously stored, but ignored, meaning that changes
+  to a ``unique_together`` would not ever apply to an existing database.
+
+  ``index_together``, on the other hand, is new in Django 1.5, and was never
+  even stored.
+
+  There's now a :ref:`mutation-change-meta` mutation that allows for changing
+  ``unique_together`` and ``index_together``.
+
+  Models making use of ``unique_together`` or ``index_together`` will have to
+  supply evolutions defining the current, correct values.  These will appear
+  when running :option:`evolve --hint`.
+
+* Optimized the SQL before altering the database.
+
+  Mutations are now pre-processed and their output post-processed in order to
+  reduce the number of table-altering mutations. This should massively reduce
+  the amount of time it takes to update a database, particularly when there
+  are multiple :ref:`mutation-add-field`, :ref:`mutation-change-field`, or
+  :ref:`mutation-delete-field` mutations on a single table.
+
+  This is the biggest change in this release, and while it's been tested on
+  some large sets of mutations, there may be regressions. Please report any
+  issues you find.
+
+  Custom field mutation classes will need to be updated to work with these
+  changes.
+
+
+Bug Fixes
+=========
+
+* Fixed a number of issues with constraints on different databases. (Bug #127)
+
+* Fixed an invalid variable reference when loading SQL evolution files.
+  (Bug #121)
+
+* SQL evolution files no longer break if there are blank lines. (Bug #111)
+
+* Booleans are now normalized correctly when saving in the database. (Bug #125)
+
+  Previously, invalid boolean values would be used, causing what should have
+  been a "false" value to be "true".
+
+
+Usage
+=====
+
+* The evolve command no longer recommends running ``evolve --hint --execute``,
+  which can easily cause unwanted problems.
+
+
+Testing
+=======
+
+* Added easier unit testing for multiple database types.
+
+  The ``./tests/runtests.py`` script now takes a database type as an argument.
+  The tests will be run against that type of database.
+
+  To make use of this, copy :file:`test_db_settings.py.tmpl` to
+  :file:`test_db_settings.py` and fill in the necessary data.
+
+* Fixed all the known unit test failures.
+
+* Rewrote the test suite for better reporting and maintainability.
+
+
+Contributors
+============
+
+* Christian Hammond

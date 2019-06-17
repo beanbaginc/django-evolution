@@ -1,0 +1,21 @@
+======================
+Django Evolution 0.7.2
+======================
+
+**Release date:** June 2, 2014
+
+
+Bug Fixes
+=========
+
+* Fixed a crash from no-op column renames on PostgreSQL.
+
+  When attempting to rename a column on PostgreSQL and specifying a "new" name
+  that was the same as the old name, the result would be a crash. This is
+  similar to the bug fixed in :doc:`0.7.1`.
+
+
+Contributors
+============
+
+* Christian Hammond

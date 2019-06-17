@@ -1,0 +1,55 @@
+======================
+Django Evolution 0.7.7
+======================
+
+**Release date:** May 25, 2017
+
+
+New Features
+============
+
+* Added a note about backing up the database and not cancelling before
+  executing an evolution.
+
+  The confirmation prompt for executing an evolution now suggests backing up
+  the database first. This is only shown in interactive mode.
+
+  After the user has confirmed, they're told it may take time and to not
+  cancel the upgrade.
+
+* Added more output when performing evolutions for apps.
+
+  When evolving the database, a message is now outputted to the console for
+  each app being evolved. This gives a sense of progress for larger
+  evolutions.
+
+  If the evolution fails, an error message will be shown listing the app that
+  failed evolution, the specific SQL statement that failed, and the database
+  error. This can help when diagnosing and recovering from the problem.
+
+* Added an option for writing hinted evolution files.
+
+  There's now an :option:`evolve -w`/:option:`--write <evolve --write>` option
+  that can be used with :option:`evolve --hint` that writes the hinted
+  evolution to the appropriate directories in the tree. This takes the name
+  that should be used for the evolution file.
+
+  This will not update the :file:`evolutions/__init__.py` file.
+
+
+Bug Fixes
+=========
+
+* Fixed issues with evolution optimizations when renaming models.
+
+  Django Evolution's evolution optimization code had issues when applying a
+  series of evolutions that add a :py:class:`~django.db.models.ForeignKey`
+  field to a newly-introduced model that is then renamed in the same batch.
+  The resulting field would still point to the original model, resulting in a
+  :py:exc:`KeyError`.
+
+
+Contributors
+============
+
+* Christian Hammond
