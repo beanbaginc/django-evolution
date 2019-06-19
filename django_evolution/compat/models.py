@@ -59,7 +59,22 @@ def get_models(app_mod=None, include_auto_created=False):
         return []
     else:
         # Django < 1.7
-        return _get_models(app_mod, include_auto_created=include_auto_created)
+        models = _get_models(app_mod,
+                             include_auto_created=include_auto_created)
+
+        if app_mod is not None:
+            # Avoids a circular import.
+            from django_evolution.utils.apps import get_app_name
+
+            app_mod_name = get_app_name(app_mod)
+
+            models = [
+                model
+                for model in models
+                if model.__module__.startswith(app_mod_name)
+            ]
+
+        return models
 
 
 def set_model_name(model, name):

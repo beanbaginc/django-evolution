@@ -565,10 +565,10 @@ class EvolveAppTask(BaseEvolutionTask):
         """
         migrate_state = cls._pre_migrate_state
         migrating = cls._full_migration_plan is not None
-        new_models = itertools.chain(
+        new_models = list(itertools.chain.from_iterable(
             task.new_models
             for task in tasks
-        )
+        ))
 
         if migrating:
             # If we have any applied migration names we wanted to record, do it
@@ -813,7 +813,8 @@ class EvolveAppTask(BaseEvolutionTask):
             else:
                 logger.debug('Using SQL to create models for %s',
                              app_label)
-                self.new_models_sql = sql_create_models(new_models)
+                self.new_models_sql = sql_create_models(new_models,
+                                                        db_name=database_name)
 
         self.app_sig = app_sig
         self.new_evolutions = [
