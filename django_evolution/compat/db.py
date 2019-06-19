@@ -167,7 +167,7 @@ def sql_create_models(models, tables=None, db_name=None):
 
                 if ref_to in seen_models:
                     sql += creation.sql_for_pending_references(
-                        model, style, pending_references)
+                        ref_to, style, pending_references)
 
             sql += creation.sql_for_pending_references(
                 model, style, pending_references)
