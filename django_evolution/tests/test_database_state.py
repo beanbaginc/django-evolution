@@ -272,18 +272,18 @@ class DatabaseStateTests(TestCase):
                                  index_name='my_index2',
                                  columns=['col3'])
 
-        indexes = list(database_state.iter_indexes('my_test_table'))
+        indexes = set(database_state.iter_indexes('my_test_table'))
 
         self.assertEqual(
             indexes,
-            [
+            set([
                 IndexState(name='my_index1',
                            columns=['col1', 'col2'],
                            unique=True),
                 IndexState(name='my_index2',
                            columns=['col3'],
                            unique=False),
-            ])
+            ]))
 
     def test_rescan_indexes(self):
         """Testing DatabaseState.rescan_indexes"""

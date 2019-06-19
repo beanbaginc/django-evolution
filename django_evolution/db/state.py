@@ -50,6 +50,15 @@ class IndexState(object):
                 self.columns == other_state.columns and
                 self.unique == other_state.unique)
 
+    def __hash__(self):
+        """Return a hash representation of the index.
+
+        Returns:
+            int:
+            The hash representation.
+        """
+        return hash(repr(self))
+
     def __repr__(self):
         """Return a string representation of the index state.
 
