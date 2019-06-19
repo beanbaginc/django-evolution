@@ -33,6 +33,7 @@ from django_evolution.signals import (applied_evolution,
                                       applying_migration,
                                       created_models,
                                       creating_models)
+from django_evolution.utils.apps import import_management_modules
 from django_evolution.utils.evolutions import get_evolutions_path
 from django_evolution.utils.sql import write_sql
 
@@ -147,6 +148,8 @@ class Command(BaseCommand):
 
         if write_evolution_name and not hint:
             raise CommandError(_('--write cannot be used without --hint.'))
+
+        import_management_modules()
 
         try:
             self.evolver = Evolver(database_name=database_name,

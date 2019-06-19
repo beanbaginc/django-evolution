@@ -2,6 +2,11 @@
 
 from __future__ import unicode_literals
 
+from importlib import import_module
+
+from django.conf import settings
+from django.utils.module_loading import module_has_submodule
+
 from django_evolution.compat.apps import apps
 
 
@@ -82,3 +87,32 @@ def get_legacy_app_label(app):
         The label of the app.
     """
     return app.__name__.split('.')[-2]
+
+
+def import_management_modules():
+    """Import the management modules for all apps.
+
+    Management modules often contain signal handlers for pre/post
+    syncdb/migrate events. This will import them correctly for the current
+    version of Django.
+
+    Raises:
+        ImportError:
+            A management module failed to import.
+    """
+    if apps:
+        # Django >= 1.7
+        app_names_modules = [
+            (app_config.name, app_config.module)
+            for app_config in apps.get_app_configs()
+        ]
+    else:
+        # Django < 1.7
+        app_names_modules = [
+            (app_name, import_module(app_name))
+            for app_name in settings.INSTALLED_APPS
+        ]
+
+    for (app_name, app_module) in app_names_modules:
+        if module_has_submodule(app_module, 'management'):
+            import_module('.management', app_name)
