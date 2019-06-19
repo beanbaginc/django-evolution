@@ -1343,9 +1343,9 @@ class Evolver(object):
 
         self._prepare_tasks()
 
-        try:
-            evolving.send(sender=self)
+        evolving.send(sender=self)
 
+        try:
             new_evolutions = []
 
             for task_cls, tasks in six.iteritems(self._tasks_by_class):
@@ -1363,11 +1363,12 @@ class Evolver(object):
             self._save_project_sig(new_evolutions=new_evolutions)
             self.evolved = True
 
-            evolved.send(sender=self)
         except Exception as e:
             evolving_failed.send(sender=self,
                                  exception=e)
             raise
+
+        evolved.send(sender=self)
 
     def _prepare_tasks(self):
         """Prepare all queued tasks for further operations.
