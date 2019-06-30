@@ -1,2 +1,2 @@
 beanbag-docutils>=1.7
-Sphinx>=2.1.1,<2.999
+Sphinx>=1.8.5
