@@ -987,62 +987,6 @@ change_field = {
         'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NOT NULL,'
-        ' "custom_db_column" integer NOT NULL,'
-        ' "int_field1" integer NOT NULL,'
-        ' "int_field2" integer NOT NULL,'
-        ' "int_field3" integer NOT NULL UNIQUE,'
-        ' "int_field4" integer NOT NULL,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
-        % generate_index_name('tests_testmodel', 'int_field1'),
-
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NOT NULL,'
-        ' "custom_db_column2" integer NOT NULL,'
-        ' "int_field1" integer NOT NULL,'
-        ' "int_field2" integer NOT NULL,'
-        ' "int_field3" integer NOT NULL UNIQUE,'
-        ' "int_field4" integer NOT NULL,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("my_id", "alt_pk", "custom_db_column2", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
-        % generate_index_name('tests_testmodel', 'int_field1'),
-
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NOT NULL,'
         ' "custom_db_column2" integer NOT NULL,'
         ' "int_field1" integer NOT NULL,'
         ' "int_field2" integer NOT NULL,'
@@ -1056,7 +1000,7 @@ change_field = {
         ' ("my_id", "alt_pk", "custom_db_column2", "int_field1", "int_field2",'
         ' "int_field3", "int_field4", "char_field", "char_field1",'
         ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column2", "int_field1",'
+        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
         ' "int_field2", "int_field3", "int_field4", "char_field",'
         ' "char_field1", "char_field2"'
         ' FROM "tests_testmodel";',
@@ -1070,36 +1014,6 @@ change_field = {
     ],
 
     'MultiAttrSingleFieldChangeModel': [
-        # Change char_field2.max_length to 35.
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NOT NULL,'
-        ' "custom_db_column" integer NOT NULL,'
-        ' "int_field1" integer NOT NULL,'
-        ' "int_field2" integer NOT NULL,'
-        ' "int_field3" integer NOT NULL UNIQUE,'
-        ' "int_field4" integer NOT NULL,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(35) NOT NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
-        % generate_index_name('tests_testmodel', 'int_field1'),
-
-        # Change char_field2.null to True.
         'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NOT NULL,'
@@ -1133,62 +1047,6 @@ change_field = {
         'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NOT NULL,'
-        ' "custom_db_column" integer NOT NULL,'
-        ' "int_field1" integer NOT NULL,'
-        ' "int_field2" integer NOT NULL,'
-        ' "int_field3" integer NOT NULL UNIQUE,'
-        ' "int_field4" integer NOT NULL,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
-        % generate_index_name('tests_testmodel', 'int_field1'),
-
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NOT NULL,'
-        ' "custom_db_column3" integer NOT NULL,'
-        ' "int_field1" integer NOT NULL,'
-        ' "int_field2" integer NOT NULL,'
-        ' "int_field3" integer NOT NULL UNIQUE,'
-        ' "int_field4" integer NOT NULL,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("my_id", "alt_pk", "custom_db_column3", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
-        % generate_index_name('tests_testmodel', 'int_field1'),
-
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NOT NULL,'
         ' "custom_db_column3" integer NOT NULL,'
         ' "int_field1" integer NOT NULL,'
         ' "int_field2" integer NOT NULL,'
@@ -1202,7 +1060,7 @@ change_field = {
         ' ("my_id", "alt_pk", "custom_db_column3", "int_field1", "int_field2",'
         ' "int_field3", "int_field4", "char_field", "char_field1",'
         ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column3", "int_field1",'
+        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
         ' "int_field2", "int_field3", "int_field4", "char_field",'
         ' "char_field1", "char_field2"'
         ' FROM "tests_testmodel";',
@@ -2024,17 +1882,7 @@ preprocessing = {
     ],
 
     'change_rename_change_rename_field': [
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(30) NOT NULL);',
-
-        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
-        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
+        # Change char_field to length of 30 and allow NULL.
         'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(30) NULL);',
@@ -2046,6 +1894,7 @@ preprocessing = {
 
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
+        # Rename char_field to renamed_field.
         'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "renamed_field" varchar(30) NULL);',
@@ -2071,6 +1920,7 @@ preprocessing = {
     ],
 
     'rename_add_field': [
+        # Rename char_field to renamed_field.
         'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "renamed_field" varchar(20) NOT NULL);',
@@ -2082,6 +1932,7 @@ preprocessing = {
 
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
+        # Remove NULL from renamed_field.
         'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "renamed_field" varchar(20) NOT NULL,'
@@ -2096,6 +1947,7 @@ preprocessing = {
     ],
 
     'rename_change_rename_change_field': [
+        # Rename char_field to renamed_field.
         'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "renamed_field" varchar(20) NOT NULL);',
@@ -2107,17 +1959,7 @@ preprocessing = {
 
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(50) NOT NULL);',
-
-        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
-        ' SELECT "my_id", "renamed_field" FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
+        # Set renamed_field to allow NULL and set length to 50.
         'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "renamed_field" varchar(50) NULL);',

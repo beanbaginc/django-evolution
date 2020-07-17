@@ -42,6 +42,8 @@ class BaseEvolutionOperations(object):
         'add_column', 'change_column', 'delete_column', 'change_meta'
     )
 
+    alter_table_sql_result_cls = AlterTableSQLResult
+
     def __init__(self, database_state, connection=default_connection):
         """Initialize the evolution operations.
 
@@ -100,7 +102,7 @@ class BaseEvolutionOperations(object):
         if prev_op and self._are_ops_mergeable(prev_op, op):
             sql_result = prev_sql_result
         else:
-            sql_result = AlterTableSQLResult(self, model)
+            sql_result = self.alter_table_sql_result_cls(self, model)
 
         if op_type == 'add_column':
             field = op['field']
@@ -209,7 +211,7 @@ class BaseEvolutionOperations(object):
         return sql_result
 
     def delete_column(self, model, f):
-        return AlterTableSQLResult(
+        return self.alter_table_sql_result_cls(
             self,
             model,
             [
@@ -243,7 +245,7 @@ class BaseEvolutionOperations(object):
 
     def add_column(self, model, f, initial):
         qn = self.connection.ops.quote_name
-        sql_result = AlterTableSQLResult(self, model)
+        sql_result = self.alter_table_sql_result_cls(self, model)
         table_name = model._meta.db_table
 
         remote_field = get_remote_field(f)
@@ -360,7 +362,7 @@ class BaseEvolutionOperations(object):
         else:
             attr = 'SET NOT NULL'
 
-        return AlterTableSQLResult(
+        return self.alter_table_sql_result_cls(
             self,
             model,
             [
@@ -571,7 +573,7 @@ class BaseEvolutionOperations(object):
         to apply these attributes.
         """
         field = model._meta.get_field(field_name)
-        attrs_sql_result = AlterTableSQLResult(self, model)
+        attrs_sql_result = self.alter_table_sql_result_cls(self, model)
 
         new_attrs = sorted(six.iteritems(new_attrs),
                            key=lambda pair: pair[0])
@@ -635,7 +637,7 @@ class BaseEvolutionOperations(object):
         column = field.column
         db_type = field.db_type(connection=self.connection)
 
-        return AlterTableSQLResult(
+        return self.alter_table_sql_result_cls(
             self,
             model,
             [
@@ -731,7 +733,7 @@ class BaseEvolutionOperations(object):
                 'sql': 'DROP CONSTRAINT %s' % qn(constraint_name)
             }
 
-        return AlterTableSQLResult(self, model, [alter_table_item])
+        return self.alter_table_sql_result_cls(self, model, [alter_table_item])
 
     def get_drop_unique_constraint_sql(self, model, index_name):
         return self.get_drop_index_sql(model, index_name)

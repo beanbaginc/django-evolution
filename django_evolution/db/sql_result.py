@@ -14,9 +14,9 @@ class SQLResult(object):
     SQL statements to execute.
     """
     def __init__(self, sql=None, pre_sql=None, post_sql=None):
-        self.sql = sql or []
-        self.pre_sql = pre_sql or []
-        self.post_sql = post_sql or []
+        self.sql = self.normalize_sql(sql or [])
+        self.pre_sql = self.normalize_sql(pre_sql or [])
+        self.post_sql = self.normalize_sql(post_sql or [])
 
     def add(self, sql_or_result):
         """Adds a list of SQL statements or an SQLResult.
