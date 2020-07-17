@@ -24,15 +24,15 @@ else:
 
 
 add_field = {
-    'AddNonNullNonCallableColumnModel': '\n'.join([
+    'AddNonNullNonCallableColumnModel': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field" integer NOT NULL DEFAULT 1;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
-    ]),
+    ],
 
-    'AddNonNullCallableColumnModel': '\n'.join([
+    'AddNonNullCallableColumnModel': [
         'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" integer;',
 
         'UPDATE "tests_testmodel"'
@@ -40,98 +40,98 @@ add_field = {
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" SET NOT NULL;',
-    ]),
+    ],
 
-    'AddNullColumnWithInitialColumnModel': '\n'.join([
+    'AddNullColumnWithInitialColumnModel': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field" integer NULL DEFAULT 1;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
-    ]),
+    ],
 
-    'AddStringColumnModel': '\n'.join([
+    'AddStringColumnModel': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field" varchar(10) NOT NULL'
         ' DEFAULT \'abc\\\'s xyz\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
-    ]),
+    ],
 
-    'AddBlankStringColumnModel': '\n'.join([
+    'AddBlankStringColumnModel': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field" varchar(10) NOT NULL DEFAULT \'\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
-    ]),
+    ],
 
-    'AddDateColumnModel': '\n'.join([
+    'AddDateColumnModel': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field" timestamp with'
         ' time zone NOT NULL DEFAULT 2007-12-13 16:42:00;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
-    ]),
+    ],
 
-    'AddDefaultColumnModel': '\n'.join([
+    'AddDefaultColumnModel': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field" integer NOT NULL DEFAULT 42;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
-    ]),
+    ],
 
-    'AddMismatchInitialBoolColumnModel': '\n'.join([
+    'AddMismatchInitialBoolColumnModel': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field" boolean NOT NULL DEFAULT False;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
-    ]),
+    ],
 
-    'AddEmptyStringDefaultColumnModel': '\n'.join([
+    'AddEmptyStringDefaultColumnModel': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field" varchar(20) NOT NULL DEFAULT \'\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
-    ]),
+    ],
 
-    'AddNullColumnModel': (
-        'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" integer NULL;'
-    ),
+    'AddNullColumnModel': [
+        'ALTER TABLE "tests_testmodel" ADD COLUMN "added_field" integer NULL;',
+    ],
 
-    'NonDefaultColumnModel': (
+    'NonDefaultColumnModel': [
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "non-default_column" integer NULL;'
-    ),
+        ' ADD COLUMN "non-default_column" integer NULL;',
+    ],
 
-    'AddColumnCustomTableModel': (
+    'AddColumnCustomTableModel': [
         'ALTER TABLE "custom_table_name"'
-        ' ADD COLUMN "added_field" integer NULL;'
-    ),
+        ' ADD COLUMN "added_field" integer NULL;',
+    ],
 
-    'AddIndexedColumnModel': '\n'.join([
+    'AddIndexedColumnModel': [
         'ALTER TABLE "tests_testmodel" ADD COLUMN "add_field" integer NULL;',
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("add_field");'
         % generate_index_name('tests_testmodel', 'add_field')
-    ]),
+    ],
 
-    'AddUniqueColumnModel': (
+    'AddUniqueColumnModel': [
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" integer NULL UNIQUE;'
-    ),
+        ' ADD COLUMN "added_field" integer NULL UNIQUE;',
+    ],
 
-    'AddUniqueIndexedModel': (
+    'AddUniqueIndexedModel': [
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" integer NULL UNIQUE;'
-    ),
+        ' ADD COLUMN "added_field" integer NULL UNIQUE;',
+    ],
 
-    'AddForeignKeyModel': '\n'.join([
+    'AddForeignKeyModel': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field_id" integer NULL REFERENCES'
         ' "tests_addanchor1" ("id")  DEFERRABLE INITIALLY DEFERRED;',
@@ -139,14 +139,14 @@ add_field = {
         'CREATE INDEX "%s" ON "tests_testmodel" ("added_field_id");'
         % generate_index_name('tests_testmodel', 'added_field_id',
                               'added_field'),
-    ]),
+    ],
 }
 
 if django_version >= (1, 9):
     # Django 1.9+ no longer includes a UNIQUE keyword in the table creation,
     # instead creating these through constraints. It also brings back indexes.
     add_field.update({
-        'AddManyToManyDatabaseTableModel': '\n'.join([
+        'AddManyToManyDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" serial NOT NULL PRIMARY KEY,'
             ' "testmodel_id" integer NOT NULL,'
@@ -184,9 +184,9 @@ if django_version >= (1, 9):
             ' "tests_testmodel_added_field" ("addanchor1_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'addanchor1_id'),
-        ]),
+        ],
 
-        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+        'AddManyToManyNonDefaultDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" serial NOT NULL PRIMARY KEY,'
             ' "testmodel_id" integer NOT NULL,'
@@ -224,9 +224,9 @@ if django_version >= (1, 9):
             ' "tests_testmodel_added_field" ("addanchor2_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'addanchor2_id'),
-        ]),
+        ],
 
-        'AddManyToManySelf': '\n'.join([
+        'AddManyToManySelf': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" serial NOT NULL PRIMARY KEY,'
             ' "from_testmodel_id" integer NOT NULL,'
@@ -265,13 +265,13 @@ if django_version >= (1, 9):
             ' "tests_testmodel_added_field" ("to_testmodel_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'to_testmodel_id'),
-        ]),
+        ],
     })
 elif django_version == (1, 8):
     # Django 1.8+ no longer creates indexes for the ForeignKeys on the
     # ManyToMany table.
     add_field.update({
-        'AddManyToManyDatabaseTableModel': '\n'.join([
+        'AddManyToManyDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" serial NOT NULL PRIMARY KEY,'
             ' "testmodel_id" integer NOT NULL,'
@@ -304,9 +304,9 @@ elif django_version == (1, 8):
             ' "tests_testmodel_added_field" ("addanchor1_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'addanchor1_id'),
-        ]),
+        ],
 
-        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+        'AddManyToManyNonDefaultDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" serial NOT NULL PRIMARY KEY,'
             ' "testmodel_id" integer NOT NULL,'
@@ -339,9 +339,9 @@ elif django_version == (1, 8):
             ' "tests_testmodel_added_field" ("addanchor2_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'addanchor2_id'),
-        ]),
+        ],
 
-        'AddManyToManySelf': '\n'.join([
+        'AddManyToManySelf': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" serial NOT NULL PRIMARY KEY,'
             ' "from_testmodel_id" integer NOT NULL,'
@@ -374,14 +374,14 @@ elif django_version == (1, 8):
             ' "tests_testmodel_added_field" ("to_testmodel_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'to_testmodel_id'),
-        ]),
+        ],
     })
 elif django_version >= (1, 7):
     # Django 1.7 introduced more condensed CREATE TABLE statements, and
     # indexes for fields on the model. (The indexes were removed for Postgres
     # in subsequent releases.)
     add_field.update({
-        'AddManyToManyDatabaseTableModel': '\n'.join([
+        'AddManyToManyDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" serial NOT NULL PRIMARY KEY,'
             ' "testmodel_id" integer NOT NULL,'
@@ -414,9 +414,9 @@ elif django_version >= (1, 7):
             ' "tests_testmodel_added_field" ("addanchor1_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'addanchor1_id'),
-        ]),
+        ],
 
-        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+        'AddManyToManyNonDefaultDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" serial NOT NULL PRIMARY KEY,'
             ' "testmodel_id" integer NOT NULL,'
@@ -449,9 +449,9 @@ elif django_version >= (1, 7):
             ' "tests_testmodel_added_field" ("addanchor2_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'addanchor2_id'),
-        ]),
+        ],
 
-        'AddManyToManySelf': '\n'.join([
+        'AddManyToManySelf': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" serial NOT NULL PRIMARY KEY,'
             ' "from_testmodel_id" integer NOT NULL,'
@@ -484,11 +484,11 @@ elif django_version >= (1, 7):
             ' "tests_testmodel_added_field" ("to_testmodel_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'to_testmodel_id'),
-        ]),
+        ],
     })
 else:
     add_field.update({
-        'AddManyToManyDatabaseTableModel': '\n'.join([
+        'AddManyToManyDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" (',
             '    "id" serial NOT NULL PRIMARY KEY,',
             '    "testmodel_id" integer NOT NULL,',
@@ -512,9 +512,9 @@ else:
             % generate_constraint_name('testmodel_id', 'id',
                                        'tests_testmodel_added_field',
                                        'tests_testmodel'),
-        ]),
+        ],
 
-        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+        'AddManyToManyNonDefaultDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" (',
             '    "id" serial NOT NULL PRIMARY KEY,',
             '    "testmodel_id" integer NOT NULL,',
@@ -538,9 +538,9 @@ else:
             % generate_constraint_name('testmodel_id', 'id',
                                        'tests_testmodel_added_field',
                                        'tests_testmodel'),
-        ]),
+        ],
 
-        'AddManyToManySelf': '\n'.join([
+        'AddManyToManySelf': [
             'CREATE TABLE "tests_testmodel_added_field" (',
             '    "id" serial NOT NULL PRIMARY KEY,',
             '    "from_testmodel_id" integer NOT NULL,',
@@ -564,108 +564,108 @@ else:
             % generate_constraint_name('to_testmodel_id', 'id',
                                        'tests_testmodel_added_field',
                                        'tests_testmodel'),
-        ]),
+        ],
     })
 
 delete_field = {
-    'DefaultNamedColumnModel': (
-        'ALTER TABLE "tests_testmodel" DROP COLUMN "int_field" CASCADE;'
-    ),
+    'DefaultNamedColumnModel': [
+        'ALTER TABLE "tests_testmodel" DROP COLUMN "int_field" CASCADE;',
+    ],
 
-    'NonDefaultNamedColumnModel': (
+    'NonDefaultNamedColumnModel': [
         'ALTER TABLE "tests_testmodel"'
-        ' DROP COLUMN "non-default_db_column" CASCADE;'
-    ),
+        ' DROP COLUMN "non-default_db_column" CASCADE;',
+    ],
 
-    'ConstrainedColumnModel': (
-        'ALTER TABLE "tests_testmodel" DROP COLUMN "int_field3" CASCADE;'
-    ),
+    'ConstrainedColumnModel': [
+        'ALTER TABLE "tests_testmodel" DROP COLUMN "int_field3" CASCADE;',
+    ],
 
-    'DefaultManyToManyModel': (
-        'DROP TABLE "tests_testmodel_m2m_field1";'
-    ),
+    'DefaultManyToManyModel': [
+        'DROP TABLE "tests_testmodel_m2m_field1";',
+    ],
 
-    'NonDefaultManyToManyModel': (
-        'DROP TABLE "non-default_m2m_table";'
-    ),
+    'NonDefaultManyToManyModel': [
+        'DROP TABLE "non-default_m2m_table";',
+    ],
 
-    'DeleteForeignKeyModel': (
-        'ALTER TABLE "tests_testmodel" DROP COLUMN "fk_field1_id" CASCADE;'
-    ),
+    'DeleteForeignKeyModel': [
+        'ALTER TABLE "tests_testmodel" DROP COLUMN "fk_field1_id" CASCADE;',
+    ],
 
-    'DeleteColumnCustomTableModel': (
-        'ALTER TABLE "custom_table_name" DROP COLUMN "value" CASCADE;'
-    ),
+    'DeleteColumnCustomTableModel': [
+        'ALTER TABLE "custom_table_name" DROP COLUMN "value" CASCADE;',
+    ],
 }
 
 change_field = {
-    "SetNotNullChangeModelWithConstant": '\n'.join([
+    'SetNotNullChangeModelWithConstant': [
         'UPDATE "tests_testmodel"'
         ' SET "char_field1" = \'abc\\\'s xyz\' WHERE "char_field1" IS NULL;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "char_field1" SET NOT NULL;',
-    ]),
+    ],
 
-    "SetNotNullChangeModelWithCallable": '\n'.join([
+    'SetNotNullChangeModelWithCallable': [
         'UPDATE "tests_testmodel"'
         ' SET "char_field1" = "char_field" WHERE "char_field1" IS NULL;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "char_field1" SET NOT NULL;',
-    ]),
+    ],
 
-    "SetNullChangeModel": (
+    'SetNullChangeModel': [
         'ALTER TABLE "tests_testmodel"'
-        ' ALTER COLUMN "char_field2" DROP NOT NULL;'
-    ),
+        ' ALTER COLUMN "char_field2" DROP NOT NULL;',
+    ],
 
-    "NoOpChangeModel": '',
+    'NoOpChangeModel': [],
 
-    "IncreasingMaxLengthChangeModel": (
+    'IncreasingMaxLengthChangeModel': [
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "char_field" TYPE varchar(45)'
-        ' USING CAST("char_field" as varchar(45));'
-    ),
+        ' USING CAST("char_field" as varchar(45));',
+    ],
 
-    "DecreasingMaxLengthChangeModel": (
+    'DecreasingMaxLengthChangeModel': [
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "char_field" TYPE varchar(1)'
-        ' USING CAST("char_field" as varchar(1));'
-    ),
+        ' USING CAST("char_field" as varchar(1));',
+    ],
 
-    "DBColumnChangeModel": (
+    'DBColumnChangeModel': [
         'ALTER TABLE "tests_testmodel"'
-        ' RENAME COLUMN "custom_db_column" TO "customised_db_column";'
-    ),
+        ' RENAME COLUMN "custom_db_column" TO "customised_db_column";',
+    ],
 
-    "AddDBIndexChangeModel": (
+    'AddDBIndexChangeModel': [
         'CREATE INDEX "%s" ON "tests_testmodel" ("int_field2");'
-        % generate_index_name('tests_testmodel', 'int_field2')
-    ),
+        % generate_index_name('tests_testmodel', 'int_field2'),
+    ],
 
-    'AddDBIndexNoOpChangeModel': '',
+    'AddDBIndexNoOpChangeModel': [],
 
-    "RemoveDBIndexChangeModel": (
+    'RemoveDBIndexChangeModel': [
         '%s "%s";'
         % (drop_index_sql,
-           generate_index_name('tests_testmodel', 'int_field1'))
-    ),
+           generate_index_name('tests_testmodel', 'int_field1')),
+    ],
 
-    'RemoveDBIndexNoOpChangeModel': '',
+    'RemoveDBIndexNoOpChangeModel': [],
 
-    "AddUniqueChangeModel": (
+    'AddUniqueChangeModel': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD CONSTRAINT "%s" UNIQUE("int_field4");'
-        % generate_unique_constraint_name('tests_testmodel', ['int_field4'])
-    ),
+        % generate_unique_constraint_name('tests_testmodel', ['int_field4']),
+    ],
 
-    "RemoveUniqueChangeModel": (
+    'RemoveUniqueChangeModel': [
         'ALTER TABLE "tests_testmodel"'
-        ' DROP CONSTRAINT "tests_testmodel_int_field3_key";'
-    ),
+        ' DROP CONSTRAINT "tests_testmodel_int_field3_key";',
+    ],
 
-    "MultiAttrChangeModel": '\n'.join([
+    'MultiAttrChangeModel': [
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "char_field2" DROP NOT NULL;',
 
@@ -675,16 +675,16 @@ change_field = {
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "char_field" TYPE varchar(35)'
         ' USING CAST("char_field" as varchar(35));',
-    ]),
+    ],
 
-    "MultiAttrSingleFieldChangeModel": '\n'.join([
+    'MultiAttrSingleFieldChangeModel': [
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "char_field2" TYPE varchar(35)'
         ' USING CAST("char_field2" as varchar(35)),'
         ' ALTER COLUMN "char_field2" DROP NOT NULL;',
-    ]),
+    ],
 
-    "RedundantAttrsChangeModel": '\n'.join([
+    'RedundantAttrsChangeModel': [
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "char_field2" DROP NOT NULL;',
 
@@ -694,12 +694,12 @@ change_field = {
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "char_field" TYPE varchar(35)'
         ' USING CAST("char_field" as varchar(35));',
-    ]),
+    ],
 }
 
 if django_version >= (1, 11):
     change_field.update({
-        'M2MDBTableChangeModel': '\n'.join([
+        'M2MDBTableChangeModel': [
             'SET CONSTRAINTS "%(constraint)s" IMMEDIATE;'
             ' ALTER TABLE "change_field_non-default_m2m_table"'
             ' DROP CONSTRAINT "%(constraint)s";'
@@ -720,11 +720,11 @@ if django_version >= (1, 11):
             % generate_constraint_name('testmodel_id', 'my_id',
                                        'custom_m2m_db_table_name',
                                        'tests_testmodel'),
-        ]),
+        ],
     })
 else:
     change_field.update({
-        'M2MDBTableChangeModel': '\n'.join([
+        'M2MDBTableChangeModel': [
             'ALTER TABLE "change_field_non-default_m2m_table"'
             ' DROP CONSTRAINT "%s";'
             % generate_constraint_name('testmodel_id', 'my_id',
@@ -741,97 +741,102 @@ else:
             % generate_constraint_name('testmodel_id', 'my_id',
                                        'custom_m2m_db_table_name',
                                        'tests_testmodel'),
-        ]),
+        ],
     })
 
 
 delete_model = {
-    'BasicModel': (
-        'DROP TABLE "tests_basicmodel";'
-    ),
+    'BasicModel': [
+        'DROP TABLE "tests_basicmodel";',
+    ],
 
-    'BasicWithM2MModel': '\n'.join([
+    'BasicWithM2MModel': [
         'DROP TABLE "tests_basicwithm2mmodel_m2m";',
         'DROP TABLE "tests_basicwithm2mmodel";'
-    ]),
+    ],
 
-    'CustomTableModel': (
-        'DROP TABLE "custom_table_name";'
-    ),
+    'CustomTableModel': [
+        'DROP TABLE "custom_table_name";',
+    ],
 
-    'CustomTableWithM2MModel': '\n'.join([
+    'CustomTableWithM2MModel': [
         'DROP TABLE "another_custom_table_name_m2m";',
         'DROP TABLE "another_custom_table_name";'
-    ]),
+    ],
 }
 
 rename_model = {
-    'RenameModel': (
-        'ALTER TABLE "tests_testmodel" RENAME TO "tests_destmodel";'
-    ),
-    'RenameModelSameTable': '',
-    'RenameModelForeignKeys': (
-        'ALTER TABLE "tests_testmodel" RENAME TO "tests_destmodel";'
-    ),
-    'RenameModelForeignKeysSameTable': '',
-    'RenameModelManyToManyField': (
-        'ALTER TABLE "tests_testmodel" RENAME TO "tests_destmodel";'
-    ),
-    'RenameModelManyToManyFieldSameTable': '',
+    'RenameModel': [
+        'ALTER TABLE "tests_testmodel" RENAME TO "tests_destmodel";',
+    ],
+
+    'RenameModelSameTable': [],
+
+    'RenameModelForeignKeys': [
+        'ALTER TABLE "tests_testmodel" RENAME TO "tests_destmodel";',
+    ],
+
+    'RenameModelForeignKeysSameTable': [],
+
+    'RenameModelManyToManyField': [
+        'ALTER TABLE "tests_testmodel" RENAME TO "tests_destmodel";',
+    ],
+
+    'RenameModelManyToManyFieldSameTable': [],
 }
 
 delete_application = {
-    'DeleteApplication': '\n'.join([
+    'DeleteApplication': [
         'DROP TABLE "tests_testmodel_anchor_m2m";',
         'DROP TABLE "tests_testmodel";',
         'DROP TABLE "tests_appdeleteanchor1";',
         'DROP TABLE "app_delete_custom_add_anchor_table";',
         'DROP TABLE "app_delete_custom_table_name";',
-    ]),
+    ],
 
     'DeleteApplicationWithoutDatabase': "",
 }
 
 rename_field = {
-    'RenameColumnModel': (
+    'RenameColumnModel': [
         'ALTER TABLE "tests_testmodel"'
-        ' RENAME COLUMN "int_field" TO "renamed_field";'
-    ),
+        ' RENAME COLUMN "int_field" TO "renamed_field";',
+    ],
 
-    'RenameColumnWithTableNameModel': (
+    'RenameColumnWithTableNameModel': [
         'ALTER TABLE "tests_testmodel"'
-        ' RENAME COLUMN "int_field" TO "renamed_field";'
-    ),
+        ' RENAME COLUMN "int_field" TO "renamed_field";',
+    ],
 
-    'RenameForeignKeyColumnModel': (
+    'RenameForeignKeyColumnModel': [
         'ALTER TABLE "tests_testmodel"'
-        ' RENAME COLUMN "fk_field_id" TO "renamed_field_id";'
-    ),
+        ' RENAME COLUMN "fk_field_id" TO "renamed_field_id";',
+    ],
 
-    'RenameNonDefaultColumnNameModel': (
+    'RenameNonDefaultColumnNameModel': [
         'ALTER TABLE "tests_testmodel"'
-        ' RENAME COLUMN "custom_db_col_name" TO "renamed_field";'
-    ),
+        ' RENAME COLUMN "custom_db_col_name" TO "renamed_field";',
+    ],
 
-    'RenameNonDefaultColumnNameToNonDefaultNameModel': (
+    'RenameNonDefaultColumnNameToNonDefaultNameModel': [
         'ALTER TABLE "tests_testmodel"'
-        ' RENAME COLUMN "custom_db_col_name" TO "non-default_column_name";'
-    ),
+        ' RENAME COLUMN "custom_db_col_name" TO "non-default_column_name";',
+    ],
 
-    'RenameNonDefaultColumnNameToNonDefaultNameAndTableModel': (
+    'RenameNonDefaultColumnNameToNonDefaultNameAndTableModel': [
         'ALTER TABLE "tests_testmodel"'
-        ' RENAME COLUMN "custom_db_col_name" TO "non-default_column_name2";'
-    ),
+        ' RENAME COLUMN "custom_db_col_name" TO "non-default_column_name2";',
+    ],
 
-    'RenameColumnCustomTableModel': (
+    'RenameColumnCustomTableModel': [
         'ALTER TABLE "custom_rename_table_name"'
-        ' RENAME COLUMN "value" TO "renamed_field";'
-    ),
+        ' RENAME COLUMN "value" TO "renamed_field";',
+    ],
 }
 
 if django_version >= (1, 11):
     rename_field.update({
-        'RenameNonDefaultManyToManyTableModel': '\n'.join([
+        'RenameNonDefaultManyToManyTableModel': [
             'SET CONSTRAINTS "%(constraint)s" IMMEDIATE;'
             ' ALTER TABLE "non-default_db_table"'
             ' DROP CONSTRAINT "%(constraint)s";'
@@ -851,9 +856,9 @@ if django_version >= (1, 11):
             % generate_constraint_name('testmodel_id', 'id',
                                        'tests_testmodel_renamed_field',
                                        'tests_testmodel'),
-        ]),
+        ],
 
-        'RenamePrimaryKeyColumnModel': '\n'.join([
+        'RenamePrimaryKeyColumnModel': [
             'SET CONSTRAINTS "%(constraint)s" IMMEDIATE;'
             ' ALTER TABLE "tests_testmodel_m2m_field"'
             ' DROP CONSTRAINT "%(constraint)s";'
@@ -889,9 +894,9 @@ if django_version >= (1, 11):
             % generate_constraint_name('testmodel_id', 'my_pk_id',
                                        'non-default_db_table',
                                        'tests_testmodel'),
-        ]),
+        ],
 
-        'RenameManyToManyTableModel': '\n'.join([
+        'RenameManyToManyTableModel': [
             'SET CONSTRAINTS "%(constraint)s" IMMEDIATE;'
             ' ALTER TABLE "tests_testmodel_m2m_field"'
             ' DROP CONSTRAINT "%(constraint)s";'
@@ -911,9 +916,9 @@ if django_version >= (1, 11):
             % generate_constraint_name('testmodel_id', 'id',
                                        'tests_testmodel_renamed_field',
                                        'tests_testmodel'),
-        ]),
+        ],
 
-        'RenameManyToManyTableWithColumnNameModel': '\n'.join([
+        'RenameManyToManyTableWithColumnNameModel': [
             'SET CONSTRAINTS "%(constraint)s" IMMEDIATE;'
             ' ALTER TABLE "tests_testmodel_m2m_field"'
             ' DROP CONSTRAINT "%(constraint)s";'
@@ -933,11 +938,11 @@ if django_version >= (1, 11):
             % generate_constraint_name('testmodel_id', 'id',
                                        'tests_testmodel_renamed_field',
                                        'tests_testmodel'),
-        ]),
+        ],
     })
 else:
     rename_field.update({
-        'RenameNonDefaultManyToManyTableModel': '\n'.join([
+        'RenameNonDefaultManyToManyTableModel': [
             'ALTER TABLE "non-default_db_table"'
             ' DROP CONSTRAINT "%s";'
             % generate_constraint_name('testmodel_id', 'id',
@@ -954,9 +959,9 @@ else:
             % generate_constraint_name('testmodel_id', 'id',
                                        'tests_testmodel_renamed_field',
                                        'tests_testmodel'),
-        ]),
+        ],
 
-        'RenamePrimaryKeyColumnModel': '\n'.join([
+        'RenamePrimaryKeyColumnModel': [
             'ALTER TABLE "tests_testmodel_m2m_field" DROP CONSTRAINT "%s";'
             % generate_constraint_name('testmodel_id', 'id',
                                        'tests_testmodel_m2m_field',
@@ -984,9 +989,9 @@ else:
             % generate_constraint_name('testmodel_id', 'my_pk_id',
                                        'non-default_db_table',
                                        'tests_testmodel'),
-        ]),
+        ],
 
-        'RenameManyToManyTableModel': '\n'.join([
+        'RenameManyToManyTableModel': [
             'ALTER TABLE "tests_testmodel_m2m_field" DROP CONSTRAINT "%s";'
             % generate_constraint_name('testmodel_id', 'id',
                                        'tests_testmodel_m2m_field',
@@ -1002,9 +1007,9 @@ else:
             % generate_constraint_name('testmodel_id', 'id',
                                        'tests_testmodel_renamed_field',
                                        'tests_testmodel'),
-        ]),
+        ],
 
-        'RenameManyToManyTableWithColumnNameModel': '\n'.join([
+        'RenameManyToManyTableWithColumnNameModel': [
             'ALTER TABLE "tests_testmodel_m2m_field" DROP CONSTRAINT "%s";'
             % generate_constraint_name('testmodel_id', 'id',
                                        'tests_testmodel_m2m_field',
@@ -1020,24 +1025,24 @@ else:
             % generate_constraint_name('testmodel_id', 'id',
                                        'tests_testmodel_renamed_field',
                                        'tests_testmodel'),
-        ]),
+        ],
     })
 
 sql_mutation = {
-    'AddFirstTwoFields': '\n'.join([
+    'AddFirstTwoFields': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field1" integer NULL;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field2" integer NULL;'
-    ]),
+    ],
 
-    'AddThirdField': (
+    'AddThirdField': [
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field3" integer NULL;'
-    ),
+        ' ADD COLUMN "added_field3" integer NULL;',
+    ],
 
-    'SQLMutationOutput': '\n'.join([
+    'SQLMutationOutput': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field1" integer NULL;',
 
@@ -1046,17 +1051,17 @@ sql_mutation = {
 
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field3" integer NULL;',
-    ]),
+    ],
 }
 
 generics = {
-    'DeleteColumnModel': (
-        'ALTER TABLE "tests_testmodel" DROP COLUMN "char_field" CASCADE;'
-    ),
+    'DeleteColumnModel': [
+        'ALTER TABLE "tests_testmodel" DROP COLUMN "char_field" CASCADE;',
+    ],
 }
 
 inheritance = {
-    'AddToChildModel': '\n'.join([
+    'AddToChildModel': [
         'ALTER TABLE "tests_childmodel"'
         ' ADD COLUMN "added_field" integer  DEFAULT 42;',
 
@@ -1065,61 +1070,61 @@ inheritance = {
 
         'ALTER TABLE "tests_childmodel"'
         ' ALTER COLUMN "added_field" SET NOT NULL;',
-    ]),
+    ],
 
-    'DeleteFromChildModel': (
-        'ALTER TABLE "tests_childmodel" DROP COLUMN "int_field" CASCADE;'
-    ),
+    'DeleteFromChildModel': [
+        'ALTER TABLE "tests_childmodel" DROP COLUMN "int_field" CASCADE;',
+    ],
 }
 
 unique_together = {
-    'setting_from_empty': (
+    'setting_from_empty': [
         'CREATE UNIQUE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field1", "char_field1");'
         % generate_unique_constraint_name('tests_testmodel',
-                                          ['int_field1', 'char_field1'])
-    ),
+                                          ['int_field1', 'char_field1']),
+    ],
 
-    'append_list': (
+    'append_list': [
         'CREATE UNIQUE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field2", "char_field2");'
         % generate_unique_constraint_name('tests_testmodel',
-                                          ['int_field2', 'char_field2'])
-    ),
+                                          ['int_field2', 'char_field2']),
+    ],
 
-    'set_remove': (
+    'set_remove': [
         'CREATE UNIQUE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field1", "char_field1");'
         % generate_unique_constraint_name('tests_testmodel',
-                                          ['int_field1', 'char_field1'])
-    ),
+                                          ['int_field1', 'char_field1']),
+    ],
 
-    'ignore_missing_indexes': (
+    'ignore_missing_indexes': [
         'CREATE UNIQUE INDEX "%s"'
         ' ON "tests_testmodel" ("char_field1", "char_field2");'
         % generate_unique_constraint_name('tests_testmodel',
-                                          ['char_field1', 'char_field2'])
-    ),
+                                          ['char_field1', 'char_field2']),
+    ],
 
-    'upgrade_from_v1_sig': (
+    'upgrade_from_v1_sig': [
         'CREATE UNIQUE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field1", "char_field1");'
         % generate_unique_constraint_name('tests_testmodel',
-                                          ['int_field1', 'char_field1'])
-    ),
+                                          ['int_field1', 'char_field1']),
+    ],
 }
 
 if django_version >= (1, 9):
     # In Django >= 1.9, unique_together indexes are created specifically
     # after table creation, using Django's generated constraint names.
     unique_together.update({
-        'removing': (
+        'removing': [
             'ALTER TABLE "tests_testmodel" DROP CONSTRAINT "%s";'
             % generate_unique_constraint_name('tests_testmodel',
-                                              ['int_field1', 'char_field1'])
-        ),
+                                              ['int_field1', 'char_field1']),
+        ],
 
-        'replace_list': '\n'.join([
+        'replace_list': [
             'ALTER TABLE "tests_testmodel" DROP CONSTRAINT "%s";'
             % generate_unique_constraint_name('tests_testmodel',
                                               ['int_field1', 'char_field1']),
@@ -1128,19 +1133,19 @@ if django_version >= (1, 9):
             ' ON "tests_testmodel" ("int_field2", "char_field2");'
             % generate_unique_constraint_name('tests_testmodel',
                                               ['int_field2', 'char_field2']),
-        ]),
+        ],
     })
 else:
     # In Django < 1.9, unique_together indexes are created during table
     # creation, using Postgres's default naming scheme, instead of using a
     # generated name, so we need to drop with those hard-coded names.
     unique_together.update({
-        'removing': (
+        'removing': [
             'ALTER TABLE "tests_testmodel"'
-            ' DROP CONSTRAINT "tests_testmodel_int_field1_char_field1_key";'
-        ),
+            ' DROP CONSTRAINT "tests_testmodel_int_field1_char_field1_key";',
+        ],
 
-        'replace_list': '\n'.join([
+        'replace_list': [
             'ALTER TABLE "tests_testmodel"'
             ' DROP CONSTRAINT "tests_testmodel_int_field1_char_field1_key";',
 
@@ -1148,19 +1153,19 @@ else:
             ' ON "tests_testmodel" ("int_field2", "char_field2");'
             % generate_unique_constraint_name('tests_testmodel',
                                               ['int_field2', 'char_field2']),
-        ]),
+        ],
     })
 
 index_together = {
-    'setting_from_empty': '\n'.join([
+    'setting_from_empty': [
         'CREATE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field1", "char_field1");'
         % generate_index_name('tests_testmodel',
                               ['int_field1', 'char_field1'],
                               index_together=True)
-    ]),
+    ],
 
-    'replace_list': '\n'.join([
+    'replace_list': [
         '%s "%s";'
         % (drop_index_sql,
            generate_index_name('tests_testmodel',
@@ -1172,35 +1177,35 @@ index_together = {
         % generate_index_name('tests_testmodel',
                               ['int_field2', 'char_field2'],
                               index_together=True),
-    ]),
+    ],
 
-    'append_list': '\n'.join([
+    'append_list': [
         'CREATE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field2", "char_field2");'
         % generate_index_name('tests_testmodel',
                               ['int_field2', 'char_field2'],
                               index_together=True),
-    ]),
+    ],
 
-    'removing': '\n'.join([
+    'removing': [
         '%s "%s";'
         % (drop_index_sql,
            generate_index_name('tests_testmodel',
                                ['int_field1', 'char_field1'],
                                index_together=True)),
-    ]),
+    ],
 
-    'ignore_missing_indexes': (
+    'ignore_missing_indexes': [
         'CREATE INDEX "%s"'
         ' ON "tests_testmodel" ("char_field1", "char_field2");'
         % generate_index_name('tests_testmodel',
                               ['char_field1', 'char_field2'],
-                              index_together=True)
-    ),
+                              index_together=True),
+    ],
 }
 
 indexes = {
-    'replace_list': '\n'.join([
+    'replace_list': [
         '%s "%s";'
         % (drop_index_sql,
            generate_index_name('tests_testmodel', ['int_field1'],
@@ -1213,16 +1218,16 @@ indexes = {
         ' ON "tests_testmodel" ("int_field2");'
         % generate_index_name('tests_testmodel', ['int_field2'],
                               model_meta_indexes=True),
-    ]),
+    ],
 
-    'append_list': '\n'.join([
+    'append_list': [
         'CREATE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field2");'
         % generate_index_name('tests_testmodel', ['int_field2'],
                               model_meta_indexes=True),
-    ]),
+    ],
 
-    'removing': '\n'.join([
+    'removing': [
         '%s "%s";'
         % (drop_index_sql,
            generate_index_name('tests_testmodel', ['int_field1'],
@@ -1230,19 +1235,19 @@ indexes = {
 
         '%s "my_custom_index";'
         % drop_index_sql,
-    ]),
+    ],
 
-    'ignore_missing_indexes': (
+    'ignore_missing_indexes': [
         'CREATE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field2");'
         % generate_index_name('tests_testmodel', ['int_field2'],
-                              model_meta_indexes=True)
-    ),
+                              model_meta_indexes=True),
+    ],
 }
 
 if django.VERSION[:2] >= (2, 0):
     indexes.update({
-        'setting_from_empty': '\n'.join([
+        'setting_from_empty': [
             'CREATE INDEX "%s"'
             ' ON "tests_testmodel" ("int_field1");'
             % generate_index_name('tests_testmodel',
@@ -1251,11 +1256,11 @@ if django.VERSION[:2] >= (2, 0):
 
             'CREATE INDEX "my_custom_index"'
             ' ON "tests_testmodel" ("char_field1", "char_field2"DESC);',
-        ]),
+        ],
     })
 else:
     indexes.update({
-        'setting_from_empty': '\n'.join([
+        'setting_from_empty': [
             'CREATE INDEX "%s"'
             ' ON "tests_testmodel" ("int_field1");'
             % generate_index_name('tests_testmodel',
@@ -1264,64 +1269,64 @@ else:
 
             'CREATE INDEX "my_custom_index"'
             ' ON "tests_testmodel" ("char_field1", "char_field2" DESC);',
-        ]),
+        ],
     })
 
 preprocessing = {
-    'add_change_field': '\n'.join([
+    'add_change_field': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field" varchar(50) NULL DEFAULT \'bar\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
-    ]),
+    ],
 
-    'add_change_rename_field': '\n'.join([
+    'add_change_rename_field': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "renamed_field" varchar(50) NULL DEFAULT \'bar\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "renamed_field" DROP DEFAULT;',
-    ]),
+    ],
 
-    'add_delete_add_field': '\n'.join([
+    'add_delete_add_field': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field" integer NOT NULL DEFAULT 42;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "added_field" DROP DEFAULT;',
-    ]),
+    ],
 
-    'add_delete_add_rename_field': '\n'.join([
+    'add_delete_add_rename_field': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "renamed_field" integer NOT NULL DEFAULT 42;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "renamed_field" DROP DEFAULT;',
-    ]),
+    ],
 
-    'add_rename_change_field': '\n'.join([
+    'add_rename_change_field': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "renamed_field" varchar(50) NULL DEFAULT \'bar\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "renamed_field" DROP DEFAULT;',
-    ]),
+    ],
 
-    'add_rename_change_rename_change_field': '\n'.join([
+    'add_rename_change_rename_change_field': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "renamed_field" varchar(50) NULL DEFAULT \'foo\';',
 
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "renamed_field" DROP DEFAULT;',
-    ]),
+    ],
 
-    'add_rename_field_with_db_column': (
+    'add_rename_field_with_db_column': [
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field" varchar(50) NULL;'
-    ),
+        ' ADD COLUMN "added_field" varchar(50) NULL;',
+    ],
 
-    'add_field_rename_model': '\n'.join([
+    'add_field_rename_model': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field_id" integer NULL REFERENCES'
         ' "tests_reffedpreprocmodel" ("id")  DEFERRABLE INITIALLY DEFERRED;',
@@ -1329,9 +1334,9 @@ preprocessing = {
         'CREATE INDEX "%s" ON "tests_testmodel" ("added_field_id");'
         % generate_index_name('tests_testmodel', 'added_field_id',
                               'added_field'),
-    ]),
+    ],
 
-    'add_rename_field_rename_model': '\n'.join([
+    'add_rename_field_rename_model': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "renamed_field_id" integer NULL REFERENCES'
         ' "tests_reffedpreprocmodel" ("id")  DEFERRABLE INITIALLY DEFERRED;',
@@ -1339,9 +1344,9 @@ preprocessing = {
         'CREATE INDEX "%s" ON "tests_testmodel" ("renamed_field_id");'
         % generate_index_name('tests_testmodel', 'renamed_field_id',
                               'renamed_field'),
-    ]),
+    ],
 
-    'add_sql_delete': '\n'.join([
+    'add_sql_delete': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field" varchar(20) NOT NULL DEFAULT \'foo\';',
 
@@ -1351,17 +1356,17 @@ preprocessing = {
         '-- Comment --',
 
         'ALTER TABLE "tests_testmodel" DROP COLUMN "added_field" CASCADE;',
-    ]),
+    ],
 
-    'change_rename_field': '\n'.join([
+    'change_rename_field': [
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "char_field" DROP NOT NULL;',
 
         'ALTER TABLE "tests_testmodel"'
         ' RENAME COLUMN "char_field" TO "renamed_field";',
-    ]),
+    ],
 
-    'change_rename_change_rename_field': '\n'.join([
+    'change_rename_change_rename_field': [
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "char_field" TYPE varchar(30)'
         ' USING CAST("char_field" as varchar(30)),'
@@ -1369,21 +1374,21 @@ preprocessing = {
 
         'ALTER TABLE "tests_testmodel"'
         ' RENAME COLUMN "char_field" TO "renamed_field";',
-    ]),
+    ],
 
-    'delete_char_field': (
-        'ALTER TABLE "tests_testmodel" DROP COLUMN "char_field" CASCADE;'
-    ),
+    'delete_char_field': [
+        'ALTER TABLE "tests_testmodel" DROP COLUMN "char_field" CASCADE;',
+    ],
 
-    'rename_add_field': '\n'.join([
+    'rename_add_field': [
         'ALTER TABLE "tests_testmodel"'
         ' RENAME COLUMN "char_field" TO "renamed_field";',
 
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "char_field" varchar(50) NULL;',
-    ]),
+    ],
 
-    'rename_change_rename_change_field': '\n'.join([
+    'rename_change_rename_change_field': [
         'ALTER TABLE "tests_testmodel"'
         ' RENAME COLUMN "char_field" TO "renamed_field";',
 
@@ -1391,48 +1396,48 @@ preprocessing = {
         ' ALTER COLUMN "renamed_field" TYPE varchar(50)'
         ' USING CAST("renamed_field" as varchar(50)),'
         ' ALTER COLUMN "renamed_field" DROP NOT NULL;',
-    ]),
+    ],
 
-    'rename_rename_field': '\n'.join([
+    'rename_rename_field': [
         'ALTER TABLE "tests_testmodel"'
         ' RENAME COLUMN "char_field" TO "renamed_field";',
-    ]),
+    ],
 
-    'rename_delete_model': (
-        'DROP TABLE "tests_testmodel";'
-    ),
+    'rename_delete_model': [
+        'DROP TABLE "tests_testmodel";',
+    ],
 
-    'noop': '',
+    'noop': [],
 }
 
 
 evolver = {
-    'evolve_app_task': (
+    'evolve_app_task': [
         'ALTER TABLE "tests_testmodel"'
         ' ALTER COLUMN "value" TYPE varchar(100)'
-        ' USING CAST("value" as varchar(100));'
-    ),
+        ' USING CAST("value" as varchar(100));',
+    ],
 
-    'purge_app_task': (
-        'DROP TABLE "tests_testmodel";'
-    ),
+    'purge_app_task': [
+        'DROP TABLE "tests_testmodel";',
+    ],
 }
 
 if django.VERSION[:2] >= (1, 7):
     evolver.update({
-        'create_table': (
+        'create_table': [
             'CREATE TABLE "tests_testmodel" '
             '("id" serial NOT NULL PRIMARY KEY,'
-            ' "value" varchar(100) NOT NULL);'
-        ),
+            ' "value" varchar(100) NOT NULL);',
+        ],
     })
 else:
     evolver.update({
-        'create_table': '\n'.join([
+        'create_table': [
             'CREATE TABLE "tests_testmodel" (',
             '    "id" serial NOT NULL PRIMARY KEY,',
             '    "value" varchar(100) NOT NULL',
             ')',
             ';',
-        ]),
+        ],
     })

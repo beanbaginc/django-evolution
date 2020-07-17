@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from django.db import ConnectionRouter, DEFAULT_DB_ALIAS, connections, router
 from django.test.testcases import TransactionTestCase
 from django.test.utils import override_settings
+from django.utils import six
 
 from django_evolution.compat.apps import unregister_app
 from django_evolution.db.state import DatabaseState
@@ -458,34 +459,7 @@ class EvolutionTestCase(TestCase):
                                database=db_name)
 
         if sql_name is not None:
-            # Normalize the generated and expected SQL so that we are
-            # guaranteed to have a list with one item per line.
-            generated_sql = '\n'.join(sql).splitlines()
-            expected_sql = self.get_sql_mapping(name=sql_name,
-                                                db_name=db_name).splitlines()
-
-            # Output the statements one-by-one, to help with diagnosing
-            # differences.
-
-            print()
-            print("** Comparing SQL against '%s'" % sql_name)
-            print('** Generated:')
-            print()
-
-            for line in generated_sql:
-                print('    %s' % line)
-
-            print()
-            print('** Expected:')
-            print()
-
-            for line in expected_sql:
-                print('    %s' % line)
-
-            print()
-
-            # Compare as lists, so that we can better spot inconsistencies.
-            self.assertListEqual(generated_sql, expected_sql)
+            self.assertSQLMappingEqual(sql, sql_name, db_name)
 
     def get_sql_mapping(self, name, db_name=None):
         """Return the SQL for the given mapping name and database.
@@ -499,8 +473,8 @@ class EvolutionTestCase(TestCase):
                 The name of the database to return SQL mappings for.
 
         Returns:
-            unicode:
-            The resulting SQL.
+            list of unicode:
+            The resulting list of SQL statements.
 
         Raises:
             ValueError:
@@ -511,10 +485,103 @@ class EvolutionTestCase(TestCase):
                                         db_name=db_name)
 
         try:
-            return sql_mappings[name]
+            sql = sql_mappings[name]
         except KeyError:
             raise ValueError('"%s" is not a valid SQL mapping name.'
                              % name)
+
+        if isinstance(sql, six.text_type):
+            sql = sql.splitlines()
+
+        return sql
+
+    def assertSQLMappingEqual(self, sql, sql_mapping_name, db_name=None):
+        """Assert generated SQL against database-specific mapped test SQL.
+
+        This will output the provided generated SQL and the expectation test
+        SQL mapped by the given key and optional database name, for debugging,
+        and will then compare the contents of both.
+
+        The expected SQL may contain regexes, which are used for comparing
+        against generated SQL that may depend on some dynamic value pulled from
+        the database). If found, the pattern in the regex will be applied to
+        the corresponding generated SQL to determine if there's a match. Other
+        lines will be compared directly.
+
+        If any part of the SQL does not match, a diff will be shown in the
+        test output.
+
+        Args:
+            sql (list of unicode):
+                The list of generated SQL statements.
+
+            sql_mapping_name (unicode):
+                The mapping name in the database-specific test data to compare
+                against.
+
+            db_name (unicode, optional):
+                An explicit database name to use for resolving
+                ``sql_mapping_name``.
+
+        Raises:
+            AssertionError:
+                The generated and expected SQL did not match.
+        """
+        # Normalize the generated and expected SQL so that we are
+        # guaranteed to have a list with one item per line.
+        generated_sql = '\n'.join(sql).splitlines()
+        expected_sql = self.get_sql_mapping(name=sql_mapping_name,
+                                            db_name=db_name)
+
+        # Output the statements one-by-one, to help with diagnosing
+        # differences.
+
+        print()
+        print("** Comparing SQL against '%s'" % sql_mapping_name)
+        print('** Generated:')
+        print()
+
+        for line in generated_sql:
+            print('    %s' % line)
+
+        print()
+        print('** Expected:')
+        print()
+
+        has_regex = False
+
+        for line in expected_sql:
+            if (not isinstance(line, six.text_type) and
+                hasattr(line, 'pattern')):
+                line = '/%s/' % line.pattern
+                has_regex = True
+
+            print('    %s' % line)
+
+        print()
+
+        if has_regex:
+            # We can't compare directly at first, so let's see if things
+            # are otherwise a match and then, if we spot anything wrong,
+            # we'll just do an assertListEqual to get detailed output.
+            match = (len(generated_sql) == len(expected_sql))
+
+            if match:
+                for gen_line, expected_line in zip(generated_sql,
+                                                   expected_sql):
+                    if ((isinstance(expected_line, six.text_type) and
+                         gen_line != expected_line) or
+                        (hasattr(line, 'pattern') and
+                         not line.match(gen_line))):
+                        match = False
+                        break
+
+            if not match:
+                # Now show that detailed output.
+                self.assertListEqual(generated_sql, expected_sql)
+        else:
+            # Compare as lists, so that we can better spot inconsistencies.
+            self.assertListEqual(generated_sql, expected_sql)
 
     def register_model(self, model, name, db_name=None, **kwargs):
         """Register a model for the test.

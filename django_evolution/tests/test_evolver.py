@@ -991,8 +991,7 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
 
         self.assertTrue(task.evolution_required)
         self.assertTrue(task.can_simulate)
-        self.assertEqual('\n'.join(task.sql),
-                         self.get_sql_mapping('evolve_app_task'))
+        self.assertSQLMappingEqual(task.sql, 'evolve_app_task')
         self.assertEqual(len(task.new_evolutions), 1)
         self.assertEqual(task.new_model_names, [])
         self.assertEqual(task.new_models_sql, [])
@@ -1014,8 +1013,7 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
 
         self.assertTrue(task.evolution_required)
         self.assertTrue(task.can_simulate)
-        self.assertEqual('\n'.join(task.sql),
-                         self.get_sql_mapping('evolve_app_task'))
+        self.assertSQLMappingEqual(task.sql, 'evolve_app_task')
         self.assertEqual(len(task.new_evolutions), 0)
         self.assertEqual(task.new_model_names, [])
         self.assertEqual(task.new_models_sql, [])
@@ -1037,8 +1035,7 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         self.assertEqual(task.sql, [])
         self.assertEqual(len(task.new_evolutions), 0)
         self.assertEqual(task.new_model_names, ['TestModel'])
-        self.assertEqual('\n'.join(task.new_models_sql),
-                         self.get_sql_mapping('create_table'))
+        self.assertSQLMappingEqual(task.new_models_sql, 'create_table')
 
     def test_prepare_with_new_models(self):
         """Testing EvolveAppTask.prepare with new models"""
@@ -1057,8 +1054,7 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         self.assertEqual(task.sql, [])
         self.assertEqual(len(task.new_evolutions), 0)
         self.assertEqual(task.new_model_names, ['TestModel'])
-        self.assertEqual('\n'.join(task.new_models_sql),
-                         self.get_sql_mapping('create_table'))
+        self.assertSQLMappingEqual(task.new_models_sql, 'create_table')
 
     def test_execute(self):
         """Testing EvolveAppTask.execute"""
@@ -1183,8 +1179,7 @@ class PurgeAppTaskTests(BaseEvolverTestCase):
         self.assertTrue(task.evolution_required)
         self.assertEqual(task.new_evolutions, [])
         self.assertTrue(task.can_simulate)
-        self.assertEqual('\n'.join(task.sql),
-                         self.get_sql_mapping('purge_app_task'))
+        self.assertSQLMappingEqual(task.sql, 'purge_app_task')
 
     def test_execute(self):
         """Testing PurgeAppTask.execute"""

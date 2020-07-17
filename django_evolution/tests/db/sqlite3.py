@@ -33,7 +33,7 @@ def get_field_suffix(field_type):
 
 
 add_field = {
-    'AddNonNullNonCallableColumnModel': '\n'.join([
+    'AddNonNullNonCallableColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -60,9 +60,9 @@ add_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'AddNonNullCallableColumnModel': '\n'.join([
+    'AddNonNullCallableColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -89,9 +89,9 @@ add_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'AddNullColumnWithInitialColumnModel': '\n'.join([
+    'AddNullColumnWithInitialColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -118,9 +118,9 @@ add_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'AddStringColumnModel': '\n'.join([
+    'AddStringColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -147,9 +147,9 @@ add_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'AddBlankStringColumnModel': '\n'.join([
+    'AddBlankStringColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -176,9 +176,9 @@ add_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'AddDateColumnModel': '\n'.join([
+    'AddDateColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -205,9 +205,9 @@ add_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'AddDefaultColumnModel': '\n'.join([
+    'AddDefaultColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -234,9 +234,9 @@ add_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'AddMismatchInitialBoolColumnModel': '\n'.join([
+    'AddMismatchInitialBoolColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -263,9 +263,9 @@ add_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'AddEmptyStringDefaultColumnModel': '\n'.join([
+    'AddEmptyStringDefaultColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -292,9 +292,9 @@ add_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'AddNullColumnModel': '\n'.join([
+    'AddNullColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("int_field" integer NULL,'
         ' "id" integer NULL UNIQUE PRIMARY KEY,'
@@ -319,9 +319,9 @@ add_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'NonDefaultColumnModel': '\n'.join([
+    'NonDefaultColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -346,9 +346,9 @@ add_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'AddColumnCustomTableModel': '\n'.join([
+    'AddColumnCustomTableModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "value" integer NULL,'
@@ -373,9 +373,9 @@ add_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'AddIndexedColumnModel': '\n'.join([
+    'AddIndexedColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -403,9 +403,9 @@ add_field = {
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("add_field");'
         % generate_index_name('tests_testmodel', 'add_field'),
-    ]),
+    ],
 
-    'AddUniqueColumnModel': '\n'.join([
+    'AddUniqueColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -430,9 +430,9 @@ add_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'AddUniqueIndexedModel': '\n'.join([
+    'AddUniqueIndexedModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -457,9 +457,9 @@ add_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'AddForeignKeyModel': '\n'.join([
+    'AddForeignKeyModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -489,12 +489,12 @@ add_field = {
         'CREATE INDEX "%s" ON "tests_testmodel" ("added_field_id");'
         % generate_index_name('tests_testmodel', 'added_field_id',
                               'added_field'),
-    ]),
+    ],
 }
 
 if django.VERSION[:2] >= (2, 0):
     add_field.update({
-        'AddManyToManyDatabaseTableModel': '\n'.join([
+        'AddManyToManyDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" integer NOT NULL PRIMARY KEY%s,'
             ' "testmodel_id" integer NOT NULL'
@@ -521,9 +521,9 @@ if django.VERSION[:2] >= (2, 0):
             ' "tests_testmodel_added_field" ("addanchor1_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'addanchor1_id'),
-        ]),
+        ],
 
-        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+        'AddManyToManyNonDefaultDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" integer NOT NULL PRIMARY KEY%s,'
             ' "testmodel_id" integer NOT NULL'
@@ -550,9 +550,9 @@ if django.VERSION[:2] >= (2, 0):
             ' "tests_testmodel_added_field" ("addanchor2_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'addanchor2_id'),
-        ]),
+        ],
 
-        'AddManyToManySelf': '\n'.join([
+        'AddManyToManySelf': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" integer NOT NULL PRIMARY KEY%s,'
             ' "from_testmodel_id" integer NOT NULL'
@@ -579,11 +579,11 @@ if django.VERSION[:2] >= (2, 0):
             ' "tests_testmodel_added_field" ("to_testmodel_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'to_testmodel_id'),
-        ]),
+        ],
     })
 elif django.VERSION[:2] >= (1, 9):
     add_field.update({
-        'AddManyToManyDatabaseTableModel': '\n'.join([
+        'AddManyToManyDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" integer NOT NULL PRIMARY KEY%s,'
             ' "testmodel_id" integer NOT NULL'
@@ -608,9 +608,9 @@ elif django.VERSION[:2] >= (1, 9):
             ' "tests_testmodel_added_field" ("addanchor1_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'addanchor1_id'),
-        ]),
+        ],
 
-        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+        'AddManyToManyNonDefaultDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" integer NOT NULL PRIMARY KEY%s,'
             ' "testmodel_id" integer NOT NULL'
@@ -635,9 +635,9 @@ elif django.VERSION[:2] >= (1, 9):
             ' "tests_testmodel_added_field" ("addanchor2_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'addanchor2_id'),
-        ]),
+        ],
 
-        'AddManyToManySelf': '\n'.join([
+        'AddManyToManySelf': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" integer NOT NULL PRIMARY KEY%s,'
             ' "from_testmodel_id" integer NOT NULL'
@@ -662,11 +662,11 @@ elif django.VERSION[:2] >= (1, 9):
             ' "tests_testmodel_added_field" ("to_testmodel_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'to_testmodel_id'),
-        ]),
+        ],
     })
 elif django.VERSION[:2] >= (1, 7):
     add_field.update({
-        'AddManyToManyDatabaseTableModel': '\n'.join([
+        'AddManyToManyDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" integer NOT NULL PRIMARY KEY%s,'
             ' "testmodel_id" integer NOT NULL'
@@ -686,9 +686,9 @@ elif django.VERSION[:2] >= (1, 7):
             ' "tests_testmodel_added_field" ("addanchor1_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'addanchor1_id'),
-        ]),
+        ],
 
-        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+        'AddManyToManyNonDefaultDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" integer NOT NULL PRIMARY KEY%s,'
             ' "testmodel_id" integer NOT NULL'
@@ -708,9 +708,9 @@ elif django.VERSION[:2] >= (1, 7):
             ' "tests_testmodel_added_field" ("addanchor2_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'addanchor2_id'),
-        ]),
+        ],
 
-        'AddManyToManySelf': '\n'.join([
+        'AddManyToManySelf': [
             'CREATE TABLE "tests_testmodel_added_field" '
             '("id" integer NOT NULL PRIMARY KEY%s,'
             ' "from_testmodel_id" integer NOT NULL'
@@ -730,11 +730,11 @@ elif django.VERSION[:2] >= (1, 7):
             ' "tests_testmodel_added_field" ("to_testmodel_id");'
             % generate_index_name('tests_testmodel_added_field',
                                   'to_testmodel_id'),
-        ]),
+        ],
     })
 else:
     add_field.update({
-        'AddManyToManyDatabaseTableModel': '\n'.join([
+        'AddManyToManyDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" (',
             '    "id" integer NOT NULL PRIMARY KEY%s,'
             % get_field_suffix('AutoField'),
@@ -744,9 +744,9 @@ else:
             '    UNIQUE ("testmodel_id", "addanchor1_id")',
             ')',
             ';',
-        ]),
+        ],
 
-        'AddManyToManyNonDefaultDatabaseTableModel': '\n'.join([
+        'AddManyToManyNonDefaultDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" (',
             '    "id" integer NOT NULL PRIMARY KEY%s,'
             % get_field_suffix('AutoField'),
@@ -756,9 +756,9 @@ else:
             '    UNIQUE ("testmodel_id", "addanchor2_id")',
             ')',
             ';',
-        ]),
+        ],
 
-        'AddManyToManySelf': '\n'.join([
+        'AddManyToManySelf': [
             'CREATE TABLE "tests_testmodel_added_field" (',
             '    "id" integer NOT NULL PRIMARY KEY%s,'
             % get_field_suffix('AutoField'),
@@ -768,11 +768,11 @@ else:
             '    UNIQUE ("from_testmodel_id", "to_testmodel_id")',
             ')',
             ';',
-        ]),
+        ],
     })
 
 delete_field = {
-    'DefaultNamedColumnModel': '\n'.join([
+    'DefaultNamedColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -809,9 +809,9 @@ delete_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'NonDefaultNamedColumnModel': '\n'.join([
+    'NonDefaultNamedColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -846,9 +846,9 @@ delete_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'ConstrainedColumnModel': '\n'.join([
+    'ConstrainedColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -885,17 +885,17 @@ delete_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'DefaultManyToManyModel': (
-        'DROP TABLE "tests_testmodel_m2m_field1";'
-    ),
+    'DefaultManyToManyModel': [
+        'DROP TABLE "tests_testmodel_m2m_field1";',
+    ],
 
-    'NonDefaultManyToManyModel': (
-        'DROP TABLE "non-default_m2m_table";'
-    ),
+    'NonDefaultManyToManyModel': [
+        'DROP TABLE "non-default_m2m_table";',
+    ],
 
-    'DeleteForeignKeyModel': '\n'.join([
+    'DeleteForeignKeyModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -927,9 +927,9 @@ delete_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'DeleteColumnCustomTableModel': '\n'.join([
+    'DeleteColumnCustomTableModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "alt_value" varchar(20) NULL);',
@@ -949,11 +949,11 @@ delete_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 }
 
 change_field = {
-    'SetNotNullChangeModelWithConstant': '\n'.join([
+    'SetNotNullChangeModelWithConstant': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NULL,'
@@ -1001,9 +1001,9 @@ change_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    "SetNotNullChangeModelWithCallable": '\n'.join([
+    'SetNotNullChangeModelWithCallable': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NULL,'
@@ -1051,9 +1051,9 @@ change_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'SetNullChangeModel': '\n'.join([
+    'SetNullChangeModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NULL,'
@@ -1099,11 +1099,11 @@ change_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    "NoOpChangeModel": '',
+    'NoOpChangeModel': [],
 
-    'IncreasingMaxLengthChangeModel': '\n'.join([
+    'IncreasingMaxLengthChangeModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NULL,'
@@ -1149,9 +1149,9 @@ change_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'DecreasingMaxLengthChangeModel': '\n'.join([
+    'DecreasingMaxLengthChangeModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NULL,'
@@ -1197,9 +1197,9 @@ change_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'DBColumnChangeModel': '\n'.join([
+    'DBColumnChangeModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NULL,'
@@ -1248,28 +1248,28 @@ change_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    "M2MDBTableChangeModel": (
+    'M2MDBTableChangeModel': [
         'ALTER TABLE "change_field_non-default_m2m_table"'
-        ' RENAME TO "custom_m2m_db_table_name";'
-    ),
+        ' RENAME TO "custom_m2m_db_table_name";',
+    ],
 
-    "AddDBIndexChangeModel": (
+    'AddDBIndexChangeModel': [
         'CREATE INDEX "%s" ON "tests_testmodel" ("int_field2");'
-        % generate_index_name('tests_testmodel', 'int_field2')
-    ),
+        % generate_index_name('tests_testmodel', 'int_field2'),
+    ],
 
-    'AddDBIndexNoOpChangeModel': '',
+    'AddDBIndexNoOpChangeModel': [],
 
-    "RemoveDBIndexChangeModel": (
+    'RemoveDBIndexChangeModel': [
         'DROP INDEX "%s";'
         % generate_index_name('tests_testmodel', 'int_field1')
-    ),
+    ],
 
-    'RemoveDBIndexNoOpChangeModel': '',
+    'RemoveDBIndexNoOpChangeModel': [],
 
-    'AddUniqueChangeModel': '\n'.join([
+    'AddUniqueChangeModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NULL,'
@@ -1315,9 +1315,9 @@ change_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'RemoveUniqueChangeModel': '\n'.join([
+    'RemoveUniqueChangeModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NULL,'
@@ -1363,9 +1363,9 @@ change_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'MultiAttrChangeModel': '\n'.join([
+    'MultiAttrChangeModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NULL,'
@@ -1506,9 +1506,9 @@ change_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'MultiAttrSingleFieldChangeModel': '\n'.join([
+    'MultiAttrSingleFieldChangeModel': [
         # Change char_field2.max_length to 35.
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
@@ -1602,9 +1602,9 @@ change_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'RedundantAttrsChangeModel': '\n'.join([
+    'RedundantAttrsChangeModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NULL,'
@@ -1745,58 +1745,65 @@ change_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 }
 
 delete_model = {
-    'BasicModel': (
-        'DROP TABLE "tests_basicmodel";'
-    ),
+    'BasicModel': [
+        'DROP TABLE "tests_basicmodel";',
+    ],
 
-    'BasicWithM2MModel': '\n'.join([
+    'BasicWithM2MModel': [
         'DROP TABLE "tests_basicwithm2mmodel_m2m";',
-        'DROP TABLE "tests_basicwithm2mmodel";'
-    ]),
 
-    'CustomTableModel': (
-        'DROP TABLE "custom_table_name";'
-    ),
+        'DROP TABLE "tests_basicwithm2mmodel";',
+    ],
 
-    'CustomTableWithM2MModel': '\n'.join([
+    'CustomTableModel': [
+        'DROP TABLE "custom_table_name";',
+    ],
+
+    'CustomTableWithM2MModel': [
         'DROP TABLE "another_custom_table_name_m2m";',
-        'DROP TABLE "another_custom_table_name";'
-    ]),
+
+        'DROP TABLE "another_custom_table_name";',
+    ],
 }
 
 rename_model = {
-    'RenameModel': (
-        'ALTER TABLE "tests_testmodel" RENAME TO "tests_destmodel";'
-    ),
-    'RenameModelSameTable': '',
-    'RenameModelForeignKeys': (
-        'ALTER TABLE "tests_testmodel" RENAME TO "tests_destmodel";'
-    ),
-    'RenameModelForeignKeysSameTable': '',
-    'RenameModelManyToManyField': (
-        'ALTER TABLE "tests_testmodel" RENAME TO "tests_destmodel";'
-    ),
-    'RenameModelManyToManyFieldSameTable': '',
+    'RenameModel': [
+        'ALTER TABLE "tests_testmodel" RENAME TO "tests_destmodel";',
+    ],
+
+    'RenameModelSameTable': [],
+
+    'RenameModelForeignKeys': [
+        'ALTER TABLE "tests_testmodel" RENAME TO "tests_destmodel";',
+    ],
+
+    'RenameModelForeignKeysSameTable': [],
+
+    'RenameModelManyToManyField': [
+        'ALTER TABLE "tests_testmodel" RENAME TO "tests_destmodel";',
+    ],
+
+    'RenameModelManyToManyFieldSameTable': [],
 }
 
 delete_application = {
-    'DeleteApplication': '\n'.join([
+    'DeleteApplication': [
         'DROP TABLE "tests_testmodel_anchor_m2m";',
         'DROP TABLE "tests_testmodel";',
         'DROP TABLE "tests_appdeleteanchor1";',
         'DROP TABLE "app_delete_custom_add_anchor_table";',
         'DROP TABLE "app_delete_custom_table_name";',
-    ]),
+    ],
 
-    'DeleteApplicationWithoutDatabase': "",
+    'DeleteApplicationWithoutDatabase': [],
 }
 
 rename_field = {
-    'RenameColumnModel': '\n'.join([
+    'RenameColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -1839,9 +1846,9 @@ rename_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'RenameColumnWithTableNameModel': '\n'.join([
+    'RenameColumnWithTableNameModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -1884,9 +1891,9 @@ rename_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'RenamePrimaryKeyColumnModel': '\n'.join([
+    'RenamePrimaryKeyColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_pk_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -1929,9 +1936,9 @@ rename_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'RenameForeignKeyColumnModel': '\n'.join([
+    'RenameForeignKeyColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("int_field" integer NULL,'
         ' "char_field" varchar(20) NULL,'
@@ -1972,9 +1979,9 @@ rename_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'RenameNonDefaultColumnNameModel': '\n'.join([
+    'RenameNonDefaultColumnNameModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -2017,9 +2024,9 @@ rename_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'RenameNonDefaultColumnNameToNonDefaultNameModel': '\n'.join([
+    'RenameNonDefaultColumnNameToNonDefaultNameModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -2062,9 +2069,9 @@ rename_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'RenameNonDefaultColumnNameToNonDefaultNameAndTableModel': '\n'.join([
+    'RenameNonDefaultColumnNameToNonDefaultNameAndTableModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -2107,9 +2114,9 @@ rename_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'RenameColumnCustomTableModel': '\n'.join([
+    'RenameColumnCustomTableModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "renamed_field" integer NULL,'
@@ -2132,39 +2139,39 @@ rename_field = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'RenameManyToManyTableModel': (
+    'RenameManyToManyTableModel': [
         'ALTER TABLE "tests_testmodel_m2m_field"'
-        ' RENAME TO "tests_testmodel_renamed_field";'
-    ),
+        ' RENAME TO "tests_testmodel_renamed_field";',
+    ],
 
-    'RenameManyToManyTableWithColumnNameModel': (
+    'RenameManyToManyTableWithColumnNameModel': [
         'ALTER TABLE "tests_testmodel_m2m_field"'
-        ' RENAME TO "tests_testmodel_renamed_field";'
-    ),
+        ' RENAME TO "tests_testmodel_renamed_field";',
+    ],
 
-    'RenameNonDefaultManyToManyTableModel': (
+    'RenameNonDefaultManyToManyTableModel': [
         'ALTER TABLE "non-default_db_table"'
-        ' RENAME TO "tests_testmodel_renamed_field";'
-    ),
+        ' RENAME TO "tests_testmodel_renamed_field";',
+    ],
 }
 
 sql_mutation = {
-    'AddFirstTwoFields': '\n'.join([
+    'AddFirstTwoFields': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field1" integer NULL;',
 
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field2" integer NULL;',
-    ]),
+    ],
 
-    'AddThirdField': (
+    'AddThirdField': [
         'ALTER TABLE "tests_testmodel"'
-        ' ADD COLUMN "added_field3" integer NULL;'
-    ),
+        ' ADD COLUMN "added_field3" integer NULL;',
+    ],
 
-    'SQLMutationOutput': '\n'.join([
+    'SQLMutationOutput': [
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field1" integer NULL;',
 
@@ -2173,11 +2180,11 @@ sql_mutation = {
 
         'ALTER TABLE "tests_testmodel"'
         ' ADD COLUMN "added_field3" integer NULL;',
-    ]),
+    ],
 }
 
 generics = {
-    'DeleteColumnModel': '\n'.join([
+    'DeleteColumnModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "int_field" integer NULL,'
@@ -2211,11 +2218,11 @@ generics = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ])
+    ],
 }
 
 inheritance = {
-    'AddToChildModel': '\n'.join([
+    'AddToChildModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("int_field" integer NULL,'
         ' "id" integer NULL UNIQUE PRIMARY KEY,'
@@ -2242,9 +2249,9 @@ inheritance = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'DeleteFromChildModel': '\n'.join([
+    'DeleteFromChildModel': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL);',
@@ -2264,18 +2271,18 @@ inheritance = {
         ' FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";'
-    ])
+    ],
 }
 
 unique_together = {
-    'setting_from_empty': '\n'.join([
+    'setting_from_empty': [
         'CREATE UNIQUE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field1", "char_field1");'
         % generate_unique_constraint_name('tests_testmodel',
                                           ['int_field1', 'char_field1']),
-    ]),
+    ],
 
-    'replace_list': '\n'.join([
+    'replace_list': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "int_field1" integer NULL,'
@@ -2308,16 +2315,16 @@ unique_together = {
         ' ON "tests_testmodel" ("int_field2", "char_field2");'
         % generate_unique_constraint_name('tests_testmodel',
                                           ['int_field2', 'char_field2']),
-    ]),
+    ],
 
-    'append_list': '\n'.join([
+    'append_list': [
         'CREATE UNIQUE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field2", "char_field2");'
         % generate_unique_constraint_name('tests_testmodel',
                                           ['int_field2', 'char_field2']),
-    ]),
+    ],
 
-    'removing': '\n'.join([
+    'removing': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "int_field1" integer NULL,'
@@ -2345,40 +2352,40 @@ unique_together = {
         ' "char_field2" FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'set_remove': '\n'.join([
+    'set_remove': [
         'CREATE UNIQUE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field1", "char_field1");'
         % generate_unique_constraint_name('tests_testmodel',
                                           ['int_field1', 'char_field1']),
-    ]),
+    ],
 
-    'ignore_missing_indexes': (
+    'ignore_missing_indexes': [
         'CREATE UNIQUE INDEX "%s"'
         ' ON "tests_testmodel" ("char_field1", "char_field2");'
         % generate_unique_constraint_name('tests_testmodel',
-                                          ['char_field1', 'char_field2'])
-    ),
+                                          ['char_field1', 'char_field2']),
+    ],
 
-    'upgrade_from_v1_sig': (
+    'upgrade_from_v1_sig': [
         'CREATE UNIQUE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field1", "char_field1");'
         % generate_unique_constraint_name('tests_testmodel',
-                                          ['int_field1', 'char_field1'])
-    ),
+                                          ['int_field1', 'char_field1']),
+    ],
 }
 
 index_together = {
-    'setting_from_empty': '\n'.join([
+    'setting_from_empty': [
         'CREATE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field1", "char_field1");'
         % generate_index_name('tests_testmodel',
                               ['int_field1', 'char_field1'],
                               index_together=True),
-    ]),
+    ],
 
-    'replace_list': '\n'.join([
+    'replace_list': [
         'DROP INDEX "%s";'
         % generate_index_name('tests_testmodel',
                               ['int_field1', 'char_field1'],
@@ -2389,34 +2396,34 @@ index_together = {
         % generate_index_name('tests_testmodel',
                               ['int_field2', 'char_field2'],
                               index_together=True),
-    ]),
+    ],
 
-    'append_list': '\n'.join([
+    'append_list': [
         'CREATE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field2", "char_field2");'
         % generate_index_name('tests_testmodel',
                               ['int_field2', 'char_field2'],
                               index_together=True),
-    ]),
+    ],
 
-    'removing': '\n'.join([
+    'removing': [
         'DROP INDEX "%s";'
         % generate_index_name('tests_testmodel',
                               ['int_field1', 'char_field1'],
                               index_together=True),
-    ]),
+    ],
 
-    'ignore_missing_indexes': (
+    'ignore_missing_indexes': [
         'CREATE INDEX "%s"'
         ' ON "tests_testmodel" ("char_field1", "char_field2");'
         % generate_index_name('tests_testmodel',
                               ['char_field1', 'char_field2'],
-                              index_together=True)
-    ),
+                              index_together=True),
+    ],
 }
 
 indexes = {
-    'replace_list': '\n'.join([
+    'replace_list': [
         'DROP INDEX "%s";'
         % generate_index_name('tests_testmodel', ['int_field1'],
                               model_meta_indexes=True),
@@ -2427,34 +2434,34 @@ indexes = {
         ' ON "tests_testmodel" ("int_field2");'
         % generate_index_name('tests_testmodel', ['int_field2'],
                               model_meta_indexes=True),
-    ]),
+    ],
 
-    'append_list': '\n'.join([
+    'append_list': [
         'CREATE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field2");'
         % generate_index_name('tests_testmodel', ['int_field2'],
                               model_meta_indexes=True),
-    ]),
+    ],
 
-    'removing': '\n'.join([
+    'removing': [
         'DROP INDEX "%s";'
         % generate_index_name('tests_testmodel', ['int_field1'],
                               model_meta_indexes=True),
 
         'DROP INDEX "my_custom_index";',
-    ]),
+    ],
 
-    'ignore_missing_indexes': (
+    'ignore_missing_indexes': [
         'CREATE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field2");'
         % generate_index_name('tests_testmodel', ['int_field2'],
-                              model_meta_indexes=True)
-    ),
+                              model_meta_indexes=True),
+    ],
 }
 
 if django.VERSION[:2] >= (2, 0):
     indexes.update({
-        'setting_from_empty': '\n'.join([
+        'setting_from_empty': [
             'CREATE INDEX "%s"'
             ' ON "tests_testmodel" ("int_field1");'
             % generate_index_name('tests_testmodel',
@@ -2463,11 +2470,11 @@ if django.VERSION[:2] >= (2, 0):
 
             'CREATE INDEX "my_custom_index"'
             ' ON "tests_testmodel" ("char_field1", "char_field2"DESC);',
-        ]),
+        ],
     })
 else:
     indexes.update({
-        'setting_from_empty': '\n'.join([
+        'setting_from_empty': [
             'CREATE INDEX "%s"'
             ' ON "tests_testmodel" ("int_field1");'
             % generate_index_name('tests_testmodel',
@@ -2476,12 +2483,12 @@ else:
 
             'CREATE INDEX "my_custom_index"'
             ' ON "tests_testmodel" ("char_field1", "char_field2" DESC);',
-        ]),
+        ],
     })
 
 
 preprocessing = {
-    'add_change_field': '\n'.join([
+    'add_change_field': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -2504,9 +2511,9 @@ preprocessing = {
         ' SELECT "my_id", "char_field", "added_field" FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'add_change_rename_field': '\n'.join([
+    'add_change_rename_field': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -2529,9 +2536,9 @@ preprocessing = {
         ' SELECT "my_id", "char_field", "renamed_field" FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'add_delete_add_field': '\n'.join([
+    'add_delete_add_field': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -2554,9 +2561,9 @@ preprocessing = {
         ' SELECT "my_id", "char_field", "added_field" FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'add_delete_add_rename_field': '\n'.join([
+    'add_delete_add_rename_field': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -2579,9 +2586,9 @@ preprocessing = {
         ' SELECT "my_id", "char_field", "renamed_field" FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'add_rename_change_field': '\n'.join([
+    'add_rename_change_field': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -2604,9 +2611,9 @@ preprocessing = {
         ' SELECT "my_id", "char_field", "renamed_field" FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'add_rename_change_rename_change_field': '\n'.join([
+    'add_rename_change_rename_change_field': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL, "renamed_field" varchar(50) NULL);',
@@ -2628,9 +2635,9 @@ preprocessing = {
         ' SELECT "my_id", "char_field", "renamed_field" FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'add_rename_field_with_db_column': '\n'.join([
+    'add_rename_field_with_db_column': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -2651,9 +2658,9 @@ preprocessing = {
         ' SELECT "my_id", "char_field", "added_field" FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'add_field_rename_model': '\n'.join([
+    'add_field_rename_model': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -2679,9 +2686,9 @@ preprocessing = {
         'CREATE INDEX "%s" ON "tests_testmodel" ("added_field_id");'
         % generate_index_name('tests_testmodel', 'added_field_id',
                               'added_field'),
-    ]),
+    ],
 
-    'add_rename_field_rename_model': '\n'.join([
+    'add_rename_field_rename_model': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -2707,9 +2714,9 @@ preprocessing = {
         'CREATE INDEX "%s" ON "tests_testmodel" ("renamed_field_id");'
         % generate_index_name('tests_testmodel', 'renamed_field_id',
                               'renamed_field'),
-    ]),
+    ],
 
-    'add_sql_delete': '\n'.join([
+    'add_sql_delete': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL,'
@@ -2752,9 +2759,9 @@ preprocessing = {
         ' SELECT "my_id", "char_field" FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'change_rename_field': '\n'.join([
+    'change_rename_field': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL);',
@@ -2790,9 +2797,9 @@ preprocessing = {
         ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'change_rename_change_rename_field': '\n'.join([
+    'change_rename_change_rename_field': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(30) NULL);',
@@ -2846,9 +2853,9 @@ preprocessing = {
         ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'delete_char_field': '\n'.join([
+    'delete_char_field': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY);',
 
@@ -2864,9 +2871,9 @@ preprocessing = {
         ' SELECT "my_id" FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'rename_add_field': '\n'.join([
+    'rename_add_field': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "renamed_field" varchar(20) NULL);',
@@ -2905,9 +2912,9 @@ preprocessing = {
         ' SELECT "my_id", "renamed_field", "char_field" FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'rename_change_rename_change_field': '\n'.join([
+    'rename_change_rename_change_field': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "renamed_field" varchar(20) NULL);',
@@ -2961,9 +2968,9 @@ preprocessing = {
         ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'rename_rename_field': '\n'.join([
+    'rename_rename_field': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "renamed_field" varchar(20) NULL);',
@@ -2981,18 +2988,18 @@ preprocessing = {
         ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'rename_delete_model': (
-        'DROP TABLE "tests_testmodel";'
-    ),
+    'rename_delete_model': [
+        'DROP TABLE "tests_testmodel";',
+    ],
 
-    'noop': '',
+    'noop': [],
 }
 
 
 evolver = {
-    'evolve_app_task': '\n'.join([
+    'evolve_app_task': [
         'CREATE TEMPORARY TABLE "TEMP_TABLE"'
         '("id" integer NULL UNIQUE PRIMARY KEY,'
         ' "value" varchar(100) NULL);',
@@ -3010,28 +3017,29 @@ evolver = {
         ' SELECT "id", "value" FROM "TEMP_TABLE";',
 
         'DROP TABLE "TEMP_TABLE";',
-    ]),
+    ],
 
-    'purge_app_task': (
-        'DROP TABLE "tests_testmodel";'
-    ),
+    'purge_app_task': [
+        'DROP TABLE "tests_testmodel";',
+    ],
 }
 
 if django.VERSION[:2] >= (1, 7):
     evolver.update({
-        'create_table': (
+        'create_table': [
             'CREATE TABLE "tests_testmodel" '
             '("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,'
-            ' "value" varchar(100) NOT NULL);'
-        ),
+            ' "value" varchar(100) NOT NULL);',
+        ],
     })
 else:
     evolver.update({
-        'create_table': '\n'.join([
+        'create_table': [
             'CREATE TABLE "tests_testmodel" (',
             '    "id" integer NOT NULL PRIMARY KEY,',
             '    "value" varchar(100) NOT NULL',
             ')',
+
             ';',
-        ]),
+        ],
     })

@@ -87,11 +87,11 @@ class OrderingTests(EvolutionTestCase):
             [
                 SQLMutation(
                     'first-two-fields',
-                    self.get_sql_mapping('AddFirstTwoFields').split('\n'),
+                    self.get_sql_mapping('AddFirstTwoFields'),
                     update_first_two),
                 SQLMutation(
                     'third-field',
-                    self.get_sql_mapping('AddThirdField').split('\n'),
+                    self.get_sql_mapping('AddThirdField'),
                     update_third),
             ],
             ("In model tests.TestModel:\n"
