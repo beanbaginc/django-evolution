@@ -13,6 +13,7 @@ from django_evolution.compat.db import (create_index_name,
                                         sql_add_constraints,
                                         sql_create_for_many_to_many_field,
                                         sql_delete_constraints,
+                                        sql_delete_index,
                                         sql_indexes_for_field,
                                         sql_indexes_for_fields,
                                         truncate_name)
@@ -104,7 +105,6 @@ class BaseEvolutionOperations(object):
         if op_type == 'add_column':
             field = op['field']
             sql_result.add(self.add_column(model, field, op['initial']))
-            sql_result.add(self.create_index(model, field))
         elif op_type == 'change_column':
             sql_result.add(self.change_column_attrs(model, mutation,
                                                     op['field'].name,
@@ -350,6 +350,8 @@ class BaseEvolutionOperations(object):
                 columns=[f.column],
                 unique=True)
 
+        sql_result.add(self.create_index(model, f))
+
         return sql_result
 
     def set_field_null(self, model, field, null):
@@ -455,22 +457,9 @@ class BaseEvolutionOperations(object):
         This can be overridden by subclasses if they use a syntax
         other than "DROP INDEX <name>;"
         """
-        qn = self.connection.ops.quote_name
-
-        if hasattr(self.connection, 'SchemaEditorClass'):
-            # Django >= 1.7
-            delete_index_sql = (
-                self.connection.SchemaEditorClass.sql_delete_index
-                % {
-                    'name': qn(index_name),
-                    'table': qn(model._meta.db_table),
-                }
-            )
-        else:
-            # Django < 1.7
-            delete_index_sql = 'DROP INDEX %s' % qn(index_name)
-
-        return SQLResult(['%s;' % delete_index_sql])
+        return SQLResult(sql_delete_index(connection=self.connection,
+                                          model=model,
+                                          index_name=index_name))
 
     def get_new_index_name(self, model, fields, unique=False):
         """Return a newly generated index name.

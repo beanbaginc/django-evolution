@@ -406,6 +406,41 @@ def sql_indexes_for_model(connection, model):
                                                          color.no_style())
 
 
+def sql_delete_index(connection, model, index_name):
+    """Return SQL statements for deleting an index.
+
+    This provides compatibility with all supported versions of Django.
+
+    Args:
+        connection (object):
+            The database connection.
+
+        model (django.db.models.Model):
+            The database model to delete an index on.
+
+        index_name (unicode):
+            The name of the index to delete.
+
+    Returns:
+        list:
+        The list of SQL statements for deleting the index.
+    """
+    if BaseDatabaseSchemaEditor:
+        # Django >= 1.7
+        with connection.schema_editor() as schema_editor:
+            return [
+                '%s;' % schema_editor._delete_constraint_sql(
+                    template=schema_editor.sql_delete_index,
+                    model=model,
+                    name=index_name),
+            ]
+    else:
+        # Django < 1.7
+        qn = connection.ops.quote_name
+
+        return ['DROP INDEX %s;' % qn(index_name)]
+
+
 def sql_delete_constraints(connection, model, remove_refs):
     """Return SQL statements for deleting constraints.
 
@@ -815,11 +850,12 @@ __all__ = [
     'db_router_allows_syncdb',
     'digest',
     'sql_add_constraints',
-    'sql_delete_constraints',
     'sql_create_app',
     'sql_create_models',
     'sql_create_for_many_to_many_field',
     'sql_delete',
+    'sql_delete_constraints',
+    'sql_delete_index',
     'sql_indexes_for_field',
     'sql_indexes_for_fields',
     'sql_indexes_for_model',

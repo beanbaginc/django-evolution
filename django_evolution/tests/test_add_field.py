@@ -509,7 +509,8 @@ class AddFieldTests(EvolutionTestCase):
 
         self.assertIsNotNone(self.test_database_state.find_index(
             table_name='tests_testmodel',
-            columns=['added_field']))
+            columns=['added_field'],
+            unique=True))
 
     def test_add_unique_indexed_column(self):
         """Testing AddField with unique indexed column"""

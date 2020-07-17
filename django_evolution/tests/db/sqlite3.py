@@ -745,6 +745,9 @@ change_field = {
         'DROP TABLE "tests_testmodel";',
 
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel', 'int_field1'),
     ],
 
     'SetNotNullChangeModelWithCallable': [
@@ -774,6 +777,9 @@ change_field = {
         'DROP TABLE "tests_testmodel";',
 
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel', 'int_field1'),
     ],
 
     'SetNullChangeModel': [
@@ -801,6 +807,9 @@ change_field = {
         'DROP TABLE "tests_testmodel";',
 
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel', 'int_field1'),
     ],
 
     'NoOpChangeModel': [],
@@ -830,6 +839,9 @@ change_field = {
         'DROP TABLE "tests_testmodel";',
 
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel', 'int_field1'),
     ],
 
     'DecreasingMaxLengthChangeModel': [
@@ -857,6 +869,9 @@ change_field = {
         'DROP TABLE "tests_testmodel";',
 
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel', 'int_field1'),
     ],
 
     'DBColumnChangeModel': [
@@ -933,6 +948,9 @@ change_field = {
         'DROP TABLE "tests_testmodel";',
 
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel', 'int_field1'),
     ],
 
     'RemoveUniqueChangeModel': [
@@ -960,6 +978,9 @@ change_field = {
         'DROP TABLE "tests_testmodel";',
 
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel', 'int_field1'),
     ],
 
     'MultiAttrChangeModel': [
@@ -987,6 +1008,9 @@ change_field = {
         'DROP TABLE "tests_testmodel";',
 
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel', 'int_field1'),
 
         'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
@@ -1040,6 +1064,9 @@ change_field = {
         'DROP TABLE "tests_testmodel";',
 
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel', 'int_field1'),
     ],
 
     'MultiAttrSingleFieldChangeModel': [
@@ -1069,6 +1096,9 @@ change_field = {
 
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
+        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel', 'int_field1'),
+
         # Change char_field2.null to True.
         'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
@@ -1094,6 +1124,9 @@ change_field = {
         'DROP TABLE "tests_testmodel";',
 
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel', 'int_field1'),
     ],
 
     'RedundantAttrsChangeModel': [
@@ -1121,6 +1154,9 @@ change_field = {
         'DROP TABLE "tests_testmodel";',
 
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel', 'int_field1'),
 
         'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
@@ -1174,6 +1210,9 @@ change_field = {
         'DROP TABLE "tests_testmodel";',
 
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel', 'int_field1'),
     ],
 }
 
@@ -1575,52 +1614,11 @@ unique_together = {
                                           ['int_field1', 'char_field1']),
     ],
 
-    'replace_list': [
-        'CREATE TABLE "TEMP_TABLE" '
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "int_field1" integer NOT NULL,'
-        ' "int_field2" integer NOT NULL,'
-        ' "char_field1" varchar(20) NOT NULL,'
-        ' "char_field2" varchar(40) NOT NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("id", "int_field1", "int_field2", "char_field1", "char_field2")'
-        ' SELECT "id", "int_field1", "int_field2", "char_field1",'
-        ' "char_field2" FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        'CREATE UNIQUE INDEX "%s"'
-        ' ON "tests_testmodel" ("int_field2", "char_field2");'
-        % generate_unique_constraint_name('tests_testmodel',
-                                          ['int_field2', 'char_field2']),
-    ],
-
     'append_list': [
         'CREATE UNIQUE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field2", "char_field2");'
         % generate_unique_constraint_name('tests_testmodel',
                                           ['int_field2', 'char_field2']),
-    ],
-
-    'removing': [
-        'CREATE TABLE "TEMP_TABLE" '
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "int_field1" integer NOT NULL,'
-        ' "int_field2" integer NOT NULL,'
-        ' "char_field1" varchar(20) NOT NULL,'
-        ' "char_field2" varchar(40) NOT NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("id", "int_field1", "int_field2", "char_field1", "char_field2")'
-        ' SELECT "id", "int_field1", "int_field2", "char_field1",'
-        ' "char_field2" FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'set_remove': [
@@ -1644,6 +1642,71 @@ unique_together = {
                                           ['int_field1', 'char_field1']),
     ],
 }
+
+if django.VERSION[:2] >= (1, 9):
+    # Django >= 1.9
+    unique_together.update({
+        'replace_list': [
+            'DROP INDEX "%s";'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field1', 'char_field1']),
+
+            'CREATE UNIQUE INDEX "%s"'
+            ' ON "tests_testmodel" ("int_field2", "char_field2");'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field2', 'char_field2']),
+        ],
+
+        'removing': [
+            'DROP INDEX "%s";'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field1', 'char_field1']),
+        ],
+    })
+else:
+    # Django < 1.9
+    unique_together.update({
+        'replace_list': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "char_field1" varchar(20) NOT NULL,'
+            ' "char_field2" varchar(40) NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("id", "int_field1", "int_field2", "char_field1", "char_field2")'
+            ' SELECT "id", "int_field1", "int_field2", "char_field1",'
+            ' "char_field2" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE UNIQUE INDEX "%s"'
+            ' ON "tests_testmodel" ("int_field2", "char_field2");'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field2', 'char_field2']),
+        ],
+
+        'removing': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "char_field1" varchar(20) NOT NULL,'
+            ' "char_field2" varchar(40) NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("id", "int_field1", "int_field2", "char_field1", "char_field2")'
+            ' SELECT "id", "int_field1", "int_field2", "char_field1",'
+            ' "char_field2" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+        ],
+    })
 
 index_together = {
     'setting_from_empty': [
