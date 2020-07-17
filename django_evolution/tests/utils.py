@@ -264,7 +264,7 @@ def create_test_project_sig(models, app_label='tests', version=1):
             The signature version to use for the project signature.
 
     Returns:
-        dict:
+        django_evolution.signature.ProjectSignature:
         The new project signature.
     """
     app_sig = AppSignature(app_id=app_label)
@@ -350,8 +350,8 @@ def ensure_test_db(model_entries=[], app_label='tests',
                             database)
 
 
-def execute_test_sql(start_sig, end_sig, generate_sql_func, app_label='tests',
-                     database=DEFAULT_DB_ALIAS):
+def execute_test_sql(start_models, end_models, generate_sql_func,
+                     app_label='tests', database=DEFAULT_DB_ALIAS):
     """Execute SQL for a unit test.
 
     This will register all necessary models and indexes, as defined by the
@@ -364,12 +364,12 @@ def execute_test_sql(start_sig, end_sig, generate_sql_func, app_label='tests',
     to aid in debugging when tests fail.
 
     Args:
-        start_sig (dict):
-            The signature for the initial database state, used to generate
+        start_models (dict):
+            The models for the initial database state, used to generate
             tables and indexes in the database.
 
-        end_sig (dict):
-            The signature for the ending database state, reflecting what the
+        end_models (dict):
+            The models for the ending database state, reflecting what the
             evolutions will be attempting to evolve to.
 
         generate_sql_func (callable):
@@ -386,12 +386,12 @@ def execute_test_sql(start_sig, end_sig, generate_sql_func, app_label='tests',
         list of unicode:
         The list of executed SQL statements for the test.
     """
-    with ensure_test_db(model_entries=six.iteritems(start_sig),
+    with ensure_test_db(model_entries=six.iteritems(start_models),
                         app_label=app_label,
                         database=database):
         # Set the app cache to the end state. generate_sql will depend on
         # this state.
-        register_app_models(app_label, six.iteritems(end_sig), reset=True)
+        register_app_models(app_label, six.iteritems(end_models), reset=True)
 
         # Execute and output the SQL for the test.
         sql = generate_sql_func()

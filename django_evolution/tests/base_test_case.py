@@ -82,7 +82,7 @@ class EvolutionTestCase(TestCase):
         self._models_registered = False
 
         if self.default_base_model:
-            self.set_base_model(self.default_base_model,
+            self.set_base_model(base_model=self.default_base_model,
                                 pre_extra_models=self.default_pre_extra_models,
                                 extra_models=self.default_extra_models)
 
@@ -90,66 +90,252 @@ class EvolutionTestCase(TestCase):
         if self._models_registered:
             unregister_app('tests')
 
-    def set_base_model(self, model, name=None, extra_models=[],
+    def set_base_model(self, base_model, name=None, extra_models=[],
                        pre_extra_models=[], db_name=None):
+        """Set the base model(s) that will be mutated in a test.
+
+        These models will be registered in Django's model registry and
+        queued up to be written to the database. Starting signatures based
+        on these models will be provided, which the test is expected to
+        mutate.
+
+        Args:
+            base_model (type):
+                The base :py:class:`~django.db.models.Model` to register and
+                write to the database that the test will then mutate.
+
+            name (unicode, optional):
+                The name to register for the model. This defaults to
+                :py:attr:`default_model_name`.
+
+            extra_models (list of type, optional):
+                The list of extra models to register and write to the
+                database after writing ``base_model``. These may form
+                relations to ``base_model``.
+
+            pre_extra_models (list of type, optional):
+                The list of extra models to write to the database before
+                writing ``base_model``. ``base_model`` may form relations to
+                these models.
+
+            db_name (unicode, optional):
+                The name of the database to write the models to. This
+                defaults to :py:attr:`default_database_name`.
+        """
         name = name or self.default_model_name
         db_name = db_name or self.default_database_name
 
         if self.base_model:
             unregister_app('tests')
 
-        self.base_model = model
+        self.base_model = base_model
         self.pre_extra_models = pre_extra_models
         self.extra_models = extra_models
         self.database_state = DatabaseState(db_name)
 
-        self.start = self.register_model(model, name,
+        self.start = self.register_model(model=base_model,
+                                         name=name,
                                          register_indexes=True,
                                          db_name=db_name)
-        self.start_sig = self.create_test_proj_sig(model, name)
+        self.start_sig = self.create_test_proj_sig(model=base_model,
+                                                   name=name)
 
-    def make_end_signatures(self, model, model_name, db_name=None):
+    def make_end_signatures(self, dest_model, model_name, db_name=None):
+        """Return signatures for a model representing the end of a mutation.
+
+        Callers should construct a model that reflects the expected result
+        of any mutations and provide that. This will register that model
+        and construct a signature from it.
+
+        Args:
+            dest_model (type):
+                The destination :py:class:`~django.db.models.Model`
+                representing the expected result of an evolution.
+
+            model_name (unicode):
+                The name to register for the model.
+
+            db_name (unicode, optional):
+                The name of the database to write the models to. This
+                defaults to :py:attr:`default_database_name`.
+
+        Returns:
+            tuple:
+            A tuple containing:
+
+            1. A :py:class:`collections.OrderedDict` mapping the model name
+               to the model class.
+            2. A :py:class:`django_evolution.signature.ProjectSignature`
+               for the provided model.
+        """
         db_name = db_name or self.default_database_name
 
-        end = self.register_model(model, name=model_name, db_name=db_name)
-        end_sig = self.create_test_proj_sig(model, name=model_name)
+        end = self.register_model(model=dest_model,
+                                  name=model_name,
+                                  db_name=db_name)
+        end_sig = self.create_test_proj_sig(model=dest_model,
+                                            name=model_name)
 
         return end, end_sig
 
-    def perform_evolution_tests(self, model, evolutions, diff_text=None,
-                                expected_hint=None, sql_name=None,
+    def perform_evolution_tests(self,
+                                dest_model,
+                                evolutions,
+                                diff_text=None,
+                                expected_hint=None,
+                                sql_name=None,
                                 model_name=None,
-                                end=None, end_sig=None,
+                                end=None,
+                                end_sig=None,
                                 expect_noop=False,
                                 rescan_indexes=True,
                                 use_hinted_evolutions=False,
                                 perform_simulations=True,
                                 perform_mutations=True,
                                 db_name=None):
+        """Perform test evolutions and validate results.
+
+        This is used for most common evolution-related tests. It handles
+        generating signatures for a base model and an expected post-evolution
+        model, ensuring that the mutations result in an empty diff.
+
+        It then optionally simulates the evolutions on the signatures
+        (using :py:meth:`perform_simulations)`, and then optionally performs
+        the actual evolutions on the database (using
+        :py:meth:`perform_mutations`), verifying all results.
+
+        Args:
+            dest_model (type):
+                The destination :py:class:`~django.db.models.Model`
+                representing the expected result of an evolution.
+
+            evolutions (list of django_evolution.mutations.BaseMutation):
+                The combined series of evolutions (list of mutations) to apply
+                to the base model.
+
+            diff_text (unicode, optional):
+                The expected generated text describing a diff that must
+                match, if provided.
+
+            expected_hint (unicode, optional):
+                The expected generated hint text that must match, if provided.
+
+            sql_name (unicode, optional):
+                The name of the registered SQL content for the database being
+                tested.
+
+                This must be provided if ``perform_mutations`` is ``True`.
+
+            model_name (unicode, optional):
+                The name of the model to register. This defaults to
+                :py:attr:`default_model_name`.
+
+            end (collections.OrderedDict, optional):
+                The expected model map at the end of the evolution. This
+                is generated by :py:meth:`make_end_signatures`.
+
+                If not provided, one will be generated.
+
+            end_sig (django_evolution.signature.ProjectSignature, optional):
+                The expected project signature at the end of the evolution.
+                This is generated by :py:meth:`make_end_signatures`.
+
+                If not provided, one will be generated.
+
+            expect_noop (bool, optional):
+                Whether the evolution is expected not to change anything.
+
+            rescan_indexes (bool, optional):
+                Whether to re-scan the list of table indexes after performing
+                mutations.
+
+                This is ignored if ``perform_mutations`` is ``False``.
+
+            use_hinted_evolutions (bool, optional):
+                Whether to use the hinted evolutions generated by the
+                signatures. This cannot be used if ``evolutions`` is
+                non-empty.
+
+            perform_simulations (bool, optional):
+                Whether to simulate the evolution and compare results.
+
+            perform_mutations (bool, optional):
+                Whether to apply the mutations and compare results.
+
+            db_name (unicode, optional):
+                The name of the database to apply evolutions to. This
+                defaults to :py:attr:`default_database_name`.
+
+        Raises:
+            AssertionError:
+                A diff, simulation, or mutation test has failed.
+        """
         model_name = model_name or self.default_model_name
         db_name = db_name or self.default_database_name
 
         if end is None or end_sig is None:
-            end, end_sig = self.make_end_signatures(model, model_name, db_name)
+            end, end_sig = self.make_end_signatures(dest_model=dest_model,
+                                                    model_name=model_name,
+                                                    db_name=db_name)
 
         # See if the diff between signatures contains the contents we expect.
-        d = self.perform_diff_test(end_sig, diff_text, expected_hint,
+        d = self.perform_diff_test(end_sig=end_sig,
+                                   diff_text=diff_text,
+                                   expected_hint=expected_hint,
                                    expect_empty=expect_noop)
 
         if use_hinted_evolutions:
-            assert not evolutions
+            assert not evolutions, (
+                'The evolutions= argument cannot be provided when providing '
+                'use_hinted_evolutions=True'
+            )
+
             evolutions = d.evolution()['tests']
 
         if perform_simulations:
-            self.perform_simulations(evolutions, end_sig, db_name=db_name)
+            self.perform_simulations(evolutions=evolutions,
+                                     end_sig=end_sig,
+                                     db_name=db_name)
 
         if perform_mutations:
-            self.perform_mutations(evolutions, end, end_sig, sql_name,
+            self.perform_mutations(evolutions=evolutions,
+                                   end=end,
+                                   end_sig=end_sig,
+                                   sql_name=sql_name,
                                    rescan_indexes=rescan_indexes,
                                    db_name=db_name)
 
-    def perform_diff_test(self, end_sig, diff_text, expected_hint,
+    def perform_diff_test(self, end_sig, diff_text=None, expected_hint=None,
                           expect_empty=False):
+        """Generate a diff between signatures and check for expected results.
+
+        The registered base signature and the provided ending signature will
+        be diffed, asserted to be empty/not empty (depending on the arguments),
+        and then checked against the provided diff text and hint.
+
+        Args:
+            end_sig (django_evolution.signature.ProjectSignature):
+                The expected project signature at the end of the evolution.
+                This is generated by :py:meth:`make_end_signatures`.
+
+            diff_text (unicode, optional):
+                The expected generated text describing a diff that must
+                match, if provided.
+
+            expected_hint (unicode, optional):
+                The expected generated hint text that must match, if provided.
+
+            expect_empty (bool, optional):
+                Whether the diff is expected to be empty.
+
+        Returns:
+            django_evolution.diff.Diff:
+            The resulting diff.
+
+        Raises:
+            AssertionError:
+                One of the expectations has failed.
+        """
         d = Diff(self.start_sig, end_sig)
         self.assertEqual(d.is_empty(), expect_empty)
 
@@ -211,8 +397,44 @@ class EvolutionTestCase(TestCase):
 
         return test_sig
 
-    def perform_mutations(self, evolutions, end, end_sig, sql_name,
+    def perform_mutations(self, evolutions, end, end_sig, sql_name=None,
                           rescan_indexes=True, db_name=None):
+        """Apply mutations that and verify the results.
+
+        This will run through the evolution chain, applying each mutation
+        on the database and against the signature, and then verifying the
+        resulting signature and generated SQL.
+
+        Args:
+            evolutions (list of django_evolution.mutations.BaseMutation):
+                The evolution chain to run simulations on.
+
+            end (collections.OrderedDict):
+                The expected model map at the end of the evolution. This
+                is generated by :py:meth:`make_end_signatures`.
+
+            end_sig (django_evolution.signature.ProjectSignature):
+                The expected ending signature. This is generated by
+                :py:meth:`make_end_signatures`.
+
+            sql_name (unicode, optional):
+                The name of the registered SQL content for the database being
+                tested. If not provided, the SQL won't be compared.
+
+            rescan_indexes (bool, optional):
+                Whether to re-scan the list of table indexes after applying
+                the mutations.
+
+            db_name (unicode, optional):
+                The name of the database to apply the evolutions against.
+
+        Raises:
+            AssertionError:
+                The resulting SQL did not match.
+
+            django.db.utils.OperationalError:
+                There was an error executing SQL.
+        """
         def run_mutations():
             if rescan_indexes:
                 self.test_database_state.rescan_tables()
@@ -230,14 +452,17 @@ class EvolutionTestCase(TestCase):
         self.test_database_state = self.database_state.clone()
         test_sig = self.start_sig.clone()
 
-        sql = execute_test_sql(self.start, end, run_mutations,
+        sql = execute_test_sql(start_models=self.start,
+                               end_models=end,
+                               generate_sql_func=run_mutations,
                                database=db_name)
 
         if sql_name is not None:
             # Normalize the generated and expected SQL so that we are
             # guaranteed to have a list with one item per line.
             generated_sql = '\n'.join(sql).splitlines()
-            expected_sql = self.get_sql_mapping(sql_name, db_name).splitlines()
+            expected_sql = self.get_sql_mapping(name=sql_name,
+                                                db_name=db_name).splitlines()
 
             # Output the statements one-by-one, to help with diagnosing
             # differences.
@@ -263,11 +488,61 @@ class EvolutionTestCase(TestCase):
             self.assertListEqual(generated_sql, expected_sql)
 
     def get_sql_mapping(self, name, db_name=None):
-        db_name = db_name or self.default_database_name
+        """Return the SQL for the given mapping name and database.
 
-        return get_sql_mappings(self.sql_mapping_key, db_name)[name]
+        Args:
+            name (unicode):
+                The registered name in the list of SQL mappings for this test
+                suite and database.
+
+            db_name (unicode, optional):
+                The name of the database to return SQL mappings for.
+
+        Returns:
+            unicode:
+            The resulting SQL.
+
+        Raises:
+            ValueError:
+                The provided name is not valid.
+        """
+        db_name = db_name or self.default_database_name
+        sql_mappings = get_sql_mappings(mapping_key=self.sql_mapping_key,
+                                        db_name=db_name)
+
+        try:
+            return sql_mappings[name]
+        except KeyError:
+            raise ValueError('"%s" is not a valid SQL mapping name.'
+                             % name)
 
     def register_model(self, model, name, db_name=None, **kwargs):
+        """Register a model for the test.
+
+        This will register not only this model, but any models in
+        :py:attr:`pre_extra_models` and :py:attr:`extra_models`. It will
+        not include :py:attr:`base_model`.
+
+        Args:
+            model (type):
+                The main :py:class:`~django.db.models.Model` to register.
+
+            name (unicode):
+                The name to use when for the model when registering. This
+                doesn't have to match the model's actual name.
+
+            db_name (unicode, optional):
+                The name of the database to register this model on.
+
+            **kwargs (dict):
+                Additional keyword arguments to pass to
+                :py:func:`~django_evolution.tests.utils.register_models`.
+
+        Returns:
+            collections.OrderedDict:
+            A dictionary of registered models. The keys are model names, and
+            the values are the models.
+        """
         self._models_registered = True
 
         models = self.pre_extra_models + [(name, model)] + self.extra_models
@@ -280,12 +555,52 @@ class EvolutionTestCase(TestCase):
 
     def create_test_proj_sig(self, model, name, extra_models=[],
                              pre_extra_models=[]):
+        """Create a project signature for the given models.
+
+        The signature will include not only these models, but any models in
+        :py:attr:`pre_extra_models` and :py:attr:`extra_models`. It will
+        not include :py:attr:`base_model`.
+
+        Args:
+            model (type):
+                The main :py:class:`~django.db.models.Model` to include
+                in the signature.
+
+            name (unicode):
+                The name to use when for the model. This doesn't have to match
+                the model's actual name.
+
+            extra_models (list of type, optional):
+                An additional list of extra models to register after ``model``
+                (but before the class-defined :py:attr:`extra_models`).
+
+            pre_extra_models (list of type, optional):
+                An additional list of extra models to register before ``model``
+                (but after :py:attr:`pre_extra_models`).
+
+        Returns:
+            django_evolution.signature.ProjectSignature:
+            The generated project signature.
+        """
         return create_test_project_sig(models=(
             self.pre_extra_models + pre_extra_models + [(name, model)] +
             extra_models + self.extra_models
         ))
 
     def copy_models(self, models):
+        """Copy a list of models.
+
+        This will be a deep copy, allowing any of the copied models to be
+        altered without affecting the originals.
+
+        Args:
+            models (list of type):
+                The list of :py:class:`~django.db.models.Model` classes.
+
+        Returns:
+            list of type:
+            The copied list of :py:class:`~django.db.models.Model` classes.
+        """
         return copy.deepcopy(models)
 
     @contextmanager
@@ -302,11 +617,12 @@ class EvolutionTestCase(TestCase):
         Yields:
             The context.
         """
-        with override_settings(DATABASE_ROUTERS=routers):
+        try:
+            with override_settings(DATABASE_ROUTERS=routers):
+                self.clear_routers_cache()
+                yield
+        finally:
             self.clear_routers_cache()
-            yield
-
-        self.clear_routers_cache()
 
     def clear_routers_cache(self):
         """Clear the router cache."""
