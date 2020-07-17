@@ -33,8 +33,8 @@ class SQLResult(object):
             self.post_sql += sql_or_result.post_sql
         elif isinstance(sql_or_result, list):
             self.sql += sql_or_result
-        elif isinstance(sql_or_result, six.string_types):
-            self.sql += [sql_or_result]
+        elif isinstance(sql_or_result, six.string_types + (tuple,)):
+            self.sql.append(sql_or_result)
         else:
             raise ValueError('SQLResult.add got unexpected type %s (%r)'
                              % (type(sql_or_result), sql_or_result))

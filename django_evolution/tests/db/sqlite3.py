@@ -34,11 +34,11 @@ def get_field_suffix(field_type):
 
 add_field = {
     'AddNonNullNonCallableColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
-        ' "added_field" integer NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "int_field" integer NOT NULL,'
+        ' "added_field" integer NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
         ' SELECT "id", "char_field", "int_field"'
@@ -48,26 +48,15 @@ add_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+    ],
+
+    'AddNonNullCallableColumnModel': [
+        'CREATE TABLE "TEMP_TABLE" '
         '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NOT NULL,'
         ' "int_field" integer NOT NULL,'
         ' "added_field" integer NOT NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "int_field", "added_field")'
-        ' SELECT "id", "char_field", "int_field", "added_field"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
-    ],
-
-    'AddNonNullCallableColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
-        ' "added_field" integer NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
         ' SELECT "id", "char_field", "int_field"'
@@ -77,25 +66,14 @@ add_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
-        ' "added_field" integer NOT NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "int_field", "added_field")'
-        ' SELECT "id", "char_field", "int_field", "added_field"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'AddNullColumnWithInitialColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "int_field" integer NOT NULL,'
         ' "added_field" integer NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
@@ -106,26 +84,15 @@ add_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
-        ' "added_field" integer NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "int_field", "added_field")'
-        ' SELECT "id", "char_field", "int_field", "added_field"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'AddStringColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
-        ' "added_field" varchar(10) NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "int_field" integer NOT NULL,'
+        ' "added_field" varchar(10) NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
         ' SELECT "id", "char_field", "int_field"'
@@ -135,26 +102,15 @@ add_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+    ],
+
+    'AddBlankStringColumnModel': [
+        'CREATE TABLE "TEMP_TABLE" '
         '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NOT NULL,'
         ' "int_field" integer NOT NULL,'
         ' "added_field" varchar(10) NOT NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "int_field", "added_field")'
-        ' SELECT "id", "char_field", "int_field", "added_field"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
-    ],
-
-    'AddBlankStringColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
-        ' "added_field" varchar(10) NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
         ' SELECT "id", "char_field", "int_field"'
@@ -164,26 +120,15 @@ add_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
-        ' "added_field" varchar(10) NOT NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "int_field", "added_field")'
-        ' SELECT "id", "char_field", "int_field", "added_field"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'AddDateColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
-        ' "added_field" datetime NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "int_field" integer NOT NULL,'
+        ' "added_field" datetime NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
         ' SELECT "id", "char_field", "int_field"'
@@ -193,26 +138,15 @@ add_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
-        ' "added_field" datetime NOT NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "int_field", "added_field")'
-        ' SELECT "id", "char_field", "int_field", "added_field"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'AddDefaultColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
-        ' "added_field" integer NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "int_field" integer NOT NULL,'
+        ' "added_field" integer NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
         ' SELECT "id", "char_field", "int_field"'
@@ -222,26 +156,15 @@ add_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
-        ' "added_field" integer NOT NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "int_field", "added_field")'
-        ' SELECT "id", "char_field", "int_field", "added_field"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'AddMismatchInitialBoolColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
-        ' "added_field" bool NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "int_field" integer NOT NULL,'
+        ' "added_field" bool NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
         ' SELECT "id", "char_field", "int_field"'
@@ -251,26 +174,15 @@ add_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
-        ' "added_field" bool NOT NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "int_field", "added_field")'
-        ' SELECT "id", "char_field", "int_field", "added_field"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'AddEmptyStringDefaultColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
-        ' "added_field" varchar(20) NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "int_field" integer NOT NULL,'
+        ' "added_field" varchar(20) NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
         ' SELECT "id", "char_field", "int_field"'
@@ -280,26 +192,15 @@ add_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
-        ' "added_field" varchar(20) NOT NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "int_field", "added_field")'
-        ' SELECT "id", "char_field", "int_field", "added_field"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'AddNullColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("int_field" integer NULL,'
-        ' "id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "added_field" integer NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("int_field" integer NOT NULL,'
+        ' "id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "added_field" integer NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("int_field", "id", "char_field")'
         ' SELECT "int_field", "id", "char_field"'
@@ -307,25 +208,14 @@ add_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("int_field" integer NOT NULL,'
-        ' "id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "added_field" integer NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("int_field", "id", "char_field", "added_field")'
-        ' SELECT "int_field", "id", "char_field", "added_field"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'NonDefaultColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "int_field" integer NOT NULL,'
         ' "non-default_column" integer NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
@@ -334,25 +224,14 @@ add_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
-        ' "non-default_column" integer NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "int_field", "non-default_column")'
-        ' SELECT "id", "char_field", "int_field", "non-default_column"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'AddColumnCustomTableModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "value" integer NULL,'
-        ' "alt_value" varchar(20) NULL,'
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "value" integer NOT NULL,'
+        ' "alt_value" varchar(20) NOT NULL,'
         ' "added_field" integer NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("id", "value", "alt_value")'
@@ -361,25 +240,14 @@ add_field = {
 
         'DROP TABLE "custom_table_name";',
 
-        'CREATE TABLE "custom_table_name"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "value" integer NOT NULL,'
-        ' "alt_value" varchar(20) NOT NULL,'
-        ' "added_field" integer NULL);',
-
-        'INSERT INTO "custom_table_name"'
-        ' ("id", "value", "alt_value", "added_field")'
-        ' SELECT "id", "value", "alt_value", "added_field"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "custom_table_name";',
     ],
 
     'AddIndexedColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "int_field" integer NOT NULL,'
         ' "add_field" integer NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
@@ -388,28 +256,18 @@ add_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
-        ' "add_field" integer NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "int_field", "add_field")'
-        ' SELECT "id", "char_field", "int_field", "add_field"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("add_field");'
-        % generate_index_name('tests_testmodel', 'add_field'),
+        % generate_index_name('tests_testmodel', 'add_field',
+                              'add_field'),
     ],
 
     'AddUniqueColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "int_field" integer NOT NULL,'
         ' "added_field" integer NULL UNIQUE);',
 
         'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
@@ -418,73 +276,40 @@ add_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
-        ' "added_field" integer NULL UNIQUE);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "int_field", "added_field")'
-        ' SELECT "id", "char_field", "int_field", "added_field"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'AddUniqueIndexedModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
-        ' "added_field" integer NULL UNIQUE);',
-
-        'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
-        ' SELECT "id", "char_field", "int_field"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'CREATE TABLE "tests_testmodel"'
+        'CREATE TABLE "TEMP_TABLE" '
         '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NOT NULL,'
         ' "int_field" integer NOT NULL,'
         ' "added_field" integer NULL UNIQUE);',
 
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "int_field", "added_field")'
-        ' SELECT "id", "char_field", "int_field", "added_field"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
-    ],
-
-    'AddForeignKeyModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
-        ' "added_field_id" integer NULL);',
-
         'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
         ' SELECT "id", "char_field", "int_field"'
         ' FROM "tests_testmodel";',
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+    ],
+
+    'AddForeignKeyModel': [
+        'CREATE TABLE "TEMP_TABLE" '
         '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NOT NULL,'
         ' "int_field" integer NOT NULL,'
         ' "added_field_id" integer NULL REFERENCES "tests_addanchor1" ("id")'
         ' DEFERRABLE INITIALLY DEFERRED);',
 
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "int_field", "added_field_id")'
-        ' SELECT "id", "char_field", "int_field", "added_field_id"'
-        ' FROM "TEMP_TABLE";',
+        'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
+        ' SELECT "id", "char_field", "int_field"'
+        ' FROM "tests_testmodel";',
 
-        'DROP TABLE "TEMP_TABLE";',
+        'DROP TABLE "tests_testmodel";',
+
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("added_field_id");'
         % generate_index_name('tests_testmodel', 'added_field_id',
@@ -773,12 +598,14 @@ else:
 
 delete_field = {
     'DefaultNamedColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "non-default_db_column" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE,'
-        ' "fk_field1_id" integer NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "non-default_db_column" integer NOT NULL,'
+        ' "int_field3" integer NOT NULL UNIQUE,'
+        ' "fk_field1_id" integer NOT NULL'
+        ' REFERENCES "tests_deleteanchor1" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED);',
 
         'INSERT INTO "TEMP_TABLE"'
         ' ("my_id", "char_field", "non-default_db_column", "int_field3",'
@@ -789,72 +616,47 @@ delete_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "non-default_db_column" integer NOT NULL,'
-        ' "int_field3" integer NOT NULL UNIQUE,'
-        ' "fk_field1_id" integer NOT NULL REFERENCES "tests_deleteanchor1"'
-        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field1_id");'
         % generate_index_name('tests_testmodel', 'fk_field1_id',
                               'fk_field1'),
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "char_field", "non-default_db_column", "int_field3",'
-        ' "fk_field1_id")'
-        ' SELECT "my_id", "char_field", "non-default_db_column",'
-        ' "int_field3", "fk_field1_id"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
     ],
 
     'NonDefaultNamedColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE,'
-        ' "fk_field1_id" integer NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("my_id", "char_field", "int_field", "int_field3", "fk_field1_id")'
-        ' SELECT "my_id", "char_field", "int_field", "int_field3",'
-        ' "fk_field1_id"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'CREATE TABLE "tests_testmodel"'
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NOT NULL,'
         ' "int_field" integer NOT NULL,'
         ' "int_field3" integer NOT NULL UNIQUE,'
-        ' "fk_field1_id" integer NOT NULL REFERENCES "tests_deleteanchor1"'
-        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
+        ' "fk_field1_id" integer NOT NULL'
+        ' REFERENCES "tests_deleteanchor1" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED);',
+
+        'INSERT INTO "TEMP_TABLE"'
+        ' ("my_id", "char_field", "int_field", "int_field3", "fk_field1_id")'
+        ' SELECT "my_id", "char_field", "int_field", "int_field3",'
+        ' "fk_field1_id"'
+        ' FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field1_id");'
         % generate_index_name('tests_testmodel', 'fk_field1_id',
                               'fk_field1'),
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "char_field", "int_field", "int_field3", "fk_field1_id")'
-        ' SELECT "my_id", "char_field", "int_field", "int_field3",'
-        ' "fk_field1_id"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
     ],
 
     'ConstrainedColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
-        ' "non-default_db_column" integer NULL,'
-        ' "fk_field1_id" integer NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "int_field" integer NOT NULL,'
+        ' "non-default_db_column" integer NOT NULL,'
+        ' "fk_field1_id" integer NOT NULL'
+        ' REFERENCES "tests_deleteanchor1" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED);',
 
         'INSERT INTO "TEMP_TABLE"'
         ' ("my_id", "char_field", "int_field", "non-default_db_column",'
@@ -865,26 +667,11 @@ delete_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
-        ' "non-default_db_column" integer NOT NULL,'
-        ' "fk_field1_id" integer NOT NULL REFERENCES "tests_deleteanchor1"'
-        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field1_id");'
         % generate_index_name('tests_testmodel', 'fk_field1_id',
                               'fk_field1'),
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "char_field", "int_field", "non-default_db_column",'
-        ' "fk_field1_id")'
-        ' SELECT "my_id", "char_field", "int_field", "non-default_db_column",'
-        ' "fk_field1_id"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
     ],
 
     'DefaultManyToManyModel': [
@@ -896,12 +683,12 @@ delete_field = {
     ],
 
     'DeleteForeignKeyModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
-        ' "non-default_db_column" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "int_field" integer NOT NULL,'
+        ' "non-default_db_column" integer NOT NULL,'
+        ' "int_field3" integer NOT NULL UNIQUE);',
 
         'INSERT INTO "TEMP_TABLE"'
         ' ("my_id", "char_field", "int_field", "non-default_db_column",'
@@ -912,27 +699,13 @@ delete_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
-        ' "non-default_db_column" integer NOT NULL,'
-        ' "int_field3" integer NOT NULL UNIQUE);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "char_field", "int_field", "non-default_db_column",'
-        ' "int_field3")'
-        ' SELECT "my_id", "char_field", "int_field", "non-default_db_column",'
-        ' "int_field3"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'DeleteColumnCustomTableModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "alt_value" varchar(20) NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "alt_value" varchar(20) NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("id", "alt_value")'
         ' SELECT "id", "alt_value"'
@@ -940,31 +713,23 @@ delete_field = {
 
         'DROP TABLE "custom_table_name";',
 
-        'CREATE TABLE "custom_table_name"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "alt_value" varchar(20) NOT NULL);',
-
-        'INSERT INTO "custom_table_name" ("id", "alt_value")'
-        ' SELECT "id", "alt_value"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "custom_table_name";',
     ],
 }
 
 change_field = {
     'SetNotNullChangeModelWithConstant': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NULL,'
-        ' "custom_db_column" integer NULL,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE,'
-        ' "int_field4" integer NULL,'
-        ' "char_field" varchar(20) NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "alt_pk" integer NOT NULL,'
+        ' "custom_db_column" integer NOT NULL,'
+        ' "int_field1" integer NOT NULL,'
+        ' "int_field2" integer NOT NULL,'
+        ' "int_field3" integer NOT NULL UNIQUE,'
+        ' "int_field4" integer NOT NULL,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "char_field1" varchar(25) NOT NULL,'
+        ' "char_field2" varchar(30) NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE"'
         ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
@@ -979,7 +744,11 @@ change_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+    ],
+
+    'SetNotNullChangeModelWithCallable': [
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NOT NULL,'
         ' "custom_db_column" integer NOT NULL,'
@@ -990,31 +759,6 @@ change_field = {
         ' "char_field" varchar(20) NOT NULL,'
         ' "char_field1" varchar(25) NOT NULL,'
         ' "char_field2" varchar(30) NOT NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
-    ],
-
-    'SetNotNullChangeModelWithCallable': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NULL,'
-        ' "custom_db_column" integer NULL,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE,'
-        ' "int_field4" integer NULL,'
-        ' "char_field" varchar(20) NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
 
         'INSERT INTO "TEMP_TABLE"'
         ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
@@ -1029,7 +773,11 @@ change_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+    ],
+
+    'SetNullChangeModel': [
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NOT NULL,'
         ' "custom_db_column" integer NOT NULL,'
@@ -1038,31 +786,6 @@ change_field = {
         ' "int_field3" integer NOT NULL UNIQUE,'
         ' "int_field4" integer NOT NULL,'
         ' "char_field" varchar(20) NOT NULL,'
-        ' "char_field1" varchar(25) NOT NULL,'
-        ' "char_field2" varchar(30) NOT NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
-    ],
-
-    'SetNullChangeModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NULL,'
-        ' "custom_db_column" integer NULL,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE,'
-        ' "int_field4" integer NULL,'
-        ' "char_field" varchar(20) NULL,'
         ' "char_field1" varchar(25) NULL,'
         ' "char_field2" varchar(30) NULL);',
 
@@ -1077,57 +800,13 @@ change_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NOT NULL,'
-        ' "custom_db_column" integer NOT NULL,'
-        ' "int_field1" integer NOT NULL,'
-        ' "int_field2" integer NOT NULL,'
-        ' "int_field3" integer NOT NULL UNIQUE,'
-        ' "int_field4" integer NOT NULL,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'NoOpChangeModel': [],
 
     'IncreasingMaxLengthChangeModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NULL,'
-        ' "custom_db_column" integer NULL,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE,'
-        ' "int_field4" integer NULL,'
-        ' "char_field" varchar(45) NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'CREATE TABLE "tests_testmodel"'
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NOT NULL,'
         ' "custom_db_column" integer NOT NULL,'
@@ -1139,31 +818,6 @@ change_field = {
         ' "char_field1" varchar(25) NULL,'
         ' "char_field2" varchar(30) NOT NULL);',
 
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
-    ],
-
-    'DecreasingMaxLengthChangeModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NULL,'
-        ' "custom_db_column" integer NULL,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE,'
-        ' "int_field4" integer NULL,'
-        ' "char_field" varchar(1) NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
-
         'INSERT INTO "TEMP_TABLE"'
         ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
         ' "int_field3", "int_field4", "char_field", "char_field1",'
@@ -1175,7 +829,11 @@ change_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+    ],
+
+    'DecreasingMaxLengthChangeModel': [
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NOT NULL,'
         ' "custom_db_column" integer NOT NULL,'
@@ -1187,30 +845,32 @@ change_field = {
         ' "char_field1" varchar(25) NULL,'
         ' "char_field2" varchar(30) NOT NULL);',
 
-        'INSERT INTO "tests_testmodel"'
+        'INSERT INTO "TEMP_TABLE"'
         ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
         ' "int_field3", "int_field4", "char_field", "char_field1",'
         ' "char_field2")'
         ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
         ' "int_field2", "int_field3", "int_field4", "char_field",'
         ' "char_field1", "char_field2"'
-        ' FROM "TEMP_TABLE";',
+        ' FROM "tests_testmodel";',
 
-        'DROP TABLE "TEMP_TABLE";',
+        'DROP TABLE "tests_testmodel";',
+
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'DBColumnChangeModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NULL,'
-        ' "customised_db_column" integer NULL,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE,'
-        ' "int_field4" integer NULL,'
-        ' "char_field" varchar(20) NULL,'
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "alt_pk" integer NOT NULL,'
+        ' "customised_db_column" integer NOT NULL,'
+        ' "int_field1" integer NOT NULL,'
+        ' "int_field2" integer NOT NULL,'
+        ' "int_field3" integer NOT NULL UNIQUE,'
+        ' "int_field4" integer NOT NULL,'
+        ' "char_field" varchar(20) NOT NULL,'
         ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
+        ' "char_field2" varchar(30) NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE"'
         ' ("my_id", "alt_pk", "customised_db_column", "int_field1",'
@@ -1223,31 +883,10 @@ change_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NOT NULL,'
-        ' "customised_db_column" integer NOT NULL,'
-        ' "int_field1" integer NOT NULL,'
-        ' "int_field2" integer NOT NULL,'
-        ' "int_field3" integer NOT NULL UNIQUE,'
-        ' "int_field4" integer NOT NULL,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NOT NULL);',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
         % generate_index_name('tests_testmodel', 'int_field1'),
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "alt_pk", "customised_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2")'
-        ' SELECT "my_id", "alt_pk", "customised_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
     ],
 
     'M2MDBTableChangeModel': [
@@ -1270,30 +909,7 @@ change_field = {
     'RemoveDBIndexNoOpChangeModel': [],
 
     'AddUniqueChangeModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NULL,'
-        ' "custom_db_column" integer NULL,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE,'
-        ' "int_field4" integer NULL UNIQUE,'
-        ' "char_field" varchar(20) NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'CREATE TABLE "tests_testmodel"'
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NOT NULL,'
         ' "custom_db_column" integer NOT NULL,'
@@ -1305,31 +921,6 @@ change_field = {
         ' "char_field1" varchar(25) NULL,'
         ' "char_field2" varchar(30) NOT NULL);',
 
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
-    ],
-
-    'RemoveUniqueChangeModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NULL,'
-        ' "custom_db_column" integer NULL,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "int_field3" integer NULL,'
-        ' "int_field4" integer NULL,'
-        ' "char_field" varchar(20) NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
-
         'INSERT INTO "TEMP_TABLE"'
         ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
         ' "int_field3", "int_field4", "char_field", "char_field1",'
@@ -1341,7 +932,11 @@ change_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+    ],
+
+    'RemoveUniqueChangeModel': [
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NOT NULL,'
         ' "custom_db_column" integer NOT NULL,'
@@ -1353,35 +948,10 @@ change_field = {
         ' "char_field1" varchar(25) NULL,'
         ' "char_field2" varchar(30) NOT NULL);',
 
-        'INSERT INTO "tests_testmodel"'
+        'INSERT INTO "TEMP_TABLE"'
         ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
         ' "int_field3", "int_field4", "char_field", "char_field1",'
         ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
-    ],
-
-    'MultiAttrChangeModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NULL,'
-        ' "custom_db_column" integer NULL,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE,'
-        ' "int_field4" integer NULL,'
-        ' "char_field" varchar(20) NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2")'
         ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
         ' "int_field2", "int_field3", "int_field4", "char_field",'
         ' "char_field1", "char_field2"'
@@ -1389,7 +959,11 @@ change_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+    ],
+
+    'MultiAttrChangeModel': [
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NOT NULL,'
         ' "custom_db_column" integer NOT NULL,'
@@ -1401,31 +975,8 @@ change_field = {
         ' "char_field1" varchar(25) NULL,'
         ' "char_field2" varchar(30) NULL);',
 
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
-
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NULL,'
-        ' "custom_db_column2" integer NULL,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE,'
-        ' "int_field4" integer NULL,'
-        ' "char_field" varchar(20) NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
-
         'INSERT INTO "TEMP_TABLE"'
-        ' ("my_id", "alt_pk", "custom_db_column2", "int_field1",'
+        ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
         ' "int_field2", "int_field3", "int_field4", "char_field",'
         ' "char_field1", "char_field2")'
         ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
@@ -1435,7 +986,9 @@ change_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NOT NULL,'
         ' "custom_db_column2" integer NOT NULL,'
@@ -1447,44 +1000,23 @@ change_field = {
         ' "char_field1" varchar(25) NULL,'
         ' "char_field2" varchar(30) NULL);',
 
-        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
-        % generate_index_name('tests_testmodel', 'int_field1'),
-
-        'INSERT INTO "tests_testmodel"'
+        'INSERT INTO "TEMP_TABLE"'
         ' ("my_id", "alt_pk", "custom_db_column2", "int_field1",'
         ' "int_field2", "int_field3", "int_field4", "char_field",'
         ' "char_field1", "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column2", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
-
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NULL,'
-        ' "custom_db_column2" integer NULL,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE,'
-        ' "int_field4" integer NULL,'
-        ' "char_field" varchar(35) NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("my_id", "alt_pk", "custom_db_column2", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column2", "int_field1",'
+        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
         ' "int_field2", "int_field3", "int_field4", "char_field",'
         ' "char_field1", "char_field2"'
         ' FROM "tests_testmodel";',
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel', 'int_field1'),
+
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NOT NULL,'
         ' "custom_db_column2" integer NOT NULL,'
@@ -1496,44 +1028,23 @@ change_field = {
         ' "char_field1" varchar(25) NULL,'
         ' "char_field2" varchar(30) NULL);',
 
-        'INSERT INTO "tests_testmodel"'
+        'INSERT INTO "TEMP_TABLE"'
         ' ("my_id", "alt_pk", "custom_db_column2", "int_field1", "int_field2",'
         ' "int_field3", "int_field4", "char_field", "char_field1",'
         ' "char_field2")'
         ' SELECT "my_id", "alt_pk", "custom_db_column2", "int_field1",'
         ' "int_field2", "int_field3", "int_field4", "char_field",'
         ' "char_field1", "char_field2"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
-    ],
-
-    'MultiAttrSingleFieldChangeModel': [
-        # Change char_field2.max_length to 35.
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NULL,'
-        ' "custom_db_column" integer NULL,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE,'
-        ' "int_field4" integer NULL,'
-        ' "char_field" varchar(20) NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(35) NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
         ' FROM "tests_testmodel";',
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+    ],
+
+    'MultiAttrSingleFieldChangeModel': [
+        # Change char_field2.max_length to 35.
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NOT NULL,'
         ' "custom_db_column" integer NOT NULL,'
@@ -1545,27 +1056,29 @@ change_field = {
         ' "char_field1" varchar(25) NULL,'
         ' "char_field2" varchar(35) NOT NULL);',
 
-        'INSERT INTO "tests_testmodel"'
+        'INSERT INTO "TEMP_TABLE"'
         ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
         ' "int_field3", "int_field4", "char_field", "char_field1",'
         ' "char_field2")'
         ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
         ' "int_field2", "int_field3", "int_field4", "char_field",'
         ' "char_field1", "char_field2"'
-        ' FROM "TEMP_TABLE";',
+        ' FROM "tests_testmodel";',
 
-        'DROP TABLE "TEMP_TABLE";',
+        'DROP TABLE "tests_testmodel";',
+
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         # Change char_field2.null to True.
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NULL,'
-        ' "custom_db_column" integer NULL,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE,'
-        ' "int_field4" integer NULL,'
-        ' "char_field" varchar(20) NULL,'
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "alt_pk" integer NOT NULL,'
+        ' "custom_db_column" integer NOT NULL,'
+        ' "int_field1" integer NOT NULL,'
+        ' "int_field2" integer NOT NULL,'
+        ' "int_field3" integer NOT NULL UNIQUE,'
+        ' "int_field4" integer NOT NULL,'
+        ' "char_field" varchar(20) NOT NULL,'
         ' "char_field1" varchar(25) NULL,'
         ' "char_field2" varchar(35) NULL);',
 
@@ -1580,55 +1093,11 @@ change_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NOT NULL,'
-        ' "custom_db_column" integer NOT NULL,'
-        ' "int_field1" integer NOT NULL,'
-        ' "int_field2" integer NOT NULL,'
-        ' "int_field3" integer NOT NULL UNIQUE,'
-        ' "int_field4" integer NOT NULL,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(35) NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'RedundantAttrsChangeModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NULL,'
-        ' "custom_db_column" integer NULL,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE,'
-        ' "int_field4" integer NULL,'
-        ' "char_field" varchar(20) NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'CREATE TABLE "tests_testmodel"'
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NOT NULL,'
         ' "custom_db_column" integer NOT NULL,'
@@ -1640,31 +1109,8 @@ change_field = {
         ' "char_field1" varchar(25) NULL,'
         ' "char_field2" varchar(30) NULL);',
 
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
-
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NULL,'
-        ' "custom_db_column3" integer NULL,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE,'
-        ' "int_field4" integer NULL,'
-        ' "char_field" varchar(20) NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
-
         'INSERT INTO "TEMP_TABLE"'
-        ' ("my_id", "alt_pk", "custom_db_column3", "int_field1", "int_field2",'
+        ' ("my_id", "alt_pk", "custom_db_column", "int_field1", "int_field2",'
         ' "int_field3", "int_field4", "char_field", "char_field1",'
         ' "char_field2")'
         ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
@@ -1674,7 +1120,9 @@ change_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NOT NULL,'
         ' "custom_db_column3" integer NOT NULL,'
@@ -1686,44 +1134,23 @@ change_field = {
         ' "char_field1" varchar(25) NULL,'
         ' "char_field2" varchar(30) NULL);',
 
-        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
-        % generate_index_name('tests_testmodel', 'int_field1'),
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "alt_pk", "custom_db_column3", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column3", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
-
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NULL,'
-        ' "custom_db_column3" integer NULL,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "int_field3" integer NULL UNIQUE,'
-        ' "int_field4" integer NULL,'
-        ' "char_field" varchar(35) NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
-
         'INSERT INTO "TEMP_TABLE"'
         ' ("my_id", "alt_pk", "custom_db_column3", "int_field1", "int_field2",'
         ' "int_field3", "int_field4", "char_field", "char_field1",'
         ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column3", "int_field1",'
+        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
         ' "int_field2", "int_field3", "int_field4", "char_field",'
         ' "char_field1", "char_field2"'
         ' FROM "tests_testmodel";',
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel', 'int_field1'),
+
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "alt_pk" integer NOT NULL,'
         ' "custom_db_column3" integer NOT NULL,'
@@ -1735,16 +1162,18 @@ change_field = {
         ' "char_field1" varchar(25) NULL,'
         ' "char_field2" varchar(30) NULL);',
 
-        'INSERT INTO "tests_testmodel"'
+        'INSERT INTO "TEMP_TABLE"'
         ' ("my_id", "alt_pk", "custom_db_column3", "int_field1", "int_field2",'
         ' "int_field3", "int_field4", "char_field", "char_field1",'
         ' "char_field2")'
         ' SELECT "my_id", "alt_pk", "custom_db_column3", "int_field1",'
         ' "int_field2", "int_field3", "int_field4", "char_field",'
         ' "char_field1", "char_field2"'
-        ' FROM "TEMP_TABLE";',
+        ' FROM "tests_testmodel";',
 
-        'DROP TABLE "TEMP_TABLE";',
+        'DROP TABLE "tests_testmodel";',
+
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 }
 
@@ -1804,13 +1233,15 @@ delete_application = {
 
 rename_field = {
     'RenameColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "renamed_field" integer NULL,'
-        ' "custom_db_col_name" integer NULL,'
-        ' "custom_db_col_name_indexed" integer NULL,'
-        ' "fk_field_id" integer NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "renamed_field" integer NOT NULL,'
+        ' "custom_db_col_name" integer NOT NULL,'
+        ' "custom_db_col_name_indexed" integer NOT NULL,'
+        ' "fk_field_id" integer NOT NULL'
+        ' REFERENCES "tests_renameanchor1" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED);',
 
         'INSERT INTO "TEMP_TABLE"'
         ' ("id", "char_field", "renamed_field", "custom_db_col_name",'
@@ -1821,14 +1252,7 @@ rename_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "renamed_field" integer NOT NULL,'
-        ' "custom_db_col_name" integer NOT NULL,'
-        ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL REFERENCES "tests_renameanchor1"'
-        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         'CREATE INDEX "%s" ON "tests_testmodel"'
         ' ("custom_db_col_name_indexed");'
@@ -1837,25 +1261,18 @@ rename_field = {
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
         % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "renamed_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id")'
-        ' SELECT "id", "char_field", "renamed_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
     ],
 
     'RenameColumnWithTableNameModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "renamed_field" integer NULL,'
-        ' "custom_db_col_name" integer NULL,'
-        ' "custom_db_col_name_indexed" integer NULL,'
-        ' "fk_field_id" integer NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "renamed_field" integer NOT NULL,'
+        ' "custom_db_col_name" integer NOT NULL,'
+        ' "custom_db_col_name_indexed" integer NOT NULL,'
+        ' "fk_field_id" integer NOT NULL'
+        ' REFERENCES "tests_renameanchor1" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED);',
 
         'INSERT INTO "TEMP_TABLE"'
         ' ("id", "char_field", "renamed_field", "custom_db_col_name",'
@@ -1866,14 +1283,7 @@ rename_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "renamed_field" integer NOT NULL,'
-        ' "custom_db_col_name" integer NOT NULL,'
-        ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL REFERENCES "tests_renameanchor1"'
-        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         'CREATE INDEX "%s" ON "tests_testmodel"'
         ' ("custom_db_col_name_indexed");'
@@ -1882,43 +1292,29 @@ rename_field = {
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
         % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "renamed_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id")'
-        ' SELECT "id", "char_field", "renamed_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
     ],
 
     'RenamePrimaryKeyColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_pk_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
-        ' "custom_db_col_name" integer NULL,'
-        ' "custom_db_col_name_indexed" integer NULL,'
-        ' "fk_field_id" integer NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("my_pk_id", "char_field", "int_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id")'
-        ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'CREATE TABLE "tests_testmodel"'
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_pk_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NOT NULL,'
         ' "int_field" integer NOT NULL,'
         ' "custom_db_col_name" integer NOT NULL,'
         ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL REFERENCES "tests_renameanchor1"'
-        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
+        ' "fk_field_id" integer NOT NULL'
+        ' REFERENCES "tests_renameanchor1" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED);',
+
+        'INSERT INTO "TEMP_TABLE"'
+        ' ("my_pk_id", "char_field", "int_field", "custom_db_col_name",'
+        ' "custom_db_col_name_indexed", "fk_field_id")'
+        ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
+        ' "custom_db_col_name_indexed", "fk_field_id"'
+        ' FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         'CREATE INDEX "%s" ON "tests_testmodel"'
         ' ("custom_db_col_name_indexed");'
@@ -1927,25 +1323,18 @@ rename_field = {
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
         % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_pk_id", "char_field", "int_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id")'
-        ' SELECT "my_pk_id", "char_field", "int_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
     ],
 
     'RenameForeignKeyColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("int_field" integer NULL,'
-        ' "char_field" varchar(20) NULL,'
-        ' "custom_db_col_name" integer NULL,'
-        ' "custom_db_col_name_indexed" integer NULL,'
-        ' "renamed_field_id" integer NULL,'
-        ' "id" integer NULL UNIQUE PRIMARY KEY);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("int_field" integer NOT NULL,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "custom_db_col_name" integer NOT NULL,'
+        ' "custom_db_col_name_indexed" integer NOT NULL,'
+        ' "renamed_field_id" integer NOT NULL'
+        ' REFERENCES "tests_renameanchor1" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED,'
+        ' "id" integer NOT NULL UNIQUE PRIMARY KEY);',
 
         'INSERT INTO "TEMP_TABLE"'
         ' ("renamed_field", "char_field", "int_field",'
@@ -1956,13 +1345,7 @@ rename_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("int_field" integer NOT NULL,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "custom_db_col_name" integer NOT NULL,'
-        ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "renamed_field_id" integer NOT NULL,'
-        ' "id" integer NOT NULL UNIQUE PRIMARY KEY);',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         'CREATE INDEX "%s" ON "tests_testmodel" '
         ' ("custom_db_col_name_indexed");'
@@ -1970,43 +1353,29 @@ rename_field = {
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("renamed_field_id");'
         % generate_index_name('tests_testmodel', 'renamed_field_id'),
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("int_field", "char_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "renamed_field_id", "id")'
-        ' SELECT "int_field", "char_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "renamed_field_id", "id"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
     ],
 
     'RenameNonDefaultColumnNameModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
-        ' "renamed_field" integer NULL,'
-        ' "custom_db_col_name_indexed" integer NULL,'
-        ' "fk_field_id" integer NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("id", "char_field", "int_field", "renamed_field",'
-        ' "custom_db_col_name_indexed", "fk_field_id")'
-        ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'CREATE TABLE "tests_testmodel"'
+        'CREATE TABLE "TEMP_TABLE" '
         '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NOT NULL,'
         ' "int_field" integer NOT NULL,'
         ' "renamed_field" integer NOT NULL,'
         ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL REFERENCES "tests_renameanchor1"'
-        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
+        ' "fk_field_id" integer NOT NULL'
+        ' REFERENCES "tests_renameanchor1" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED);',
+
+        'INSERT INTO "TEMP_TABLE"'
+        ' ("id", "char_field", "int_field", "renamed_field",'
+        ' "custom_db_col_name_indexed", "fk_field_id")'
+        ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
+        ' "custom_db_col_name_indexed", "fk_field_id"'
+        ' FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         'CREATE INDEX "%s" ON "tests_testmodel"'
         ' ("custom_db_col_name_indexed");'
@@ -2015,43 +1384,29 @@ rename_field = {
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
         % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "int_field", "renamed_field",'
-        ' "custom_db_col_name_indexed", "fk_field_id")'
-        ' SELECT "id", "char_field", "int_field", "renamed_field",'
-        ' "custom_db_col_name_indexed", "fk_field_id"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
     ],
 
     'RenameNonDefaultColumnNameToNonDefaultNameModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
-        ' "non-default_column_name" integer NULL,'
-        ' "custom_db_col_name_indexed" integer NULL,'
-        ' "fk_field_id" integer NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("id", "char_field", "int_field", "non-default_column_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id")'
-        ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'CREATE TABLE "tests_testmodel"'
+        'CREATE TABLE "TEMP_TABLE" '
         '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NOT NULL,'
         ' "int_field" integer NOT NULL,'
         ' "non-default_column_name" integer NOT NULL,'
         ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL REFERENCES "tests_renameanchor1"'
-        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
+        ' "fk_field_id" integer NOT NULL'
+        ' REFERENCES "tests_renameanchor1" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED);',
+
+        'INSERT INTO "TEMP_TABLE"'
+        ' ("id", "char_field", "int_field", "non-default_column_name",'
+        ' "custom_db_col_name_indexed", "fk_field_id")'
+        ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
+        ' "custom_db_col_name_indexed", "fk_field_id"'
+        ' FROM "tests_testmodel";',
+
+        'DROP TABLE "tests_testmodel";',
+
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         'CREATE INDEX "%s" ON "tests_testmodel"'
         ' ("custom_db_col_name_indexed");'
@@ -2060,25 +1415,18 @@ rename_field = {
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
         % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "int_field", "non-default_column_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id")'
-        ' SELECT "id", "char_field", "int_field", "non-default_column_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
     ],
 
     'RenameNonDefaultColumnNameToNonDefaultNameAndTableModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "int_field" integer NULL,'
-        ' "non-default_column_name2" integer NULL,'
-        ' "custom_db_col_name_indexed" integer NULL,'
-        ' "fk_field_id" integer NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "int_field" integer NOT NULL,'
+        ' "non-default_column_name2" integer NOT NULL,'
+        ' "custom_db_col_name_indexed" integer NOT NULL,'
+        ' "fk_field_id" integer NOT NULL'
+        ' REFERENCES "tests_renameanchor1" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED);',
 
         'INSERT INTO "TEMP_TABLE"'
         ' ("id", "char_field", "int_field", "non-default_column_name2",'
@@ -2089,14 +1437,7 @@ rename_field = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
-        ' "non-default_column_name2" integer NOT NULL,'
-        ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL REFERENCES "tests_renameanchor1"'
-        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         'CREATE INDEX "%s" ON "tests_testmodel"'
         ' ("custom_db_col_name_indexed");'
@@ -2105,22 +1446,13 @@ rename_field = {
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
         % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "char_field", "int_field", "non-default_column_name2",'
-        ' "custom_db_col_name_indexed", "fk_field_id")'
-        ' SELECT "id", "char_field", "int_field", "non-default_column_name2",'
-        ' "custom_db_col_name_indexed", "fk_field_id"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
     ],
 
     'RenameColumnCustomTableModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" integer NULL,'
-        ' "alt_value" varchar(20) NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" integer NOT NULL,'
+        ' "alt_value" varchar(20) NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("id", "renamed_field", "alt_value")'
         ' SELECT "id", "value", "alt_value"'
@@ -2128,17 +1460,7 @@ rename_field = {
 
         'DROP TABLE "custom_rename_table_name";',
 
-        'CREATE TABLE "custom_rename_table_name"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" integer NOT NULL,'
-        ' "alt_value" varchar(20) NOT NULL);',
-
-        'INSERT INTO "custom_rename_table_name"'
-        ' ("id", "renamed_field", "alt_value")'
-        ' SELECT "id", "renamed_field", "alt_value"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "custom_rename_table_name";',
     ],
 
     'RenameManyToManyTableModel': [
@@ -2185,11 +1507,13 @@ sql_mutation = {
 
 generics = {
     'DeleteColumnModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "int_field" integer NULL,'
-        ' "content_type_id" integer NULL,'
-        ' "object_id" integer unsigned NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "int_field" integer NOT NULL,'
+        ' "content_type_id" integer NOT NULL'
+        ' REFERENCES "django_content_type" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED,'
+        ' "object_id" integer unsigned NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE"'
         ' ("id", "int_field", "content_type_id", "object_id")'
@@ -2198,12 +1522,7 @@ generics = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "int_field" integer NOT NULL,'
-        ' "content_type_id" integer NOT NULL REFERENCES "django_content_type"'
-        ' ("id") DEFERRABLE INITIALLY DEFERRED,'
-        ' "object_id" integer unsigned NOT NULL);',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("content_type_id");'
         % generate_index_name('tests_testmodel', 'content_type_id',
@@ -2211,23 +1530,16 @@ generics = {
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("object_id");'
         % generate_index_name('tests_testmodel', 'object_id'),
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "int_field", "content_type_id", "object_id")'
-        ' SELECT "id", "int_field", "content_type_id", "object_id"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
     ],
 }
 
 inheritance = {
     'AddToChildModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("int_field" integer NULL,'
-        ' "id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "added_field" integer NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("int_field" integer NOT NULL,'
+        ' "id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "added_field" integer NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("int_field", "id", "char_field")'
         ' SELECT "int_field", "id", "char_field"'
@@ -2237,24 +1549,13 @@ inheritance = {
 
         'DROP TABLE "tests_childmodel";',
 
-        'CREATE TABLE "tests_childmodel"'
-        '("int_field" integer NOT NULL,'
-        ' "id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "added_field" integer NOT NULL);',
-
-        'INSERT INTO "tests_childmodel"'
-        ' ("int_field", "id", "char_field", "added_field")'
-        ' SELECT "int_field", "id", "char_field", "added_field"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_childmodel";',
     ],
 
     'DeleteFromChildModel': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("id", "char_field")'
         ' SELECT "id", "char_field"'
@@ -2262,15 +1563,7 @@ inheritance = {
 
         'DROP TABLE "tests_childmodel";',
 
-        'CREATE TABLE "tests_childmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL);',
-
-        'INSERT INTO "tests_childmodel" ("id", "char_field")'
-        ' SELECT "id", "char_field"'
-        ' FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_childmodel";',
     ],
 }
 
@@ -2283,12 +1576,12 @@ unique_together = {
     ],
 
     'replace_list': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "char_field1" varchar(20) NULL,'
-        ' "char_field2" varchar(40) NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "int_field1" integer NOT NULL,'
+        ' "int_field2" integer NOT NULL,'
+        ' "char_field1" varchar(20) NOT NULL,'
+        ' "char_field2" varchar(40) NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE"'
         ' ("id", "int_field1", "int_field2", "char_field1", "char_field2")'
@@ -2297,19 +1590,7 @@ unique_together = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "int_field1" integer NOT NULL,'
-        ' "int_field2" integer NOT NULL,'
-        ' "char_field1" varchar(20) NOT NULL,'
-        ' "char_field2" varchar(40) NOT NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "int_field1", "int_field2", "char_field1", "char_field2")'
-        ' SELECT "id", "int_field1", "int_field2", "char_field1",'
-        ' "char_field2" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         'CREATE UNIQUE INDEX "%s"'
         ' ON "tests_testmodel" ("int_field2", "char_field2");'
@@ -2325,12 +1606,12 @@ unique_together = {
     ],
 
     'removing': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "int_field1" integer NULL,'
-        ' "int_field2" integer NULL,'
-        ' "char_field1" varchar(20) NULL,'
-        ' "char_field2" varchar(40) NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "int_field1" integer NOT NULL,'
+        ' "int_field2" integer NOT NULL,'
+        ' "char_field1" varchar(20) NOT NULL,'
+        ' "char_field2" varchar(40) NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE"'
         ' ("id", "int_field1", "int_field2", "char_field1", "char_field2")'
@@ -2339,19 +1620,7 @@ unique_together = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "int_field1" integer NOT NULL,'
-        ' "int_field2" integer NOT NULL,'
-        ' "char_field1" varchar(20) NOT NULL,'
-        ' "char_field2" varchar(40) NOT NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("id", "int_field1", "int_field2", "char_field1", "char_field2")'
-        ' SELECT "id", "int_field1", "int_field2", "char_field1",'
-        ' "char_field2" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'set_remove': [
@@ -2489,9 +1758,9 @@ else:
 
 preprocessing = {
     'add_change_field': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
         ' "added_field" varchar(50) NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
@@ -2501,22 +1770,13 @@ preprocessing = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "added_field" varchar(50) NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "char_field", "added_field")'
-        ' SELECT "my_id", "char_field", "added_field" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'add_change_rename_field': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
         ' "renamed_field" varchar(50) NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
@@ -2526,23 +1786,14 @@ preprocessing = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "renamed_field" varchar(50) NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "char_field", "renamed_field")'
-        ' SELECT "my_id", "char_field", "renamed_field" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'add_delete_add_field': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "added_field" integer NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "added_field" integer NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
         ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
@@ -2551,23 +1802,14 @@ preprocessing = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "added_field" integer NOT NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "char_field", "added_field")'
-        ' SELECT "my_id", "char_field", "added_field" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'add_delete_add_rename_field': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "renamed_field" integer NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "renamed_field" integer NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
         ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
@@ -2576,22 +1818,13 @@ preprocessing = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "renamed_field" integer NOT NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "char_field", "renamed_field")'
-        ' SELECT "my_id", "char_field", "renamed_field" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'add_rename_change_field': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
         ' "renamed_field" varchar(50) NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
@@ -2601,22 +1834,14 @@ preprocessing = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "renamed_field" varchar(50) NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "char_field", "renamed_field")'
-        ' SELECT "my_id", "char_field", "renamed_field" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'add_rename_change_rename_change_field': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL, "renamed_field" varchar(50) NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "renamed_field" varchar(50) NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
         ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
@@ -2625,22 +1850,13 @@ preprocessing = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "renamed_field" varchar(50) NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "char_field", "renamed_field")'
-        ' SELECT "my_id", "char_field", "renamed_field" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'add_rename_field_with_db_column': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
         ' "added_field" varchar(50) NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
@@ -2648,40 +1864,23 @@ preprocessing = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "added_field" varchar(50) NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "char_field", "added_field")'
-        ' SELECT "my_id", "char_field", "added_field" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'add_field_rename_model': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "added_field_id" integer NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "added_field_id" integer NULL'
+        ' REFERENCES "tests_reffedpreprocmodel" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
         ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "added_field_id" integer NULL REFERENCES "tests_reffedpreprocmodel"'
-        ' ("id") DEFERRABLE INITIALLY DEFERRED);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "char_field", "added_field_id")'
-        ' SELECT "my_id", "char_field", "added_field_id" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("added_field_id");'
         % generate_index_name('tests_testmodel', 'added_field_id',
@@ -2689,27 +1888,19 @@ preprocessing = {
     ],
 
     'add_rename_field_rename_model': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "renamed_field_id" integer NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "renamed_field_id" integer NULL'
+        ' REFERENCES "tests_reffedpreprocmodel" ("id")'
+        ' DEFERRABLE INITIALLY DEFERRED);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
         ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "renamed_field_id" integer NULL REFERENCES'
-        ' "tests_reffedpreprocmodel" ("id") DEFERRABLE INITIALLY DEFERRED);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "char_field", "renamed_field_id")'
-        ' SELECT "my_id", "char_field", "renamed_field_id" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         'CREATE INDEX "%s" ON "tests_testmodel" ("renamed_field_id");'
         % generate_index_name('tests_testmodel', 'renamed_field_id',
@@ -2717,10 +1908,10 @@ preprocessing = {
     ],
 
     'add_sql_delete': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL,'
-        ' "added_field" varchar(20) NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "char_field" varchar(20) NOT NULL,'
+        ' "added_field" varchar(20) NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
         ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
@@ -2729,41 +1920,25 @@ preprocessing = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "added_field" varchar(20) NOT NULL);',
-
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "char_field", "added_field")'
-        ' SELECT "my_id", "char_field", "added_field" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
         '-- Comment --',
 
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL);',
-
-        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
-        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'CREATE TABLE "tests_testmodel"'
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NOT NULL);',
 
-        'INSERT INTO "tests_testmodel" ("my_id", "char_field")'
-        ' SELECT "my_id", "char_field" FROM "TEMP_TABLE";',
+        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
 
-        'DROP TABLE "TEMP_TABLE";',
+        'DROP TABLE "tests_testmodel";',
+
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'change_rename_field': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
@@ -2771,17 +1946,10 @@ preprocessing = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL);',
-
-        'INSERT INTO "tests_testmodel" ("my_id", "char_field")'
-        ' SELECT "my_id", "char_field" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
-
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "renamed_field" varchar(20) NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
@@ -2789,37 +1957,23 @@ preprocessing = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(20) NULL);',
-
-        'INSERT INTO "tests_testmodel" ("my_id", "renamed_field")'
-        ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'change_rename_change_rename_field': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(30) NULL);',
-
-        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
-        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'CREATE TABLE "tests_testmodel"'
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(30) NOT NULL);',
 
-        'INSERT INTO "tests_testmodel" ("my_id", "char_field")'
-        ' SELECT "my_id", "char_field" FROM "TEMP_TABLE";',
+        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
 
-        'DROP TABLE "TEMP_TABLE";',
+        'DROP TABLE "tests_testmodel";',
 
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(30) NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
@@ -2827,17 +1981,10 @@ preprocessing = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(30) NULL);',
-
-        'INSERT INTO "tests_testmodel" ("my_id", "char_field")'
-        ' SELECT "my_id", "char_field" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
-
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
         ' "renamed_field" varchar(30) NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
@@ -2845,114 +1992,71 @@ preprocessing = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(30) NULL);',
-
-        'INSERT INTO "tests_testmodel" ("my_id", "renamed_field")'
-        ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'delete_char_field': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id")'
         ' SELECT "my_id" FROM "tests_testmodel";',
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY);',
-
-        'INSERT INTO "tests_testmodel" ("my_id")'
-        ' SELECT "my_id" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'rename_add_field': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(20) NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(20) NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
         ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(20) NOT NULL);',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
-        'INSERT INTO "tests_testmodel" ("my_id", "renamed_field")'
-        ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
-
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(20) NULL,'
-        ' "char_field" varchar(50) NULL);',
-
-        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
-        ' SELECT "my_id", "renamed_field" FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'CREATE TABLE "tests_testmodel"'
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "renamed_field" varchar(20) NOT NULL,'
         ' "char_field" varchar(50) NULL);',
 
-        'INSERT INTO "tests_testmodel"'
-        ' ("my_id", "renamed_field", "char_field")'
-        ' SELECT "my_id", "renamed_field", "char_field" FROM "TEMP_TABLE";',
+        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+        ' SELECT "my_id", "renamed_field" FROM "tests_testmodel";',
 
-        'DROP TABLE "TEMP_TABLE";',
+        'DROP TABLE "tests_testmodel";',
+
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'rename_change_rename_change_field': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(20) NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(20) NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
         ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(20) NOT NULL);',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
-        'INSERT INTO "tests_testmodel" ("my_id", "renamed_field")'
-        ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
-
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(50) NULL);',
-
-        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
-        ' SELECT "my_id", "renamed_field" FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'CREATE TABLE "tests_testmodel"'
+        'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "renamed_field" varchar(50) NOT NULL);',
 
-        'INSERT INTO "tests_testmodel" ("my_id", "renamed_field")'
-        ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
+        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+        ' SELECT "my_id", "renamed_field" FROM "tests_testmodel";',
 
-        'DROP TABLE "TEMP_TABLE";',
+        'DROP TABLE "tests_testmodel";',
 
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "renamed_field" varchar(50) NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
@@ -2960,34 +2064,20 @@ preprocessing = {
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(50) NULL);',
-
-        'INSERT INTO "tests_testmodel" ("my_id", "renamed_field")'
-        ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'rename_rename_field': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("my_id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(20) NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "renamed_field" varchar(20) NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
         ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(20) NOT NULL);',
-
-        'INSERT INTO "tests_testmodel" ("my_id", "renamed_field")'
-        ' SELECT "my_id", "renamed_field" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'rename_delete_model': [
@@ -3000,23 +2090,16 @@ preprocessing = {
 
 evolver = {
     'evolve_app_task': [
-        'CREATE TEMPORARY TABLE "TEMP_TABLE"'
-        '("id" integer NULL UNIQUE PRIMARY KEY,'
-        ' "value" varchar(100) NULL);',
+        'CREATE TABLE "TEMP_TABLE" '
+        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+        ' "value" varchar(100) NOT NULL);',
 
         'INSERT INTO "TEMP_TABLE" ("id", "value")'
         ' SELECT "id", "value" FROM "tests_testmodel";',
 
         'DROP TABLE "tests_testmodel";',
 
-        'CREATE TABLE "tests_testmodel"'
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "value" varchar(100) NOT NULL);',
-
-        'INSERT INTO "tests_testmodel" ("id", "value")'
-        ' SELECT "id", "value" FROM "TEMP_TABLE";',
-
-        'DROP TABLE "TEMP_TABLE";',
+        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
     'purge_app_task': [
