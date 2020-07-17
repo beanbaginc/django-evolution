@@ -1,9 +1,23 @@
 #!/usr/bin/env python
+
+from __future__ import print_function, unicode_literals
+
 import nose
 import os
+import sqlite3
 import sys
 
 import django
+
+try:
+    from MySQLdb.release import __version__ as mysql_version
+except ImportError:
+    mysql_version = None
+
+try:
+    import psycopg2
+except ImportError:
+    pyscopg2 = None
 
 
 def run_tests(verbosity=1, interactive=False):
@@ -71,5 +85,18 @@ if __name__ == "__main__":
 
     if len(sys.argv) > 1:
         os.environ['DJANGO_EVOLUTION_TEST_DB'] = sys.argv[1]
+
+    # Show some useful version information.
+    print('Python %s.%s.%s' % sys.version_info[:3])
+    print('Django %s' % django.get_version())
+    print('SQLite %s' % sqlite3.sqlite_version)
+
+    if mysql_version is not None:
+        print('MySQLdb %s' % mysql_version)
+
+    if psycopg2 is not None:
+        print('Psycopg2 %s' % psycopg2.__version__)
+
+    print()
 
     sys.exit(run_tests())
