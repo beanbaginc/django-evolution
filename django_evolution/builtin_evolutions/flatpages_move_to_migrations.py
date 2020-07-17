@@ -1,4 +1,4 @@
-"""Marks django.contrib.contenttypes as managed by Django migrations."""
+"""Marks django.contrib.flatpages as managed by Django migrations."""
 
 from __future__ import unicode_literals
 

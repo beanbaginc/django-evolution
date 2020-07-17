@@ -2,9 +2,13 @@ from __future__ import unicode_literals
 
 
 BUILTIN_SEQUENCES = {
+    'django.contrib.admin': ['admin_move_to_migrations'],
     'django.contrib.auth': [],
     'django.contrib.contenttypes': [],
+    'django.contrib.flatpages': ['flatpages_move_to_migrations'],
+    'django.contrib.redirects': ['redirects_move_to_migrations'],
     'django.contrib.sessions': [],
+    'django.contrib.sites': ['sites_move_to_migrations'],
 }
 
 

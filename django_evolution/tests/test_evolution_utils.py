@@ -38,17 +38,17 @@ class GetEvolutionsSequenceTests(TestCase):
     def test_with_project(self):
         """Testing get_evolution_sequence with project-provided evolutions"""
         custom_evolutions = {
-            'django.contrib.admin':
+            'django_evolution.tests.migrations_app':
                 'django_evolution.tests.evolutions_app.evolutions',
         }
 
         with self.settings(CUSTOM_EVOLUTIONS=custom_evolutions):
-            self.assertEqual(get_evolution_sequence(get_app('admin')),
+            self.assertEqual(get_evolution_sequence(get_app('migrations_app')),
                              ['first_evolution'])
 
     def test_with_not_found(self):
         """Testing get_evolution_sequence with evolutions not found"""
-        self.assertEqual(get_evolution_sequence(get_app('admin')),
+        self.assertEqual(get_evolution_sequence(get_app('migrations_app')),
                          [])
 
 
@@ -74,17 +74,17 @@ class GetEvolutionsModuleTests(TestCase):
         from django_evolution.tests.evolutions_app import evolutions
 
         custom_evolutions = {
-            'django.contrib.admin':
+            'django_evolution.tests.evolutions_app':
                 'django_evolution.tests.evolutions_app.evolutions',
         }
 
         with self.settings(CUSTOM_EVOLUTIONS=custom_evolutions):
-            self.assertIs(get_evolutions_module(get_app('admin')),
+            self.assertIs(get_evolutions_module(get_app('evolutions_app')),
                           evolutions)
 
     def test_with_not_found(self):
         """Testing get_evolutions_module with evolutions not found"""
-        self.assertIsNone(get_evolutions_module(get_app('admin')))
+        self.assertIsNone(get_evolutions_module(get_app('migrations_app')))
 
 
 class GetEvolutionsPathTests(TestCase):
@@ -105,18 +105,18 @@ class GetEvolutionsPathTests(TestCase):
     def test_with_project(self):
         """Testing get_evolutions_path with project-provided evolutions"""
         custom_evolutions = {
-            'django.contrib.admin':
+            'django_evolution.tests.evolutions_app':
                 'django_evolution.tests.evolutions_app.evolutions',
         }
 
         with self.settings(CUSTOM_EVOLUTIONS=custom_evolutions):
-            self.assertEqual(get_evolutions_path(get_app('admin')),
+            self.assertEqual(get_evolutions_path(get_app('evolutions_app')),
                              os.path.join(self.base_dir, 'tests',
                                           'evolutions_app', 'evolutions'))
 
     def test_with_not_found(self):
         """Testing get_evolutions_path with evolutions not found"""
-        self.assertIsNone(get_evolutions_path(get_app('admin')))
+        self.assertIsNone(get_evolutions_path(get_app('migrations_app')))
 
 
 class GetEvolutionsSourceTests(TestCase):
@@ -135,19 +135,19 @@ class GetEvolutionsSourceTests(TestCase):
     def test_with_project(self):
         """Testing get_evolutions_source with project-provided evolutions"""
         custom_evolutions = {
-            'django.contrib.admin':
+            'django_evolution.tests.migrations_app':
                 'django_evolution.tests.evolutions_app.evolutions',
         }
 
         with self.settings(CUSTOM_EVOLUTIONS=custom_evolutions):
-            self.assertEqual(get_evolutions_source(get_app('admin')),
+            self.assertEqual(get_evolutions_source(get_app('migrations_app')),
                              EvolutionsSource.PROJECT)
 
     def test_with_not_found(self):
         """Testing get_evolutions_source with evolutions not found falls back
         to APP
         """
-        self.assertEqual(get_evolutions_source(get_app('admin')),
+        self.assertEqual(get_evolutions_source(get_app('migrations_app')),
                          EvolutionsSource.APP)
 
 
