@@ -72,6 +72,9 @@ class EvolutionTestCase(TestCase):
     # signature failures.
     maxDiff = 10000
 
+    # The list of databases we may test against, required by Django 2.2+.
+    databases = ['default', 'db_multi']
+
     def setUp(self):
         self.base_model = None
         self.pre_extra_models = []

@@ -7,6 +7,7 @@ from copy import deepcopy
 from django.db import connections
 from django.utils import six
 
+from django_evolution.compat.db import convert_table_name
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.errors import DatabaseStateError
 
@@ -92,7 +93,8 @@ class DatabaseState(object):
 
         self.db_name = db_name
         self._tables = {}
-        self._norm_table_name = connection.introspection.table_name_converter
+        self._norm_table_name = \
+            lambda name: convert_table_name(connection, name)
 
         if scan:
             self.rescan_tables()

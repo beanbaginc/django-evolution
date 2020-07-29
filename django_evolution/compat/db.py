@@ -38,6 +38,13 @@ except ImportError:
         # Django < 1.7
         BaseDatabaseSchemaEditor = None
 
+try:
+    # Django >= 2.2
+    from django.db.backends.utils import names_digest
+except ImportError:
+    # Django < 2.2
+    names_digest = None
+
 from django_evolution.compat.models import get_models, get_remote_field
 from django_evolution.support import supports_index_together
 from django_evolution.utils.apps import get_app_label
@@ -96,9 +103,12 @@ def digest(connection, *args):
         str:
         The resulting digest hash.
     """
-    if (BaseDatabaseSchemaEditor and
-        hasattr(BaseDatabaseSchemaEditor, '_digest')):
-        # Django >= 1.8
+    if names_digest is not None:
+        # Django >= 2.2
+        return names_digest(args[0], *args[1:], length=8)
+    elif (BaseDatabaseSchemaEditor and
+          hasattr(BaseDatabaseSchemaEditor, '_digest')):
+        # Django >= 1.8, < 2.2
         #
         # Note that _digest() is a classmethod that is common across all
         # database backends. We don't need to worry about using a
@@ -108,6 +118,34 @@ def digest(connection, *args):
     else:
         # Django < 1.8
         return connection.creation._digest(*args)
+
+
+def convert_table_name(connection, name):
+    """Convert a table name to a format required by the database backend.
+
+    The conversion may result in quoting or otherwise altering the table name.
+
+    This provides compatibility with all supported versions of Django.
+
+    Args:
+        connection (object):
+            The database connection.
+
+        name (unicode):
+            The table name to convert.
+
+    Returns:
+        unicode:
+        The converted table name.
+    """
+    introspection = connection.introspection
+
+    if hasattr(introspection, 'identifier_converter'):
+        # Django >= 2.2
+        return introspection.identifier_converter(name)
+    else:
+        # Django < 2.2
+        return introspection.table_name_converter(name)
 
 
 def sql_create_models(models, tables=None, db_name=None):
@@ -225,15 +263,17 @@ def sql_delete(app, db_name=None):
 
     if BaseDatabaseSchemaEditor:
         # Django >= 1.7
-        all_table_names = set(connection.introspection.table_names())
+        introspection = connection.introspection
+
+        all_table_names = set(introspection.table_names())
         deleted_models = set()
 
         introspection = connection.introspection
 
         with connection.schema_editor(collect_sql=True) as schema_editor:
             for model in get_models(app):
-                table_name = introspection.table_name_converter(
-                    model._meta.db_table)
+                table_name = convert_table_name(connection,
+                                                model._meta.db_table)
 
                 if (table_name in all_table_names and
                     model not in deleted_models):

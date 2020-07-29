@@ -208,6 +208,7 @@ class MockMeta(object):
         self.app_label = app_name
         self.meta = {
             'auto_created': auto_created,
+            'constraints': [],
             'db_table': model_sig.table_name,
             'db_tablespace': model_sig.db_tablespace,
             'has_auto_field': None,
