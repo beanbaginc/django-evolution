@@ -10,6 +10,7 @@ try:
     # Django >= 1.7
     from django.core.management.sql import (emit_post_migrate_signal,
                                             emit_pre_migrate_signal)
+    from django.db.migrations import Migration
     from django.db.migrations.executor import (MigrationExecutor as
                                                DjangoMigrationExecutor)
     from django.db.migrations.loader import (MigrationLoader as
@@ -26,6 +27,7 @@ except ImportError:
 
     DjangoMigrationExecutor = object
     DjangoMigrationLoader = object
+    Migration = None
     MigrationRecorder = None
     ModelState = None
     emit_post_migrate_signal = None
@@ -43,6 +45,338 @@ from django_evolution.utils.apps import get_app_name
 django_version = django.VERSION[:2]
 
 
+class MigrationList(object):
+    """A list of applied or pending migrations.
+
+    This is used to manage a list of migrations in a way that's independent
+    from the underlying representation used in Django. Migrations are tracked
+    by app label and name, may be associated with a recorded migration
+    database entry, and can be used to convert state to and from both
+    signatures and Django migration state.
+    """
+
+    @classmethod
+    def from_app_sig(cls, app_sig):
+        """Create a MigrationList based on an app signature.
+
+        Args:
+            app_sig (django_evolution.signature.AppSignature):
+                The app signature containing a list of applied migrations.
+
+        Returns:
+            MigrationList:
+            The new migration list.
+        """
+        migration_list = cls()
+        app_label = app_sig.app_id
+
+        if app_sig.applied_migrations:
+            for name in app_sig.applied_migrations:
+                migration_list.add_migration_info(app_label=app_label,
+                                                  name=name)
+
+        return migration_list
+
+    @classmethod
+    def from_database(cls, connection, app_label=None):
+        """Create a MigrationList based on recorded migrations.
+
+        Args:
+            connection (django.db.backends.base.BaseDatabaseWrapper):
+                The database connection used to query for migrations.
+
+            app_label (unicode, optional):
+                An app label to filter migrations by.
+
+        Returns:
+            MigrationList:
+            The new migration list.
+        """
+        recorder = MigrationRecorder(connection)
+        recorder.ensure_schema()
+
+        migration_list = cls()
+        queryset = recorder.migration_qs
+
+        if app_label:
+            queryset = queryset.filter(app=app_label)
+
+        for recorded_migration in queryset.all():
+            migration_list.add_recorded_migration(recorded_migration)
+
+        return migration_list
+
+    def __init__(self):
+        """Initialize the list."""
+        self._by_app_label = {}
+        self._by_id = {}
+
+    def has_migration_info(self, app_label, name):
+        """Return whether the list contains an entry for a migration.
+
+        Args:
+            app_label (unicode):
+                The label for the application that was migrated.
+
+            name (unicode):
+                The name of the migration.
+
+        Returns:
+            bool:
+            ``True`` if the migration is in the list. ``False`` if it is not.
+        """
+        return (app_label, name) in self._by_id
+
+    def add_migration_targets(self, targets):
+        """Add a list of migration targets to the list.
+
+        Args:
+            targets (list of tuple):
+                The migration targets to each. Each is a tuple containing
+                an app label and a migration name.
+        """
+        for app_label, name in targets:
+            self.add_migration_info(app_label=app_label,
+                                    name=name)
+
+    def add_migration(self, migration):
+        """Add a migration to the list.
+
+        This can only be called on Django 1.7 or higher.
+
+        Args:
+            migration (django.db.migrations.Migration):
+                The migration instance to add.
+        """
+        assert Migration is not None
+        assert isinstance(migration, Migration)
+
+        self.add_migration_info(app_label=migration.app_label,
+                                name=migration.name,
+                                migration=migration)
+
+    def add_recorded_migration(self, recorded_migration):
+        """Add a recorded migration to the list.
+
+        This can only be called on Django 1.7 or higher.
+
+        Args:
+            recorded_migration (django.db.migrations.recorder.
+                                MigrationRecorder.Migration):
+                The recorded migration model to add.
+        """
+        assert MigrationRecorder is not None
+        assert isinstance(recorded_migration, MigrationRecorder.Migration)
+
+        self.add_migration_info(app_label=recorded_migration.app,
+                                name=recorded_migration.name,
+                                recorded_migration=recorded_migration)
+
+    def add_migration_info(self, app_label, name, migration=None,
+                           recorded_migration=None):
+        """Add information on a migration to the list.
+
+        Args:
+            app_label (unicode):
+                The label for the application that was migrated.
+
+            name (unicode):
+                The name of the migration.
+
+            migration (django.db.migrations.Migration, optional):
+                An optional migration instance to associate with this entry.
+
+            recorded_migration (django.db.migrations.recorder.
+                                MigrationRecorder.Migration, optional):
+                An optional recorded migration to associate with this entry.
+        """
+        info = {
+            'app_label': app_label,
+            'migration': migration,
+            'name': name,
+            'recorded_migration': recorded_migration,
+        }
+
+        self._by_app_label.setdefault(app_label, []).append(info)
+        self._by_id[(app_label, name)] = info
+
+    def update(self, other):
+        """Update the list with the contents of another list.
+
+        If there's an entry in another list matching this one, and contains
+        information that the entry in this list does not have, this list's
+        entry will be updated.
+
+        Args:
+            other (MigrationList):
+                The list of migrations to put into this list.
+        """
+        for other_info in other:
+            app_label = other_info['app_label']
+            name = other_info['name']
+            info = self._by_id.get((app_label, name))
+
+            if info is None:
+                self.add_migration_info(app_label=app_label,
+                                        name=name)
+            else:
+                for key in ('migration', 'recorded_migration'):
+                    if info[key] is None:
+                        info[key] = other_info[key]
+
+    def to_targets(self):
+        """Return a set of migration targets based on this list.
+
+        Returns:
+            set:
+            A set of migration targets. Each entry is a tuple containing
+            the app label and name.
+        """
+        return set(
+            (info['app_label'], info['name'])
+            for info in self
+        )
+
+    def get_app_labels(self):
+        """Iterate through the app labels.
+
+        Results are sorted alphabetically.
+
+        Returns:
+            list of unicode:
+            The sorted list of app labels with associated migrations.
+        """
+        return list(sorted(six.iterkeys(self._by_app_label)))
+
+    def clone(self):
+        """Clone the list.
+
+        Returns:
+            MigrationList:
+            The cloned migration list.
+        """
+        new_migration_list = MigrationList()
+
+        for info in self:
+            new_migration_list.add_migration_info(**info)
+
+        return new_migration_list
+
+    def __bool__(self):
+        """Return whether this list is truthy or falsy.
+
+        The list is truthy only if it has items.
+
+        Returns:
+            bool:
+            ``True`` if the list has items. ``False`` if it's empty.
+        """
+        return bool(self._by_id)
+
+    def __len__(self):
+        """Return the number of items in the list.
+
+        Returns:
+            int:
+            The number of items in the list.
+        """
+        return len(self._by_id)
+
+    def __eq__(self, other):
+        """Return whether this list is equal to another list.
+
+        The order of migrations is ignored when comparing lists.
+
+        Args:
+            other (MigrationList):
+                A list of migrations to compare to.
+
+        Returns:
+            bool:
+            ``True`` if the two lists have the same contents. ``False`` if
+            there are differences in contents, or ``other`` is not a
+            :py:class:`MigrationList`.
+        """
+        if other is None or not isinstance(other, MigrationList):
+            return False
+
+        return self._by_id == other._by_id
+
+    def __iter__(self):
+        """Iterate through the list.
+
+        Entries are sorted first by app label, alphabetically, and then
+        the order in which migrations were added for that app label.
+
+        Yields:
+            info:
+            A dictionary containing the following keys:
+
+            ``app_label`` (:py:class:`unicode`):
+                The app label for the migration.
+
+            ``name`` (:py:class:`unicode`):
+                The name of the migration.
+
+            ``migration`` (:py:class:`django.db.migrations.Migration`):
+                The optional migration instance.
+
+            ``recorded_migration`` (:py:class:`django.db.migrations.recorder.
+                                    MigrationRecorder.Migration`):
+                The optional recorded migration.
+        """
+        for app_label, info_list in sorted(six.iteritems(self._by_app_label),
+                                           key=lambda pair: pair[0]):
+            for info in info_list:
+                yield info
+
+    def __add__(self, other):
+        """Return a combined copy of this list and another list.
+
+        Args:
+            other (MigrationList):
+                The other list to add to this list.
+
+        Returns:
+            MigrationList:
+            The new migration list containing contents of both lists.
+        """
+        new_migration_list = self.clone()
+        new_migration_list.update(other)
+
+        return new_migration_list
+
+    def __sub__(self, other):
+        """Return a copy of this list with another list's contents excluded.
+
+        Args:
+            other (MigrationList):
+                The other list containing contents to exclude.
+
+        Returns:
+            MigrationList:
+            The new migration list containing the contents of this list that
+            don't exist in the other list.
+        """
+        new_migration_list = MigrationList()
+
+        for info in self:
+            if not other.has_migration_info(app_label=info['app_label'],
+                                            name=info['name']):
+                new_migration_list.add_migration_info(**info)
+
+        return new_migration_list
+
+    def __repr__(self):
+        """Return a string representation of this list.
+
+        Returns:
+            unicode:
+            The string representation.
+        """
+        return '<MigrationList%s>' % list(self)
+
+
 class MigrationLoader(DjangoMigrationLoader):
     """Loads migration files from disk.
 
@@ -51,11 +385,9 @@ class MigrationLoader(DjangoMigrationLoader):
     providing additional migrations not available on disk.
 
     Attributes:
-        extra_applied_migrations (set of tuple):
+        extra_applied_migrations (MigrationList):
             Migrations to mark as already applied. This can be used to
             augment the results calculated from the database.
-
-            Each tuple is in the form of ``(app_label, migration_name)``.
     """
 
     def __init__(self, connection, custom_migrations=None, *args, **kwargs):
@@ -65,10 +397,8 @@ class MigrationLoader(DjangoMigrationLoader):
             connection (django.db.backends.base.BaseDatabaseWrapper):
                 The connection to load applied migrations from.
 
-            custom_migrations (dict, optional):
-                Custom migrations not available on disk. Each key is a tuple
-                of ``(app_label, migration_name)``, and each value is a
-                migration.
+            custom_migrations (MigrationList, optional):
+                Custom migrations not available on disk.
 
             *args (tuple):
                 Additional positional arguments for the parent class.
@@ -76,11 +406,11 @@ class MigrationLoader(DjangoMigrationLoader):
             **kwargs (dict):
                 Additional keyword arguments for the parent class.
         """
-        self._custom_migrations = custom_migrations or {}
-        self._applied_migrations = set()
+        self._custom_migrations = custom_migrations or MigrationList()
+        self._applied_migrations = None
         self._lock_migrations = False
 
-        self.extra_applied_migrations = set()
+        self.extra_applied_migrations = MigrationList()
 
         super(MigrationLoader, self).__init__(connection, *args, **kwargs)
 
@@ -91,7 +421,10 @@ class MigrationLoader(DjangoMigrationLoader):
         This will contain both the migrations applied from the database
         and any set in :py:attr:`extra_applied_migrations`.
         """
-        return self._applied_migrations | self.extra_applied_migrations
+        return self._applied_migrations | set(
+            (info['app_label'], info['name'])
+            for info in self.extra_applied_migrations
+        )
 
     @applied_migrations.setter
     def applied_migrations(self, value):
@@ -129,12 +462,16 @@ class MigrationLoader(DjangoMigrationLoader):
 
         super(MigrationLoader, self).load_disk()
 
-        for key, migration in six.iteritems(self._custom_migrations):
-            app_label = key[0]
+        for info in self._custom_migrations:
+            migration = info['migration']
+            assert migration is not None
+
+            app_label = info['app_label']
+            name = info['name']
 
             self.migrated_apps.add(app_label)
             self.unmigrated_apps.discard(app_label)
-            self.disk_migrations[key] = migration
+            self.disk_migrations[(app_label, name)] = migration
 
 
 class MigrationExecutor(DjangoMigrationExecutor):
@@ -252,33 +589,7 @@ def has_migrations_module(app):
         return False
 
 
-def get_applied_migrations_by_app(connection):
-    """Return all applied migration names organized by app label.
-
-    This can only be called when on Django 1.7 or higher.
-
-    Args:
-        connection (django.db.backends.base.BaseDatabaseWrapper):
-            The connection used to look up recorded migrations.
-
-    Returns:
-        dict:
-        A dictionary mapping app labels to sets of applied migration names.
-    """
-    assert supports_migrations, \
-        'This cannot be called on Django 1.6 or earlier.'
-
-    recorder = MigrationRecorder(connection)
-    applied_migrations = recorder.applied_migrations()
-    by_app = {}
-
-    for app_label, migration_name in applied_migrations:
-        by_app.setdefault(app_label, set()).add(migration_name)
-
-    return by_app
-
-
-def record_applied_migrations(connection, migration_targets):
+def record_applied_migrations(connection, migrations):
     """Record a list of applied migrations to the database.
 
     This can only be called when on Django 1.7 or higher.
@@ -287,9 +598,8 @@ def record_applied_migrations(connection, migration_targets):
         connection (django.db.backends.base.BaseDatabaseWrapper):
             The connection used to record applied migrations.
 
-        migration_targets (list of tuple):
-            The list of migration targets to record as applied. Each tuple
-            is in the form of ``(app_label, migration_name)``.
+        migrations (MigrationList):
+            The list of migration targets to record as applied.
     """
     assert supports_migrations, \
         'This cannot be called on Django 1.6 or earlier.'
@@ -298,9 +608,9 @@ def record_applied_migrations(connection, migration_targets):
     recorder.ensure_schema()
 
     recorder.migration_qs.bulk_create(
-        recorder.Migration(app=app_label,
-                           name=migration_name)
-        for app_label, migration_name in migration_targets
+        recorder.Migration(app=info['app_label'],
+                           name=info['name'])
+        for info in migrations
     )
 
 

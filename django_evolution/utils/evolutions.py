@@ -14,7 +14,7 @@ from django_evolution.consts import EvolutionsSource, UpgradeMethod
 from django_evolution.errors import EvolutionException
 from django_evolution.support import supports_migrations
 from django_evolution.utils.apps import get_app_label, get_app_name
-from django_evolution.utils.migrations import (get_applied_migrations_by_app,
+from django_evolution.utils.migrations import (MigrationList,
                                                has_migrations_module)
 
 
@@ -398,7 +398,8 @@ def get_app_upgrade_info(app, scan_evolutions=True, simulate_applied=False,
         dict:
         A dictionary of information containing the following keys:
 
-        ``applied_migrations`` (list of :py:class:`unicode`):
+        ``applied_migrations`` (:py:class:`~django_evolution.utils
+                                .migrations.MigrationList`):
             A list of migrations that have been applied to this app through
             any mutations. This will only be present if the upgrade method is
             set to use migrations and if running on a version of Django that
@@ -440,8 +441,16 @@ def get_app_upgrade_info(app, scan_evolutions=True, simulate_applied=False,
 
             for mutation in reversed(mutations):
                 if isinstance(mutation, MoveToDjangoMigrations):
+                    app_label = get_app_label(app)
                     upgrade_method = UpgradeMethod.MIGRATIONS
-                    applied_migrations = mutation.mark_applied
+
+                    applied_migrations = MigrationList()
+
+                    for name in mutation.mark_applied:
+                        applied_migrations.add_migration_info(
+                            app_label=app_label,
+                            name=name)
+
                     break
 
         if not upgrade_method:
@@ -452,10 +461,12 @@ def get_app_upgrade_info(app, scan_evolutions=True, simulate_applied=False,
             upgrade_method = UpgradeMethod.MIGRATIONS
 
         if supports_migrations:
-            connection = connections[database or DEFAULT_DB_ALIAS]
-            app_label = get_app_label(app)
-            applied_migrations = \
-                get_applied_migrations_by_app(connection).get(app_label)
+            applied_migrations = MigrationList.from_database(
+                connection=connections[database or DEFAULT_DB_ALIAS],
+                app_label=get_app_label(app))
+
+            if not applied_migrations:
+                applied_migrations = None
 
     return {
         'applied_migrations': applied_migrations,

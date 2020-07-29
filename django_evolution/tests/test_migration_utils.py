@@ -20,18 +20,19 @@ from django_evolution.compat.apps import get_app
 from django_evolution.db.state import DatabaseState
 from django_evolution.errors import (MigrationConflictsError,
                                      MigrationHistoryError)
+from django_evolution.signature import AppSignature
 from django_evolution.support import supports_migrations
 from django_evolution.tests.base_test_case import (MigrationsTestsMixin,
                                                    TestCase)
 from django_evolution.tests.models import BaseTestModel
 from django_evolution.tests.utils import register_models
 from django_evolution.utils.migrations import (MigrationExecutor,
+                                               MigrationList,
                                                MigrationLoader,
                                                apply_migrations,
                                                create_pre_migrate_state,
                                                filter_migration_targets,
                                                finalize_migrations,
-                                               get_applied_migrations_by_app,
                                                has_migrations_module,
                                                is_migration_initial,
                                                record_applied_migrations,
@@ -76,6 +77,588 @@ else:
     AddFieldMigration = None
 
 
+class MigrationListTests(TestCase):
+    """Unit tests for django_evolution.utils.migrations.MigrationList."""
+
+    def test_from_app_sig(self):
+        """Testing MigrationList.from_app_sig"""
+        app_sig = AppSignature(
+            app_id='tests',
+            applied_migrations=['0001_initial', '0002_stuff'])
+
+        migration_list = MigrationList.from_app_sig(app_sig)
+        self.assertTrue(migration_list.has_migration_info(app_label='tests',
+                                                          name='0001_initial'))
+        self.assertTrue(migration_list.has_migration_info(app_label='tests',
+                                                          name='0002_stuff'))
+
+    def test_from_database(self):
+        """Testing MigrationList.from_database"""
+        if not supports_migrations:
+            raise SkipTest('Not used on Django < 1.7')
+
+        connection = connections[DEFAULT_DB_ALIAS]
+
+        applied_migrations = MigrationList()
+        applied_migrations.add_migration_info(app_label='tests',
+                                              name='0001_initial')
+        applied_migrations.add_migration_info(app_label='tests',
+                                              name='0002_stuff')
+        record_applied_migrations(connection=connection,
+                                  migrations=applied_migrations)
+
+        migration_list = MigrationList.from_database(connection)
+        self.assertTrue(migration_list.has_migration_info(app_label='tests',
+                                                          name='0001_initial'))
+        self.assertTrue(migration_list.has_migration_info(app_label='tests',
+                                                          name='0002_stuff'))
+
+    def test_has_migration_info(self):
+        """Testing MigrationList.has_migration_info"""
+        migration_list = MigrationList()
+        migration_list.add_migration_info(app_label='tests',
+                                          name='0001_initial')
+
+        self.assertTrue(migration_list.has_migration_info(
+            app_label='tests',
+            name='0001_initial'))
+        self.assertFalse(migration_list.has_migration_info(
+            app_label='tests',
+            name='0002_initial'))
+        self.assertFalse(migration_list.has_migration_info(
+            app_label='foo',
+            name='0001_initial'))
+
+    def test_add_migration_targets(self):
+        """Testing MigrationList.add_migration_targets"""
+        migration_list = MigrationList()
+        migration_list.add_migration_targets([
+            ('tests', '0001_initial'),
+            ('tests', '0002_stuff'),
+        ])
+
+        self.assertEqual(
+            migration_list._by_id,
+            {
+                ('tests', '0001_initial'): {
+                    'app_label': 'tests',
+                    'name': '0001_initial',
+                    'migration': None,
+                    'recorded_migration': None,
+                },
+                ('tests', '0002_stuff'): {
+                    'app_label': 'tests',
+                    'name': '0002_stuff',
+                    'migration': None,
+                    'recorded_migration': None,
+                },
+            })
+        self.assertEqual(
+            migration_list._by_app_label,
+            {
+                'tests': [
+                    {
+                        'app_label': 'tests',
+                        'name': '0001_initial',
+                        'migration': None,
+                        'recorded_migration': None,
+                    },
+                    {
+                        'app_label': 'tests',
+                        'name': '0002_stuff',
+                        'migration': None,
+                        'recorded_migration': None,
+                    },
+                ],
+            })
+
+    def test_add_migration(self):
+        """Testing MigrationList.add_migration"""
+        if not supports_migrations:
+            raise SkipTest('Not used on Django < 1.7')
+
+        migration1 = InitialMigration('0001_initial', 'tests')
+        migration2 = AddFieldMigration('0002_add_field', 'tests')
+
+        migration_list = MigrationList()
+        migration_list.add_migration(migration1)
+        migration_list.add_migration(migration2)
+
+        self.assertEqual(
+            migration_list._by_id,
+            {
+                ('tests', '0001_initial'): {
+                    'app_label': 'tests',
+                    'name': '0001_initial',
+                    'migration': migration1,
+                    'recorded_migration': None,
+                },
+                ('tests', '0002_add_field'): {
+                    'app_label': 'tests',
+                    'name': '0002_add_field',
+                    'migration': migration2,
+                    'recorded_migration': None,
+                },
+            })
+        self.assertEqual(
+            migration_list._by_app_label,
+            {
+                'tests': [
+                    {
+                        'app_label': 'tests',
+                        'name': '0001_initial',
+                        'migration': migration1,
+                        'recorded_migration': None,
+                    },
+                    {
+                        'app_label': 'tests',
+                        'name': '0002_add_field',
+                        'migration': migration2,
+                        'recorded_migration': None,
+                    },
+                ],
+            })
+
+    def test_add_recorded_migration(self):
+        """Testing MigrationList.add_recorded_migration"""
+        if not supports_migrations:
+            raise SkipTest('Not used on Django < 1.7')
+
+        recorded_migration1 = MigrationRecorder.Migration(
+            app='tests',
+            name='0001_initial',
+            applied=True)
+        recorded_migration2 = MigrationRecorder.Migration(
+            app='tests',
+            name='0002_add_field',
+            applied=True)
+
+        migration_list = MigrationList()
+        migration_list.add_recorded_migration(recorded_migration1)
+        migration_list.add_recorded_migration(recorded_migration2)
+
+        self.assertEqual(
+            migration_list._by_id,
+            {
+                ('tests', '0001_initial'): {
+                    'app_label': 'tests',
+                    'name': '0001_initial',
+                    'migration': None,
+                    'recorded_migration': recorded_migration1,
+                },
+                ('tests', '0002_add_field'): {
+                    'app_label': 'tests',
+                    'name': '0002_add_field',
+                    'migration': None,
+                    'recorded_migration': recorded_migration2,
+                },
+            })
+        self.assertEqual(
+            migration_list._by_app_label,
+            {
+                'tests': [
+                    {
+                        'app_label': 'tests',
+                        'name': '0001_initial',
+                        'migration': None,
+                        'recorded_migration': recorded_migration1,
+                    },
+                    {
+                        'app_label': 'tests',
+                        'name': '0002_add_field',
+                        'migration': None,
+                        'recorded_migration': recorded_migration2,
+                    },
+                ],
+            })
+
+    def test_add_migration_info(self):
+        """Testing MigrationList.add_migration_info"""
+        if supports_migrations:
+            migration1 = InitialMigration('0001_initial', 'tests')
+            migration2 = AddFieldMigration('0002_add_field', 'tests')
+            recorded_migration1 = MigrationRecorder.Migration(
+                app='tests',
+                name='0001_initial',
+                applied=True)
+            recorded_migration2 = MigrationRecorder.Migration(
+                app='tests',
+                name='0002_add_field',
+                applied=True)
+        else:
+            migration1 = None
+            migration2 = None
+            recorded_migration1 = None
+            recorded_migration2 = None
+
+        migration_list = MigrationList()
+        migration_list.add_migration_info(
+            app_label='tests',
+            name='0001_initial',
+            migration=migration1,
+            recorded_migration=recorded_migration1)
+        migration_list.add_migration_info(
+            app_label='tests',
+            name='0002_add_field',
+            migration=migration2,
+            recorded_migration=recorded_migration2)
+
+        self.assertEqual(
+            migration_list._by_id,
+            {
+                ('tests', '0001_initial'): {
+                    'app_label': 'tests',
+                    'name': '0001_initial',
+                    'migration': migration1,
+                    'recorded_migration': recorded_migration1,
+                },
+                ('tests', '0002_add_field'): {
+                    'app_label': 'tests',
+                    'name': '0002_add_field',
+                    'migration': migration2,
+                    'recorded_migration': recorded_migration2,
+                },
+            })
+        self.assertEqual(
+            migration_list._by_app_label,
+            {
+                'tests': [
+                    {
+                        'app_label': 'tests',
+                        'name': '0001_initial',
+                        'migration': migration1,
+                        'recorded_migration': recorded_migration1,
+                    },
+                    {
+                        'app_label': 'tests',
+                        'name': '0002_add_field',
+                        'migration': migration2,
+                        'recorded_migration': recorded_migration2,
+                    },
+                ],
+            })
+
+    def test_update(self):
+        """Testing MigrationList.update"""
+        if supports_migrations:
+            migration1 = InitialMigration('0001_initial', 'tests')
+            migration2 = AddFieldMigration('0002_add_field', 'tests')
+            recorded_migration1 = MigrationRecorder.Migration(
+                app='tests',
+                name='0001_initial',
+                applied=True)
+            recorded_migration2 = MigrationRecorder.Migration(
+                app='tests',
+                name='0002_add_field',
+                applied=True)
+        else:
+            migration1 = None
+            migration2 = None
+            recorded_migration1 = None
+            recorded_migration2 = None
+
+        migration_list1 = MigrationList()
+        migration_list1.add_migration_info(
+            app_label='tests',
+            name='0001_initial',
+            migration=migration1,
+            recorded_migration=recorded_migration1)
+        migration_list1.add_migration_info(
+            app_label='tests',
+            name='0002_add_field',
+            migration=None,
+            recorded_migration=None)
+
+        migration_list2 = MigrationList()
+        migration_list2.add_migration_info(
+            app_label='tests',
+            name='0002_add_field',
+            migration=migration2,
+            recorded_migration=recorded_migration2)
+        migration_list2.add_migration_info(
+            app_label='foo',
+            name='0001_initial')
+
+        migration_list1.update(migration_list2)
+
+        self.assertEqual(
+            migration_list1._by_id,
+            {
+                ('tests', '0001_initial'): {
+                    'app_label': 'tests',
+                    'name': '0001_initial',
+                    'migration': migration1,
+                    'recorded_migration': recorded_migration1,
+                },
+                ('tests', '0002_add_field'): {
+                    'app_label': 'tests',
+                    'name': '0002_add_field',
+                    'migration': migration2,
+                    'recorded_migration': recorded_migration2,
+                },
+                ('foo', '0001_initial'): {
+                    'app_label': 'foo',
+                    'name': '0001_initial',
+                    'migration': None,
+                    'recorded_migration': None,
+                },
+            })
+        self.assertEqual(
+            migration_list1._by_app_label,
+            {
+                'foo': [
+                    {
+                        'app_label': 'foo',
+                        'name': '0001_initial',
+                        'migration': None,
+                        'recorded_migration': None,
+                    },
+                ],
+                'tests': [
+                    {
+                        'app_label': 'tests',
+                        'name': '0001_initial',
+                        'migration': migration1,
+                        'recorded_migration': recorded_migration1,
+                    },
+                    {
+                        'app_label': 'tests',
+                        'name': '0002_add_field',
+                        'migration': migration2,
+                        'recorded_migration': recorded_migration2,
+                    },
+                ],
+            })
+
+    def test_to_targets(self):
+        """Testing MigrationList.to_targets"""
+        migration_list = MigrationList()
+        migration_list.add_migration_info(app_label='tests',
+                                          name='0001_initial')
+        migration_list.add_migration_info(app_label='foo',
+                                          name='0002_bar')
+
+        self.assertEqual(
+            migration_list.to_targets(),
+            {('tests', '0001_initial'), ('foo', '0002_bar')})
+
+    def test_get_app_labels(self):
+        """Testing MigrationList.get_app_labels"""
+        migration_list = MigrationList()
+        migration_list.add_migration_info(app_label='foo',
+                                          name='0002_bar')
+        migration_list.add_migration_info(app_label='tests',
+                                          name='0001_initial')
+        migration_list.add_migration_info(app_label='baz',
+                                          name='0002_stuff')
+
+        self.assertEqual(migration_list.get_app_labels(),
+                         ['baz', 'foo', 'tests'])
+
+    def test_clone(self):
+        """Testing MigrationList.clone"""
+        migration_list = MigrationList()
+        migration_list.add_migration_info(app_label='tests',
+                                          name='0001_initial')
+        migration_list.add_migration_info(app_label='foo',
+                                          name='0002_bar')
+
+        cloned = migration_list.clone()
+        self.assertIsNot(migration_list._by_id, cloned._by_id)
+        self.assertIsNot(migration_list._by_app_label, cloned._by_app_label)
+        self.assertEqual(migration_list._by_id, cloned._by_id)
+        self.assertEqual(migration_list._by_app_label, cloned._by_app_label)
+
+        # Change something in the original and make sure the clone isn't
+        # affected.
+        migration_list._by_id[('tests', '0001_initial')]['name'] = 'changed'
+        self.assertNotEqual(migration_list._by_id, cloned._by_id)
+        self.assertNotEqual(migration_list._by_app_label, cloned._by_app_label)
+
+    def test_bool(self):
+        """Testing MigrationList.__bool__"""
+        migration_list = MigrationList()
+        self.assertFalse(migration_list)
+
+        migration_list.add_migration_info(app_label='tests',
+                                          name='0001_initial')
+        self.assertTrue(migration_list)
+
+    def test_len(self):
+        """Testing MigrationList.__len__"""
+        migration_list = MigrationList()
+        self.assertEqual(len(migration_list), 0)
+
+        migration_list.add_migration_info(app_label='tests',
+                                          name='0001_initial')
+        self.assertEqual(len(migration_list), 1)
+
+        migration_list.add_migration_info(app_label='tests',
+                                          name='0002_stuff')
+        self.assertEqual(len(migration_list), 2)
+
+    def test_eq(self):
+        """Testing MigrationList.__eq__"""
+        migration_list1 = MigrationList()
+        migration_list2 = MigrationList()
+
+        self.assertEqual(migration_list1, migration_list2)
+        self.assertNotEqual(migration_list1, None)
+        self.assertNotEqual(migration_list1, ['abc'])
+        self.assertNotEqual(migration_list1, 123)
+
+        migration_list1.add_migration_info(app_label='tests',
+                                           name='0001_initial')
+        self.assertNotEqual(migration_list1, migration_list2)
+
+        migration_list2.add_migration_info(app_label='tests',
+                                           name='0001_initial')
+        self.assertEqual(migration_list1, migration_list2)
+
+        migration_list2.add_migration_info(app_label='foo',
+                                           name='0001_bar')
+        self.assertNotEqual(migration_list1, migration_list2)
+
+    def test_iter(self):
+        """Testing MigrationList.__iter__"""
+        migration_list = MigrationList()
+        migration_list.add_migration_info(app_label='tests',
+                                          name='0001_initial')
+        migration_list.add_migration_info(app_label='tests',
+                                          name='0002_stuff')
+
+        self.assertEqual(
+            list(migration_list),
+            [
+                {
+                    'app_label': 'tests',
+                    'name': '0001_initial',
+                    'migration': None,
+                    'recorded_migration': None,
+                },
+                {
+                    'app_label': 'tests',
+                    'name': '0002_stuff',
+                    'migration': None,
+                    'recorded_migration': None,
+                },
+            ])
+
+    def test_add(self):
+        """Testing MigrationList.__add__"""
+        migration_list1 = MigrationList()
+        migration_list1.add_migration_info(app_label='tests',
+                                           name='0001_initial')
+        migration_list1.add_migration_info(app_label='tests',
+                                           name='0002_stuff')
+
+        migration_list2 = MigrationList()
+        migration_list2.add_migration_info(app_label='tests',
+                                           name='0001_initial')
+        migration_list2.add_migration_info(app_label='foo',
+                                           name='0002_bar')
+
+        new_migration_list = migration_list1 + migration_list2
+
+        self.assertEqual(
+            new_migration_list._by_id,
+            {
+                ('tests', '0001_initial'): {
+                    'app_label': 'tests',
+                    'name': '0001_initial',
+                    'migration': None,
+                    'recorded_migration': None,
+                },
+                ('tests', '0002_stuff'): {
+                    'app_label': 'tests',
+                    'name': '0002_stuff',
+                    'migration': None,
+                    'recorded_migration': None,
+                },
+                ('foo', '0002_bar'): {
+                    'app_label': 'foo',
+                    'name': '0002_bar',
+                    'migration': None,
+                    'recorded_migration': None,
+                },
+            })
+        self.assertEqual(
+            new_migration_list._by_app_label,
+            {
+                'foo': [
+                    {
+                        'app_label': 'foo',
+                        'name': '0002_bar',
+                        'migration': None,
+                        'recorded_migration': None,
+                    },
+                ],
+                'tests': [
+                    {
+                        'app_label': 'tests',
+                        'name': '0001_initial',
+                        'migration': None,
+                        'recorded_migration': None,
+                    },
+                    {
+                        'app_label': 'tests',
+                        'name': '0002_stuff',
+                        'migration': None,
+                        'recorded_migration': None,
+                    },
+                ],
+            })
+
+        # Make sure there's no cross-contamination.
+        self.assertNotEqual(new_migration_list._by_id, migration_list1._by_id)
+        self.assertNotEqual(new_migration_list._by_id, migration_list2._by_id)
+        self.assertNotEqual(migration_list1._by_id, migration_list2._by_id)
+
+    def test_sub(self):
+        """Testing MigrationList.__sub__"""
+        migration_list1 = MigrationList()
+        migration_list1.add_migration_info(app_label='tests',
+                                           name='0001_initial')
+        migration_list1.add_migration_info(app_label='tests',
+                                           name='0002_stuff')
+
+        migration_list2 = MigrationList()
+        migration_list2.add_migration_info(app_label='tests',
+                                           name='0001_initial')
+        migration_list2.add_migration_info(app_label='foo',
+                                           name='0002_bar')
+
+        new_migration_list = migration_list1 - migration_list2
+
+        self.assertEqual(
+            new_migration_list._by_id,
+            {
+                ('tests', '0002_stuff'): {
+                    'app_label': 'tests',
+                    'name': '0002_stuff',
+                    'migration': None,
+                    'recorded_migration': None,
+                },
+            })
+        self.assertEqual(
+            new_migration_list._by_app_label,
+            {
+                'tests': [
+                    {
+                        'app_label': 'tests',
+                        'name': '0002_stuff',
+                        'migration': None,
+                        'recorded_migration': None,
+                    },
+                ],
+            })
+
+        # Make sure there's no cross-contamination.
+        self.assertNotEqual(new_migration_list._by_id, migration_list1._by_id)
+        self.assertNotEqual(new_migration_list._by_id, migration_list2._by_id)
+        self.assertNotEqual(migration_list1._by_id, migration_list2._by_id)
+
+
 class MigrationLoadTests(MigrationsTestsMixin, TestCase):
     """Unit tests for django_evolution.utils.migrations.MigrationLoader."""
 
@@ -118,18 +701,20 @@ class MigrationExecutorTests(MigrationsTestsMixin, TestCase):
 
         connection = connections[DEFAULT_DB_ALIAS]
 
-        record_applied_migrations(
-            connection=connection,
-            migration_targets=[('tests', '0002_add_field')])
+        applied_migrations = MigrationList()
+        applied_migrations.add_migration_info(app_label='tests',
+                                              name='0002_add_field')
+        record_applied_migrations(connection=connection,
+                                  migrations=applied_migrations)
 
-        executor = MigrationExecutor(
-            connection=connection,
-            custom_migrations={
-                ('tests', '0001_initial'):
-                    InitialMigration('0001_initial', 'tests'),
-                ('tests', '0002_add_field'):
-                    AddFieldMigration('0002_add_field', 'tests'),
-            })
+        custom_migrations = MigrationList()
+        custom_migrations.add_migration(
+            InitialMigration('0001_initial', 'tests'))
+        custom_migrations.add_migration(
+            AddFieldMigration('0002_add_field', 'tests'))
+
+        executor = MigrationExecutor(connection=connection,
+                                     custom_migrations=custom_migrations)
 
         with self.assertRaises(MigrationHistoryError):
             executor.run_checks()
@@ -141,14 +726,14 @@ class MigrationExecutorTests(MigrationsTestsMixin, TestCase):
 
         connection = connections[DEFAULT_DB_ALIAS]
 
-        executor = MigrationExecutor(
-            connection=connection,
-            custom_migrations={
-                ('tests', '0001_initial'):
-                    InitialMigration('0001_initial', 'tests'),
-                ('tests', '0002_also_initial'):
-                    InitialMigration('0002_also_initial', 'tests'),
-            })
+        custom_migrations = MigrationList()
+        custom_migrations.add_migration(
+            InitialMigration('0001_initial', 'tests'))
+        custom_migrations.add_migration(
+            InitialMigration('0002_also_initial', 'tests'))
+
+        executor = MigrationExecutor(connection=connection,
+                                     custom_migrations=custom_migrations)
 
         message = (
             "Conflicting migrations detected; multiple leaf nodes in the "
@@ -171,18 +756,6 @@ class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
         self.assertFalse(has_migrations_module(get_app('django_evolution')))
         self.assertTrue(has_migrations_module(get_app('auth')))
 
-    def test_get_applied_migrations_by_app(self):
-        """Testing get_applied_migrations_by_app"""
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
-        by_app = get_applied_migrations_by_app(connections[DEFAULT_DB_ALIAS])
-        self.assertIn('auth', by_app)
-        self.assertIn('0001_initial', by_app['auth'])
-        self.assertIn('contenttypes', by_app)
-        self.assertIn('0001_initial', by_app['contenttypes'])
-        self.assertNotIn('django_evolution', by_app)
-
     def test_record_applied_migrations(self):
         """Testing record_applied_migrations"""
         if not supports_migrations:
@@ -194,12 +767,14 @@ class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
         # cache state and performs repeated queries for the same list of
         # installed table names, followed by new transactions. That might
         # differ depending on the type of database being used.
-        record_applied_migrations(
-            connection=connection,
-            migration_targets=[
-                ('tests', '0001_initial'),
-                ('tests', '0002_stuff'),
-            ])
+        migrations = MigrationList()
+        migrations.add_migration_info(app_label='tests',
+                                      name='0001_initial')
+        migrations.add_migration_info(app_label='tests',
+                                      name='0002_stuff')
+
+        record_applied_migrations(connection=connection,
+                                  migrations=migrations)
 
         recorder = MigrationRecorder(connection)
         applied_migrations = recorder.applied_migrations()
@@ -213,12 +788,15 @@ class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
             raise SkipTest('Not used on Django < 1.7')
 
         connection = connections[DEFAULT_DB_ALIAS]
-        record_applied_migrations(
-            connection=connection,
-            migration_targets=[
-                ('tests', '0001_initial'),
-                ('tests', '0002_stuff'),
-            ])
+
+        migrations = MigrationList()
+        migrations.add_migration_info(app_label='tests',
+                                      name='0001_initial')
+        migrations.add_migration_info(app_label='tests',
+                                      name='0002_stuff')
+
+        record_applied_migrations(connection=connection,
+                                  migrations=migrations)
 
         unrecord_applied_migrations(connection=connection,
                                     app_label='tests',
@@ -346,13 +924,13 @@ class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
             ('tests', '0002_add_field'),
         ]
 
+        custom_migrations = MigrationList()
+        custom_migrations.add_migration(app_migrations[0])
+        custom_migrations.add_migration(app_migrations[1])
+
         connection = connections[DEFAULT_DB_ALIAS]
-        executor = MigrationExecutor(
-            connection,
-            custom_migrations={
-                targets[0]: app_migrations[0],
-                targets[1]: app_migrations[1],
-            })
+        executor = MigrationExecutor(connection,
+                                     custom_migrations=custom_migrations)
 
         migrate_state = apply_migrations(
             executor=executor,

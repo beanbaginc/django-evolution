@@ -38,7 +38,7 @@ from django_evolution.tests.base_test_case import (EvolutionTestCase,
                                                    MigrationsTestsMixin)
 from django_evolution.tests.models import BaseTestModel
 from django_evolution.tests.utils import ensure_test_db, execute_transaction
-from django_evolution.utils.migrations import (get_applied_migrations_by_app,
+from django_evolution.utils.migrations import (MigrationList,
                                                record_applied_migrations)
 
 
@@ -753,9 +753,12 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         evolver.project_sig.get_app_sig('tests').upgrade_method = \
             UpgradeMethod.MIGRATIONS
 
-        record_applied_migrations(
-            connection=evolver.connection,
-            migration_targets=[('tests', '0001_initial')])
+        migration_list = MigrationList()
+        migration_list.add_migration_info(app_label='tests',
+                                          name='0001_initial')
+
+        record_applied_migrations(connection=evolver.connection,
+                                  migrations=migration_list)
 
         app_migrations = [
             InitialMigration('0001_initial', 'tests'),
@@ -845,9 +848,14 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                              set(['applying_migration', 'applied_migration']))
 
             applied_migrations = \
-                get_applied_migrations_by_app(evolver.connection)
-            self.assertEqual(applied_migrations['tests'],
-                             set(['0001_initial', '0002_add_field']))
+                MigrationList.from_database(evolver.connection)
+
+            self.assertTrue(applied_migrations.has_migration_info(
+                app_label='tests',
+                name='0001_initial'))
+            self.assertTrue(applied_migrations.has_migration_info(
+                app_label='tests',
+                name='0002_add_field'))
 
             # Make sure we can now use the model.
             MigrationTestModel.objects.create(field1=42,
@@ -959,9 +967,14 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
 
             # Check that all migrations were recorded.
             applied_migrations = \
-                get_applied_migrations_by_app(evolver.connection)
-            self.assertEqual(applied_migrations['tests'],
-                             set(['0001_initial', '0002_add_field']))
+                MigrationList.from_database(evolver.connection)
+
+            self.assertTrue(applied_migrations.has_migration_info(
+                app_label='tests',
+                name='0001_initial'))
+            self.assertTrue(applied_migrations.has_migration_info(
+                app_label='tests',
+                name='0002_add_field'))
 
             # Make sure we can now use the model.
             self.set_base_model(FinalTestModel)

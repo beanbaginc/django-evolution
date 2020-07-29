@@ -130,6 +130,7 @@ from django_evolution.errors import (InvalidSignatureVersion,
                                      MissingSignatureError)
 from django_evolution.utils.apps import get_app_label, get_legacy_app_label
 from django_evolution.utils.evolutions import get_app_upgrade_info
+from django_evolution.utils.migrations import MigrationList
 
 
 #: The latest signature version.
@@ -404,7 +405,7 @@ class ProjectSignature(BaseSignature):
             raise MissingSignatureError(
                 _('Unable to find an application signature for "%s". '
                   'syncdb/migrate might need to be run first.')
-                % app_id)
+                % (app_id,))
 
         return app_sig
 
@@ -688,9 +689,6 @@ class AppSignature(BaseSignature):
             applied_migrations (set of unicode, optional):
                 The migration names that are applied as of this signature.
         """
-        if applied_migrations is not None:
-            applied_migrations = set(applied_migrations)
-
         self.app_id = app_id
         self.legacy_app_label = legacy_app_label or app_id
         self.upgrade_method = upgrade_method
@@ -703,6 +701,38 @@ class AppSignature(BaseSignature):
     def model_sigs(self):
         """The model signatures stored on the application signature."""
         return six.itervalues(self._model_sigs)
+
+    @property
+    def applied_migrations(self):
+        """The set of migration names applied to the app.
+
+        Type:
+            set of unicode
+        """
+        return self._applied_migrations
+
+    @applied_migrations.setter
+    def applied_migrations(self, value):
+        """Set the migration names applied to the app.
+
+        Args:
+            value (set or list or
+                   django_evolution.utils.migrations.MigratonList):
+                The new migration names. This may be an explicit set/list
+                of migration names, or it can be a MigrationList, of which
+                only the migration names relevant to this app will be stored.
+        """
+        if isinstance(value, MigrationList):
+            value = [
+                info['name']
+                for info in value
+                if info['app_label'] == self.app_id
+            ]
+
+        if value is not None:
+            value = set(value)
+
+        self._applied_migrations = value
 
     def is_empty(self):
         """Return whether the application signature is empty.

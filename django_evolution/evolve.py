@@ -40,13 +40,13 @@ from django_evolution.utils.evolutions import (get_app_pending_mutations,
                                                get_evolution_sequence,
                                                get_unapplied_evolutions)
 from django_evolution.utils.migrations import (MigrationExecutor,
+                                               MigrationList,
                                                apply_migrations,
                                                create_pre_migrate_state,
                                                emit_post_migrate_or_sync,
                                                emit_pre_migrate_or_sync,
                                                filter_migration_targets,
                                                finalize_migrations,
-                                               get_applied_migrations_by_app,
                                                is_migration_initial,
                                                record_applied_migrations)
 from django_evolution.utils.sql import execute_sql
@@ -388,12 +388,11 @@ class EvolveAppTask(BaseEvolutionTask):
         migration_executor = None
 
         if supports_migrations:
-            custom_migrations = {}
+            custom_migrations = MigrationList()
 
             for task in tasks:
                 for migration in task._migrations or []:
-                    key = (migration.app_label, migration.name)
-                    custom_migrations[key] = migration
+                    custom_migrations.add_migration(migration)
 
             migration_executor = MigrationExecutor(
                 connection=connection,
@@ -413,9 +412,11 @@ class EvolveAppTask(BaseEvolutionTask):
             # may have applied MoveToDjangoMigrations mutators), we can start
             # to figure out the migration plan.
             migration_loader = migration_executor.loader
-            assert not migration_loader.extra_applied_migrations
+            extra_applied_migrations = \
+                migration_loader.extra_applied_migrations
+            assert not extra_applied_migrations
 
-            applied_migrations = get_applied_migrations_by_app(connection)
+            applied_migrations = MigrationList.from_database(connection)
             migration_app_labels = set()
 
             # Run through the new applied migrations marked in any app
@@ -429,19 +430,16 @@ class EvolveAppTask(BaseEvolutionTask):
                     # Figure out which applied migrations the mutator or
                     # signature listed that we don't have in the database.
                     new_applied_migrations = (
-                        set(task.app_sig.applied_migrations or []) -
-                        applied_migrations.get(app_label, set()))
+                        MigrationList.from_app_sig(task.app_sig) -
+                        applied_migrations)
 
                     if new_applied_migrations:
                         # We found some. Mark them as being applied. We'll
                         # record them during the execution phase.
-                        migration_loader.extra_applied_migrations.update(
-                            (app_label, migration_name)
-                            for migration_name in new_applied_migrations
-                        )
+                        extra_applied_migrations.update(new_applied_migrations)
 
             if migration_app_labels:
-                if migration_loader.extra_applied_migrations:
+                if extra_applied_migrations:
                     # Rebuild the migration graph, based on anything we've
                     # added above, and re-run checks.
                     migration_loader.build_graph()
@@ -450,14 +448,8 @@ class EvolveAppTask(BaseEvolutionTask):
                 # Build the lists of migration targets we'll be applying. Each
                 # entry lists an app label and a migration name. We're
                 # limiting these to the apps we know we'll be migrating.
-                excluded_targets = set(
-                    (applied_app_label, applied_migration_name)
-                    for applied_app_label, applied_migration_names in
-                        six.iteritems(applied_migrations)
-                    for applied_migration_name in applied_migration_names
-                )
-                excluded_targets.update(
-                    migration_loader.extra_applied_migrations)
+                excluded_targets = (applied_migrations +
+                                    extra_applied_migrations).to_targets()
 
                 # First, generate a full migration plan that covers the entire
                 # beginning to end of the process. We'll use this for signal
@@ -494,7 +486,7 @@ class EvolveAppTask(BaseEvolutionTask):
                         pre_migration_targets)
 
                     excluded_targets.update(pre_migration_targets)
-                    migration_loader.extra_applied_migrations.update(
+                    extra_applied_migrations.add_migration_targets(
                         pre_migration_targets)
                     migration_loader.build_graph(reload_migrations=False)
                     migration_executor.run_checks()
@@ -577,9 +569,8 @@ class EvolveAppTask(BaseEvolutionTask):
                 cls._migration_executor.loader.extra_applied_migrations
 
             if applied_migrations:
-                record_applied_migrations(
-                    connection=evolver.connection,
-                    migration_targets=applied_migrations)
+                record_applied_migrations(connection=evolver.connection,
+                                          migrations=applied_migrations)
 
         # Let any listeners know that we're beginning the process.
         emit_pre_migrate_or_sync(verbosity=evolver.verbosity,
@@ -628,13 +619,16 @@ class EvolveAppTask(BaseEvolutionTask):
             finalize_migrations(migrate_state)
 
             # Write the new lists of applied migrations out to the signature.
-            applied_migrations = six.iteritems(
-                get_applied_migrations_by_app(evolver.connection))
+            applied_migrations = \
+                MigrationList.from_database(evolver.connection)
             project_sig = evolver.project_sig
 
-            for app_label, migration_names in applied_migrations:
+            for app_label in applied_migrations.get_app_labels():
                 app_sig = project_sig.get_app_sig(app_label, required=True)
-                app_sig.applied_migrations = migration_names
+
+                # The signature will take care of storing only the migrations
+                # that apply to it when we assign this.
+                app_sig.applied_migrations = applied_migrations
 
         # Let any listeners know that we've finished the process.
         emit_post_migrate_or_sync(verbosity=evolver.verbosity,

@@ -205,7 +205,10 @@ class GetAppUpgradeInfoTests(TestCase):
         upgrade_info = get_app_upgrade_info(app)
 
         if supports_migrations:
-            self.assertIn('0001_initial', upgrade_info['applied_migrations'])
+            self.assertTrue(
+                upgrade_info['applied_migrations'].has_migration_info(
+                    app_label='auth',
+                    name='0001_initial'))
         else:
             self.assertIsNone(upgrade_info['applied_migrations'])
 
@@ -218,7 +221,9 @@ class GetAppUpgradeInfoTests(TestCase):
         # Check with the evolutions applied.
         upgrade_info = get_app_upgrade_info(app, simulate_applied=True)
 
-        self.assertIn('0001_initial', upgrade_info['applied_migrations'])
+        self.assertTrue(upgrade_info['applied_migrations'].has_migration_info(
+            app_label='auth',
+            name='0001_initial'))
         self.assertTrue(upgrade_info['has_evolutions'])
         self.assertEqual(upgrade_info['has_migrations'],
                          supports_migrations)
@@ -240,7 +245,9 @@ class GetAppUpgradeInfoTests(TestCase):
         else:
             self.assertFalse(upgrade_info['has_migrations'])
 
-        self.assertIn('0001_initial', upgrade_info['applied_migrations'])
+        self.assertTrue(upgrade_info['applied_migrations'].has_migration_info(
+            app_label='auth',
+            name='0001_initial'))
         self.assertTrue(upgrade_info['has_evolutions'])
         self.assertEqual(upgrade_info['upgrade_method'],
                          UpgradeMethod.MIGRATIONS)
