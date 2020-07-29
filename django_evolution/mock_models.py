@@ -6,12 +6,12 @@ from functools import partial
 
 from django.db import models
 from django.db.models.base import ModelState
-from django.db.models.fields import FieldDoesNotExist
 from django.db.models.fields.related import RECURSIVE_RELATIONSHIP_CONSTANT
 
 from django_evolution.compat import six
 from django_evolution.compat.datastructures import OrderedDict
-from django_evolution.compat.models import (get_remote_field,
+from django_evolution.compat.models import (FieldDoesNotExist,
+                                            get_remote_field,
                                             get_remote_field_model)
 from django_evolution.signature import FieldSignature, ModelSignature
 
@@ -210,6 +210,7 @@ class MockMeta(object):
         self.app_label = app_name
         self.meta = {
             'auto_created': auto_created,
+            'concrete_model': None,
             'constraints': [],
             'db_table': model_sig.table_name,
             'db_tablespace': model_sig.db_tablespace,
@@ -270,6 +271,11 @@ class MockMeta(object):
                 internally when creating relationships between models and
                 fields in order to prevent recursive relationships.
         """
+        # Django 3.1 documents that the concrete class is the model at the
+        # end of a proxy_for_model chain. In our case, it should always be
+        # our mock model.
+        self.meta['concrete_model'] = model
+
         for field_sig in self._model_sig.field_sigs:
             primary_key = field_sig.get_attr_value('primary_key')
 

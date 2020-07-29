@@ -26,6 +26,13 @@ except ImportError:
     all_models = cache.app_models
     apps = None
 
+try:
+    # Django >= 1.8
+    from django.core.exceptions import FieldDoesNotExist
+except ImportError:
+    # Django < 1.8
+    from django.db.models.fields import FieldDoesNotExist
+
 
 def get_models(app_mod=None, include_auto_created=False):
     """Return the models belonging to an app.
@@ -177,6 +184,7 @@ def get_remote_field_model(rel):
 
 
 __all__ = [
+    'FieldDoesNotExist',
     'GenericForeignKey',
     'GenericRelation',
     'all_models',

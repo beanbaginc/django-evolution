@@ -23,6 +23,12 @@ else:
     drop_index_sql = 'DROP INDEX'
 
 
+if django_version < (2, 0) or django_version >= (3, 1):
+    DESC = ' DESC'
+else:
+    DESC = 'DESC'
+
+
 add_field = {
     'AddNonNullNonCallableColumnModel': [
         'ALTER TABLE "tests_testmodel"'
@@ -1368,34 +1374,19 @@ indexes = {
         % generate_index_name('tests_testmodel', ['int_field2'],
                               model_meta_indexes=True),
     ],
+
+    'setting_from_empty': [
+        'CREATE INDEX "%s"'
+        ' ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel',
+                              ['int_field1'],
+                              model_meta_indexes=True),
+
+        'CREATE INDEX "my_custom_index"'
+        ' ON "tests_testmodel" ("char_field1", "char_field2"%s);'
+        % DESC,
+    ],
 }
-
-if django.VERSION[:2] >= (2, 0):
-    indexes.update({
-        'setting_from_empty': [
-            'CREATE INDEX "%s"'
-            ' ON "tests_testmodel" ("int_field1");'
-            % generate_index_name('tests_testmodel',
-                                  ['int_field1'],
-                                  model_meta_indexes=True),
-
-            'CREATE INDEX "my_custom_index"'
-            ' ON "tests_testmodel" ("char_field1", "char_field2"DESC);',
-        ],
-    })
-else:
-    indexes.update({
-        'setting_from_empty': [
-            'CREATE INDEX "%s"'
-            ' ON "tests_testmodel" ("int_field1");'
-            % generate_index_name('tests_testmodel',
-                                  ['int_field1'],
-                                  model_meta_indexes=True),
-
-            'CREATE INDEX "my_custom_index"'
-            ' ON "tests_testmodel" ("char_field1", "char_field2" DESC);',
-        ],
-    })
 
 preprocessing = {
     'add_change_field': [

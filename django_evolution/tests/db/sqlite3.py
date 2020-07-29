@@ -10,6 +10,8 @@ from django_evolution.tests.utils import (make_generate_index_name,
                                           test_connections)
 
 
+django_version = django.VERSION[:2]
+
 connection = test_connections['sqlite3']
 generate_index_name = make_generate_index_name(connection)
 generate_unique_constraint_name = \
@@ -33,6 +35,12 @@ def get_field_suffix(field_type):
         return ' %s' % data_types_suffix[field_type]
     except KeyError:
         return ''
+
+
+if django_version < (2, 0) or django_version >= (3, 1):
+    DESC = ' DESC'
+else:
+    DESC = 'DESC'
 
 
 add_field = {
@@ -320,7 +328,7 @@ add_field = {
     ],
 }
 
-if django.VERSION[:2] >= (2, 0):
+if django_version >= (2, 0):
     add_field.update({
         'AddManyToManyDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" '
@@ -409,7 +417,7 @@ if django.VERSION[:2] >= (2, 0):
                                   'to_testmodel_id'),
         ],
     })
-elif django.VERSION[:2] >= (1, 9):
+elif django_version >= (1, 9):
     add_field.update({
         'AddManyToManyDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" '
@@ -492,7 +500,7 @@ elif django.VERSION[:2] >= (1, 9):
                                   'to_testmodel_id'),
         ],
     })
-elif django.VERSION[:2] >= (1, 7):
+elif django_version >= (1, 7):
     add_field.update({
         'AddManyToManyDatabaseTableModel': [
             'CREATE TABLE "tests_testmodel_added_field" '
@@ -1664,7 +1672,7 @@ unique_together = {
     ],
 }
 
-if django.VERSION[:2] >= (1, 9):
+if django_version >= (1, 9):
     # Django >= 1.9
     unique_together.update({
         'replace_list': [
@@ -1810,34 +1818,19 @@ indexes = {
         % generate_index_name('tests_testmodel', ['int_field2'],
                               model_meta_indexes=True),
     ],
+
+    'setting_from_empty': [
+        'CREATE INDEX "%s"'
+        ' ON "tests_testmodel" ("int_field1");'
+        % generate_index_name('tests_testmodel',
+                              ['int_field1'],
+                              model_meta_indexes=True),
+
+        'CREATE INDEX "my_custom_index"'
+        ' ON "tests_testmodel" ("char_field1", "char_field2"%s);'
+        % DESC,
+    ],
 }
-
-if django.VERSION[:2] >= (2, 0):
-    indexes.update({
-        'setting_from_empty': [
-            'CREATE INDEX "%s"'
-            ' ON "tests_testmodel" ("int_field1");'
-            % generate_index_name('tests_testmodel',
-                                  ['int_field1'],
-                                  model_meta_indexes=True),
-
-            'CREATE INDEX "my_custom_index"'
-            ' ON "tests_testmodel" ("char_field1", "char_field2"DESC);',
-        ],
-    })
-else:
-    indexes.update({
-        'setting_from_empty': [
-            'CREATE INDEX "%s"'
-            ' ON "tests_testmodel" ("int_field1");'
-            % generate_index_name('tests_testmodel',
-                                  ['int_field1'],
-                                  model_meta_indexes=True),
-
-            'CREATE INDEX "my_custom_index"'
-            ' ON "tests_testmodel" ("char_field1", "char_field2" DESC);',
-        ],
-    })
 
 
 preprocessing = {
@@ -2254,7 +2247,7 @@ evolver = {
     ],
 }
 
-if django.VERSION[:2] >= (1, 7):
+if django_version >= (1, 7):
     evolver.update({
         'create_table': [
             'CREATE TABLE "tests_testmodel" '

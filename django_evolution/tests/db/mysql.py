@@ -8,6 +8,8 @@ from django_evolution.tests.utils import (make_generate_constraint_name,
                                           test_connections)
 
 
+django_version = django.VERSION[:2]
+
 connection = test_connections['mysql_innodb']
 generate_constraint_name = make_generate_constraint_name(connection)
 generate_index_name = make_generate_index_name(connection)
@@ -19,6 +21,12 @@ if hasattr(connection, 'data_types'):
     datetime_type = connection.data_types['DateTimeField']
 else:
     datetime_type = 'datetime'
+
+
+if django_version < (2, 0) or django_version >= (3, 1):
+    DESC = ' DESC'
+else:
+    DESC = 'DESC'
 
 
 add_field = {
@@ -143,7 +151,7 @@ add_field = {
 }
 
 
-if django.VERSION[:2] >= (3, 0):
+if django_version >= (3, 0):
     # Django 3.0+ annoyingly switches around the order of the ALTER TABLE
     # statements for ManyToManyField intermediary tables.
     add_field.update({
@@ -232,7 +240,7 @@ if django.VERSION[:2] >= (3, 0):
                                        'tests_testmodel'),
         ],
     })
-elif django.VERSION[:2] >= (1, 9):
+elif django_version >= (1, 9):
     # Django 1.9+ no longer includes a UNIQUE keyword in the table creation,
     # instead creating these through constraints.
     add_field.update({
@@ -321,7 +329,7 @@ elif django.VERSION[:2] >= (1, 9):
                 ['from_testmodel_id', 'to_testmodel_id']),
         ],
     })
-elif django.VERSION[:2] == (1, 8):
+elif django_version == (1, 8):
     # Django 1.8+ no longer creates indexes for the ForeignKeys on the
     # ManyToMany table.
     add_field.update({
@@ -394,7 +402,7 @@ elif django.VERSION[:2] == (1, 8):
                                        'tests_testmodel'),
         ],
     })
-elif django.VERSION[:2] == (1, 7):
+elif django_version == (1, 7):
     # Django 1.7 introduced more condensed CREATE TABLE statements, and
     # indexes for fields on the model. (The indexes were removed for MySQL
     # in subsequent releases.)
@@ -982,7 +990,7 @@ unique_together = {
     ],
 }
 
-if django.VERSION[:2] >= (1, 9):
+if django_version >= (1, 9):
     # In Django >= 1.9, unique_together indexes are created specifically
     # after table creation, using Django's generated constraint names.
     unique_together.update({
@@ -1103,34 +1111,19 @@ indexes = {
         % generate_index_name('tests_testmodel', ['int_field2'],
                               model_meta_indexes=True),
     ],
+
+    'setting_from_empty': [
+        'CREATE INDEX `%s`'
+        ' ON `tests_testmodel` (`int_field1`);'
+        % generate_index_name('tests_testmodel',
+                              ['int_field1'],
+                              model_meta_indexes=True),
+
+        'CREATE INDEX `my_custom_index`'
+        ' ON `tests_testmodel` (`char_field1`, `char_field2`%s);'
+        % DESC,
+    ],
 }
-
-if django.VERSION[:2] >= (2, 0):
-    indexes.update({
-        'setting_from_empty': [
-            'CREATE INDEX `%s`'
-            ' ON `tests_testmodel` (`int_field1`);'
-            % generate_index_name('tests_testmodel',
-                                  ['int_field1'],
-                                  model_meta_indexes=True),
-
-            'CREATE INDEX `my_custom_index`'
-            ' ON `tests_testmodel` (`char_field1`, `char_field2`DESC);',
-        ],
-    })
-else:
-    indexes.update({
-        'setting_from_empty': [
-            'CREATE INDEX `%s`'
-            ' ON `tests_testmodel` (`int_field1`);'
-            % generate_index_name('tests_testmodel',
-                                  ['int_field1'],
-                                  model_meta_indexes=True),
-
-            'CREATE INDEX `my_custom_index`'
-            ' ON `tests_testmodel` (`char_field1`, `char_field2` DESC);',
-        ],
-    })
 
 
 preprocessing = {
@@ -1284,7 +1277,7 @@ evolver = {
     ],
 }
 
-if django.VERSION[:2] >= (1, 7):
+if django_version >= (1, 7):
     evolver.update({
         'create_table': [
             'CREATE TABLE `tests_testmodel` '
