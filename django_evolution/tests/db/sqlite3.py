@@ -1,6 +1,9 @@
 from __future__ import unicode_literals
 
+import re
+
 import django
+from django.db.backends.sqlite3.base import Database
 
 from django_evolution.tests.utils import (make_generate_index_name,
                                           make_generate_unique_constraint_name,
@@ -874,36 +877,6 @@ change_field = {
         % generate_index_name('tests_testmodel', 'int_field1'),
     ],
 
-    'DBColumnChangeModel': [
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NOT NULL,'
-        ' "customised_db_column" integer NOT NULL,'
-        ' "int_field1" integer NOT NULL,'
-        ' "int_field2" integer NOT NULL,'
-        ' "int_field3" integer NOT NULL UNIQUE,'
-        ' "int_field4" integer NOT NULL,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NOT NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("my_id", "alt_pk", "customised_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
-        % generate_index_name('tests_testmodel', 'int_field1'),
-    ],
-
     'M2MDBTableChangeModel': [
         'ALTER TABLE "change_field_non-default_m2m_table"'
         ' RENAME TO "custom_m2m_db_table_name";',
@@ -983,36 +956,6 @@ change_field = {
         % generate_index_name('tests_testmodel', 'int_field1'),
     ],
 
-    'MultiAttrChangeModel': [
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NOT NULL,'
-        ' "custom_db_column2" integer NOT NULL,'
-        ' "int_field1" integer NOT NULL,'
-        ' "int_field2" integer NOT NULL,'
-        ' "int_field3" integer NOT NULL UNIQUE,'
-        ' "int_field4" integer NOT NULL,'
-        ' "char_field" varchar(35) NOT NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("my_id", "alt_pk", "custom_db_column2", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
-        % generate_index_name('tests_testmodel', 'int_field1'),
-    ],
-
     'MultiAttrSingleFieldChangeModel': [
         'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
@@ -1043,36 +986,173 @@ change_field = {
         % generate_index_name('tests_testmodel', 'int_field1'),
     ],
 
-    'RedundantAttrsChangeModel': [
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "alt_pk" integer NOT NULL,'
-        ' "custom_db_column3" integer NOT NULL,'
-        ' "int_field1" integer NOT NULL,'
-        ' "int_field2" integer NOT NULL,'
-        ' "int_field3" integer NOT NULL UNIQUE,'
-        ' "int_field4" integer NOT NULL,'
-        ' "char_field" varchar(35) NOT NULL,'
-        ' "char_field1" varchar(25) NULL,'
-        ' "char_field2" varchar(30) NULL);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("my_id", "alt_pk", "custom_db_column3", "int_field1", "int_field2",'
-        ' "int_field3", "int_field4", "char_field", "char_field1",'
-        ' "char_field2")'
-        ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
-        ' "int_field2", "int_field3", "int_field4", "char_field",'
-        ' "char_field1", "char_field2"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
-        % generate_index_name('tests_testmodel', 'int_field1'),
-    ],
 }
+
+if Database.sqlite_version_info >= (3, 26, 0):
+    change_field.update({
+        'DBColumnChangeModel': [
+            'ALTER TABLE "tests_testmodel"'
+            ' RENAME COLUMN "custom_db_column" TO "customised_db_column";',
+        ],
+
+        'MultiAttrChangeModel': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(35) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+
+            'ALTER TABLE "tests_testmodel"'
+            ' RENAME COLUMN "custom_db_column" TO "custom_db_column2";',
+        ],
+
+        'RedundantAttrsChangeModel': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(35) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+
+            'ALTER TABLE "tests_testmodel"'
+            ' RENAME COLUMN "custom_db_column" TO "custom_db_column3";',
+        ],
+    })
+else:
+    change_field.update({
+        'DBColumnChangeModel': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "customised_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "customised_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'MultiAttrChangeModel': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column2" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(35) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column2", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'RedundantAttrsChangeModel': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column3" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(35) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column3", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+    })
 
 delete_model = {
     'BasicModel': [
@@ -1129,252 +1209,335 @@ delete_application = {
 }
 
 rename_field = {
-    'RenameColumnModel': [
-        'CREATE TABLE "TEMP_TABLE" '
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "renamed_field" integer NOT NULL,'
-        ' "custom_db_col_name" integer NOT NULL,'
-        ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL'
-        ' REFERENCES "tests_renameanchor1" ("id")'
-        ' DEFERRABLE INITIALLY DEFERRED);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("id", "char_field", "renamed_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id")'
-        ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        'CREATE INDEX "%s" ON "tests_testmodel"'
-        ' ("custom_db_col_name_indexed");'
-        % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed',
-                              'int_field_named_indexed'),
-
-        'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
-        % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
-    ],
-
-    'RenameColumnWithTableNameModel': [
-        'CREATE TABLE "TEMP_TABLE" '
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "renamed_field" integer NOT NULL,'
-        ' "custom_db_col_name" integer NOT NULL,'
-        ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL'
-        ' REFERENCES "tests_renameanchor1" ("id")'
-        ' DEFERRABLE INITIALLY DEFERRED);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("id", "char_field", "renamed_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id")'
-        ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        'CREATE INDEX "%s" ON "tests_testmodel"'
-        ' ("custom_db_col_name_indexed");'
-        % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed',
-                              'int_field_named_indexed'),
-
-        'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
-        % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
-    ],
-
-    'RenamePrimaryKeyColumnModel': [
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_pk_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
-        ' "custom_db_col_name" integer NOT NULL,'
-        ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL'
-        ' REFERENCES "tests_renameanchor1" ("id")'
-        ' DEFERRABLE INITIALLY DEFERRED);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("my_pk_id", "char_field", "int_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id")'
-        ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        'CREATE INDEX "%s" ON "tests_testmodel"'
-        ' ("custom_db_col_name_indexed");'
-        % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed',
-                              'int_field_named_indexed'),
-
-        'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
-        % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
-    ],
-
-    'RenameForeignKeyColumnModel': [
-        'CREATE TABLE "TEMP_TABLE" '
-        '("int_field" integer NOT NULL,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "custom_db_col_name" integer NOT NULL,'
-        ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "renamed_field_id" integer NOT NULL'
-        ' REFERENCES "tests_renameanchor1" ("id")'
-        ' DEFERRABLE INITIALLY DEFERRED,'
-        ' "id" integer NOT NULL UNIQUE PRIMARY KEY);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("renamed_field", "char_field", "int_field",'
-        ' "custom_db_col_name_indexed", "fk_field_id", "id")'
-        ' SELECT "custom_db_col_name", "char_field", "int_field",'
-        ' "custom_db_col_name_indexed", "fk_field_id", "id"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        'CREATE INDEX "%s" ON "tests_testmodel" '
-        ' ("custom_db_col_name_indexed");'
-        % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed'),
-
-        'CREATE INDEX "%s" ON "tests_testmodel" ("renamed_field_id");'
-        % generate_index_name('tests_testmodel', 'renamed_field_id'),
-    ],
-
-    'RenameNonDefaultColumnNameModel': [
-        'CREATE TABLE "TEMP_TABLE" '
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
-        ' "renamed_field" integer NOT NULL,'
-        ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL'
-        ' REFERENCES "tests_renameanchor1" ("id")'
-        ' DEFERRABLE INITIALLY DEFERRED);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("id", "char_field", "int_field", "renamed_field",'
-        ' "custom_db_col_name_indexed", "fk_field_id")'
-        ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        'CREATE INDEX "%s" ON "tests_testmodel"'
-        ' ("custom_db_col_name_indexed");'
-        % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed',
-                              'int_field_named_indexed'),
-
-        'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
-        % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
-    ],
-
-    'RenameNonDefaultColumnNameToNonDefaultNameModel': [
-        'CREATE TABLE "TEMP_TABLE" '
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
-        ' "non-default_column_name" integer NOT NULL,'
-        ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL'
-        ' REFERENCES "tests_renameanchor1" ("id")'
-        ' DEFERRABLE INITIALLY DEFERRED);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("id", "char_field", "int_field", "non-default_column_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id")'
-        ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        'CREATE INDEX "%s" ON "tests_testmodel"'
-        ' ("custom_db_col_name_indexed");'
-        % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed',
-                              'int_field_named_indexed'),
-
-        'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
-        % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
-    ],
-
-    'RenameNonDefaultColumnNameToNonDefaultNameAndTableModel': [
-        'CREATE TABLE "TEMP_TABLE" '
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NOT NULL,'
-        ' "int_field" integer NOT NULL,'
-        ' "non-default_column_name2" integer NOT NULL,'
-        ' "custom_db_col_name_indexed" integer NOT NULL,'
-        ' "fk_field_id" integer NOT NULL'
-        ' REFERENCES "tests_renameanchor1" ("id")'
-        ' DEFERRABLE INITIALLY DEFERRED);',
-
-        'INSERT INTO "TEMP_TABLE"'
-        ' ("id", "char_field", "int_field", "non-default_column_name2",'
-        ' "custom_db_col_name_indexed", "fk_field_id")'
-        ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
-        ' "custom_db_col_name_indexed", "fk_field_id"'
-        ' FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        'CREATE INDEX "%s" ON "tests_testmodel"'
-        ' ("custom_db_col_name_indexed");'
-        % generate_index_name('tests_testmodel', 'custom_db_col_name_indexed',
-                              'int_field_named_indexed'),
-
-        'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
-        % generate_index_name('tests_testmodel', 'fk_field_id', 'fk_field'),
-    ],
-
-    'RenameColumnCustomTableModel': [
-        'CREATE TABLE "TEMP_TABLE" '
-        '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" integer NOT NULL,'
-        ' "alt_value" varchar(20) NOT NULL);',
-
-        'INSERT INTO "TEMP_TABLE" ("id", "renamed_field", "alt_value")'
-        ' SELECT "id", "value", "alt_value"'
-        ' FROM "custom_rename_table_name";',
-
-        'DROP TABLE "custom_rename_table_name";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "custom_rename_table_name";',
-    ],
-
-    'RenameManyToManyTableModel': [
+    'RenameManyToManyTableModel': (
         'ALTER TABLE "tests_testmodel_m2m_field"'
-        ' RENAME TO "tests_testmodel_renamed_field";',
-    ],
+        ' RENAME TO "tests_testmodel_renamed_field";'
+    ),
 
-    'RenameManyToManyTableWithColumnNameModel': [
+    'RenameManyToManyTableWithColumnNameModel': (
         'ALTER TABLE "tests_testmodel_m2m_field"'
-        ' RENAME TO "tests_testmodel_renamed_field";',
-    ],
+        ' RENAME TO "tests_testmodel_renamed_field";'
+    ),
 
-    'RenameNonDefaultManyToManyTableModel': [
+    'RenameNonDefaultManyToManyTableModel': (
         'ALTER TABLE "non-default_db_table"'
-        ' RENAME TO "tests_testmodel_renamed_field";',
-    ],
+        ' RENAME TO "tests_testmodel_renamed_field";'
+    ),
 }
+
+if Database.sqlite_version_info >= (3, 26, 0):
+    rename_field.update({
+        'RenameColumnModel': (
+            'ALTER TABLE "tests_testmodel"'
+            ' RENAME COLUMN "int_field" TO "renamed_field";'
+        ),
+
+        'RenameColumnWithTableNameModel': (
+            'ALTER TABLE "tests_testmodel"'
+            ' RENAME COLUMN "int_field" TO "renamed_field";'
+        ),
+
+        'RenamePrimaryKeyColumnModel': (
+            'ALTER TABLE "tests_testmodel"'
+            ' RENAME COLUMN "id" TO "my_pk_id";'
+        ),
+
+        'RenameForeignKeyColumnModel': (
+            'ALTER TABLE "tests_testmodel"'
+            ' RENAME COLUMN "custom_db_col_name" TO "renamed_field";'
+        ),
+
+        'RenameNonDefaultColumnNameModel': (
+            'ALTER TABLE "tests_testmodel"'
+            ' RENAME COLUMN "custom_db_col_name" TO "renamed_field";'
+        ),
+
+        'RenameNonDefaultColumnNameToNonDefaultNameModel': (
+            'ALTER TABLE "tests_testmodel"'
+            ' RENAME COLUMN "custom_db_col_name"'
+            ' TO "non-default_column_name";'
+        ),
+
+        'RenameNonDefaultColumnNameToNonDefaultNameAndTableModel': (
+            'ALTER TABLE "tests_testmodel"'
+            ' RENAME COLUMN "custom_db_col_name"'
+            ' TO "non-default_column_name2";'
+        ),
+
+        'RenameColumnCustomTableModel': (
+            'ALTER TABLE "custom_rename_table_name"'
+            ' RENAME COLUMN "value" TO "renamed_field";'
+        ),
+    })
+else:
+    rename_field.update({
+        'RenameColumnModel': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "renamed_field" integer NOT NULL,'
+            ' "custom_db_col_name" integer NOT NULL,'
+            ' "custom_db_col_name_indexed" integer NOT NULL,'
+            ' "fk_field_id" integer NOT NULL'
+            ' REFERENCES "tests_renameanchor1" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("id", "char_field", "renamed_field", "custom_db_col_name",'
+            ' "custom_db_col_name_indexed", "fk_field_id")'
+            ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
+            ' "custom_db_col_name_indexed", "fk_field_id"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+            'CREATE INDEX "%s" ON "tests_testmodel"'
+            ' ("custom_db_col_name_indexed");'
+            % generate_index_name('tests_testmodel',
+                                  'custom_db_col_name_indexed',
+                                  'int_field_named_indexed'),
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
+            % generate_index_name('tests_testmodel', 'fk_field_id',
+                                  'fk_field'),
+        ],
+
+        'RenameColumnWithTableNameModel': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "renamed_field" integer NOT NULL,'
+            ' "custom_db_col_name" integer NOT NULL,'
+            ' "custom_db_col_name_indexed" integer NOT NULL,'
+            ' "fk_field_id" integer NOT NULL'
+            ' REFERENCES "tests_renameanchor1" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("id", "char_field", "renamed_field", "custom_db_col_name",'
+            ' "custom_db_col_name_indexed", "fk_field_id")'
+            ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
+            ' "custom_db_col_name_indexed", "fk_field_id"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel"'
+            ' ("custom_db_col_name_indexed");'
+            % generate_index_name('tests_testmodel',
+                                  'custom_db_col_name_indexed',
+                                  'int_field_named_indexed'),
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
+            % generate_index_name('tests_testmodel', 'fk_field_id',
+                                  'fk_field'),
+        ],
+
+        'RenamePrimaryKeyColumnModel': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_pk_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "int_field" integer NOT NULL,'
+            ' "custom_db_col_name" integer NOT NULL,'
+            ' "custom_db_col_name_indexed" integer NOT NULL,'
+            ' "fk_field_id" integer NOT NULL'
+            ' REFERENCES "tests_renameanchor1" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_pk_id", "char_field", "int_field", "custom_db_col_name",'
+            ' "custom_db_col_name_indexed", "fk_field_id")'
+            ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
+            ' "custom_db_col_name_indexed", "fk_field_id"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel"'
+            ' ("custom_db_col_name_indexed");'
+            % generate_index_name('tests_testmodel',
+                                  'custom_db_col_name_indexed',
+                                  'int_field_named_indexed'),
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
+            % generate_index_name('tests_testmodel', 'fk_field_id',
+                                  'fk_field'),
+
+            'COMMIT;',
+
+            'BEGIN;',
+
+            'PRAGMA writable_schema = 1;',
+
+            'UPDATE sqlite_master SET sql = replace(sql,'
+            ' \' REFERENCES "tests_testmodel" ("id") \','
+            ' \' REFERENCES "tests_testmodel" ("my_pk_id") \');',
+
+            re.compile(r'PRAGMA schema_version = \d+;'),
+
+            'PRAGMA writable_schema = 0;',
+
+            'PRAGMA integrity_check;',
+
+            'COMMIT;',
+
+            'VACUUM;',
+
+            'BEGIN;',
+        ],
+
+        'RenameForeignKeyColumnModel': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("int_field" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "custom_db_col_name" integer NOT NULL,'
+            ' "custom_db_col_name_indexed" integer NOT NULL,'
+            ' "renamed_field_id" integer NOT NULL'
+            ' REFERENCES "tests_renameanchor1" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED,'
+            ' "id" integer NOT NULL UNIQUE PRIMARY KEY);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("renamed_field", "char_field", "int_field",'
+            ' "custom_db_col_name_indexed", "fk_field_id", "id")'
+            ' SELECT "custom_db_col_name", "char_field", "int_field",'
+            ' "custom_db_col_name_indexed", "fk_field_id", "id"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" '
+            ' ("custom_db_col_name_indexed");'
+            % generate_index_name('tests_testmodel',
+                                  'custom_db_col_name_indexed'),
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("renamed_field_id");'
+            % generate_index_name('tests_testmodel', 'renamed_field_id'),
+        ],
+
+        'RenameNonDefaultColumnNameModel': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "int_field" integer NOT NULL,'
+            ' "renamed_field" integer NOT NULL,'
+            ' "custom_db_col_name_indexed" integer NOT NULL,'
+            ' "fk_field_id" integer NOT NULL'
+            ' REFERENCES "tests_renameanchor1" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("id", "char_field", "int_field", "renamed_field",'
+            ' "custom_db_col_name_indexed", "fk_field_id")'
+            ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
+            ' "custom_db_col_name_indexed", "fk_field_id"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel"'
+            ' ("custom_db_col_name_indexed");'
+            % generate_index_name('tests_testmodel',
+                                  'custom_db_col_name_indexed',
+                                  'int_field_named_indexed'),
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
+            % generate_index_name('tests_testmodel', 'fk_field_id',
+                                  'fk_field'),
+        ],
+
+        'RenameNonDefaultColumnNameToNonDefaultNameModel': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "int_field" integer NOT NULL,'
+            ' "non-default_column_name" integer NOT NULL,'
+            ' "custom_db_col_name_indexed" integer NOT NULL,'
+            ' "fk_field_id" integer NOT NULL'
+            ' REFERENCES "tests_renameanchor1" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("id", "char_field", "int_field", "non-default_column_name",'
+            ' "custom_db_col_name_indexed", "fk_field_id")'
+            ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
+            ' "custom_db_col_name_indexed", "fk_field_id"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel"'
+            ' ("custom_db_col_name_indexed");'
+            % generate_index_name('tests_testmodel',
+                                  'custom_db_col_name_indexed',
+                                  'int_field_named_indexed'),
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
+            % generate_index_name('tests_testmodel', 'fk_field_id',
+                                  'fk_field'),
+        ],
+
+        'RenameNonDefaultColumnNameToNonDefaultNameAndTableModel': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "int_field" integer NOT NULL,'
+            ' "non-default_column_name2" integer NOT NULL,'
+            ' "custom_db_col_name_indexed" integer NOT NULL,'
+            ' "fk_field_id" integer NOT NULL'
+            ' REFERENCES "tests_renameanchor1" ("id")'
+            ' DEFERRABLE INITIALLY DEFERRED);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("id", "char_field", "int_field", "non-default_column_name2",'
+            ' "custom_db_col_name_indexed", "fk_field_id")'
+            ' SELECT "id", "char_field", "int_field", "custom_db_col_name",'
+            ' "custom_db_col_name_indexed", "fk_field_id"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel"'
+            ' ("custom_db_col_name_indexed");'
+            % generate_index_name('tests_testmodel',
+                                  'custom_db_col_name_indexed',
+                                  'int_field_named_indexed'),
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
+            % generate_index_name('tests_testmodel', 'fk_field_id',
+                                  'fk_field'),
+        ],
+
+        'RenameColumnCustomTableModel': [
+            'CREATE TABLE "TEMP_TABLE"'
+            ' ("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "renamed_field" integer NOT NULL,'
+            ' "alt_value" varchar(20) NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("id", "renamed_field", "alt_value")'
+            ' SELECT "id", "value", "alt_value"'
+            ' FROM "custom_rename_table_name";',
+
+            'DROP TABLE "custom_rename_table_name";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "custom_rename_table_name";',
+        ],
+    })
+
 
 sql_mutation = {
     'AddFirstTwoFields': [
@@ -1855,56 +2018,6 @@ preprocessing = {
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
-    'change_rename_field': [
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(20) NULL);',
-
-        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
-        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(20) NULL);',
-
-        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
-        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-    ],
-
-    'change_rename_change_rename_field': [
-        # Change char_field to length of 30 and allow NULL.
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "char_field" varchar(30) NULL);',
-
-        'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
-        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        # Rename char_field to renamed_field.
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(30) NULL);',
-
-        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
-        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-    ],
-
     'delete_char_field': [
         'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY);',
@@ -1917,78 +2030,209 @@ preprocessing = {
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
     ],
 
-    'rename_add_field': [
-        # Rename char_field to renamed_field.
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(20) NOT NULL);',
-
-        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
-        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        # Remove NULL from renamed_field.
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(20) NOT NULL,'
-        ' "char_field" varchar(50) NULL);',
-
-        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
-        ' SELECT "my_id", "renamed_field" FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-    ],
-
-    'rename_change_rename_change_field': [
-        # Rename char_field to renamed_field.
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(20) NOT NULL);',
-
-        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
-        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-        # Set renamed_field to allow NULL and set length to 50.
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(50) NULL);',
-
-        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
-        ' SELECT "my_id", "renamed_field" FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-    ],
-
-    'rename_rename_field': [
-        'CREATE TABLE "TEMP_TABLE" '
-        '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-        ' "renamed_field" varchar(20) NOT NULL);',
-
-        'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
-        ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
-
-        'DROP TABLE "tests_testmodel";',
-
-        'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-    ],
-
     'rename_delete_model': [
         'DROP TABLE "tests_testmodel";',
     ],
 
     'noop': [],
 }
+
+if Database.sqlite_version_info >= (3, 26, 0):
+    preprocessing.update({
+        'change_rename_field': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "char_field" varchar(20) NULL);',
+
+            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+            ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' RENAME COLUMN "char_field" TO "renamed_field";',
+        ],
+
+        'change_rename_change_rename_field': [
+            # Change char_field to length of 30 and allow NULL.
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "char_field" varchar(30) NULL);',
+
+            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+            ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            # Rename char_field to renamed_field.
+            'ALTER TABLE "tests_testmodel"'
+            ' RENAME COLUMN "char_field" TO "renamed_field";',
+        ],
+
+        'rename_add_field': [
+            # Rename char_field to renamed_field.
+            'ALTER TABLE "tests_testmodel"'
+            ' RENAME COLUMN "char_field" TO "renamed_field";',
+
+            # Remove NULL from renamed_field.
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "renamed_field" varchar(20) NOT NULL,'
+            ' "char_field" varchar(50) NULL);',
+
+            'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+            ' SELECT "my_id", "renamed_field" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+        ],
+
+        'rename_change_rename_change_field': [
+            # Rename char_field to renamed_field.
+            'ALTER TABLE "tests_testmodel"'
+            ' RENAME COLUMN "char_field" TO "renamed_field";',
+
+            # Set renamed_field to allow NULL and set length to 50.
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "renamed_field" varchar(50) NULL);',
+
+            'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+            ' SELECT "my_id", "renamed_field" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+        ],
+
+        'rename_rename_field': [
+            'ALTER TABLE "tests_testmodel"'
+            ' RENAME COLUMN "char_field" TO "renamed_field";',
+        ],
+    })
+else:
+    preprocessing.update({
+        'change_rename_field': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "char_field" varchar(20) NULL);',
+
+            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+            ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "renamed_field" varchar(20) NULL);',
+
+            'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+            ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+        ],
+
+        'change_rename_change_rename_field': [
+            # Change char_field to length of 30 and allow NULL.
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "char_field" varchar(30) NULL);',
+
+            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
+            ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            # Rename char_field to renamed_field.
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "renamed_field" varchar(30) NULL);',
+
+            'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+            ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+        ],
+
+        'rename_add_field': [
+            # Rename char_field to renamed_field.
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "renamed_field" varchar(20) NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+            ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            # Remove NULL from renamed_field.
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "renamed_field" varchar(20) NOT NULL,'
+            ' "char_field" varchar(50) NULL);',
+
+            'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+            ' SELECT "my_id", "renamed_field" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+        ],
+
+        'rename_change_rename_change_field': [
+            # Rename char_field to renamed_field.
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "renamed_field" varchar(20) NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+            ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            # Set renamed_field to allow NULL and set length to 50.
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "renamed_field" varchar(50) NULL);',
+
+            'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+            ' SELECT "my_id", "renamed_field" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+        ],
+
+        'rename_rename_field': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "renamed_field" varchar(20) NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
+            ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+        ],
+    })
 
 
 evolver = {

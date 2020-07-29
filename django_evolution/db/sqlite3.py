@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 
 from django.db import models
+from django.db.backends.sqlite3.base import Database
 from django.utils import six
 
 from django_evolution.compat.db import (create_index_name,
@@ -10,7 +11,8 @@ from django_evolution.compat.db import (create_index_name,
 from django_evolution.compat.models import (get_remote_field,
                                             get_remote_field_model)
 from django_evolution.db.common import (AlterTableSQLResult,
-                                        BaseEvolutionOperations)
+                                        BaseEvolutionOperations,
+                                        SQLResult)
 
 
 TEMP_TABLE_NAME = 'TEMP_TABLE'
@@ -60,6 +62,7 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
         renamed_columns = {}
         replaced_fields = {}
         new_initial = {}
+        reffed_renamed_cols = []
 
         for item in self.alter_table:
             op = item['op']
@@ -79,8 +82,14 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
             elif op == 'RENAME COLUMN':
                 old_field = item['old_field']
                 new_field = item['new_field']
-                renamed_columns[old_field.column] = new_field.column
-                replaced_fields[old_field.column] = new_field
+                old_column = old_field.column
+                new_column = new_field.column
+
+                renamed_columns[old_column] = new_field.column
+                replaced_fields[old_column] = new_field
+
+                if evolver.is_column_referenced(table_name, old_column):
+                    reffed_renamed_cols.append((old_column, new_column))
             elif op == 'MODIFY COLUMN':
                 field = item['field']
                 initial = item['initial']
@@ -254,6 +263,82 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
 
         sql += sql_indexes_for_model(connection, _Model)
 
+        if reffed_renamed_cols:
+            # One or more tables referenced one or more renamed columns on
+            # this table, so now we need to update them.
+            #
+            # There are issues with renaming columns referenced by a foreign
+            # key in SQLite. Historically, we've allowed it, but the reality
+            # is that it can result in those foreign keys pointing to the
+            # wrong (old) column, causing any foreign key reference checks to
+            # fail. This is noticeable with Django 2.2+, which explicitly
+            # checks in its schema editor (which we invoke).
+            #
+            # We don't actually want or need to do a table rebuild on these.
+            # SQLite has another trick (and this is recommended in their
+            # documentation). We want to go through each of the tables that
+            # reference these columns and rewrite their table creation SQL
+            # in the sqlite_master table, and then tell SQLite to apply the
+            # new schema.
+            #
+            # This requires that we enable writable schemas and bump up the
+            # SQLite schema version for this database. This must be done at
+            # the moment we want to run this SQL statement, so we'll be
+            # adding this as a dynamic function to run later, rather than
+            # hard-coding any SQL now.
+            #
+            # This also has to be done in its own transaction, but there's no
+            # mechanism to easily construct a new transaction at this point.
+            # However, when it comes down to it, Django's transaction logic
+            # is just wrappers around SQL statements, so we're going to play
+            # dirty. We'll just commit any existing transaction, start a new
+            # one, commit it, and then start a new one for any remaining
+            # SQL statements.
+            def _update_refs(cursor):
+                schema_version = \
+                    cursor.execute('PRAGMA schema_version').fetchone()[0]
+
+                refs_template = ' REFERENCES "%s" ("%%s") ' % table_name
+
+                return [
+                    # Commit anything that's occurred already and create a
+                    # new transaction. If that previous transaction fails to
+                    # apply, we won't reach any of the subsequent statements.
+                    'COMMIT;',
+                    'BEGIN;',
+
+                    # Allow us to update the database schema by manipulating
+                    # the sqlite_master table.
+                    'PRAGMA writable_schema = 1;',
+                ] + [
+                    # Update all tables that reference any renamed columns,
+                    # setting their references to point to the new names.
+                    ('UPDATE sqlite_master SET sql = replace(sql, %s, %s);',
+                     (refs_template % old_column,
+                      refs_template % new_column))
+                    for old_column, new_column in reffed_renamed_cols
+                 ] + [
+                    # Tell SQLite that we're done writing the schema, and
+                    # give it a new schema version number.
+                    'PRAGMA schema_version = %s;' % (schema_version + 1),
+                    'PRAGMA writable_schema = 0;',
+
+                    # Make sure everything went well. We want to bail here
+                    # before we commit the transaction if anything goes wrong.
+                    'PRAGMA integrity_check;',
+
+                    # Commit the transaction and tell SQLite to vacuum
+                    # (rebuild and clean up) the database.
+                    'COMMIT;',
+                    'VACUUM;',
+
+                    # Begin a new transaction for any subsequent SQL
+                    # statements.
+                    'BEGIN;',
+                ]
+
+            sql.append(_update_refs)
+
         return self.pre_sql + sql + self.sql + self.post_sql
 
 
@@ -263,6 +348,10 @@ class EvolutionOperations(BaseEvolutionOperations):
     supports_constraints = False
 
     alter_table_sql_result_cls = SQLiteAlterTableSQLResult
+
+    _can_rename_cols_min_version = (3, 26, 0)
+    _can_rename_cols = (Database.sqlite_version_info >=
+                        _can_rename_cols_min_version)
 
     def delete_column(self, model, field):
         """Delete a column from the table.
@@ -310,16 +399,26 @@ class EvolutionOperations(BaseEvolutionOperations):
         if old_field.column == new_field.column:
             return []
 
-        return SQLiteAlterTableSQLResult(
-            evolver=self,
-            model=model,
-            alter_table=[
-                {
-                    'op': 'RENAME COLUMN',
-                    'old_field': old_field,
-                    'new_field': new_field,
-                },
+        if self._can_rename_cols:
+            qn = self.connection.ops.quote_name
+
+            return SQLResult([
+                'ALTER TABLE %s RENAME COLUMN %s TO %s;'
+                % (qn(model._meta.db_table),
+                   qn(old_field.column),
+                   qn(new_field.column))
             ])
+        else:
+            return SQLiteAlterTableSQLResult(
+                evolver=self,
+                model=model,
+                alter_table=[
+                    {
+                        'op': 'RENAME COLUMN',
+                        'old_field': old_field,
+                        'new_field': new_field,
+                    },
+                ])
 
     def add_column(self, model, field, initial):
         """Add a column to the table.
@@ -538,6 +637,44 @@ class EvolutionOperations(BaseEvolutionOperations):
                 indexes[index_name]['columns'].append(index_info[2])
 
         return indexes
+
+    def is_column_referenced(self, reffed_table_name, reffed_col_name):
+        """Return whether a column on a table is referenced by another table.
+
+        Args:
+            reffed_table_name (unicode):
+                The name of the table that may be referenced.
+
+            reffed_col_name (unicode):
+                The name of the column that may be referenced.
+
+        Returns:
+            bool:
+            ``True`` if this table and column are referenced by another table,
+            or ``False`` if it's not referenced.
+        """
+        connection = self.connection
+        introspection = connection.introspection
+        qn = connection.ops.quote_name
+
+        cursor = connection.cursor()
+
+        try:
+            for table_info in introspection.get_table_list(cursor):
+                table_name = table_info.name
+
+                if table_name != reffed_table_name:
+                    cursor.execute('PRAGMA foreign_key_list(%s)'
+                                   % qn(table_name))
+
+                    for row in cursor.fetchall():
+                        if (reffed_table_name == row[2] and
+                            reffed_col_name == row[4]):
+                            return True
+        finally:
+            cursor.close()
+
+        return False
 
     def _change_attribute(self, model, field, attr_name, new_attr_value,
                           initial=None):

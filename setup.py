@@ -37,7 +37,7 @@ setup(
     download_url=download_url,
     packages=find_packages(exclude=['tests']),
     install_requires=[
-        'Django>=1.6,<2.1.999',
+        'Django>=1.6,<2.2.999',
     ],
     include_package_data=True,
     classifiers=[
@@ -50,6 +50,7 @@ setup(
         'Framework :: Django :: 1.10',
         'Framework :: Django :: 1.11',
         'Framework :: Django :: 2.1',
+        'Framework :: Django :: 2.2',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Natural Language :: English',
