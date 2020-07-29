@@ -137,3 +137,7 @@ class MigrationConflictsError(BaseMigrationError):
                 '%s in %s' % (', '.join(sorted(conflict_names)), app_label)
                 for app_label, conflict_names in six.iteritems(conflicts)
             ))
+
+
+class DjangoEvolutionSupportError(EvolutionException):
+    """A feature isn't supported by the current version of Django."""

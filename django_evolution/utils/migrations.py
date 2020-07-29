@@ -35,7 +35,8 @@ except ImportError:
 
 from django_evolution.compat import six
 from django_evolution.compat.models import get_model
-from django_evolution.errors import (MigrationConflictsError,
+from django_evolution.errors import (DjangoEvolutionSupportError,
+                                     MigrationConflictsError,
                                      MigrationHistoryError)
 from django_evolution.signals import applied_migration, applying_migration
 from django_evolution.support import supports_migrations
@@ -421,10 +422,37 @@ class MigrationLoader(DjangoMigrationLoader):
         This will contain both the migrations applied from the database
         and any set in :py:attr:`extra_applied_migrations`.
         """
-        return self._applied_migrations | set(
-            (info['app_label'], info['name'])
-            for info in self.extra_applied_migrations
-        )
+        extra_migrations = self.extra_applied_migrations
+
+        if isinstance(self._applied_migrations, dict):
+            # Django >= 3.0
+            applied_migrations = self._applied_migrations.copy()
+
+            for info in extra_migrations:
+                app_label = info['app_label']
+                name = info['name']
+                recorded_migration = info['recorded_migration']
+
+                if recorded_migration is None:
+                    recorded_migration = MigrationRecorder.Migration(
+                        app=app_label,
+                        name=name,
+                        applied=True)
+
+                applied_migrations[(app_label, name)] = recorded_migration
+
+        elif isinstance(self._applied_migrations, set):
+            # Django < 3.0
+            applied_migrations = self._applied_migrations | set(
+                (info['app_label'], info['name'])
+                for info in extra_migrations
+            )
+        else:
+            raise DjangoEvolutionSupportError(
+                'Migration.applied_migrations is an unexpected type (%s)'
+                % type(self._applied_migrations))
+
+        return applied_migrations
 
     @applied_migrations.setter
     def applied_migrations(self, value):
@@ -434,7 +462,19 @@ class MigrationLoader(DjangoMigrationLoader):
             value (set of tuple):
                 The migrations already applied to the database.
         """
-        self._applied_migrations = value
+        if value is not None and not isinstance(value, (dict, set)):
+            raise DjangoEvolutionSupportError(
+                'Migration.applied_migrations was set to an unexpected type '
+                '(%s)'
+                % type(value))
+
+        if value is None:
+            self._applied_migrations = None
+        else:
+            if django_version >= (3, 0):
+                self._applied_migrations = dict(value)
+            else:
+                self._applied_migrations = value
 
     def build_graph(self, reload_migrations=True):
         """Rebuild the migrations graph.

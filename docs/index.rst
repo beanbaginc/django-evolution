@@ -27,8 +27,7 @@ Django 1.7 and higher. Django Evolution predates both Django's own migrations,
 and works alongside it to transition databases taking advantage of the
 strengths of both migrations and evolutions.
 
-Django Evolution officially supports Django 1.6 through 1.11, with support
-for 2.0 in the works.
+Django Evolution officially supports Django 1.6 through 3.0.
 
 
 Questions So Far?
