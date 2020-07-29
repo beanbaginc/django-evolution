@@ -2,11 +2,12 @@
 
 from __future__ import unicode_literals
 
+from functools import partial
+
 from django.db import models
 from django.db.models.base import ModelState
 from django.db.models.fields import FieldDoesNotExist
 from django.db.models.fields.related import RECURSIVE_RELATIONSHIP_CONSTANT
-from django.utils.functional import curry
 
 from django_evolution.compat import six
 from django_evolution.compat.datastructures import OrderedDict
@@ -161,7 +162,8 @@ def create_field(project_sig, field_name, field_type, field_attrs,
                                 managed=not through_model)
             get_remote_field(field).through = through
 
-        field.m2m_db_table = curry(field._get_m2m_db_table, parent_model._meta)
+        field.m2m_db_table = partial(field._get_m2m_db_table,
+                                     parent_model._meta)
         field.set_attributes_from_rel()
 
     field.set_attributes_from_name(field_name)

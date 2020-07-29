@@ -3,10 +3,10 @@
 from __future__ import unicode_literals
 
 import inspect
+from functools import partial
 
 from django.db import models
 from django.db.utils import DEFAULT_DB_ALIAS
-from django.utils.functional import curry
 
 from django_evolution.compat import six
 from django_evolution.compat.datastructures import OrderedDict
@@ -889,15 +889,14 @@ class AddField(BaseModelFieldMutation):
         if hasattr(field, '_get_m2m_column_name'):
             # Django < 1.2
             field.m2m_column_name = \
-                curry(field._get_m2m_column_name, related)
+                partial(field._get_m2m_column_name, related)
             field.m2m_reverse_name = \
-                curry(field._get_m2m_reverse_name, related)
-        else:
-            # Django >= 1.2
-            field.m2m_column_name = curry(field._get_m2m_attr,
-                                          related, 'column')
-            field.m2m_reverse_name = curry(field._get_m2m_reverse_attr,
-                                           related, 'column')
+                partial(field._get_m2m_reverse_name, related)
+
+            field.m2m_column_name = \
+                partial(field._get_m2m_attr, related, 'column')
+            field.m2m_reverse_name = \
+                partial(field._get_m2m_reverse_attr, related, 'column')
 
         mutator.add_sql(self, mutator.evolver.add_m2m_table(model, field))
 
