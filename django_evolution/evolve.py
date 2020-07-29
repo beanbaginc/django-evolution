@@ -9,9 +9,9 @@ from contextlib import contextmanager
 
 from django.db import DatabaseError, connections
 from django.db.utils import DEFAULT_DB_ALIAS
-from django.utils import six
 from django.utils.translation import ugettext as _
 
+from django_evolution.compat import six
 from django_evolution.compat.apps import get_app, get_apps
 from django_evolution.compat.db import (atomic,
                                         db_get_installable_models_for_app,

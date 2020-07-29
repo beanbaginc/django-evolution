@@ -6,9 +6,9 @@ from django.db import models
 from django.db.models.base import ModelState
 from django.db.models.fields import FieldDoesNotExist
 from django.db.models.fields.related import RECURSIVE_RELATIONSHIP_CONSTANT
-from django.utils import six
 from django.utils.functional import curry
 
+from django_evolution.compat import six
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.models import (get_remote_field,
                                             get_remote_field_model)

@@ -2,10 +2,10 @@ from __future__ import print_function, unicode_literals
 
 from django.core.management.base import CommandError
 from django.db.models import Q
-from django.utils.six.moves import input
 from django.utils.translation import ugettext as _
 
 from django_evolution.compat.commands import BaseCommand
+from django_evolution.compat.six.moves import input
 from django_evolution.models import Evolution
 
 

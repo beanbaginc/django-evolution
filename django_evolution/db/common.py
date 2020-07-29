@@ -5,9 +5,9 @@ import logging
 
 import django
 from django.db import connection as default_connection, models
-from django.utils import six
 
 from django_evolution import support
+from django_evolution.compat import six
 from django_evolution.compat.db import (create_index_name,
                                         create_index_together_name,
                                         sql_add_constraints,

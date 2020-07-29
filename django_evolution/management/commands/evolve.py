@@ -10,8 +10,6 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import CommandError
 from django.db.utils import DEFAULT_DB_ALIAS
 from django.dispatch import receiver
-from django.utils import six
-from django.utils.six.moves import input
 from django.utils.translation import ngettext, ugettext as _
 
 try:
@@ -23,8 +21,10 @@ except ImportError:
     emit_post_migrate_signal = None
     emit_pre_migrate_signal = None
 
+from django_evolution.compat import six
 from django_evolution.compat.apps import get_app
 from django_evolution.compat.commands import BaseCommand
+from django_evolution.compat.six.moves import input
 from django_evolution.errors import EvolutionException
 from django_evolution.evolve import EvolveAppTask, Evolver, PurgeAppTask
 from django_evolution.signals import (applied_evolution,

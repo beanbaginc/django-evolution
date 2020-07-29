@@ -3,8 +3,8 @@
 from __future__ import print_function, unicode_literals
 
 from django.db import connections
-from django.utils import six
 
+from django_evolution.compat import six
 from django_evolution.db import EvolutionOperationsMulti
 
 

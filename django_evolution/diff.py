@@ -3,9 +3,9 @@
 from __future__ import unicode_literals
 
 from django.db import models
-from django.utils import six
 from django.utils.translation import ugettext as _
 
+from django_evolution.compat import six
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.models import get_model
 from django_evolution.errors import EvolutionException

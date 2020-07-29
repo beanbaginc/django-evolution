@@ -8,8 +8,8 @@ import django
 from django.conf import settings
 from django.db import connections
 from django.db.utils import ConnectionHandler, DEFAULT_DB_ALIAS
-from django.utils import six
 
+from django_evolution.compat import six
 from django_evolution.compat.apps import (is_app_registered, register_app,
                                           register_app_models,
                                           unregister_app_model)

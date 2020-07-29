@@ -5,8 +5,8 @@ from __future__ import unicode_literals
 from copy import deepcopy
 
 from django.db import connections
-from django.utils import six
 
+from django_evolution.compat import six
 from django_evolution.compat.db import convert_table_name
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.errors import DatabaseStateError

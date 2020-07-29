@@ -7,8 +7,8 @@ from contextlib import contextmanager
 from django.db import ConnectionRouter, DEFAULT_DB_ALIAS, connections, router
 from django.test.testcases import TransactionTestCase
 from django.test.utils import override_settings
-from django.utils import six
 
+from django_evolution.compat import six
 from django_evolution.compat.apps import unregister_app
 from django_evolution.db.state import DatabaseState
 from django_evolution.diff import Diff

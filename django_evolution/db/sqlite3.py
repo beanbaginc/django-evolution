@@ -4,8 +4,8 @@ from __future__ import unicode_literals
 
 from django.db import models
 from django.db.backends.sqlite3.base import Database
-from django.utils import six
 
+from django_evolution.compat import six
 from django_evolution.compat.db import (create_index_name,
                                         sql_indexes_for_model)
 from django_evolution.compat.models import (get_remote_field,

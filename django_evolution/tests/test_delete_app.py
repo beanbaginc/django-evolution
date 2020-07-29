@@ -1,8 +1,8 @@
 from __future__ import unicode_literals
 
 from django.db import models
-from django.utils import six
 
+from django_evolution.compat import six
 from django_evolution.diff import Diff
 from django_evolution.errors import SimulationFailure
 from django_evolution.mutations import DeleteApplication

@@ -13,7 +13,6 @@ import django
 from django.core.management import color, sql as sql_utils
 from django.db import connections, router, transaction
 from django.db.utils import DEFAULT_DB_ALIAS
-from django.utils import six
 
 try:
     # Django >= 1.7
@@ -45,6 +44,7 @@ except ImportError:
     # Django < 2.2
     names_digest = None
 
+from django_evolution.compat import six
 from django_evolution.compat.models import get_models, get_remote_field
 from django_evolution.support import supports_index_together
 from django_evolution.utils.apps import get_app_label

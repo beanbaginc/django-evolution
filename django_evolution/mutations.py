@@ -6,9 +6,9 @@ import inspect
 
 from django.db import models
 from django.db.utils import DEFAULT_DB_ALIAS
-from django.utils import six
 from django.utils.functional import curry
 
+from django_evolution.compat import six
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.consts import UpgradeMethod
 from django_evolution.db import EvolutionOperationsMulti

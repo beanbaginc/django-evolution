@@ -115,9 +115,9 @@ from importlib import import_module
 from django.conf import global_settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db import DEFAULT_DB_ALIAS, models
-from django.utils import six
 from django.utils.translation import ugettext as _
 
+from django_evolution.compat import six
 from django_evolution.compat.apps import get_apps, get_app
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.db import db_router_allows_schema_upgrade

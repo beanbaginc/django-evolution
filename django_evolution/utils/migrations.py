@@ -5,7 +5,6 @@ from __future__ import unicode_literals
 from importlib import import_module
 
 import django
-from django.utils import six
 
 try:
     # Django >= 1.7
@@ -32,6 +31,7 @@ except ImportError:
     emit_post_migrate_signal = None
     emit_pre_migrate_signal = None
 
+from django_evolution.compat import six
 from django_evolution.compat.models import get_model
 from django_evolution.errors import (MigrationConflictsError,
                                      MigrationHistoryError)

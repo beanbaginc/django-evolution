@@ -5,7 +5,6 @@ from __future__ import unicode_literals
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.utils import DEFAULT_DB_ALIAS
-from django.utils import six
 from nose import SkipTest
 
 try:
@@ -15,6 +14,7 @@ except ImportError:
     # Django <= 1.10
     Index = None
 
+from django_evolution.compat import six
 from django_evolution.compat.apps import get_app
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.models import GenericForeignKey, GenericRelation

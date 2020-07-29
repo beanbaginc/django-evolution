@@ -2,7 +2,7 @@
 
 from __future__ import unicode_literals
 
-from django.utils import six
+from django_evolution.compat import six
 
 
 class EvolutionException(Exception):

@@ -5,13 +5,13 @@ import json
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import post_init
-from django.utils import six
-from django.utils.encoding import python_2_unicode_compatible
 from django.utils.timezone import now
 from django.utils.translation import ugettext_lazy as _
 
+from django_evolution.compat import six
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.py23 import pickle_dumps, pickle_loads
+from django_evolution.compat.six import python_2_unicode_compatible
 from django_evolution.signature import ProjectSignature
 
 

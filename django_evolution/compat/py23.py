@@ -4,10 +4,9 @@ from __future__ import unicode_literals
 
 import io
 
-from django.utils import six
-from django.utils.six.moves import cPickle as pickle
-
+from django_evolution.compat import six
 from django_evolution.compat.picklers import DjangoCompatUnpickler
+from django_evolution.compat.six.moves import cPickle as pickle
 
 
 def pickle_dumps(obj):

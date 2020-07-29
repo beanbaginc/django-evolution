@@ -5,7 +5,8 @@ from __future__ import unicode_literals
 from optparse import OptionParser
 
 from django.core.management.base import BaseCommand as DjangoBaseCommand
-from django.utils import six
+
+from django_evolution.compat import six
 
 
 class OptionParserWrapper(object):
