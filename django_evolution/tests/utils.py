@@ -300,13 +300,22 @@ def execute_transaction(sql, database=DEFAULT_DB_ALIAS):
 
         database (unicode, optional):
             The name of the database to use.
+
+    Returns:
+        list of unicode:
+        The SQL statements that were executed.
     """
     connection = connections[database]
 
     try:
         with connection.constraint_checks_disabled():
             with atomic(using=database):
-                execute_sql(connection.cursor(), sql, database)
+                cursor = connection.cursor()
+
+                try:
+                    return execute_sql(cursor, sql, database, capture=True)
+                finally:
+                    cursor.close()
     except Exception as e:
         logging.exception('Error executing SQL %s: %s', sql, e)
         raise
@@ -395,8 +404,7 @@ def execute_test_sql(start_models, end_models, generate_sql_func,
 
         # Execute and output the SQL for the test.
         sql = generate_sql_func()
-        sql_out = write_sql(sql, database)
-        execute_transaction(sql, database)
+        sql_out = execute_transaction(sql, database)
 
         return sql_out
 

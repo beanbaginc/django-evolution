@@ -1125,8 +1125,6 @@ preprocessing = {
         'ALTER TABLE `tests_testmodel`'
         ' ALTER COLUMN `added_field` DROP DEFAULT;',
 
-        '-- Comment --',
-
         'ALTER TABLE `tests_testmodel` DROP COLUMN `added_field` CASCADE;',
     ],
 

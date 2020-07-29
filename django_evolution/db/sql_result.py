@@ -26,6 +26,21 @@ class SQLResult(object):
 
         If a list of SQL statements is passed, it will be added to this
         SQLResult's sql list.
+
+        Args:
+            sql_or_result (object):
+                The SQL to add. This may be one of the following:
+
+                * Anopther instance of :py:class:`SQLResult`
+                * A list of SQL statements
+                * A single SQL statement
+                * A tuple pair containing the SQL statement and arguments
+                  for that statement
+                * A function to call later when executing SQL statements
+
+        Raises:
+            TypeError:
+                ``sql_or_result`` wasn't a supported type.
         """
         if isinstance(sql_or_result, SQLResult):
             self.pre_sql += sql_or_result.pre_sql
@@ -35,9 +50,11 @@ class SQLResult(object):
             self.sql += sql_or_result
         elif isinstance(sql_or_result, six.string_types + (tuple,)):
             self.sql.append(sql_or_result)
+        elif callable(sql_or_result):
+            self.sql.append(sql_or_result)
         else:
-            raise ValueError('SQLResult.add got unexpected type %s (%r)'
-                             % (type(sql_or_result), sql_or_result))
+            raise TypeError('SQLResult.add got unexpected type %s (%r)'
+                            % (type(sql_or_result), sql_or_result))
 
     def add_pre_sql(self, sql_or_result):
         """Adds a list of SQL statements or an SQLResult to ``pre_sql``.
@@ -142,7 +159,7 @@ class AlterTableSQLResult(SQLResult):
                 )
 
                 if sql_params:
-                    sql.append((alter_table_sql, sql_params))
+                    sql.append((alter_table_sql, tuple(sql_params)))
                 else:
                     sql.append(alter_table_sql)
 

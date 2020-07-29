@@ -1843,8 +1843,6 @@ preprocessing = {
 
         'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
-        '-- Comment --',
-
         'CREATE TABLE "TEMP_TABLE" '
         '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
         ' "char_field" varchar(20) NOT NULL);',
