@@ -38,6 +38,7 @@ setup(
     packages=find_packages(exclude=['tests']),
     install_requires=[
         'Django>=1.6,<3.1.999',
+        'python2-secrets; python_version == "3.5"',
     ],
     include_package_data=True,
     classifiers=[
