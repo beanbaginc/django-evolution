@@ -430,6 +430,38 @@ class ChangeFieldTests(EvolutionTestCase):
             ],
             'M2MDBTableChangeModel')
 
+    def test_change_m2m_null(self):
+        """Testing ChangeField with setting null on ManyToManyField"""
+        class DestModel(BaseTestModel):
+            my_id = models.AutoField(primary_key=True)
+            alt_pk = models.IntegerField()
+            int_field = models.IntegerField(db_column='custom_db_column')
+            int_field1 = models.IntegerField(db_index=True)
+            int_field2 = models.IntegerField(db_index=False)
+            int_field3 = models.IntegerField(unique=True)
+            int_field4 = models.IntegerField(unique=False)
+            char_field = models.CharField(max_length=20)
+            char_field1 = models.CharField(max_length=25, null=True)
+            char_field2 = models.CharField(max_length=30, null=False)
+            m2m_field1 = models.ManyToManyField(
+                ChangeAnchor1,
+                db_table='change_field_non-default_m2m_table',
+                null=True)
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeField('TestModel', 'm2m_field1', null=True),
+            ],
+            ("In model tests.TestModel:\n"
+             "    In field 'm2m_field1':\n"
+             "        Property 'null' has changed"),
+            [
+                "ChangeField('TestModel', 'm2m_field1', initial=None,"
+                " null=True)"
+            ],
+            'M2MNullChangeModel')
+
     def test_set_db_index_true(self):
         """Testing ChangeField with setting db_index=True"""
         class DestModel(BaseTestModel):

@@ -661,6 +661,8 @@ change_field = {
         ' integer NOT NULL;',
     ],
 
+    'M2MNullChangeModel': [],
+
     'M2MDBTableChangeModel': [
         'ALTER TABLE `change_field_non-default_m2m_table`'
         ' DROP FOREIGN KEY `%s`;'

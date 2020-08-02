@@ -42,6 +42,10 @@ class BaseEvolutionOperations(object):
         'add_column', 'change_column', 'delete_column', 'change_meta'
     )
 
+    ignored_m2m_attrs = {
+        models.ManyToManyField: set(['null']),
+    }
+
     alter_table_sql_result_cls = AlterTableSQLResult
 
     def __init__(self, database_state, connection=default_connection):
@@ -573,12 +577,19 @@ class BaseEvolutionOperations(object):
         to apply these attributes.
         """
         field = model._meta.get_field(field_name)
+        ignored_m2m_attrs = self.ignored_m2m_attrs.get(type(field))
+
         attrs_sql_result = self.alter_table_sql_result_cls(self, model)
 
         new_attrs = sorted(six.iteritems(new_attrs),
                            key=lambda pair: pair[0])
 
         for attr_name, attr_info in new_attrs:
+            if ignored_m2m_attrs and attr_name in ignored_m2m_attrs:
+                # This attribute is allowed by the field's constructor, but
+                # isn't something we can change in the database. Skip it.
+                continue
+
             method_name = 'change_column_attr_%s' % attr_name
             evolve_func = getattr(self, method_name)
 

@@ -885,6 +885,8 @@ change_field = {
         % generate_index_name('tests_testmodel', 'int_field1'),
     ],
 
+    'M2MNullChangeModel': [],
+
     'M2MDBTableChangeModel': [
         'ALTER TABLE "change_field_non-default_m2m_table"'
         ' RENAME TO "custom_m2m_db_table_name";',

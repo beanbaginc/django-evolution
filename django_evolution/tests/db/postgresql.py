@@ -826,6 +826,8 @@ change_field = {
         ' ALTER COLUMN "char_field" TYPE varchar(35)'
         ' USING CAST("char_field" as varchar(35));',
     ],
+
+    'M2MNullChangeModel': [],
 }
 
 if django_version >= (1, 11):
