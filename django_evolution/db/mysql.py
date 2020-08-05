@@ -41,23 +41,23 @@ class EvolutionOperations(BaseEvolutionOperations):
             # database columns in this table.
             return []
 
-        models = []
-        refs = {}
-        opts = model._meta
+        sql_result = AlterTableSQLResult(self, model)
 
-        pre_sql = self.remove_field_constraints(old_field, opts, models, refs)
-        alter_table_items = self._get_rename_column_sql(opts, old_field,
-                                                        new_field)
-        post_sql = self.add_primary_key_field_constraints(old_field, new_field,
-                                                          models, refs)
+        pre_sql, stash = self.stash_field_ref_constraints(
+            model=model,
+            replaced_fields={
+                old_field: new_field,
+            })
+        sql_result.add_pre_sql(pre_sql)
 
-        return AlterTableSQLResult(
-            self,
-            model,
-            pre_sql=pre_sql,
-            alter_table=alter_table_items,
-            post_sql=post_sql
-        )
+        sql_result.add_alter_table(self._get_rename_column_sql(
+            opts=model._meta,
+            old_field=old_field,
+            new_field=new_field))
+
+        sql_result.add_post_sql(self.restore_field_ref_constraints(stash))
+
+        return sql_result
 
     def _get_rename_column_sql(self, opts, old_field, new_field):
         qn = self.connection.ops.quote_name
@@ -185,12 +185,28 @@ class EvolutionOperations(BaseEvolutionOperations):
 
         return SQLResult(sql)
 
-    def get_rename_table_sql(self, model, old_db_tablename, db_tablename):
+    def get_rename_table_sql(self, model, old_db_table, new_db_table):
+        """Return SQL for renaming a table.
+
+        Args:
+            model (django.db.models.Model):
+                The model representing the table to rename.
+
+            old_db_table (unicode):
+                The old table name.
+
+            new_db_table (unicode):
+                The new table name.
+
+        Returns:
+            django_evolution.db.sql_result.SQLResult:
+            The resulting SQL for renaming the table.
+        """
         qn = self.connection.ops.quote_name
 
         return SQLResult([
             'RENAME TABLE %s TO %s;'
-            % (qn(old_db_tablename), qn(db_tablename))
+            % (qn(old_db_table), qn(new_db_table))
         ])
 
     def get_default_index_name(self, table_name, field):

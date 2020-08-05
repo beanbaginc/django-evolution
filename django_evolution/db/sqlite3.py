@@ -246,8 +246,9 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
         sql += evolver.delete_table(table_name).to_sql()
 
         # Step 4: Move over the temp table to the destination table name.
-        sql += evolver.get_rename_table_sql(model, TEMP_TABLE_NAME,
-                                            table_name).to_sql()
+        sql += evolver.rename_table(model=model,
+                                    old_db_table=TEMP_TABLE_NAME,
+                                    new_db_table=table_name).to_sql()
 
         # Step 5: Restore any indexes.
         class _Model(object):
@@ -345,13 +346,36 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
 class EvolutionOperations(BaseEvolutionOperations):
     """Evolution operations backend for SQLite."""
 
-    supports_constraints = False
-
     alter_table_sql_result_cls = SQLiteAlterTableSQLResult
 
     _can_rename_cols_min_version = (3, 26, 0)
     _can_rename_cols = (Database.sqlite_version_info >=
                         _can_rename_cols_min_version)
+
+    def rename_table(self, model, old_db_table, new_db_table):
+        """Rename a table.
+
+        Args:
+            model (django_evolution.mock_models.MockModel):
+                The model representing the table to rename.
+
+            old_db_table (unicode):
+                The old table name.
+
+            new_db_table (unicode):
+                The new table name.
+
+        Returns:
+            django_evolution.db.sql_result.SQLResult:
+            The resulting SQL for renaming the table.
+        """
+        sql_result = SQLResult()
+
+        if old_db_table != new_db_table:
+            sql_result.add(self.get_rename_table_sql(model, old_db_table,
+                                                     new_db_table))
+
+        return sql_result
 
     def delete_column(self, model, field):
         """Delete a column from the table.

@@ -36,8 +36,6 @@ class BaseEvolutionOperations(object):
         'unique_together': True,
     }
 
-    supports_constraints = True
-
     mergeable_ops = (
         'add_column', 'change_column', 'delete_column', 'change_meta'
     )
@@ -147,70 +145,67 @@ class BaseEvolutionOperations(object):
         """
         raise NotImplementedError
 
-    def get_rename_table_sql(self, model, old_db_tablename, db_tablename):
+    def get_rename_table_sql(self, model, old_db_table, new_db_table):
+        """Return SQL for renaming a table.
+
+        Args:
+            model (django.db.models.Model):
+                The model representing the table to rename.
+
+            old_db_table (unicode):
+                The old table name.
+
+            new_db_table (unicode):
+                The new table name.
+
+        Returns:
+            django_evolution.db.sql_result.SQLResult:
+            The resulting SQL for renaming the table.
+        """
         qn = self.connection.ops.quote_name
 
         # We want to define an explicit ALTER TABLE here, instead of setting
         # alter_table in AlterTableSQLResult, so that we can be explicit about
         # the old and new table names.
         return SQLResult(['ALTER TABLE %s RENAME TO %s;'
-                          % (qn(old_db_tablename), qn(db_tablename))])
+                          % (qn(old_db_table), qn(new_db_table))])
 
-    def rename_table(self, model, old_db_tablename, db_tablename):
+    def rename_table(self, model, old_db_table, new_db_table):
+        """Rename a table.
+
+        This will take care of removing and then restoring any primary field
+        constraints. If an evolver backend doesn't support this, or has another
+        method for managing these constraints, it should override this method.
+
+        Args:
+            model (django.db.models.Model):
+                The model representing the table to rename.
+
+            old_db_table (unicode):
+                The old table name.
+
+            new_db_table (unicode):
+                The new table name.
+
+        Returns:
+            django_evolution.db.sql_result.SQLResult:
+            The resulting SQL for renaming the table.
+        """
         sql_result = SQLResult()
 
-        if old_db_tablename == db_tablename:
-            # No Operation
-            return sql_result
+        if old_db_table != new_db_table:
+            pre_sql, stash = self.stash_field_ref_constraints(
+                model=model,
+                renamed_db_tables={
+                    old_db_table: new_db_table,
+                })
 
-        max_name_length = self.connection.ops.max_name_length()
-
-        refs = {}
-        models = []
-
-        for field in model._meta.local_many_to_many:
-            remote_field = get_remote_field(field)
-
-            if (remote_field and
-                remote_field.through and
-                remote_field.through._meta.db_table == old_db_tablename):
-
-                through = remote_field.through
-
-                for m2m_field in through._meta.local_fields:
-                    remote_m2m_field = get_remote_field(m2m_field)
-
-                    if remote_m2m_field:
-                        remote_m2m_field_model = get_remote_field_model(
-                            remote_m2m_field)
-
-                        if remote_m2m_field_model == model:
-                            models.append(remote_m2m_field_model)
-                            refs.setdefault(remote_m2m_field_model, []).append(
-                                (through, m2m_field))
-
-        remove_refs = refs.copy()
-
-        if self.supports_constraints:
-            for relto in models:
-                sql_result.add_pre_sql(sql_delete_constraints(
-                    self.connection, relto, remove_refs))
-
-        sql_result.add(self.get_rename_table_sql(
-            model, old_db_tablename, db_tablename))
-
-        for relto in models:
-            for rel_class, f in refs[relto]:
-                if rel_class._meta.db_table == old_db_tablename:
-                    rel_class._meta.db_table = db_tablename
-
-                rel_class._meta.db_table = \
-                    truncate_name(rel_class._meta.db_table,
-                                  max_name_length)
-
-            if self.supports_constraints:
-                sql_result.add_post_sql(sql_add_constraints(
-                    self.connection, relto, refs))
+            sql_result.add_pre_sql(pre_sql)
+            sql_result.add(self.get_rename_table_sql(
+                model=model,
+                old_db_table=old_db_table,
+                new_db_table=new_db_table))
+            sql_result.add_post_sql(self.restore_field_ref_constraints(stash))
 
         return sql_result
 
@@ -1049,79 +1044,203 @@ class BaseEvolutionOperations(object):
         """
         raise NotImplementedError
 
-    def remove_field_constraints(self, field, opts, models, refs):
-        """Return SQL for removing constraints on a field.
+    def stash_field_ref_constraints(self, model,
+                                    replaced_fields={},
+                                    renamed_db_tables={}):
+        """Return SQL for removing constraints on a primary key field.
+
+        This should be called before performing an operation that renames a
+        field or changes the table on a ManyToManyField on databases that
+        support adding/dropping constraints on primary keys. The constraints
+        can then be restored through :py:meth:`restore_field_ref_constraints`.
+
+        As of Django Evolution 2.0, this only considers fields on
+        ManyToManyFields defined by ``model``, keeping behavior consistent with
+        prior versions of Django Evolution.
 
         Args:
-            field (django.db.models.Field):
-                The field the constraints will be removed from.
+            model (django.db.models.Model):
+                The model owning the fields to remove constraints from.
 
-            opts (django.db.models.options.Options):
-                The Meta class for the model.
+            replaced_fields (dict):
+                A dictionary mapping old fields to new fields. Each field is
+                expected to be a primary key. These will be checked for field
+                name and column changes.
 
-            models (list of django.db.models.Model):
-                A caller-provided list that will be populated with models
-                that constraints will be removed from.
-
-            refs (dict):
-                A caller-supplied dictionary that will be populated with
-                references that are removed.
-
-                The keys are models, and the values are lists of
-                tuples of many-to-many models and fields.
+            renamed_db_tables (dict):
+                A dictionary mapping old table names to new table names.
+                This is used when renaming many-to-many intermediary tables.
 
         Returns:
-            list:
-            The list of SQL statements for removing constraints on the field.
+            tuple:
+            A tuple containing the following items:
+
+            1. The :py:class:`~django_evolution.sql_result.SQLResult` that
+               contains the SQL to remove the current constraints.
+            2. A dictionary containing internal stashed state for restoring
+               constraints. This should be considered opaque.
         """
-        sql = []
+        assert replaced_fields or renamed_db_tables
 
-        if self.supports_constraints and field.primary_key:
-            for f in opts.local_many_to_many:
-                remote_field = get_remote_field(f)
+        renamed_columns = {}
+        renamed_col_fields = {}
+        renamed_fields = {}
+        replaced_fields_by_name = {}
 
-                if remote_field and remote_field.through:
-                    through = remote_field.through
+        for old_field, new_field in list(six.iteritems(replaced_fields)):
+            assert old_field.primary_key == new_field.primary_key
 
-                    for m2m_f in through._meta.local_fields:
-                        remote_m2m_f = get_remote_field(m2m_f)
+            # Only work with replaced fields that are a primary key. We won't
+            # be updating any references to them at this point (keeping
+            # consistent with long-term Django Evolution behavior).
+            if old_field.primary_key:
+                replaced_fields_by_name[old_field.name] = new_field
 
-                        if not remote_m2m_f:
-                            continue
+                if old_field.name != new_field.name:
+                    renamed_fields[old_field.name] = new_field.name
 
-                        remote_m2m_f_model = \
-                            get_remote_field_model(remote_m2m_f)
+                if old_field.column != new_field.column:
+                    renamed_col_fields[old_field.name] = new_field
+                    renamed_columns[old_field.column] = new_field.column
 
-                        if (remote_m2m_f.field_name == field.column and
-                            remote_m2m_f_model._meta.db_table ==
-                                opts.db_table):
-                            models.append(remote_m2m_f_model)
-                            refs.setdefault(remote_m2m_f_model, []).append(
-                                (through, m2m_f))
+        sql_result = SQLResult()
 
-            remove_refs = refs.copy()
+        if not replaced_fields_by_name and not renamed_db_tables:
+            # There's nothing to do.
+            return sql_result, None
 
-            for relto in models:
-                sql.extend(sql_delete_constraints(self.connection, relto,
-                                                  remove_refs))
+        refs = []
 
-        return sql
+        # If there are any ManyToManyFields defined by this model, their
+        # references will need to be stashed away and their constraints
+        # dropped before the caller performs its operation. We'll loop
+        # through each and make note of the appropriate references, based
+        # on the caller-provided renamed tables/replaced fields.
+        for field in model._meta.local_many_to_many:
+            remote_field = get_remote_field(field)
+            assert remote_field is not None
 
-    def add_primary_key_field_constraints(self, old_field, new_field, models,
-                                          refs):
-        sql = []
+            through = remote_field.through
+            assert through is not None
 
-        if self.supports_constraints and old_field.primary_key:
-            for relto in models:
-                for rel_class, f in refs[relto]:
-                    get_remote_field(f).field_name = new_field.column
+            through_meta = through._meta
 
-                del relto._meta._fields[old_field.name]
-                relto._meta._fields[new_field.name] = new_field
+            # Only process this ManyToManyField if we're renaming its table
+            # or we're processing all tables.
+            if (renamed_db_tables and
+                through_meta.db_table not in renamed_db_tables):
+                continue
 
-                sql.extend(sql_add_constraints(self.connection, relto, refs))
+            for through_field in through_meta.local_fields:
+                through_remote_field = get_remote_field(through_field)
 
-        return sql
+                if through_remote_field is None:
+                    # This isn't a relation field It's probably the primary
+                    # key of the intermediary table, or a custom field defined
+                    # by an explicit model.
+                    continue
+
+                if (renamed_columns and
+                    through_remote_field.field_name not in renamed_col_fields):
+                    # We're operating only on specific fields, and this isn't
+                    # one of them.
+                    continue
+
+                # Check the model on the other end of the field's relation.
+                # We're checking that it's pointing back at this model, since
+                # that may qualify as a field reference with a constraint
+                # we'll need to update.
+                #
+                # If the model isn't pointing to the main model we're
+                # operating on, we can ignore it.
+                if get_remote_field_model(through_remote_field) == model:
+                    # Stash this reference away so we know to restore it
+                    # later.
+                    refs.append((through, through_field))
+
+        if refs:
+            sql_result = SQLResult(sql_delete_constraints(
+                connection=self.connection,
+                model=model,
+                remove_refs={
+                    model: refs,
+                }))
+
+        return sql_result, {
+            'model': model,
+            'refs': refs,
+            'renamed_db_tables': renamed_db_tables,
+            'renamed_fields': renamed_fields,
+            'replaced_fields': replaced_fields_by_name,
+        }
+
+    def restore_field_ref_constraints(self, stash):
+        """Return SQL for adding back field constraints on a table.
+
+        This should be called after performing an operation that renames a
+        field or a ManyToMany table name on databases that support
+        adding/dropping constraints on primary keys.
+
+        This requires a prior call to :py:meth:`stash_field_ref_constraints`.
+
+        Args:
+            stash (dict):
+                Stashed constraint data from
+                :py:meth:`stash_field_ref_constraints`.
+
+        Returns:
+            django_evolution.sql_result.SQLResult:
+            The SQL statements for adding back constraints on the field.
+        """
+        if not stash:
+            # There's nothing to do.
+            return SQLResult()
+
+        refs = stash['refs']
+        replaced_fields = stash['replaced_fields']
+        renamed_db_tables = stash['renamed_db_tables']
+        renamed_fields = stash['renamed_fields']
+
+        model = stash['model']
+        meta = model._meta
+        max_name_length = self.connection.ops.max_name_length()
+
+        # Loop through all model-to-relation references we stashed. We'll be
+        # setting any new table names on intermediary/through tables that
+        # are being renamed, and updating any fields on those tables that
+        # are pointing to renamed/replaced fields.
+        for through, through_field in refs:
+            through_meta = through._meta
+
+            # If any fields have been renamed, and those fields exist on this
+            # intermediary table, update them to point to the new names.
+            if renamed_fields:
+                remote_field = get_remote_field(through_field)
+                new_field_name = renamed_fields.get(remote_field.field_name)
+
+                if new_field_name:
+                    remote_field.field_name = new_field_name
+
+            # If the intermediary table is being renamed, update its name now.
+            new_db_table = renamed_db_tables.get(through_meta.db_table)
+
+            if new_db_table:
+                through_meta.db_table = truncate_name(new_db_table,
+                                                      max_name_length)
+
+        # Replace any fields on the model with the new instances.
+        model_fields = meta._fields
+
+        for old_field_name, new_field in six.iteritems(replaced_fields):
+            del model_fields[old_field_name]
+            model_fields[new_field.name] = new_field
+
+        return SQLResult(sql_add_constraints(
+            connection=self.connection,
+            model=model,
+            refs={
+                model: refs,
+            }))
 
     def normalize_value(self, value):
         if isinstance(value, bool):

@@ -563,6 +563,11 @@ def sql_add_constraints(connection, model, refs):
 
         if model in refs:
             with connection.schema_editor() as schema_editor:
+                assert schema_editor.sql_create_fk, (
+                    'sql_add_constraints() cannot be called for this type '
+                    'of database.'
+                )
+
                 qn = schema_editor.quote_name
 
                 for rel_class, f in refs[model]:

@@ -15,28 +15,28 @@ class EvolutionOperations(BaseEvolutionOperations):
 
         qn = self.connection.ops.quote_name
         max_name_length = self.connection.ops.max_name_length()
-        opts = model._meta
-        refs = {}
-        models = []
 
-        return AlterTableSQLResult(
-            self,
-            model,
-            pre_sql=self.remove_field_constraints(old_field, opts, models,
-                                                  refs),
-            alter_table=[
-                {
-                    'independent': True,
-                    'sql': 'RENAME COLUMN %s TO %s'
-                           % (truncate_name(qn(old_field.column),
-                                            max_name_length),
-                              truncate_name(qn(new_field.column),
-                                            max_name_length)),
-                },
-            ],
-            post_sql=self.add_primary_key_field_constraints(
-                old_field, new_field, models, refs)
-        )
+        sql_result = AlterTableSQLResult(self, model)
+
+        pre_sql, stash = self.stash_field_ref_constraints(
+            model=model,
+            replaced_fields={
+                old_field: new_field,
+            })
+        sql_result.add_pre_sql(pre_sql)
+
+        sql_result.add_alter_table([{
+            'independent': True,
+            'sql': 'RENAME COLUMN %s TO %s'
+                   % (truncate_name(qn(old_field.column),
+                                    max_name_length),
+                      truncate_name(qn(new_field.column),
+                                    max_name_length)),
+        }])
+
+        sql_result.add_post_sql(self.restore_field_ref_constraints(stash))
+
+        return sql_result
 
     def get_drop_unique_constraint_sql(self, model, index_name):
         qn = self.connection.ops.quote_name
