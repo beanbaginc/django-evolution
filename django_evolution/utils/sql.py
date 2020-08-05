@@ -94,10 +94,13 @@ def run_sql(sql, cursor, database, capture=False, execute=False):
     try:
         for statement, params in _prepare_sql(evolver, sql, cursor):
             if capture:
-                out_sql.append(statement % tuple(
-                    qp(param)
-                    for param in params
-                ))
+                if params:
+                    out_sql.append(statement % tuple(
+                        qp(param)
+                        for param in params
+                    ))
+                else:
+                    out_sql.append(statement)
 
             if execute:
                 cursor.execute(statement, params)
@@ -150,16 +153,19 @@ def _prepare_sql(evolver, sql, cursor):
         for statement in statements:
             if isinstance(statement, tuple):
                 statement, params = statement
+                assert isinstance(params, tuple)
             else:
-                params = ()
+                params = None
 
             assert isinstance(statement, six.text_type)
-            assert isinstance(params, tuple)
 
             statement = statement.strip()
 
             if statement and not statement.startswith('--'):
-                yield statement, tuple(
-                    evolver.normalize_value(param)
-                    for param in params
-                )
+                if params is not None:
+                    params = tuple(
+                        evolver.normalize_value(param)
+                        for param in params
+                    )
+
+                yield statement, params
