@@ -37,4 +37,37 @@ TEST_DATABASES = {
         'USER': postgres_username,
         'PASSWORD': postgres_password,
     },
+
+    # You may also want to define some version-specific databases, if you
+    # have them available on your network (or in Docker) for testing:
+    'mysql_5_6': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'test',
+        'HOST': 'mysql5_6.lan',
+        'USER': '...',
+        'PASSWORD': '...'
+        'OPTIONS': {
+            'init_command': 'SET storage_engine=INNODB',
+        },
+    },
+    'mysql_5_7': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'test',
+        'HOST': 'mysql5_7.lan',
+        'USER': '...',
+        'PASSWORD': '...'
+        'OPTIONS': {
+            'init_command': 'SET storage_engine=INNODB',
+        },
+    },
+    'mariadb': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'test',
+        'HOST': 'mariadb.lan',
+        'USER': '...',
+        'PASSWORD': '...'
+        'OPTIONS': {
+            'init_command': 'SET storage_engine=INNODB',
+        },
+    },
 }

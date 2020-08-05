@@ -32,6 +32,8 @@ from django_evolution.utils.sql import execute_sql, write_sql
 
 test_connections = ConnectionHandler(settings.TEST_DATABASES)
 
+_sql_mapping_cache = {}
+
 
 def register_models(database_state, models, register_indexes=False,
                     new_app_label='tests', db_name='default', app=evo_test):
@@ -427,6 +429,11 @@ def get_sql_mappings(mapping_key, db_name):
         dict:
         The mappings dictionary for the given mapping key and database.
     """
+    try:
+        return _sql_mapping_cache[db_name][mapping_key]
+    except KeyError:
+        pass
+
     engine = settings.DATABASES[db_name]['ENGINE'].split('.')[-1]
 
     # Convert alternative database names to their proper test data module.
@@ -437,7 +444,19 @@ def get_sql_mappings(mapping_key, db_name):
     sql_for_engine = __import__('django_evolution.tests.db.%s' % engine,
                                 {}, {}, [''])
 
-    return getattr(sql_for_engine, mapping_key)
+    mapping = getattr(sql_for_engine, mapping_key)
+    assert callable(mapping)
+
+    mapping = mapping(connection=connections[db_name])
+
+    assert mapping is not None, (
+        'Mapping for key "%s" (database "%s") cannot be None!'
+        % (mapping_key, db_name)
+    )
+
+    _sql_mapping_cache.setdefault(db_name, {})[mapping_key] = mapping
+
+    return mapping
 
 
 def generate_index_name(connection, table, col_names, field_names=None,

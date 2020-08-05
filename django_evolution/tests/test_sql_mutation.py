@@ -22,7 +22,7 @@ class AddFieldsModel(BaseTestModel):
     added_field3 = models.IntegerField(null=True)
 
 
-class OrderingTests(EvolutionTestCase):
+class SQLMutationTests(EvolutionTestCase):
     """Testing ordering of operations."""
     sql_mapping_key = 'sql_mutation'
     default_base_model = SQLBaseModel
