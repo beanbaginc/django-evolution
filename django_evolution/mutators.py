@@ -187,7 +187,17 @@ class ModelMutator(object):
 
         if prop_name in ('index_together', 'unique_together'):
             old_value = getattr(self.model_sig, prop_name)
+        elif prop_name == 'constraints':
+            # Django >= 2.2
+            old_value = [
+                dict({
+                    'name': constraint_sig.name,
+                    'type': constraint_sig.type,
+                }, **constraint_sig.attrs)
+                for constraint_sig in self.model_sig.constraint_sigs
+            ]
         elif prop_name == 'indexes':
+            # Django >= 1.11
             old_value = []
 
             for index_sig in self.model_sig.index_sigs:

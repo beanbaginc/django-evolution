@@ -271,6 +271,8 @@ class MockMeta(object):
                 internally when creating relationships between models and
                 fields in order to prevent recursive relationships.
         """
+        self.meta['model'] = model
+
         # Django 3.1 documents that the concrete class is the model at the
         # end of a proxy_for_model chain. In our case, it should always be
         # our mock model.

@@ -18,6 +18,7 @@ from django_evolution.errors import (CannotSimulate, SimulationFailure,
                                      EvolutionNotImplementedError)
 from django_evolution.mock_models import MockModel, MockRelated, create_field
 from django_evolution.signature import (AppSignature,
+                                        ConstraintSignature,
                                         FieldSignature,
                                         IndexSignature,
                                         ProjectSignature)
@@ -1527,7 +1528,15 @@ class ChangeMeta(BaseModelMutation):
             # Make sure these always appear as lists and not tuples, for
             # compatibility.
             norm_value = list(self.new_value)
+        elif self.prop_name == 'constraints':
+            # Django >= 2.2
+            norm_value = [
+                OrderedDict(sorted(six.iteritems(constraint_data),
+                                   key=lambda pair: pair[0]))
+                for constraint_data in self.new_value
+            ]
         elif self.prop_name == 'indexes':
+            # Django >= 1.11
             norm_value = [
                 OrderedDict(sorted(six.iteritems(index_data),
                                    key=lambda pair: pair[0]))
@@ -1570,7 +1579,24 @@ class ChangeMeta(BaseModelMutation):
         elif prop_name == 'unique_together':
             model_sig.unique_together = self.new_value
             model_sig._unique_together_applied = True
+        elif prop_name == 'constraints':
+            # Django >= 2.2
+            constraint_sigs = []
+
+            for constraint_data in self.new_value:
+                constraint_attrs = constraint_data.copy()
+                constraint_attrs.pop('name')
+                constraint_attrs.pop('type')
+
+                constraint_sigs.append(
+                    ConstraintSignature(
+                        name=constraint_data['name'],
+                        constraint_type=constraint_data['type'],
+                        attrs=constraint_attrs))
+
+            model_sig.constraint_sigs = constraint_sigs
         elif prop_name == 'indexes':
+            # Django >= 1.11
             model_sig.index_sigs = [
                 IndexSignature(name=index.get('name'),
                                fields=index['fields'])

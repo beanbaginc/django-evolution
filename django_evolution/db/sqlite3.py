@@ -61,6 +61,7 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
         deleted_columns = set()
         renamed_columns = {}
         replaced_fields = {}
+        added_constraints = []
         new_initial = {}
         reffed_renamed_cols = []
 
@@ -98,6 +99,8 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
 
                 if initial is not None:
                     new_initial[field.column] = initial
+            elif op == 'ADD CONSTRAINTS':
+                added_constraints = item['constraints']
             elif op == 'REBUILD':
                 # We're just rebuilding, not changing anything about it.
                 # This is used to get rid of auto-indexes from SQLite.
@@ -195,8 +198,21 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
 
                 columns_sql.append(' '.join(params))
 
-        sql.append('CREATE TABLE %s (%s);' % (qn(TEMP_TABLE_NAME),
-                                              ', '.join(columns_sql)))
+        constraints_sql = []
+
+        if added_constraints:
+            # Django >= 2.2
+            with connection.schema_editor(collect_sql=True) as schema_editor:
+                for constraint in added_constraints:
+                    constraint_sql = constraint.constraint_sql(model,
+                                                               schema_editor)
+
+                    if constraint_sql:
+                        constraints_sql.append(constraint_sql)
+
+        sql.append('CREATE TABLE %s (%s);'
+                   % (qn(TEMP_TABLE_NAME),
+                      ', '.join(columns_sql + constraints_sql)))
 
         # Step 2: Copy over any data from the old table into the new one.
         sql.append(
@@ -585,6 +601,58 @@ class EvolutionOperations(BaseEvolutionOperations):
                                       field=field,
                                       attr_name='_unique',
                                       new_attr_value=new_unique_value)
+
+    def get_update_table_constraints_sql(self, model, old_constraints,
+                                         new_constraints, to_add, to_remove):
+        """Return SQL for updating the constraints on a table.
+
+        This will perform a table rebuild, including only any new constraints
+        in the new schema.
+
+        Args:
+            model (django.db.models.Model):
+                The model being changed.
+
+            old_constraints (list of
+                             django.db.models.constraints.BaseConstraint):
+                The old constraints pre-evolution.
+
+            new_constraints (list of
+                             django.db.models.constraints.BaseConstraint):
+                The new constraints post-evolution.
+
+            to_add (list of django.db.models.constraints.BaseConstraint):
+                A list of new constraints to add to the database that weren't
+                set before.
+
+            to_remove (list of django.db.models.constraints.BaseConstraint):
+                A list of old constraints to remove from the database that
+                aren't set now.
+
+        Returns:
+            django_evolution.sql_result.SQLResult:
+            The SQL statements for changing the constraints.
+        """
+        alter_table_items = []
+
+        if to_add:
+            alter_table_items.append({
+                'op': 'ADD CONSTRAINTS',
+                'constraints': new_constraints,
+            })
+        else:
+            assert to_remove
+
+            # We won't be explicitly dropping anything. We'll just be doing
+            # a normal table rebuild.
+            alter_table_items.append({
+                'op': 'REBUILD',
+            })
+
+        return SQLiteAlterTableSQLResult(
+            evolver=self,
+            model=model,
+            alter_table=alter_table_items)
 
     def get_drop_unique_constraint_sql(self, model, index_name):
         """Return SQL for dropping unique constraints.

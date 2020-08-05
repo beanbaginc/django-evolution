@@ -31,6 +31,7 @@ class BaseEvolutionOperations(object):
     # Build the list of ChangeMeta attributes that databases support by
     # default.
     supported_change_meta = {
+        'constraints': support.supports_constraints,
         'indexes': support.supports_indexes,
         'index_together': support.supports_index_together,
         'unique_together': True,
@@ -854,6 +855,157 @@ class BaseEvolutionOperations(object):
                                               columns=columns)
                 sql_result.add(sql_indexes_for_fields(
                     self.connection, model, fields, index_together=True))
+
+        return sql_result
+
+    def change_meta_constraints(self, model, old_constraints, new_constraints):
+        """Change the constraints of a table.
+
+        Constraints are a feature available in Django 2.2+ that allow for
+        defining custom constraints on a table on
+        :py:attr:`Meta.constraints <django.db.models.Options.constraints>`.
+
+        This will calculate the old and new list of constraint instances,
+        and the list of added/removed constraints, and call out to
+        :py:meth:`get_update_table_constraints_sql` to generate the SQL for
+        changing them.
+
+        Args:
+            model (django.db.models.Model):
+                The model being changed.
+
+            old_constraints (list of dict):
+                A serialized representation of the old value for
+                ``Meta.constraints``.
+
+                This will contain ``name`` and ``type`` keys, as well as all
+                attributes on the constraint.
+
+            new_constraints (list of dict):
+                A serialized representation of the new value for
+                ``Meta.constraints``.
+
+                This is in the same format as ``old_constraints``.
+
+        Returns:
+            django_evolution.sql_result.SQLResult:
+            The SQL statements for changing ``Meta.constraints``.
+        """
+        # The mutation should have failed before getting here on older
+        # versions of Django.
+        assert django.VERSION >= (2, 2)
+
+        CheckConstraint = models.CheckConstraint
+        connection = self.connection
+        supports_table_check_constraints = \
+            connection.features.supports_table_check_constraints
+
+        def _make_constraint(constraint_data):
+            constraint_attrs = constraint_data.copy()
+            constraint_type = constraint_attrs.pop('type')
+            name = constraint_attrs.pop('name')
+
+            return constraint_type(name=name, **constraint_attrs)
+
+        def _is_constraint_supported(constraint_data):
+            # Note that CheckConstraint won't be supported on MySQL unless
+            # running Django 3.0+ and either MySQL 8.0.16+ or MariaDB 10.2.1+.
+            if (issubclass(constraint_data['type'], CheckConstraint) and
+                not supports_table_check_constraints):
+                return False
+
+            return True
+
+        if not old_constraints:
+            old_constraints = []
+
+        old_constraints = [
+            _make_constraint(_constraint_data)
+            for _constraint_data in old_constraints
+            if _is_constraint_supported(_constraint_data)
+        ]
+
+        new_constraints = [
+            _make_constraint(_constraint_data)
+            for _constraint_data in new_constraints
+            if _is_constraint_supported(_constraint_data)
+        ]
+
+        old_constraints_map = {
+            _constraint.name: _constraint
+            for _constraint in old_constraints
+        }
+
+        new_constraints_map = {
+            _constraint.name: _constraint
+            for _constraint in new_constraints
+        }
+
+        to_add = [
+            _constraint
+            for _constraint in new_constraints
+            if _constraint != old_constraints_map.get(_constraint.name)
+        ]
+
+        to_remove = [
+            _constraint
+            for _constraint in old_constraints
+            if _constraint != new_constraints_map.get(_constraint.name)
+        ]
+
+        if not to_remove and not to_add:
+            # There's nothing to do.
+            return None
+
+        return self.get_update_table_constraints_sql(
+            model=model,
+            old_constraints=old_constraints,
+            new_constraints=new_constraints,
+            to_add=to_add,
+            to_remove=to_remove)
+
+    def get_update_table_constraints_sql(self, model, old_constraints,
+                                         new_constraints, to_add, to_remove):
+        """Return SQL for updating the constraints on a table.
+
+        The generated SQL will remove any old constraints and add any new
+        constraints.
+
+        By default, this uses the schema editor for the connection. Subclasses
+        can modify this if they need custom logic.
+
+        Args:
+            model (django.db.models.Model):
+                The model being changed.
+
+            old_constraints (list of
+                             django.db.models.constraints.BaseConstraint):
+                The old constraints pre-evolution.
+
+            new_constraints (list of
+                             django.db.models.constraints.BaseConstraint):
+                The new constraints post-evolution.
+
+            to_add (list of django.db.models.constraints.BaseConstraint):
+                A list of new constraints to add to the database that weren't
+                set before.
+
+            to_remove (list of django.db.models.constraints.BaseConstraint):
+                A list of old constraints to remove from the database that
+                aren't set now.
+
+        Returns:
+            django_evolution.sql_result.SQLResult:
+            The SQL statements for changing the constraints.
+        """
+        sql_result = SQLResult()
+
+        with self.connection.schema_editor(collect_sql=True) as schema_editor:
+            for constraint in to_remove:
+                sql_result.add(constraint.remove_sql(model, schema_editor))
+
+            for constraint in to_add:
+                sql_result.add(constraint.create_sql(model, schema_editor))
 
         return sql_result
 

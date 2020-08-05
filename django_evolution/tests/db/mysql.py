@@ -1226,6 +1226,101 @@ def index_together(connection):
     }
 
 
+def constraints(connection):
+    """SQL test statements for the ChangeMetaConstraintsTests suite.
+
+    Args:
+        connection (django.db.backends.base.BaseDatabaseWrapper):
+            The connection being tested.
+
+    Returns:
+        dict:
+        The dictionary of SQL mappings.
+    """
+    supports_table_check_constraints = \
+        getattr(connection.features, 'supports_table_check_constraints', False)
+
+    mappings = {}
+
+    if supports_table_check_constraints:
+        # Django 3.0+ with either MySQL 8.0.16+ or MariaDB 10.2.1+.
+        mappings.update({
+            'append_list': [
+                "ALTER TABLE `tests_testmodel`"
+                " ADD CONSTRAINT `new_unique_constraint`"
+                " UNIQUE (`int_field2`, `int_field1`);",
+
+                "ALTER TABLE `tests_testmodel`"
+                " ADD CONSTRAINT `new_check_constraint`"
+                " CHECK (`int_field1` >= 100);",
+            ],
+
+            'removing': [
+                "ALTER TABLE `tests_testmodel`"
+                " DROP CONSTRAINT IF EXISTS `base_check_constraint`;",
+
+                "ALTER TABLE `tests_testmodel`"
+                " DROP INDEX `base_unique_constraint_plain`;",
+            ],
+
+            'replace_list': [
+                "ALTER TABLE `tests_testmodel`"
+                " DROP CONSTRAINT IF EXISTS `base_check_constraint`;",
+
+                "ALTER TABLE `tests_testmodel`"
+                " DROP INDEX `base_unique_constraint_plain`;",
+
+                "ALTER TABLE `tests_testmodel`"
+                " ADD CONSTRAINT `new_check_constraint`"
+                " CHECK (`char_field1` LIKE BINARY 'foo%%');",
+
+                "ALTER TABLE `tests_testmodel`"
+                " ADD CONSTRAINT `new_unique_constraint_plain`"
+                " UNIQUE (`int_field1`, `char_field1`);",
+            ],
+
+            'setting_from_empty': [
+                "ALTER TABLE `tests_testmodel`"
+                " ADD CONSTRAINT `new_check_constraint`"
+                " CHECK (`char_field1` LIKE BINARY 'foo%%');",
+
+                "ALTER TABLE `tests_testmodel`"
+                " ADD CONSTRAINT `new_unique_constraint_plain`"
+                " UNIQUE (`int_field1`, `int_field2`);",
+            ],
+        })
+    else:
+        mappings.update({
+            'append_list': [
+                "ALTER TABLE `tests_testmodel`"
+                " ADD CONSTRAINT `new_unique_constraint`"
+                " UNIQUE (`int_field2`, `int_field1`);",
+            ],
+
+            'removing': [
+                "ALTER TABLE `tests_testmodel`"
+                " DROP INDEX `base_unique_constraint_plain`;",
+            ],
+
+            'replace_list': [
+                "ALTER TABLE `tests_testmodel`"
+                " DROP INDEX `base_unique_constraint_plain`;",
+
+                "ALTER TABLE `tests_testmodel`"
+                " ADD CONSTRAINT `new_unique_constraint_plain`"
+                " UNIQUE (`int_field1`, `char_field1`);",
+            ],
+
+            'setting_from_empty': [
+                "ALTER TABLE `tests_testmodel`"
+                " ADD CONSTRAINT `new_unique_constraint_plain`"
+                " UNIQUE (`int_field1`, `int_field2`);",
+            ],
+        })
+
+    return mappings
+
+
 def indexes(connection):
     """SQL test statements for the ChangeMetaIndexesTests suite.
 

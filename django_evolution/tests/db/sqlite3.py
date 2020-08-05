@@ -1964,6 +1964,108 @@ def index_together(connection):
     }
 
 
+def constraints(connection):
+    """SQL test statements for the ChangeMetaConstraintsTests suite.
+
+    Args:
+        connection (django.db.backends.base.BaseDatabaseWrapper):
+            The connection being tested.
+
+    Returns:
+        dict:
+        The dictionary of SQL mappings.
+    """
+    return {
+        'append_list': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "char_field1" varchar(20) NOT NULL,'
+            ' "char_field2" varchar(40) NOT NULL,'
+            ' CONSTRAINT "base_check_constraint"'
+            ' CHECK ("char_field1" LIKE \'test%\' ESCAPE \'\\\'),'
+            ' CONSTRAINT "base_unique_constraint_plain"'
+            ' UNIQUE ("int_field1", "char_field1"),'
+            ' CONSTRAINT "new_unique_constraint"'
+            ' UNIQUE ("int_field2", "int_field1"),'
+            ' CONSTRAINT "new_check_constraint"'
+            ' CHECK ("int_field1" >= 100));',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("id", "int_field1", "int_field2", "char_field1", "char_field2")'
+            ' SELECT "id", "int_field1", "int_field2", "char_field1",'
+            ' "char_field2" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+        ],
+
+        'removing': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "char_field1" varchar(20) NOT NULL,'
+            ' "char_field2" varchar(40) NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("id", "int_field1", "int_field2", "char_field1", "char_field2")'
+            ' SELECT "id", "int_field1", "int_field2", "char_field1",'
+            ' "char_field2" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+        ],
+
+        'replace_list': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "char_field1" varchar(20) NOT NULL,'
+            ' "char_field2" varchar(40) NOT NULL,'
+            ' CONSTRAINT "new_check_constraint"'
+            ' CHECK ("char_field1" LIKE \'foo%\' ESCAPE \'\\\'),'
+            ' CONSTRAINT "new_unique_constraint_plain"'
+            ' UNIQUE ("int_field1", "char_field1"));',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("id", "int_field1", "int_field2", "char_field1", "char_field2")'
+            ' SELECT "id", "int_field1", "int_field2", "char_field1",'
+            ' "char_field2" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+        ],
+
+        'setting_from_empty': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "char_field1" varchar(20) NOT NULL,'
+            ' "char_field2" varchar(40) NOT NULL,'
+            ' CONSTRAINT "new_check_constraint"'
+            ' CHECK ("char_field1" LIKE \'foo%\' ESCAPE \'\\\'),'
+            ' CONSTRAINT "new_unique_constraint_plain"'
+            ' UNIQUE ("int_field1", "int_field2"));',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("id", "int_field1", "int_field2", "char_field1", "char_field2")'
+            ' SELECT "id", "int_field1", "int_field2", "char_field1",'
+            ' "char_field2" FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+        ],
+    }
+
+
 def indexes(connection):
     """SQL test statements for the ChangeMetaIndexesTests suite.
 

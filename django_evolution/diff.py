@@ -87,6 +87,7 @@ class Diff(object):
                             field: [ list of modified property names ]
                         },
                         'meta_changed': {
+                            'constraints': new value
                             'indexes': new value
                             'index_together': new value
                             'unique_together': new value
@@ -295,7 +296,21 @@ class Diff(object):
                 # Process the Meta attribute changes for the model.
                 meta_changed = model_change.get('meta_changed', [])
 
-                # First, check if the Meta.indexes property has any changes.
+                # Check if the Meta.constraints property has any changes.
+                # They'll all be assembled into a single ChangeMeta.
+                if 'constraints' in meta_changed:
+                    app_mutations.append(ChangeMeta(
+                        model_name=model_name,
+                        prop_name='constraints',
+                        new_value=[
+                            dict({
+                                'type': constraint_sig.type,
+                                'name': constraint_sig.name,
+                            }, **constraint_sig.attrs)
+                            for constraint_sig in model_sig.constraint_sigs
+                        ]))
+
+                # Check if the Meta.indexes property has any changes.
                 # They'll all be assembled into a single ChangeMeta.
                 if 'indexes' in meta_changed:
                     change_meta_indexes = []
@@ -315,7 +330,7 @@ class Diff(object):
                         prop_name='indexes',
                         new_value=change_meta_indexes))
 
-                # Then check Meta.index_together and Meta.unique_together.
+                # Check Meta.index_together and Meta.unique_together.
                 app_mutations += [
                     ChangeMeta(model_name=model_name,
                                prop_name=prop_name,

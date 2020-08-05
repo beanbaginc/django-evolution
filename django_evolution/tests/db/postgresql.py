@@ -1494,6 +1494,76 @@ def index_together(connection):
     }
 
 
+def constraints(connection):
+    """SQL test statements for the ChangeMetaConstraintsTests suite.
+
+    Args:
+        connection (django.db.backends.base.BaseDatabaseWrapper):
+            The connection being tested.
+
+    Returns:
+        dict:
+        The dictionary of SQL mappings.
+    """
+    return {
+        'append_list': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD CONSTRAINT "new_unique_constraint"'
+            ' UNIQUE ("int_field2", "int_field1");',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD CONSTRAINT "new_check_constraint"'
+            ' CHECK ("int_field1" >= 100);',
+        ],
+
+        'removing': [
+            'ALTER TABLE "tests_testmodel"'
+            ' DROP CONSTRAINT "base_check_constraint";',
+
+            'DROP INDEX IF EXISTS "base_unique_constraint_condition";',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' DROP CONSTRAINT "base_unique_constraint_plain";',
+        ],
+
+        'replace_list': [
+            'ALTER TABLE "tests_testmodel"'
+            ' DROP CONSTRAINT "base_check_constraint";',
+
+            'DROP INDEX IF EXISTS "base_unique_constraint_condition";',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' DROP CONSTRAINT "base_unique_constraint_plain";',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD CONSTRAINT "new_check_constraint"'
+            ' CHECK ("char_field1"::text LIKE \'foo%%\');',
+
+            'CREATE UNIQUE INDEX "new_unique_constraint_condition"'
+            ' ON "tests_testmodel" ("int_field2")'
+            ' WHERE "char_field2" = \'bar\';',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD CONSTRAINT "new_unique_constraint_plain"'
+            ' UNIQUE ("int_field1", "char_field1");',
+        ],
+
+        'setting_from_empty': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD CONSTRAINT "new_check_constraint"'
+            ' CHECK ("char_field1"::text LIKE \'foo%%\');',
+
+            'CREATE UNIQUE INDEX "new_unique_constraint_condition"'
+            ' ON "tests_testmodel" ("int_field2")'
+            ' WHERE "int_field2" = 100;',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD CONSTRAINT "new_unique_constraint_plain"'
+            ' UNIQUE ("int_field1", "int_field2");',
+        ],
+    }
+
+
 def indexes(connection):
     """SQL test statements for the ChangeMetaIndexesTests suite.
 
