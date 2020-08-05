@@ -4,8 +4,17 @@ from __future__ import unicode_literals
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.db.models import Q
 from django.db.utils import DEFAULT_DB_ALIAS
 from nose import SkipTest
+
+try:
+    # Django >= 2.2
+    from django.db.models import CheckConstraint, UniqueConstraint
+except ImportError:
+    # Django <= 2.1
+    CheckConstraint = None
+    UniqueConstraint = None
 
 try:
     # Django >= 1.11
@@ -21,9 +30,13 @@ from django_evolution.compat.models import GenericForeignKey, GenericRelation
 from django_evolution.consts import UpgradeMethod
 from django_evolution.errors import MissingSignatureError
 from django_evolution.models import Evolution
-from django_evolution.signature import (AppSignature, FieldSignature,
-                                        IndexSignature, ModelSignature,
+from django_evolution.signature import (AppSignature,
+                                        ConstraintSignature,
+                                        FieldSignature,
+                                        IndexSignature,
+                                        ModelSignature,
                                         ProjectSignature)
+from django_evolution.support import supports_constraints, supports_indexes
 from django_evolution.tests.base_test_case import EvolutionTestCase
 from django_evolution.tests.models import BaseTestModel
 
@@ -106,6 +119,207 @@ class BaseSignatureTestCase(EvolutionTestCase):
         ('ChildModel', SignatureChildModel),
         ('ParentModel', SignatureParentModel),
     ]
+
+
+class ConstraintSignatureTests(BaseSignatureTestCase):
+    """Unit tests for ConstraintSignature."""
+
+    @classmethod
+    def setUpClass(cls):
+        if not supports_constraints:
+            raise SkipTest('Meta.constraints is not supported on this version '
+                           'of Django')
+
+        super(ConstraintSignatureTests, cls).setUpClass()
+
+    def test_from_constraint(self):
+        """Testing ConstraintSignature.from_constraint"""
+        # We'll test against the built-in Django constraints, making sure we
+        # handle all uses cases.
+        constraint_sig = ConstraintSignature.from_constraint(
+            UniqueConstraint(name='my_constraint',
+                             fields=['field1', 'field2'],
+                             condition=Q(field1__gte=100)))
+
+        self.assertIs(constraint_sig.type, UniqueConstraint)
+        self.assertEqual(constraint_sig.name, 'my_constraint')
+        self.assertEqual(constraint_sig.attrs, {
+            'fields': ('field1', 'field2'),
+            'condition': Q(field1__gte=100),
+        })
+
+        constraint_sig = ConstraintSignature.from_constraint(
+            CheckConstraint(name='my_constraint',
+                            check=Q(field2__startswith='ABC')))
+
+        self.assertIs(constraint_sig.type, CheckConstraint)
+        self.assertEqual(constraint_sig.name, 'my_constraint')
+        self.assertEqual(constraint_sig.attrs, {
+            'check': Q(field2__startswith='ABC'),
+        })
+
+    def test_deserialize_v2(self):
+        """Testing ConstraintSignature.deserialize (signature v2)"""
+        constraint_sig = ConstraintSignature.deserialize(
+            {
+                'name': 'my_constraint',
+                'type': 'django.db.models.UniqueConstraint',
+                'attrs': {
+                    'condition': {
+                        '_deconstructed': True,
+                        'args': (),
+                        'kwargs': {
+                            'field1__gte': 100,
+                        },
+                        'type': 'django.db.models.Q',
+                    },
+                    'fields': ['field1', 'field2'],
+                },
+            },
+            sig_version=2)
+
+        self.assertEqual(constraint_sig.name, 'my_constraint')
+        self.assertEqual(constraint_sig.type, UniqueConstraint)
+        self.assertEqual(constraint_sig.attrs, {
+            'fields': ['field1', 'field2'],
+            'condition': Q(field1__gte=100),
+        })
+
+    def test_clone(self):
+        """Testing ConstraintSignature.clone"""
+        constraint_sig = ConstraintSignature(
+            name='constraint1',
+            constraint_type=UniqueConstraint,
+            attrs={
+                'fields': ['field1', 'field2'],
+                'condition': Q(field1=True),
+            })
+        cloned_constraint_sig = constraint_sig.clone()
+
+        self.assertIsNot(cloned_constraint_sig, constraint_sig)
+        self.assertEqual(cloned_constraint_sig, constraint_sig)
+        self.assertIs(cloned_constraint_sig.type, constraint_sig.type)
+        self.assertIsNot(cloned_constraint_sig.attrs, constraint_sig.attrs)
+        self.assertIsNot(cloned_constraint_sig.attrs['fields'],
+                         constraint_sig.attrs['fields'])
+        self.assertIsNot(cloned_constraint_sig.attrs['condition'],
+                         constraint_sig.attrs['condition'])
+
+    def test_serialize_v2(self):
+        """Testing ConstraintSignature.serialize (signature v2)"""
+        constraint_sig = ConstraintSignature(
+            name='my_constraint',
+            constraint_type=UniqueConstraint,
+            attrs={
+                'fields': ['field1', 'field2'],
+                'condition': Q(field1__gte=100),
+            })
+
+        self.assertEqual(
+            constraint_sig.serialize(sig_version=2),
+            {
+                'name': 'my_constraint',
+                'type': 'django.db.models.UniqueConstraint',
+                'attrs': {
+                    'condition': {
+                        '_deconstructed': True,
+                        'args': (),
+                        'kwargs': {
+                            'field1__gte': 100,
+                        },
+                        'type': 'django.db.models.Q',
+                    },
+                    'fields': ['field1', 'field2'],
+                },
+            })
+
+    def test_eq(self):
+        """Testing ConstraintSignature.__eq__"""
+        self.assertEqual(
+            ConstraintSignature(
+                name='constraint1',
+                constraint_type=UniqueConstraint,
+                attrs={
+                    'fields': ['field1', 'field2'],
+                    'condition': Q(field1__gte=100),
+                }),
+            ConstraintSignature(
+                name='constraint1',
+                constraint_type=UniqueConstraint,
+                attrs={
+                    'fields': ['field1', 'field2'],
+                    'condition': Q(field1__gte=100),
+                }))
+
+    def test_ne_with_different_names(self):
+        """Testing ConstraintSignature.__ne__ with different names"""
+        self.assertNotEqual(
+            ConstraintSignature(
+                name='constraint1',
+                constraint_type=UniqueConstraint,
+                attrs={
+                    'fields': ['field1', 'field2'],
+                    'condition': Q(field1__gte=100),
+                }),
+            ConstraintSignature(
+                name='constraint2',
+                constraint_type=UniqueConstraint,
+                attrs={
+                    'fields': ['field1', 'field2'],
+                    'condition': Q(field1__gte=100),
+                }))
+
+    def test_ne_with_different_types(self):
+        """Testing ConstraintSignature.__ne__ with different types"""
+        self.assertNotEqual(
+            ConstraintSignature(
+                name='constraint1',
+                constraint_type=UniqueConstraint,
+                attrs={
+                    'fields': ['field1', 'field2'],
+                    'condition': Q(field1__gte=100),
+                }),
+            ConstraintSignature(
+                name='constraint1',
+                constraint_type=CheckConstraint,
+                attrs={
+                    'fields': ['field1', 'field2'],
+                    'condition': Q(field1__gte=100),
+                }))
+
+    def test_ne_with_different_attrs(self):
+        """Testing ConstraintSignature.__ne__ with different attrs"""
+        self.assertNotEqual(
+            ConstraintSignature(
+                name='constraint1',
+                constraint_type=UniqueConstraint,
+                attrs={
+                    'fields': ['field1', 'field2'],
+                    'condition': Q(field1__gte=100),
+                }),
+            ConstraintSignature(
+                name='constraint1',
+                constraint_type=UniqueConstraint,
+                attrs={
+                    'fields': ['field1', 'field3'],
+                    'condition': Q(field1__gte=100),
+                }))
+
+        self.assertNotEqual(
+            ConstraintSignature(
+                name='constraint1',
+                constraint_type=UniqueConstraint,
+                attrs={
+                    'fields': ['field1', 'field2'],
+                    'condition': Q(field1__gte=100),
+                }),
+            ConstraintSignature(
+                name='constraint1',
+                constraint_type=UniqueConstraint,
+                attrs={
+                    'fields': ['field1', 'field2'],
+                    'condition': Q(field1=100),
+                }))
 
 
 class ProjectSignatureTests(BaseSignatureTestCase):
@@ -522,6 +736,7 @@ class AppSignatureTests(BaseSignatureTestCase):
                 'MyModel': {
                     'fields': {},
                     'meta': {
+                        'constraints': [],
                         'db_table': 'testapp_mymodel',
                         'db_tablespace': None,
                         'indexes': [],
@@ -576,6 +791,7 @@ class AppSignatureTests(BaseSignatureTestCase):
                     'MyModel': {
                         'fields': {},
                         'meta': {
+                            'constraints': [],
                             'db_table': 'testapp_mymodel',
                             'db_tablespace': None,
                             'indexes': [],
@@ -609,6 +825,7 @@ class AppSignatureTests(BaseSignatureTestCase):
                     'MyModel': {
                         'fields': {},
                         'meta': {
+                            'constraints': [],
                             'db_table': 'testapp_mymodel',
                             'db_tablespace': None,
                             'indexes': [],
@@ -1225,7 +1442,16 @@ class ModelSignatureTests(BaseSignatureTestCase):
                 index_together = (('field1', 'field2'),)
                 unique_together = (('field2', 'field3'),)
 
-                if Index:
+                if supports_constraints:
+                    constraints = [
+                        UniqueConstraint(fields=['field1', 'field3'],
+                                         name='my_unique_constraint',
+                                         condition=Q(field3=True)),
+                        CheckConstraint(name='my_check_constraint',
+                                        check=Q(field2__gte=42)),
+                    ]
+
+                if supports_indexes:
                     indexes = [
                         Index(name='index1', fields=['field1']),
                         Index(name='index2', fields=['field3']),
@@ -1248,7 +1474,26 @@ class ModelSignatureTests(BaseSignatureTestCase):
         self.assertEqual(field_sigs[2].field_name, 'field2')
         self.assertEqual(field_sigs[3].field_name, 'field3')
 
-        if Index:
+        if supports_constraints:
+            constraint_sigs = list(model_sig.constraint_sigs)
+            self.assertEqual(len(constraint_sigs), 2)
+
+            constraint_sig = constraint_sigs[0]
+            self.assertIs(constraint_sig.type, UniqueConstraint)
+            self.assertEqual(constraint_sig.name, 'my_unique_constraint')
+            self.assertEqual(constraint_sig.attrs, {
+                'fields': ('field1', 'field3'),
+                'condition': Q(field3=True),
+            })
+
+            constraint_sig = constraint_sigs[1]
+            self.assertIs(constraint_sig.type, CheckConstraint)
+            self.assertEqual(constraint_sig.name, 'my_check_constraint')
+            self.assertEqual(constraint_sig.attrs, {
+                'check': Q(field2__gte=42),
+            })
+
+        if supports_indexes:
             index_sigs = list(model_sig.index_sigs)
             self.assertEqual(len(index_sigs), 2)
 
@@ -1453,6 +1698,50 @@ class ModelSignatureTests(BaseSignatureTestCase):
         with self.assertRaisesMessage(MissingSignatureError, message):
             model_sig.remove_field_sig('char_field')
 
+    def test_add_constraint(self):
+        """Testing ModelSignature.add_constraint"""
+        if not supports_constraints:
+            raise SkipTest('Meta.constraints is not supported on this version '
+                           'of Django')
+
+        model_sig = ModelSignature(model_name='TestModel',
+                                   table_name='testmodel')
+        model_sig.add_constraint(UniqueConstraint(
+            name='my_constraint',
+            fields=['field1', 'field2'],
+            condition=Q(field1__gte=100)))
+
+        constraint_sigs = list(model_sig.constraint_sigs)
+        self.assertEqual(len(constraint_sigs), 1)
+
+        constraint_sig = constraint_sigs[0]
+        self.assertIs(constraint_sig.type, UniqueConstraint)
+        self.assertEqual(constraint_sig.name, 'my_constraint')
+        self.assertEqual(constraint_sig.attrs, {
+            'fields': ('field1', 'field2'),
+            'condition': Q(field1__gte=100),
+        })
+
+    def test_add_constraint_sig(self):
+        """Testing ModelSignature.add_constraint_sig"""
+        if not supports_constraints:
+            raise SkipTest('Meta.constraints is not supported on this version '
+                           'of Django')
+
+        model_sig = ModelSignature(model_name='TestModel',
+                                   table_name='testmodel')
+
+        constraint_sig = ConstraintSignature(
+            name='my_constraint',
+            constraint_type=UniqueConstraint,
+            attrs={
+                'fields': ('field1', 'field2'),
+                'condition': Q(field1__gte=100),
+            })
+        model_sig.add_constraint_sig(constraint_sig)
+
+        self.assertEqual(list(model_sig.constraint_sigs), [constraint_sig])
+
     def test_add_index(self):
         """Testing ModelSignature.add_index"""
         if Index is None:
@@ -1547,6 +1836,14 @@ class ModelSignatureTests(BaseSignatureTestCase):
         model_sig = ModelSignature.from_model(SignatureFullModel)
         model_sig.add_index_sig(IndexSignature(name='index1',
                                                fields=['field1', 'field2']))
+        if supports_constraints:
+            model_sig.add_constraint_sig(ConstraintSignature(
+                name='constraint1',
+                constraint_type=UniqueConstraint,
+                attrs={
+                    'fields': ['field1', 'field2'],
+                }))
+
         cloned_model_sig = model_sig.clone()
 
         self.assertIsNot(cloned_model_sig, model_sig)
@@ -1561,6 +1858,13 @@ class ModelSignatureTests(BaseSignatureTestCase):
                                                model_sig.index_sigs):
             self.assertIsNot(cloned_index_sig, index_sig)
             self.assertEqual(cloned_index_sig, index_sig)
+
+        if supports_constraints:
+            for (cloned_constraint_sig,
+                 constraint_sig) in zip(cloned_model_sig.constraint_sigs,
+                                        model_sig.constraint_sigs):
+                self.assertIsNot(cloned_constraint_sig, constraint_sig)
+                self.assertEqual(cloned_constraint_sig, constraint_sig)
 
     def test_serialize_v1(self):
         """Testing ModelSignature.serialize (signature v1)"""
@@ -1636,6 +1940,7 @@ class ModelSignatureTests(BaseSignatureTestCase):
                 },
                 'meta': {
                     '__unique_together_applied': True,
+                    'constraints': [],
                     'db_table': 'tests_testmodel',
                     'db_tablespace': '',
                     'index_together': [],
@@ -1668,6 +1973,7 @@ class ModelSignatureTests(BaseSignatureTestCase):
                 },
                 'meta': {
                     '__unique_together_applied': True,
+                    'constraints': [],
                     'db_table': 'tests_childmodel',
                     'db_tablespace': '',
                     'index_together': [],
@@ -1765,6 +2071,7 @@ class ModelSignatureTests(BaseSignatureTestCase):
                 },
                 'meta': {
                     '__unique_together_applied': True,
+                    'constraints': [],
                     'db_table': 'tests_testmodel',
                     'db_tablespace': '',
                     'index_together': [],
@@ -1801,6 +2108,7 @@ class ModelSignatureTests(BaseSignatureTestCase):
                 },
                 'meta': {
                     '__unique_together_applied': True,
+                    'constraints': [],
                     'db_table': 'tests_childmodel',
                     'db_tablespace': '',
                     'index_together': [],
@@ -1861,6 +2169,22 @@ class ModelSignatureTests(BaseSignatureTestCase):
             name='index1',
             fields=['field5', 'field6']))
 
+        if supports_constraints:
+            model_sig1.add_index_sig(ConstraintSignature(
+                name='my_constraint',
+                constraint_type=UniqueConstraint,
+                attrs={
+                    'fields': ['field1', 'field2'],
+                    'condition': Q(field1=True),
+                }))
+            model_sig2.add_index_sig(ConstraintSignature(
+                name='my_constraint',
+                constraint_type=UniqueConstraint,
+                attrs={
+                    'fields': ['field1', 'field2'],
+                    'condition': Q(field1=True),
+                }))
+
         self.assertEqual(model_sig1, model_sig2)
 
     def test_ne_with_different_model_name(self):
@@ -1885,6 +2209,34 @@ class ModelSignatureTests(BaseSignatureTestCase):
                             ModelSignature(model_name='TestModel',
                                            table_name='testmodel',
                                            db_tablespace='space2'))
+
+    def test_ne_with_different_constraint_sigs(self):
+        """Testing ModelSignature.__ne__ with different constraint signatures
+        """
+        if not supports_constraints:
+            raise SkipTest('Meta.constraints is not supported on this version '
+                           'of Django')
+
+        model_sig1 = ModelSignature(model_name='TestModel',
+                                    table_name='testmodel')
+        model_sig1.add_constraint_sig(ConstraintSignature(
+            name='constraint1',
+            constraint_type=UniqueConstraint,
+            attrs={
+                'fields': ['field1', 'field2'],
+            }))
+
+        model_sig2 = ModelSignature(model_name='TestModel',
+                                    table_name='testmodel')
+        model_sig1.add_constraint_sig(ConstraintSignature(
+            name='constraint1',
+            constraint_type=UniqueConstraint,
+            attrs={
+                'fields': ['field1', 'field2'],
+                'condition': Q(field1=True),
+            }))
+
+        self.assertNotEqual(model_sig1, model_sig2)
 
     def test_ne_with_different_index_sigs(self):
         """Testing ModelSignature.__ne__ with different index signatures"""

@@ -25,6 +25,13 @@ supports_index_together = hasattr(_options, 'index_together')
 supports_indexes = hasattr(_options, 'indexes')
 
 
+#: Whether new-style Constraint classes are available.
+#:
+#: Django 2.2 introduced formal support for defining explicit constraints not
+#: bound to a field definition.
+supports_constraints = hasattr(_options, 'constraints')
+
+
 #: Whether built-in support for Django Migrations is present.
 #:
 #: This is available in Django 1.7+.

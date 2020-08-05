@@ -70,6 +70,16 @@ Version 2:
                     'models': {
                         '<model_name>': {
                             'meta': {
+                                'constraints': [
+                                    {
+                                        'name': '<name>',
+                                        'type': '<class_path>',
+                                        'attrs': {
+                                            '<attr_name>': <value>,
+                                        },
+                                    },
+                                    ...
+                                ],
                                 'db_table': '<table name>',
                                 'db_tablespace': '<tablespace>',
                                 'index_together': [
@@ -1066,7 +1076,13 @@ class ModelSignature(BaseSignature):
                         unique_together=deepcopy(meta.unique_together))
         model_sig._unique_together_applied = True
 
+        if getattr(meta, 'constraints', None):
+            # Django >= 2.2
+            for constraint in meta.original_attrs['constraints']:
+                model_sig.add_constraint(constraint)
+
         if getattr(meta, 'indexes', None):
+            # Django >= 1.11
             for index in meta.original_attrs['indexes']:
                 model_sig.add_index(index)
 
@@ -1118,6 +1134,15 @@ class ModelSignature(BaseSignature):
         model_sig._unique_together_applied = \
             meta_sig_dict.get('__unique_together_applied', False)
 
+        # Django >= 2.2
+        for constraint_sig_dict in meta_sig_dict.get('constraints', []):
+            model_sig.add_constraint_sig(
+                ConstraintSignature.deserialize(
+                    constraint_sig_dict=constraint_sig_dict,
+                    sig_version=sig_version,
+                    database=database))
+
+        # Django >= 1.11
         for index_sig_dict in meta_sig_dict.get('indexes', []):
             model_sig.add_index_sig(
                 IndexSignature.deserialize(index_sig_dict=index_sig_dict,
@@ -1163,6 +1188,7 @@ class ModelSignature(BaseSignature):
         self.pk_column = pk_column
         self.unique_together = self._normalize_together(unique_together)
 
+        self.constraint_sigs = []
         self.index_sigs = []
         self._field_sigs = OrderedDict()
         self._unique_together_applied = False
@@ -1241,6 +1267,33 @@ class ModelSignature(BaseSignature):
                 % (self.model_name, field_name))
 
         return field_sig
+
+    def add_constraint(self, constraint):
+        """Add an explicit constraint to the models.
+
+        This is only used on Django 2.2 or higher. It corresponds to the
+        :py:attr:`model._meta.constraints
+        <django.db.models.Options.constraints` attribute.
+
+        Args:
+            constraint (django.db.models.BaseConstraint):
+                The constraint to add.
+        """
+        self.add_constraint_sig(
+            ConstraintSignature.from_constraint(constraint))
+
+    def add_constraint_sig(self, constraint_sig):
+        """Add an explicit constraint signature to the models.
+
+        This is only used on Django 2.2 or higher. It corresponds to the
+        :py:attr:`model._meta.constraints
+        <django.db.models.Options.constraints` attribute.
+
+        Args:
+            constraint_sig (ConstraintSignature):
+                The constraint signature to add.
+        """
+        self.constraint_sigs.append(constraint_sig)
 
     def add_index(self, index):
         """Add an explicit index to the models.
@@ -1322,11 +1375,12 @@ class ModelSignature(BaseSignature):
                         <field name>: <FieldSignature diff>,
                         ...
                     },
-                    'meta_changed': {
-                        'indexes': <new value>,
-                        'index_together': <new value>,
-                        'unique_together': <new value>,
-                    },
+                    'meta_changed': [
+                        <'constraints'>,
+                        <'indexes'>,
+                        <'index_together'>,
+                        <'unique_together'>,
+                    ],
                 }
 
             Any key lacking a value will be ommitted from the diff.
@@ -1380,6 +1434,9 @@ class ModelSignature(BaseSignature):
         if list(self.index_sigs) != list(old_model_sig.index_sigs):
             meta_changed.append('indexes')
 
+        if list(self.constraint_sigs) != list(old_model_sig.constraint_sigs):
+            meta_changed.append('constraints')
+
         return OrderedDict(
             (key, value)
             for key, value in (('added', added_fields),
@@ -1408,6 +1465,9 @@ class ModelSignature(BaseSignature):
         for field_sig in self.field_sigs:
             cloned_sig.add_field_sig(field_sig.clone())
 
+        for constraint_sig in self.constraint_sigs:
+            cloned_sig.add_constraint_sig(constraint_sig.clone())
+
         for index_sig in self.index_sigs:
             cloned_sig.add_index_sig(index_sig.clone())
 
@@ -1433,6 +1493,10 @@ class ModelSignature(BaseSignature):
 
         return {
             'meta': {
+                'constraints': [
+                    constraint_sig.serialize(sig_version)
+                    for constraint_sig in self.constraint_sigs
+                ],
                 'db_table': self.table_name,
                 'db_tablespace': self.db_tablespace,
                 'index_together': self.index_together,
@@ -1465,6 +1529,7 @@ class ModelSignature(BaseSignature):
         return (other is not None and
                 self.table_name == other.table_name and
                 self.db_tablespace == other.db_tablespace and
+                set(self.constraint_sigs) == set(other.constraint_sigs) and
                 set(self.index_sigs) == set(other.index_sigs) and
                 (set(self._normalize_together(self.index_together)) ==
                  set(self._normalize_together(other.index_together))) and
@@ -1507,6 +1572,271 @@ class ModelSignature(BaseSignature):
             tuple(item)
             for item in together
         ]
+
+
+class ConstraintSignature(BaseSignature):
+    """Signature information for a explicit constraint.
+
+    These indexes were introduced in Django 1.11. They correspond to entries
+    in the :py:attr:`model._meta.indexes <django.db.models.Options.indexes`
+    attribute.
+
+    Constraint signatures store information on a constraint on model,
+    including the constraint name, type, and any attribute values needed for
+    constructing the constraint.
+    """
+
+    @classmethod
+    def from_constraint(cls, constraint):
+        """Create a constraint signature from a field.
+
+        Args:
+            constraint (django.db.models.BaseConstraint):
+                The constraint to create a signature from.
+
+        Returns:
+            ConstraintSignature:
+            The signature based on the constraint.
+        """
+        attrs = constraint.deconstruct()[2]
+        del attrs['name']
+
+        return cls(name=constraint.name,
+                   constraint_type=type(constraint),
+                   attrs=attrs)
+
+    @classmethod
+    def deserialize(cls, constraint_sig_dict, sig_version,
+                    database=DEFAULT_DB_ALIAS):
+        """Deserialize a serialized constraint signature.
+
+        Args:
+            constraint_sig_dict (dict):
+                The dictionary containing constraint signature data.
+
+            sig_version (int):
+                The version of the serialized signature data.
+
+            database (unicode, optional):
+                The name of the database.
+
+        Returns:
+            ConstraintSignature:
+            The resulting signature instance.
+
+        Raises:
+            django_evolution.errors.InvalidSignatureVersion:
+                The signature version provided isn't supported.
+        """
+        validate_sig_version(sig_version)
+
+        type_module, type_name = constraint_sig_dict['type'].rsplit('.', 1)
+
+        try:
+            constraint_type = getattr(import_module(type_module), type_name)
+        except (AttributeError, ImportError):
+            raise ImportError('Unable to locate constraint type %s'
+                              % '%s.%s' % (type_module, type_name))
+
+        attrs = {
+            key: cls._deserialize_attr_value(attr_value)
+            for key, attr_value in six.iteritems(constraint_sig_dict['attrs'])
+        }
+
+        return cls(name=constraint_sig_dict['name'],
+                   constraint_type=constraint_type,
+                   attrs=attrs)
+
+    @classmethod
+    def _deserialize_attr_value(cls, sig_value):
+        """Return an attribute value from serialized data.
+
+        This will take care to re-construct any deconstructed data that's
+        stored in the signature for arguments passed to the constraint class.
+
+        Args:
+            sig_value (object):
+                The value in the signature to deserialize.
+
+        Returns:
+            object:
+            The deserialized value.
+        """
+        if (isinstance(sig_value, dict) and
+            sig_value.get('_deconstructed') is True):
+            attr_cls_path = sig_value['type']
+            attr_cls_module, attr_cls_name = attr_cls_path.rsplit('.', 1)
+
+            try:
+                attr_cls = getattr(import_module(attr_cls_module),
+                                   attr_cls_name)
+            except (AttributeError, ImportError):
+                raise ImportError('Unable to locate constraint attribute '
+                                  'value type %s'
+                                  % attr_cls_path)
+
+            args = tuple(
+                cls._deserialize_attr_value(arg_value)
+                for arg_value in sig_value['args']
+            )
+
+            kwargs = {
+                key: cls._deserialize_attr_value(arg_value)
+                for key, arg_value in six.iteritems(sig_value['kwargs'])
+            }
+
+            # Let any exception bubble up.
+            value = attr_cls(*args, **kwargs)
+        else:
+            value = sig_value
+
+        return value
+
+    def __init__(self, name, constraint_type, attrs=None):
+        """Initialize the signature.
+
+        Args:
+            name (unicode):
+                The name of the constraint.
+
+            constraint_type (cls):
+                The class for the constraint. This would be a subclass of
+                :py:class:`django.db.models.BaseConstraint`.
+
+            attrs (dict, optional):
+                Attributes to pass when constructing the constraint.
+        """
+        self.name = name
+        self.type = constraint_type
+        self.attrs = attrs
+
+    def clone(self):
+        """Clone the signature.
+
+        Returns:
+            ConstraintSignature:
+            The cloned signature.
+        """
+        return ConstraintSignature(name=self.name,
+                                   constraint_type=self.type,
+                                   attrs=deepcopy(self.attrs))
+
+    def serialize(self, sig_version=LATEST_SIGNATURE_VERSION):
+        """Serialize constraint data to a signature dictionary.
+
+        Args:
+            sig_version (int, optional):
+                The signature version to serialize as. This always defaults
+                to the latest.
+
+        Returns:
+            dict:
+            The serialized data.
+
+        Raises:
+            django_evolution.errors.InvalidSignatureVersion:
+                The signature version provided isn't supported.
+        """
+        validate_sig_version(sig_version)
+
+        type_module = self.type.__module__
+
+        if type_module.startswith('django.db.models.constraints'):
+            type_module = 'django.db.models'
+
+        attrs = {}
+
+        for key, value in six.iteritems(self.attrs):
+            if hasattr(value, 'deconstruct'):
+                attr_type_path, attr_args, attr_kwargs = value.deconstruct()
+
+                value = {
+                    'type': attr_type_path,
+                    'args': attr_args,
+                    'kwargs': attr_kwargs,
+                    '_deconstructed': True,
+                }
+
+            attrs[key] = value
+
+        return {
+            'name': self.name,
+            'type': '%s.%s' % (type_module, self.type.__name__),
+            'attrs': attrs,
+        }
+
+    def __eq__(self, other):
+        """Return whether two constraint signatures are equal.
+
+        Args:
+            other (ConstraintSignature):
+                The other constraint signature.
+
+        Returns:
+            bool:
+            ``True`` if the constraint signatures are equal. ``False`` if they
+            are not.
+        """
+        return (other is not None and
+                self.name == other.name and
+                self.type is other.type and
+                dict.__eq__(self.attrs, other.attrs))
+
+    def __hash__(self):
+        """Return a hash of the signature.
+
+        This is required for comparison within a :py:class:`set`.
+
+        Returns:
+            int:
+            The hash of the signature.
+        """
+        return hash(repr(self))
+
+    def __repr__(self):
+        """Return a string representation of the signature.
+
+        Returns:
+            unicode:
+            A string representation of the signature.
+        """
+        return ('<ConstraintSignature(name=%r, type=%r, attrs=%r)>'
+                % (self.name, self.type, self.attrs))
+
+    def _serialize_attr_value(self, value):
+        """Return a serialized version of a constraint attribute value.
+
+        If the value has a ``deconstruct`` method, then this will call it
+        and provide a serialized form of the results, allowing the object
+        to be re-constructed properly when the signature is deserialized.
+
+        Args:
+            value (object):
+                The value to serialize.
+
+        Returns:
+            object:
+            The serialized value.
+        """
+        if hasattr(value, 'deconstruct'):
+            assert callable(value.deconstruct)
+
+            attr_type_path, attr_args, attr_kwargs = value.deconstruct()
+
+            value = {
+                'type': attr_type_path,
+                'args': [
+                    self._deconstruct_attr_value(arg_value)
+                    for arg_value in attr_args
+                ],
+                'kwargs': {
+                    key: self._deconstruct_attr_value(arg_value)
+                    for key, arg_value in attr_kwargs
+                },
+                '_deconstructed': True,
+            }
+
+        return value
 
 
 class IndexSignature(BaseSignature):
