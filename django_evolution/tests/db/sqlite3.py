@@ -1375,6 +1375,107 @@ def rename_field(connection):
             ),
         })
     else:
+        if django_version >= (1, 7):
+            # On Django 1.7 and higher, M2M intermediary tables set
+            # references on the field pointing back to the owning model. This
+            # triggers our special logic on SQLite <= 3.25 that performs a
+            # schema rewrite in order to update those references to point to
+            # the new table name.
+            mappings['RenamePrimaryKeyColumnModel'] = [
+                'CREATE TABLE "TEMP_TABLE" '
+                '("my_pk_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                ' "char_field" varchar(20) NOT NULL,'
+                ' "int_field" integer NOT NULL,'
+                ' "custom_db_col_name" integer NOT NULL,'
+                ' "custom_db_col_name_indexed" integer NOT NULL,'
+                ' "fk_field_id" integer NOT NULL'
+                ' REFERENCES "tests_renameanchor1" ("id")'
+                ' DEFERRABLE INITIALLY DEFERRED);',
+
+                'INSERT INTO "TEMP_TABLE"'
+                ' ("my_pk_id", "char_field", "int_field",'
+                ' "custom_db_col_name", "custom_db_col_name_indexed",'
+                ' "fk_field_id")'
+                ' SELECT "id", "char_field", "int_field",'
+                ' "custom_db_col_name", "custom_db_col_name_indexed",'
+                ' "fk_field_id"'
+                ' FROM "tests_testmodel";',
+
+                'DROP TABLE "tests_testmodel";',
+
+                'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+                'CREATE INDEX "%s" ON "tests_testmodel"'
+                ' ("custom_db_col_name_indexed");'
+                % generate_index_name('tests_testmodel',
+                                      'custom_db_col_name_indexed',
+                                      'int_field_named_indexed'),
+
+                'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
+                % generate_index_name('tests_testmodel', 'fk_field_id',
+                                      'fk_field'),
+
+                'COMMIT;',
+
+                'BEGIN;',
+
+                'PRAGMA writable_schema = 1;',
+
+                'UPDATE sqlite_master SET sql = replace(sql,'
+                ' \' REFERENCES "tests_testmodel" ("id") \','
+                ' \' REFERENCES "tests_testmodel" ("my_pk_id") \');',
+
+                re.compile(r'PRAGMA schema_version = \d+;'),
+
+                'PRAGMA writable_schema = 0;',
+
+                'PRAGMA integrity_check;',
+
+                'COMMIT;',
+
+                'VACUUM;',
+
+                'BEGIN;',
+            ]
+        else:
+            # Django 1.6 and earlier don't generate those references on the
+            # M2M intermediary table, so we don't need to worry about the
+            # schema rewrite.
+            mappings['RenamePrimaryKeyColumnModel'] = [
+                'CREATE TABLE "TEMP_TABLE" '
+                '("my_pk_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                ' "char_field" varchar(20) NOT NULL,'
+                ' "int_field" integer NOT NULL,'
+                ' "custom_db_col_name" integer NOT NULL,'
+                ' "custom_db_col_name_indexed" integer NOT NULL,'
+                ' "fk_field_id" integer NOT NULL'
+                ' REFERENCES "tests_renameanchor1" ("id")'
+                ' DEFERRABLE INITIALLY DEFERRED);',
+
+                'INSERT INTO "TEMP_TABLE"'
+                ' ("my_pk_id", "char_field", "int_field",'
+                ' "custom_db_col_name", "custom_db_col_name_indexed",'
+                ' "fk_field_id")'
+                ' SELECT "id", "char_field", "int_field",'
+                ' "custom_db_col_name", "custom_db_col_name_indexed",'
+                ' "fk_field_id"'
+                ' FROM "tests_testmodel";',
+
+                'DROP TABLE "tests_testmodel";',
+
+                'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+                'CREATE INDEX "%s" ON "tests_testmodel"'
+                ' ("custom_db_col_name_indexed");'
+                % generate_index_name('tests_testmodel',
+                                      'custom_db_col_name_indexed',
+                                      'int_field_named_indexed'),
+
+                'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
+                % generate_index_name('tests_testmodel', 'fk_field_id',
+                                      'fk_field'),
+            ]
+
         mappings.update({
             'RenameColumnModel': [
                 'CREATE TABLE "TEMP_TABLE" '
@@ -1441,63 +1542,6 @@ def rename_field(connection):
                 'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
                 % generate_index_name('tests_testmodel', 'fk_field_id',
                                       'fk_field'),
-            ],
-
-            'RenamePrimaryKeyColumnModel': [
-                'CREATE TABLE "TEMP_TABLE" '
-                '("my_pk_id" integer NOT NULL UNIQUE PRIMARY KEY,'
-                ' "char_field" varchar(20) NOT NULL,'
-                ' "int_field" integer NOT NULL,'
-                ' "custom_db_col_name" integer NOT NULL,'
-                ' "custom_db_col_name_indexed" integer NOT NULL,'
-                ' "fk_field_id" integer NOT NULL'
-                ' REFERENCES "tests_renameanchor1" ("id")'
-                ' DEFERRABLE INITIALLY DEFERRED);',
-
-                'INSERT INTO "TEMP_TABLE"'
-                ' ("my_pk_id", "char_field", "int_field",'
-                ' "custom_db_col_name", "custom_db_col_name_indexed",'
-                ' "fk_field_id")'
-                ' SELECT "id", "char_field", "int_field",'
-                ' "custom_db_col_name", "custom_db_col_name_indexed",'
-                ' "fk_field_id"'
-                ' FROM "tests_testmodel";',
-
-                'DROP TABLE "tests_testmodel";',
-
-                'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
-
-                'CREATE INDEX "%s" ON "tests_testmodel"'
-                ' ("custom_db_col_name_indexed");'
-                % generate_index_name('tests_testmodel',
-                                      'custom_db_col_name_indexed',
-                                      'int_field_named_indexed'),
-
-                'CREATE INDEX "%s" ON "tests_testmodel" ("fk_field_id");'
-                % generate_index_name('tests_testmodel', 'fk_field_id',
-                                      'fk_field'),
-
-                'COMMIT;',
-
-                'BEGIN;',
-
-                'PRAGMA writable_schema = 1;',
-
-                'UPDATE sqlite_master SET sql = replace(sql,'
-                ' \' REFERENCES "tests_testmodel" ("id") \','
-                ' \' REFERENCES "tests_testmodel" ("my_pk_id") \');',
-
-                re.compile(r'PRAGMA schema_version = \d+;'),
-
-                'PRAGMA writable_schema = 0;',
-
-                'PRAGMA integrity_check;',
-
-                'COMMIT;',
-
-                'VACUUM;',
-
-                'BEGIN;',
             ],
 
             'RenameForeignKeyColumnModel': [

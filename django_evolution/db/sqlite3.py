@@ -685,7 +685,12 @@ class EvolutionOperations(BaseEvolutionOperations):
 
         try:
             for table_info in introspection.get_table_list(cursor):
-                table_name = table_info.name
+                if isinstance(table_info, six.text_type):
+                    # Django <= 1.7
+                    table_name = table_info
+                else:
+                    # Django >= 1.8
+                    table_name = table_info.name
 
                 if table_name != reffed_table_name:
                     cursor.execute('PRAGMA foreign_key_list(%s)'
