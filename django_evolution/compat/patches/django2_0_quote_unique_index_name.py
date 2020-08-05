@@ -40,13 +40,14 @@ def apply_patch():
 
         statement = orig_create_unique_sql(self, *args, **kwargs)
 
-        index_name = statement.parts['name']
-        assert isinstance(index_name, IndexName)
+        if statement is not None:
+            index_name = statement.parts['name']
 
-        if index_name.create_index_name == self._create_index_name:
-            # The result will be unquoted. Let's quote it.
-            index_name.create_index_name = lambda *args, **kwargs: \
-                self.quote_name(self._create_index_name(*args, **kwargs))
+            if (isinstance(index_name, IndexName) and
+                index_name.create_index_name == self._create_index_name):
+                # The result will be unquoted. Let's quote it.
+                index_name.create_index_name = lambda *args, **kwargs: \
+                    self.quote_name(self._create_index_name(*args, **kwargs))
 
         return statement
 
