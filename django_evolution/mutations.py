@@ -348,9 +348,17 @@ class BaseMutation(object):
                 for item in value
             )
         elif isinstance(value, tuple):
-            value = '(%s)' % ', '.join(
-                self.serialize_value(item)
-                for item in value
+            if len(value) == 1:
+                suffix = ','
+            else:
+                suffix = ''
+
+            value = '(%s%s)' % (
+                ', '.join(
+                    self.serialize_value(item)
+                    for item in value
+                ),
+                suffix,
             )
         elif isinstance(value, dict):
             value = '{%s}' % ', '.join(
@@ -358,6 +366,36 @@ class BaseMutation(object):
                             self.serialize_value(dict_value))
                 for dict_key, dict_value in six.iteritems(value)
             )
+        elif inspect.isclass(value):
+            if value.__module__.startswith('django.db.models'):
+                prefix = 'models.'
+            else:
+                prefix = ''
+
+            return prefix + value.__name__
+        elif hasattr(value, 'deconstruct'):
+            path, args, kwargs = value.deconstruct()
+
+            if path.startswith('django.db.models'):
+                path = 'models.%s' % path.rsplit('.', 1)[-1]
+
+            parts = ['%s(' % path]
+
+            if args:
+                parts.append(', '.join(
+                    self.serialize_value(arg)
+                    for arg in args
+                ))
+
+            if kwargs:
+                parts.append(', '.join(
+                    self.serialize_attr(key, value)
+                    for key, value in six.iteritems(kwargs)
+                ))
+
+            parts.append(')')
+
+            value = ''.join(parts)
         else:
             value = repr(value)
 
@@ -773,11 +811,6 @@ class AddField(BaseModelFieldMutation):
             A list of parameter strings to pass to the mutation's constructor
             in a hinted evolution.
         """
-        if self.field_type.__module__.startswith('django.db.models'):
-            field_prefix = 'models.'
-        else:
-            field_prefix = ''
-
         params = [
             self.serialize_attr(key, value)
             for key, value in six.iteritems(self.field_attrs)
@@ -789,7 +822,7 @@ class AddField(BaseModelFieldMutation):
         return [
             self.serialize_value(self.model_name),
             self.serialize_value(self.field_name),
-            field_prefix + self.field_type.__name__,
+            self.serialize_value(self.field_type),
         ] + sorted(params)
 
     def simulate(self, simulation):
