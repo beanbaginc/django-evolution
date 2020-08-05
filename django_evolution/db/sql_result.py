@@ -1,5 +1,12 @@
 from __future__ import unicode_literals
 
+try:
+    # Django >= 2.0
+    from django.db.backends.ddl_references import Statement
+except ImportError:
+    # Django <= 1.11
+    Statement = None
+
 from django_evolution.compat import six
 
 
@@ -42,6 +49,9 @@ class SQLResult(object):
             TypeError:
                 ``sql_or_result`` wasn't a supported type.
         """
+        if sql_or_result is None:
+            return
+
         if isinstance(sql_or_result, SQLResult):
             self.pre_sql += sql_or_result.pre_sql
             self.sql += sql_or_result.sql
@@ -50,6 +60,8 @@ class SQLResult(object):
             self.sql += sql_or_result
         elif isinstance(sql_or_result, six.string_types + (tuple,)):
             self.sql.append(sql_or_result)
+        elif Statement is not None and isinstance(sql_or_result, Statement):
+            self.sql.append('%s;' % sql_or_result)
         elif callable(sql_or_result):
             self.sql.append(sql_or_result)
         else:
