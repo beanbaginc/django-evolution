@@ -7,6 +7,6 @@ sphinx:
 python:
   install:
     - method: pip
-      path: python
+      path: .
 
     - requirements: doc-requirements.txt
