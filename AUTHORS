@@ -1,12 +1,22 @@
+Django Evolution is primarily developed and maintained by:
 
-The PRIMARY AUTHORS of Django Evolution are:
+* Christian Hammond <christian@beanbaginc.com>,
+  Beanbag, Inc. <https://beanbaginc.com>
 
-Ben Khoo <khoobks@westnet.com.au>
-Russell Keith-Magee <russell@keith-magee.com>
-Christian Hammond <chipx86@chipx86.com>
+
+Prior to April 2010, Django Evolution was developed and maintained by:
+
+* Ben Khoo <khoobks@westnet.com.au>
+* Russell Keith-Magee <russell@keith-magee.com>
+
+Ben and Russell were the original developers, building Django Evolution as a
+part-time project long before there were any other solutions for schema
+migration for Django. Russell is a core developer of Django itself, and an
+emeritus contributor.
+
 
 And here is an inevitably incomplete list of MUCH-APPRECIATED CONTRIBUTORS --
-people who have submitted patches, reported bugs, and generally made 
+people who have submitted patches, reported bugs, and generally made
 Django Evolution that much better:
 
     Chris Beaven (SmileyChris) <smileychris@gmail.com>
