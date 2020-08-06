@@ -22,6 +22,10 @@ download_url = (
     (VERSION[0], VERSION[1]))
 
 
+with open('README.rst', 'r') as fp:
+    long_description = fp.read()
+
+
 # Build the package
 setup(
     name=PACKAGE_NAME,
@@ -29,6 +33,8 @@ setup(
     license='BSD',
     description=('A database schema evolution tool for the Django web '
                  'framework.'),
+    long_description=long_description,
+    long_description_content_type='text/x-rst',
     url='https://github.com/beanbaginc/django-evolution',
     author='Ben Khoo',
     author_email='khoobks@westnet.com.au',
