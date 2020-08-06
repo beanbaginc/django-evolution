@@ -1,3 +1,6 @@
 beanbag-docutils>=1.7
 Sphinx>=1.8.5
 sphinx-rtd-theme
+
+# Needed until beanbag-docutils adds support for Django 3.0+.
+Django>=1.6,<2.2.999
