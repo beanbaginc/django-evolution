@@ -1,3 +1,5 @@
+"""Classes that optimize mutations and generate SQL to apply."""
+
 from __future__ import unicode_literals
 
 import copy

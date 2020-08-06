@@ -1,3 +1,5 @@
+"""Classes for storing SQL statements and Alter Table operations."""
+
 from __future__ import unicode_literals
 
 try:

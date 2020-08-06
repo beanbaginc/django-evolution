@@ -28,11 +28,17 @@ Module and Class References
    django_evolution.signature
    django_evolution.support
    django_evolution.compat.apps
+   django_evolution.compat.commands
+   django_evolution.compat.datastructures
    django_evolution.compat.db
    django_evolution.compat.models
    django_evolution.compat.picklers
    django_evolution.compat.py23
+   django_evolution.db.common
+   django_evolution.db.mysql
+   django_evolution.db.postgresql
    django_evolution.db.sql_result
+   django_evolution.db.sqlite3
    django_evolution.db.state
    django_evolution.utils.apps
    django_evolution.utils.evolutions

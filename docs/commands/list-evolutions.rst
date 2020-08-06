@@ -25,7 +25,7 @@ Example
 Arguments
 =========
 
-.. option:: [APP_LABEL ...]
+.. option:: <APP_LABEL...>
 
    Zero or more specific app labels to list. If provided, only evolutions on
    these apps will be shown.

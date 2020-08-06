@@ -398,8 +398,7 @@ def get_app_upgrade_info(app, scan_evolutions=True, simulate_applied=False,
         dict:
         A dictionary of information containing the following keys:
 
-        ``applied_migrations`` (:py:class:`~django_evolution.utils
-                                .migrations.MigrationList`):
+        ``applied_migrations`` (:py:class:`~django_evolution.utils.migrations.MigrationList`):
             A list of migrations that have been applied to this app through
             any mutations. This will only be present if the upgrade method is
             set to use migrations and if running on a version of Django that

@@ -322,8 +322,7 @@ class MigrationList(object):
             ``migration`` (:py:class:`django.db.migrations.Migration`):
                 The optional migration instance.
 
-            ``recorded_migration`` (:py:class:`django.db.migrations.recorder.
-                                    MigrationRecorder.Migration`):
+            ``recorded_migration`` (:py:class:`django.db.migrations.recorder.MigrationRecorder.Migration`):
                 The optional recorded migration.
         """
         for app_label, info_list in sorted(six.iteritems(self._by_app_label),

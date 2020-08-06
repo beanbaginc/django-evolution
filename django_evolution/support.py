@@ -1,3 +1,5 @@
+"""Constants indicating available Django features."""
+
 from __future__ import unicode_literals
 
 from django.db.models.options import Options

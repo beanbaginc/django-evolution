@@ -1,3 +1,5 @@
+"""Common evolution operations backend for databases."""
+
 from __future__ import unicode_literals
 
 import copy

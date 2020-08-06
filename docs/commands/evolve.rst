@@ -60,7 +60,7 @@ command line, like so::
 Arguments
 =========
 
-.. option:: [APP_LABEL ...]
+.. option:: <APP_LABEL...>
 
    Zero or more specific app labels to evolve. If provided, only these apps
    will have evolutions or :term:`migrations` applied. If not provided, all
