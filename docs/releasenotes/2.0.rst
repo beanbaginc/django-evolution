@@ -1,0 +1,225 @@
+====================
+Django Evolution 2.0
+====================
+
+**Release date:** TBD
+
+
+New Features
+============
+
+All-New Documentation
+---------------------
+
+We have `new documentation`_ for Django Evolution, covering installation,
+usage, a FAQ, and all release notes.
+
+.. _new documentation: https://django-evolution.readthedocs.io/en/latest/
+
+
+Support for Python 3
+--------------------
+
+Django Evolution is now fully compatible with Python 2.7 and 3.5 through 3.8,
+allowing it to work across all supported versions of Django.
+
+Speaking of that...
+
+
+Support for Django 1.6 through 3.1
+----------------------------------
+
+Django Evolution 2.0 supports Django 1.6 through 3.1. Going forward, it will
+continue to support newer versions of Django as they come out.
+
+This includes modern features, like :py:attr:`Meta.indexes
+<django.db.models.Options.indexes>` and :py:attr:`Meta.conditions
+<django.db.models.Options.constraints>`.
+
+We can offer this due to the new cooperative support for Django's schema
+migrations.
+
+
+Compatibility with Django Migrations
+------------------------------------
+
+Historically, Django Evolution has been a standalone schema migration
+framework, and was stuck with supporting versions of Django prior to 1.7,
+since evolutions and migrations could not co-exist.
+
+That's been resolved. Django Evolution now controls the entire process,
+applying both migrations and evolutions together, ensuring a smooth upgrade.
+Projects get the best of both worlds:
+
+* The ability to use apps that use migrations (most everything, including
+  Django itself)
+* Optimized upgrades for the project's own evolution-based models (especially
+  when applying large numbers of evolutions to the same table)
+
+
+New Evolve Command
+------------------
+
+In Django Evolution 2.0, the ``evolve`` command becomes the sole way of
+applying both evolutions and migrations, replacing the ``migrate``/``syncdb``
+commands.
+
+To set up or upgrade a database (using both evolutions and migrations), you'll
+simply run ``evolve --execute``. This will work across all versions of Django.
+
+The old ``migrate`` and ``syncdb`` commands will still technically work, but
+they'll wrap ``evolve --execute``.
+
+This can all be disabled by setting ``DJANGO_EVOLUTION_ENABLED = False`` in
+:file:`settings.py`.
+
+.. note::
+
+   ``initial_data`` fixtures will no longer be loaded. These have already
+   been deprecated in Django, but it's worth mentioning for users of older
+   versions of Django.
+
+   Also, the ``migrate`` command will no longer allow individual migrations
+   to be applied.
+
+
+Moving Apps to Migrations
+-------------------------
+
+Projects can transition some or all of their apps to migrations once the
+last of the evolutions are applied, allowing them to move entirely onto
+migrations if needed. This is done with the new
+:py:class:`~django_evolution.mutations.MoveToMigrations` mutation.
+
+Simply add one last evolution for an app:
+
+
+.. code-block:: python
+
+   from django_evolution.mutations import MoveToDjangoMigrations
+
+
+    MUTATIONS = [
+        MoveToDjangoMigrations(),
+    ]
+
+
+This will apply after the last evolution is applied, and from then on all
+changes to the models will be controlled via migrations.
+
+.. note::
+
+   Once an app has been moved to migrations, it cannot be moved back to
+   evolutions.
+
+
+Improved Database Compatibility
+-------------------------------
+
+* Support for constraints on modern versions of MySQL/MariaDB.
+
+  Modern versions of MySQL and MariaDB are now explicitly supported, allowing
+  projects using Django 2.2+ to take advantage of ``CHECK`` constraints.  This
+  requires MySQL 8.0.16+ or MariaDB 10.2.1+ on Django 3.0+.
+
+* Faster and safer SQLite table rebuilds.
+
+  Changes to SQLite databases are now optimized, resulting in far fewer table
+  rebuilds when changes are made to a model.
+
+* Support for SQLite 3.25+ column renaming.
+
+  SQLite 3.25 introduced ``ALTER TABLE ... RENAME COLUMN`` syntax, which
+  is faster than a table rebuild and avoids a lot of issues with preserving
+  column references.
+
+* We use Django 1.7's schema rewriting for more of the SQL generation.
+
+  This helps ensure future compatibility with new releases of Django, and
+  allows for leveraging more of Django's work toward database compatibility.
+
+
+Project-Defined Custom Evolutions
+---------------------------------
+
+Projects can provide a new ``settings.CUSTOM_EVOLUTIONS`` setting to define
+custom evolution modules for apps that don't otherwise make use of evolutions
+or migrations. The value is a mapping of app module names (same ones you'd
+see in ``settings.INSTALLED_APPS`` to an evolutions module path.
+
+This looks like:
+
+.. code-block:: python
+
+   CUSTOM_EVOLUTIONS = {
+       'other_project.contrib.foo': 'my_project.compat.foo.evolutions',
+   }
+
+
+Evolver API
+-----------
+
+The entire evolution/migration process can now be controlled programmatically
+through the :py:class:`~django_evolution.evolve.Evolver` class. This allows
+an entire database, or just select apps, to be evolved without calling out to
+a management command.
+
+While most projects will not have a need for this, it's available to those
+that might want some form of specialized control over the evolution process
+(for automation, selectively evolving models from an extension/plug-in, or
+providing an alternative management/upgrade experience).
+
+During an evolution, new signals are emitted, allowing apps to hook into the
+process and perform any updates they might need:
+
+* :py:data:`~django_evolution.signals.evolved`
+* :py:data:`~django_evolution.signals.evolving`
+* :py:data:`~django_evolution.signals.evolving_failed`
+* :py:data:`~django_evolution.signals.applying_evolution`
+* :py:data:`~django_evolution.signals.applied_evolution`
+* :py:data:`~django_evolution.signals.applying_migration`
+* :py:data:`~django_evolution.signals.applied_migration`
+* :py:data:`~django_evolution.signals.created_models`
+* :py:data:`~django_evolution.signals.creating_models`
+
+
+New Database Signature Format
+-----------------------------
+
+Django Evolution stores a representation of the database in the
+:py:class:`~django_evolution.models.Version` table, in order to track what's
+been applied and what changes have been made since.
+
+Historically, this has used some older structured data schema serialized in
+Pickle Protocol 0 format. As of Django Evolution 2.0, it's now using a new
+schema stored in JSON format, which is designed for future extensibility.
+
+Internally, this is represented by a :py:mod:`set of classes
+<django_evolution.signature>` with a solid API that's independent of the
+storage format. This eases the addition of new features, and makes it easier
+to diagnose problems or write custom tools.
+
+.. warning::
+
+   This will impact any :py:class:`SQLMutations
+   <django_evolution.mutations.SQLMutation>` that modify a signature. These
+   will need to be updated to use the new classes, instead of modifying the
+   older schema dictionaries.
+
+
+Bug Fixes
+=========
+
+SQLite
+------
+
+* Fixed constraint references from other tables when renaming primary key
+  columns.
+
+* Fixed restoring all table indexes after rebuilding a table.
+
+
+Contributors
+============
+
+* Christian Hammond
