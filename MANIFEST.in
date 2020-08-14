@@ -1,9 +1,15 @@
-recursive-include django_evolution *.py
-recursive-include docs *.txt
-recursive-include tests *.py *.exclude
+graft docs
+
+prune docs/_build
+prune docs/coderef/python
+
 include AUTHORS
 include LICENSE
-include README
 include NEWS
-include setup.py
-include ez_setup.py
+include README.rst
+include *-requirements.txt
+include tests/test_db_settings.py.tmpl
+
+exclude tests/test_db_settings.py
+
+global-exclude .*.sw[op] *.db *.py[co] __pycache__ .DS_Store .noseids
