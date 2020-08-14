@@ -61,12 +61,23 @@ I can't imagine anything better... How do I start?
 We have a `bunch of documentation <https://django-evolution.readthedocs.org>`_
 just for you!
 
-There, you'll find out how to install it, configure it for your project,
-generate evolutions, and apply them. Plus, answers to all^W some of your
-burning questions, like "how do these work with migrations?" and "why is my
-syncdb/migrate command weird now?"
+There, you'll find out how to `install it`_, `configure it`_ for your project,
+`generate evolutions`_, and `apply them`_.
+
+Plus, answers_ to all^W some of your burning questions, like "how do these work
+with migrations?" and "why is my syncdb/migrate command weird now?"
 
 .. _Django: https://www.djangoproject.com/
+.. _install it:
+   https://django-evolution.readthedocs.io/en/latest/installation.html
+.. _configure it:
+   https://django-evolution.readthedocs.io/en/latest/installation.html
+.. _generate evolutions:
+   https://django-evolution.readthedocs.io/en/latest/writing-evolutions.html
+.. _apply them:
+   https://django-evolution.readthedocs.io/en/latest/commands/evolve.html
+.. _answers:
+   https://django-evolution.readthedocs.io/en/latest/faq.html
 
 
 Who's using Django Evolution today?
