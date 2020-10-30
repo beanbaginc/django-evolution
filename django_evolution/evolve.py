@@ -49,7 +49,7 @@ from django_evolution.utils.migrations import (MigrationExecutor,
                                                finalize_migrations,
                                                is_migration_initial,
                                                record_applied_migrations)
-from django_evolution.utils.sql import execute_sql
+from django_evolution.utils.sql import SQLExecutor
 
 
 logger = logging.getLogger(__name__)
@@ -84,7 +84,7 @@ class BaseEvolutionTask(object):
         sql (list):
             A list of SQL statements to perform for the task. Each entry can
             be a string or tuple accepted by
-            :py:func:`~django_evolution.utils.execute_sql`.
+            :py:meth:`~django_evolution.utils.sql.SQLExecutor.run_sql`.
     """
 
     @classmethod
@@ -140,10 +140,9 @@ class BaseEvolutionTask(object):
                 Keyword arguments to pass to the tasks' `:py:meth:`execute`
                 methods.
         """
-        with evolver.connection.constraint_checks_disabled():
-            with evolver.transaction() as cursor:
-                for task in tasks:
-                    task.execute(cursor=cursor, **kwargs)
+        with evolver.sql_executor(check_constraints=False) as sql_executor:
+            for task in tasks:
+                task.execute(sql_executor=sql_executor, **kwargs)
 
     def __init__(self, task_id, evolver):
         """Initialize the task.
@@ -211,14 +210,24 @@ class BaseEvolutionTask(object):
         """
         raise NotImplementedError
 
-    def execute(self, cursor):
+    def execute(self, cursor=None, sql_executor=None, **kwargs):
         """Execute the task.
 
         This will make any changes necessary to the database.
 
+        Version Changed:
+            2.1:
+            ``cursor`` is now deprecated in favor of ``sql_executor``.
+
         Args:
-            cursor (django.db.backends.util.CursorWrapper):
-                The database cursor used to execute queries.
+            cursor (django.db.backends.util.CursorWrapper, optional):
+                The legacy database cursor used to execute queries.
+
+            sql_executor (django_evolution.utils.sql.SQLExecutor, optional):
+                The SQL executor used to run any SQL on the database.
+
+            **kwargs (dict):
+                Additional keyword arguments, for future expansion.
 
         Raises:
             django_evolution.errors.EvolutionExecutionError:
@@ -293,22 +302,27 @@ class PurgeAppTask(BaseEvolutionTask):
         self.can_simulate = True
         self.new_evolutions = []
 
-    def execute(self, cursor):
+    def execute(self, cursor=None, sql_executor=None, **kwargs):
         """Execute the task.
 
         This will delete any tables owned by the application.
 
         Args:
-            cursor (django.db.backends.util.CursorWrapper):
-                The database cursor used to execute queries.
+            cursor (django.db.backends.util.CursorWrapper, unused):
+                The legacy database cursor. This is no longer used.
+
+            sql_executor (django_evolution.utils.sql.SQLExecutor, optional):
+                The SQL executor used to run any SQL on the database.
 
         Raises:
             django_evolution.errors.EvolutionExecutionError:
                 The evolution task failed. Details are in the error.
         """
+        assert sql_executor
+
         if self.evolution_required:
             try:
-                execute_sql(cursor, self.sql, self.evolver.database_name)
+                sql_executor.run_sql(self.sql, execute=True)
             except Exception as e:
                 raise EvolutionExecutionError(
                     _('Error purging app "%s": %s')
@@ -604,20 +618,19 @@ class EvolveAppTask(BaseEvolutionTask):
 
         # Next, create all new database models for all non-migration-backed
         # apps. We can then work on evolving/migrating those apps.
-        with evolver.connection.constraint_checks_disabled():
-            with evolver.transaction() as cursor:
-                cls._create_models(
-                    cursor=cursor,
-                    evolver=evolver,
-                    tasks=[
-                        task
-                        for task in tasks
-                        if task._new_models_sql
-                    ])
+        with evolver.sql_executor(check_constraints=False) as sql_executor:
+            cls._create_models(
+                sql_executor=sql_executor,
+                evolver=evolver,
+                tasks=[
+                    task
+                    for task in tasks
+                    if task._new_models_sql
+                ])
 
-                # Process any evolutions for the apps.
-                for task in tasks:
-                    task.execute(cursor=cursor, **kwargs)
+            # Process any evolutions for the apps.
+            for task in tasks:
+                task.execute(sql_executor=sql_executor, **kwargs)
 
         if migrating:
             if cls._post_migration_plan:
@@ -652,12 +665,12 @@ class EvolveAppTask(BaseEvolutionTask):
                                   plan=cls._full_migration_plan)
 
     @classmethod
-    def _create_models(cls, cursor, evolver, tasks, sql=None):
+    def _create_models(cls, sql_executor, evolver, tasks, sql=None):
         """Create tables for models in the database.
 
         Args:
-            cursor (django.db.backends.util.CursorWrapper):
-                The database cursor used to install the models.
+            sql_executor (django_evolution.utils.sql.SQLExecutor):
+                The SQL executor used to run any SQL on the database.
 
             evolver (Evolver):
                 The evolver executing the tasks.
@@ -674,6 +687,8 @@ class EvolveAppTask(BaseEvolutionTask):
             django_evolution.errors.EvolutionExecutionError:
                 There was an unexpected error creating database models.
         """
+        assert sql_executor
+
         if sql is None:
             assert hasattr(cls, '_new_models_sql'), \
                 'prepare_tasks() must be called before models an be created.'
@@ -695,10 +710,9 @@ class EvolveAppTask(BaseEvolutionTask):
                                  model_names=task.new_model_names)
 
         try:
-            result = execute_sql(cursor=cursor,
-                                 sql=sql,
-                                 database=evolver.database_name,
-                                 capture=True)
+            result = sql_executor.run_sql(sql=sql,
+                                          execute=True,
+                                          capture=True)
         except Exception as e:
             last_sql_statement = getattr(e, 'last_sql_statement', None)
             detailed_error = six.text_type(e)
@@ -909,8 +923,8 @@ class EvolveAppTask(BaseEvolutionTask):
             for label in evolutions
         ]
 
-    def execute(self, cursor, sql=None, evolutions=None,
-                create_models_now=False):
+    def execute(self, cursor=None, sql_executor=None, sql=None,
+                evolutions=None, create_models_now=False):
         """Execute the task.
 
         This will apply any evolutions queued up for the app.
@@ -922,11 +936,15 @@ class EvolveAppTask(BaseEvolutionTask):
 
         Version Changed:
             2.1:
-            Added ``sql`` and ``evolutions`` arguments.
+            * Added ``sql`` and ``evolutions`` arguments.
+            * Deprecated ``cursor`` in favor of ``sql_executor``.
 
         Args:
-            cursor (django.db.backends.util.CursorWrapper):
-                The database cursor used to execute queries.
+            cursor (django.db.backends.util.CursorWrapper, unused):
+                The legacy database cursor. This is no longer used.
+
+            sql_executor (django_evolution.utils.sql.SQLExecutor):
+                The SQL executor used to run any SQL on the database.
 
             sql (list, optional):
                 A list of explicit SQL statements to execute.
@@ -950,10 +968,12 @@ class EvolveAppTask(BaseEvolutionTask):
             django_evolution.errors.EvolutionExecutionError:
                 The evolution task failed. Details are in the error.
         """
+        assert sql_executor
+
         evolver = self.evolver
 
         if create_models_now and self._new_models_sql:
-            EvolveAppTask._create_models(cursor=cursor,
+            EvolveAppTask._create_models(sql_executor=sql_executor,
                                          evolver=evolver,
                                          sql=self._new_models_sql,
                                          tasks=[self])
@@ -970,7 +990,7 @@ class EvolveAppTask(BaseEvolutionTask):
                                     evolutions=evolutions)
 
             try:
-                execute_sql(cursor, sql, evolver.database_name)
+                sql_executor.run_sql(sql, execute=True)
             except Exception as e:
                 raise EvolutionExecutionError(
                     _('Error applying evolution for %s: %s')
@@ -1187,8 +1207,9 @@ class Evolver(object):
                                  app=app)
             task.prepare(hinted=False)
 
-            with self.transaction() as cursor:
-                task.execute(cursor, create_models_now=True)
+            with self.sql_executor() as sql_executor:
+                task.execute(sql_executor=sql_executor,
+                             create_models_now=True)
 
             self.database_state.rescan_tables()
 
@@ -1454,7 +1475,6 @@ class Evolver(object):
 
             self._save_project_sig(new_evolutions=new_evolutions)
             self.evolved = True
-
         except Exception as e:
             evolving_failed.send(sender=self,
                                  exception=e)
@@ -1476,12 +1496,37 @@ class Evolver(object):
                                        tasks=tasks,
                                        hinted=self.hinted)
 
+    def sql_executor(self, **kwargs):
+        """Return an SQLExecutor for executing SQL.
+
+        This is a convenience method for creating an
+        :py:class:`~django_evolution.utils.sql.SQLExecutor` to operate using
+        the evolver's current database.
+
+        Version Added:
+            2.1
+
+        Args:
+            **kwargs (dict):
+                Additional keyword arguments used to construct the executor.
+
+        Returns:
+            django_evolution.utils.sql.SQLExecutor:
+            The new SQLExecutor.
+        """
+        return SQLExecutor(database=self.database_name, **kwargs)
+
     @contextmanager
     def transaction(self):
         """Execute database operations in a transaction.
 
         This is a convenience method for executing in a transaction using
         the evolver's current database.
+
+        Deprecated:
+            2.1:
+            This has been replaced with manual calls to
+            :py:class:`~django_evolution.utils.sql.SQLExecutor`.
 
         Context:
             django.db.backends.util.CursorWrapper:

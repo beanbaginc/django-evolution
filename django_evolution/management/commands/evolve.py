@@ -35,7 +35,7 @@ from django_evolution.signals import (applied_evolution,
                                       creating_models)
 from django_evolution.utils.apps import import_management_modules
 from django_evolution.utils.evolutions import get_evolutions_path
-from django_evolution.utils.sql import write_sql
+from django_evolution.utils.sql import SQLExecutor
 
 
 class Command(BaseCommand):
@@ -512,13 +512,16 @@ class Command(BaseCommand):
         """
         database_name = self.evolver.database_name
 
-        for i, task in enumerate(self.evolver.tasks):
-            if task.sql:
-                if i > 0:
-                    self.stdout.write('\n')
+        with SQLExecutor(database=database_name) as executor:
+            for i, task in enumerate(self.evolver.tasks):
+                if task.sql:
+                    if i > 0:
+                        self.stdout.write('\n')
 
-                self.stdout.write('-- %s\n' % task)
-                write_sql(task.sql, database_name)
+                    self.stdout.write('-- %s\n' % task)
+
+                    for statement in executor.run_sql(task.sql, capture=True):
+                        self.stdout.write('%s\n' % statement)
 
     def _display_available_purges(self):
         """Display the apps that can be purged."""

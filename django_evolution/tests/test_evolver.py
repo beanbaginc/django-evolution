@@ -40,7 +40,7 @@ from django_evolution.tests.base_test_case import (EvolutionTestCase,
                                                    MigrationsTestsMixin)
 from django_evolution.tests.models import BaseTestModel
 from django_evolution.tests.utils import (ensure_test_db,
-                                          execute_transaction,
+                                          execute_test_sql,
                                           register_models)
 from django_evolution.utils.apps import get_app_label
 from django_evolution.utils.migrations import (MigrationList,
@@ -98,7 +98,7 @@ class EvolverTests(BaseEvolverTestCase):
 
     def test_init_with_no_base_models(self):
         """Testing Evolver.__init__ with no base models"""
-        execute_transaction(sql_delete(get_app('django_evolution')))
+        execute_test_sql(sql_delete(get_app('django_evolution')))
 
         # Make sure these are really gone.
         state = DatabaseState(db_name='default')
@@ -1079,10 +1079,11 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
 
         with ensure_test_db(app_label=app_label1):
             with ensure_test_db(app_label=app_label2):
-                with evolver.transaction() as cursor:
-                    sql = EvolveAppTask._create_models(cursor=cursor,
-                                                       evolver=evolver,
-                                                       tasks=[task1, task2])
+                with evolver.sql_executor() as sql_executor:
+                    sql = EvolveAppTask._create_models(
+                        sql_executor=sql_executor,
+                        evolver=evolver,
+                        tasks=[task1, task2])
 
         self.assertSQLMappingEqual(sql, 'create_tables_with_deferred_refs')
 
@@ -1191,7 +1192,9 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                     },
                 ])
             task.prepare(hinted=False)
-            task.execute(connections['default'].cursor())
+
+            with evolver.sql_executor() as sql_executor:
+                task.execute(sql_executor=sql_executor)
 
         self.assertEqual(
             self.saw_signals,
@@ -1221,7 +1224,9 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         task = EvolveAppTask(evolver=evolver,
                              app=evo_test)
         task.prepare(hinted=False)
-        task.execute(connections['default'].cursor())
+
+        with evolver.sql_executor() as sql_executor:
+            task.execute(sql_executor=sql_executor)
 
         self.assertEqual(self.saw_signals, [])
 
@@ -1236,8 +1241,10 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
             task = EvolveAppTask(evolver=evolver,
                                  app=evo_test)
             task.prepare(hinted=False)
-            task.execute(connections['default'].cursor(),
-                         create_models_now=True)
+
+            with evolver.sql_executor() as sql_executor:
+                task.execute(sql_executor=sql_executor,
+                             create_models_now=True)
 
         self.assertEqual(
             self.saw_signals,
@@ -1460,9 +1467,12 @@ class PurgeAppTaskTests(BaseEvolverTestCase):
 
     def test_execute(self):
         """Testing PurgeAppTask.execute"""
-        task = PurgeAppTask(evolver=Evolver(),
+        evolver = Evolver()
+
+        task = PurgeAppTask(evolver=evolver,
                             app_label='tests')
         task.prepare()
 
         with ensure_test_db(model_entries=[('TestModel', EvolverTestModel)]):
-            task.execute(connections['default'].cursor())
+            with evolver.sql_executor() as sql_executor:
+                task.execute(sql_executor=sql_executor)

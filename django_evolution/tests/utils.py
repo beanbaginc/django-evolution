@@ -28,7 +28,7 @@ from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.signature import (AppSignature, ModelSignature,
                                         ProjectSignature)
 from django_evolution.tests import models as evo_test
-from django_evolution.utils.sql import execute_sql, write_sql
+from django_evolution.utils.sql import SQLExecutor
 
 
 test_connections = ConnectionHandler(settings.TEST_DATABASES)
@@ -293,13 +293,18 @@ def create_test_project_sig(models, app_label='tests', version=1):
     return project_sig
 
 
-def execute_transaction(sql, database=DEFAULT_DB_ALIAS):
-    """Execute SQL in a new transaction.
+def execute_test_sql(sql, database=DEFAULT_DB_ALIAS):
+    """Execute SQL for a unit test.
+
+    This will disable constraints on the connection for the duration of
+    the statements. The SQL will then generally be executed in a transaction,
+    depending on the generated SQL and whether it makes use of a
+    :py:class:`~django_evolution.utils.sql.BaseGroupedSQL` subclass.
 
     Args:
         sql (unicode or list):
             The SQL to execute. This must be a value accepted by
-            :py:func:`~django_evolution.utils.sql.execute_sql`.
+            :py:meth:`~django_evolution.utils.sql.SQLExecutor.run_sql`.
 
         database (unicode, optional):
             The name of the database to use.
@@ -308,17 +313,12 @@ def execute_transaction(sql, database=DEFAULT_DB_ALIAS):
         list of unicode:
         The SQL statements that were executed.
     """
-    connection = connections[database]
-
     try:
-        with connection.constraint_checks_disabled():
-            with atomic(using=database):
-                cursor = connection.cursor()
-
-                try:
-                    return execute_sql(cursor, sql, database, capture=True)
-                finally:
-                    cursor.close()
+        with SQLExecutor(database=database,
+                         check_constraints=False) as executor:
+            return executor.run_sql(sql,
+                                    capture=True,
+                                    execute=True)
     except Exception as e:
         logging.exception('Error executing SQL %s: %s', sql, e)
         raise
@@ -364,9 +364,9 @@ def ensure_test_db(model_entries=[], end_model_entries=None,
                             reset=True)
 
         # Install the initial tables and indexes.
-        execute_transaction(sql_create_app(app=evo_test,
-                                           db_name=database),
-                            database)
+        execute_test_sql(sql_create_app(app=evo_test,
+                                        db_name=database),
+                         database=database)
 
     if end_model_entries:
         # Set the app cache to the end state.
@@ -378,8 +378,9 @@ def ensure_test_db(model_entries=[], end_model_entries=None,
         yield
     finally:
         # Clean up the database.
-        execute_transaction(sql_delete(evo_test, database),
-                            database)
+        execute_test_sql(sql_delete(evo_test,
+                                    db_name=database),
+                         database=database)
 
 
 def get_sql_mappings(mapping_key, db_name):

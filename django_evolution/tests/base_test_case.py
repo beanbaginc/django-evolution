@@ -16,7 +16,7 @@ from django_evolution.mutators import AppMutator
 from django_evolution.support import supports_migrations
 from django_evolution.tests.utils import (create_test_project_sig,
                                           ensure_test_db,
-                                          execute_transaction,
+                                          execute_test_sql,
                                           get_sql_mappings,
                                           register_models)
 from django_evolution.utils.migrations import unrecord_applied_migrations
@@ -465,8 +465,8 @@ class EvolutionTestCase(TestCase):
                             end_model_entries=six.iteritems(end),
                             app_label=app_label,
                             database=db_name):
-            sql = execute_transaction(run_mutations(),
-                                      database=db_name)
+            sql = execute_test_sql(run_mutations(),
+                                   database=db_name)
 
         if sql_name is not None:
             self.assertSQLMappingEqual(sql, sql_name, db_name)
