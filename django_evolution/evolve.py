@@ -939,9 +939,12 @@ class EvolveAppTask(BaseEvolutionTask):
                                          sql=self._new_models_sql,
                                          tasks=[self])
 
+        evolutions = self.new_evolutions
+
         if self.sql:
             applying_evolution.send(sender=self.evolver,
-                                    task=self)
+                                    task=self,
+                                    evolutions=evolutions)
 
             try:
                 execute_sql(cursor, self.sql, self.evolver.database_name)
@@ -954,7 +957,8 @@ class EvolveAppTask(BaseEvolutionTask):
                     last_sql_statement=getattr(e, 'last_sql_statement'))
 
             applied_evolution.send(sender=self.evolver,
-                                   task=self)
+                                   task=self,
+                                   evolutions=evolutions)
 
     def get_evolution_content(self):
         """Return the content for an evolution file for this task.

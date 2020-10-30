@@ -20,15 +20,26 @@ evolving_failed = Signal(providing_args=['exception'])
 
 #: Emitted when an evolution is about to be applied to an app.
 #:
+#: Version Changed:
+#:     2.1:
+#:     Added the ``evolutions`` argument.
+#:
 #: Args:
 #:     app_label (unicode):
 #:         The label of the application being applied.
 #:
 #:     task (django_evolution.evolve.EvolveAppTask):
 #:         The task evolving the app.
-applying_evolution = Signal(providing_args=['app_label', 'task'])
+#:
+#:     evolutions (list of django_evolution.models.Evolution):
+#:         The list of evolutions that will be applied.
+applying_evolution = Signal(providing_args=['app_label', 'task', 'evolutions'])
 
 #: Emitted when an evolution has been applied to an app.
+#:
+#: Version Changed:
+#:     2.1:
+#:     Added the ``evolutions`` argument.
 #:
 #: Args:
 #:     app_label (unicode):
@@ -36,7 +47,10 @@ applying_evolution = Signal(providing_args=['app_label', 'task'])
 #:
 #:     task (django_evolution.evolve.EvolveAppTask):
 #:         The task that evolved the app.
-applied_evolution = Signal(providing_args=['app_label', 'task'])
+#:
+#:     evolutions (list of django_evolution.models.Evolution):
+#:         The list of evolutions that were applied.
+applied_evolution = Signal(providing_args=['app_label', 'task', 'evolutions'])
 
 #: Emitted when a migration is about to be applied to an app.
 #:

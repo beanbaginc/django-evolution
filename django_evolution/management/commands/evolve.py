@@ -369,52 +369,119 @@ class Command(BaseCommand):
 
         if verbosity > 0:
             @receiver(applying_evolution, sender=evolver)
-            def _on_applying_evolution(task, **kwargs):
-                self.stdout.write(
-                    _('Applying database evolution for %s...\n')
-                    % task.app_label)
+            def _on_applying_evolution(task, evolutions, **kwargs):
+                if verbosity > 2:
+                    message = (
+                        _('Applying database evolutions for %(app_label)s '
+                          '(%(evolution_labels)s)...\n')
+                        % {
+                            'app_label': task.app_label,
+                            'evolution_labels': ', '.join(
+                                evolution.label
+                                for evolution in evolutions
+                            ),
+                        }
+                    )
+                else:
+                    message = (
+                        _('Applying database evolutions for '
+                          '%(app_label)s...\n')
+                        % {
+                            'app_label': task.app_label,
+                        }
+                    )
+
+                self.stdout.write(message)
 
             @receiver(applying_migration, sender=evolver)
             def _on_applying_migration(migration, **kwargs):
                 self.stdout.write(
-                    _('Applying database migration %s for %s...\n')
-                    % (migration.name, migration.app_label))
+                    _('Applying database migration %(migration_name)s for '
+                      '%(app_label)s...\n')
+                    % {
+                        'app_label': migration.app_label,
+                        'migration_name': migration.name,
+                    })
 
             @receiver(creating_models, sender=evolver)
             def _on_creating_models(app_label, model_names, **kwargs):
                 if verbosity > 2:
-                    self.stdout.write(
-                        _('Creating new database models for %s (%s)...\n')
-                        % (app_label, ', '.join(model_names)))
+                    message = (
+                        _('Creating new database models for %(app_label)s '
+                          '(%(model_names)s)...\n')
+                        % {
+                            'app_label': app_label,
+                            'model_names': ', '.join(model_names),
+                        }
+                    )
                 else:
-                    self.stdout.write(
-                        _('Creating new database models for %s...\n')
-                        % app_label)
+                    message = (
+                        _('Creating new database models for '
+                          '%(app_label)s...\n')
+                        % {
+                            'app_label': app_label,
+                        }
+                    )
+
+                self.stdout.write(message)
 
         if verbosity > 1:
             @receiver(applied_evolution, sender=evolver)
-            def _on_applied_evolution(task, **kwargs):
-                self.stdout.write(
-                    _('Successfully applied database evolution for %s.\n')
-                    % task.app_label)
+            def _on_applied_evolution(task, evolutions, **kwargs):
+                if verbosity > 2:
+                    message = (
+                        _('Successfully applied database evolutions for '
+                          '%(app_label)s (%(evolution_labels)s).\n')
+                        % {
+                            'app_label': task.app_label,
+                            'evolution_labels': ', '.join(
+                                evolution.label
+                                for evolution in evolutions
+                            ),
+                        }
+                    )
+                else:
+                    message = (
+                        _('Successfully applied database evolutions for '
+                          '%(app_label)s.\n')
+                        % {
+                            'app_label': task.app_label,
+                        }
+                    )
+
+                self.stdout.write(message)
 
             @receiver(applied_migration, sender=evolver)
             def _on_applied_migration(migration, **kwargs):
                 self.stdout.write(
-                    _('Successfully applied database migration %s for %s.\n')
-                    % (migration.name, migration.app_label))
+                    _('Successfully applied database migration '
+                      '%(migration_name)s for %(app_label)s.\n')
+                    % {
+                        'app_label': migration.app_label,
+                        'migration_name': migration.name,
+                    })
 
             @receiver(created_models, sender=evolver)
             def _on_created_models(app_label, model_names, **kwargs):
                 if verbosity > 2:
-                    self.stdout.write(
+                    message = (
                         _('Successfully created new database models for '
-                          '%s (%s).\n')
-                        % (app_label, ', '.join(model_names)))
+                          '%(app_label)s (%(model_names)s).\n')
+                        % {
+                            'app_label': app_label,
+                            'model_names': ', '.join(model_names),
+                        }
+                    )
                 else:
-                    self.stdout.write(
-                        _('Successfully created new database models for %s.\n')
-                        % app_label)
+                    message = (
+                        _('Successfully created new database models for '
+                          '%(app_label)s.\n')
+                        % {
+                            'app_label': app_label,
+                        }
+                    )
+
+                self.stdout.write(message)
 
         self.stdout.write(
             '\n%s\n\n'

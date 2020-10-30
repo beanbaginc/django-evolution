@@ -590,7 +590,7 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         version.signature.add_app_sig(app_sig)
         version.save()
 
-        self.saw_signals = set()
+        self.saw_signals = []
         applying_evolution.connect(self._on_applying_evolution)
         applied_evolution.connect(self._on_applied_evolution)
         applying_migration.connect(self._on_applying_migration)
@@ -848,8 +848,26 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
             EvolveAppTask.prepare_tasks(evolver, [task])
             EvolveAppTask.execute_tasks(evolver, [task])
 
-            self.assertEqual(self.saw_signals,
-                             set(['applying_migration', 'applied_migration']))
+            self.assertEqual(
+                self.saw_signals,
+                [
+                    ('applying_migration', {
+                        'sender': evolver,
+                        'migration': app_migrations[0],
+                    }),
+                    ('applied_migration', {
+                        'sender': evolver,
+                        'migration': app_migrations[0],
+                    }),
+                    ('applying_migration', {
+                        'sender': evolver,
+                        'migration': app_migrations[1],
+                    }),
+                    ('applied_migration', {
+                        'sender': evolver,
+                        'migration': app_migrations[1],
+                    }),
+                ])
 
             applied_migrations = \
                 MigrationList.from_database(evolver.connection)
@@ -954,9 +972,34 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
             EvolveAppTask.execute_tasks(evolver, [task])
 
             # Check that we've seen all the signals we expect.
-            self.assertEqual(self.saw_signals,
-                             set(['applying_migration', 'applied_migration',
-                                  'applying_evolution', 'applied_evolution']))
+            self.assertEqual(
+                self.saw_signals,
+                [
+                    ('applying_evolution', {
+                        'evolutions': [
+                            ('tests', 'add_field2'),
+                            ('tests', 'move_to_migrations'),
+                        ],
+                        'sender': evolver,
+                        'task': task,
+                    }),
+                    ('applied_evolution', {
+                        'evolutions': [
+                            ('tests', 'add_field2'),
+                            ('tests', 'move_to_migrations'),
+                        ],
+                        'sender': evolver,
+                        'task': task,
+                    }),
+                    ('applying_migration', {
+                        'sender': evolver,
+                        'migration': app_migrations[1],
+                    }),
+                    ('applied_migration', {
+                        'sender': evolver,
+                        'migration': app_migrations[1],
+                    }),
+                ])
 
             # Check the app signature for the new state.
             self.assertEqual(app_sig.upgrade_method, UpgradeMethod.MIGRATIONS)
@@ -1148,8 +1191,24 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
             task.prepare(hinted=False)
             task.execute(connections['default'].cursor())
 
-        self.assertEqual(self.saw_signals, set(['applying_evolution',
-                                                'applied_evolution']))
+        self.assertEqual(
+            self.saw_signals,
+            [
+                ('applying_evolution', {
+                    'evolutions': [
+                        ('tests', 'my_evolution1'),
+                    ],
+                    'sender': evolver,
+                    'task': task,
+                }),
+                ('applied_evolution', {
+                    'evolutions': [
+                        ('tests', 'my_evolution1'),
+                    ],
+                    'sender': evolver,
+                    'task': task,
+                }),
+            ])
 
     def test_execute_with_new_models(self):
         """Testing EvolveAppTask.execute with new models and default behavior
@@ -1162,7 +1221,7 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         task.prepare(hinted=False)
         task.execute(connections['default'].cursor())
 
-        self.assertEqual(self.saw_signals, set())
+        self.assertEqual(self.saw_signals, [])
 
     def test_execute_with_new_models_and_create_models_now(self):
         """Testing EvolveAppTask.execute with new models and
@@ -1178,8 +1237,20 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
             task.execute(connections['default'].cursor(),
                          create_models_now=True)
 
-        self.assertEqual(self.saw_signals, set(['creating_models',
-                                                'created_models']))
+        self.assertEqual(
+            self.saw_signals,
+            [
+                ('creating_models', {
+                    'app_label': 'tests',
+                    'model_names': ['TestModel'],
+                    'sender': evolver,
+                }),
+                ('created_models', {
+                    'app_label': 'tests',
+                    'model_names': ['TestModel'],
+                    'sender': evolver,
+                }),
+            ])
 
     def test_get_evolution_content(self):
         """Testing EvolveAppTask.get_evolution_content"""
@@ -1210,23 +1281,153 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
             " max_length=100),\n"
             "]")
 
-    def _on_applying_evolution(self, **kwargs):
-        self.saw_signals.add('applying_evolution')
+    def _on_applying_evolution(self, sender, task, evolutions, **kwargs):
+        """Handle the applying_evolution signal.
 
-    def _on_applied_evolution(self, **kwargs):
-        self.saw_signals.add('applied_evolution')
+        This will store information on the signal emission in
+        :py:attr:`saw_signals` for inspection by unit tests.
 
-    def _on_applying_migration(self, **kwargs):
-        self.saw_signals.add('applying_migration')
+        Args:
+            sender (django_evolution.evolve.Evolver):
+                The sender of the signal.
 
-    def _on_applied_migration(self, **kwargs):
-        self.saw_signals.add('applied_migration')
+            task (django_evolution.evolve.EvolveAppTask):
+                The task that's evolving the app.
 
-    def _on_creating_models(self, **kwargs):
-        self.saw_signals.add('creating_models')
+            evolutions (list of django_evolution.models.Evolution):
+                The list of evolutions that are being applied.
 
-    def _on_created_models(self, **kwargs):
-        self.saw_signals.add('created_models')
+            **kwargs (dict):
+                Additional keyword arguments from the signal.
+        """
+        self.saw_signals.append(('applying_evolution', {
+            'sender': sender,
+            'task': task,
+            'evolutions': [
+                (evolution.app_label, evolution.label)
+                for evolution in evolutions
+            ],
+        }))
+
+    def _on_applied_evolution(self, sender, task, evolutions, **kwargs):
+        """Handle the applied_evolution signal.
+
+        This will store information on the signal emission in
+        :py:attr:`saw_signals` for inspection by unit tests.
+
+        Args:
+            sender (django_evolution.evolve.Evolver):
+                The sender of the signal.
+
+            task (django_evolution.evolve.EvolveAppTask):
+                The task that evolved the app.
+
+            evolutions (list of django_evolution.models.Evolution):
+                The list of evolutions that were applied.
+
+            **kwargs (dict):
+                Additional keyword arguments from the signal.
+        """
+        self.saw_signals.append(('applied_evolution', {
+            'sender': sender,
+            'task': task,
+            'evolutions': [
+                (evolution.app_label, evolution.label)
+                for evolution in evolutions
+            ],
+        }))
+
+    def _on_applying_migration(self, sender, migration, **kwargs):
+        """Handle the applying_migration signal.
+
+        This will store information on the signal emission in
+        :py:attr:`saw_signals` for inspection by unit tests.
+
+        Args:
+            sender (django_evolution.evolve.Evolver):
+                The sender of the signal.
+
+            migration (django.db.migrations.migration.Migration):
+                The migration that will be applied.
+
+            **kwargs (dict):
+                Additional keyword arguments from the signal.
+        """
+        self.saw_signals.append(('applying_migration', {
+            'sender': sender,
+            'migration': migration,
+        }))
+
+    def _on_applied_migration(self, sender, migration, **kwargs):
+        """Handle the applied_migration signal.
+
+        This will store information on the signal emission in
+        :py:attr:`saw_signals` for inspection by unit tests.
+
+        Args:
+            sender (django_evolution.evolve.Evolver):
+                The sender of the signal.
+
+            migration (django.db.migrations.migration.Migration):
+                The migration that was applied.
+
+            **kwargs (dict):
+                Additional keyword arguments from the signal.
+        """
+        self.saw_signals.append(('applied_migration', {
+            'sender': sender,
+            'migration': migration,
+        }))
+
+    def _on_creating_models(self, sender, app_label, model_names, **kwargs):
+        """Handle the creating_models signal.
+
+        This will store information on the signal emission in
+        :py:attr:`saw_signals` for inspection by unit tests.
+
+        Args:
+            sender (django_evolution.evolve.Evolver):
+                The sender of the signal.
+
+            app_label (unicode):
+                The app label the models are associated with.
+
+            model_names (list of unicode):
+                The list of model names that are being created.
+
+            **kwargs (dict):
+                Additional keyword arguments from the signal.
+        """
+        self.saw_signals.append(('creating_models', {
+            'app_label': app_label,
+            'model_names': model_names,
+            'sender': sender,
+        }))
+
+    def _on_created_models(self, sender, app_label, model_names, **kwargs):
+        """Handle the created_models signal.
+
+        This will store information on the signal emission in
+        :py:attr:`saw_signals` for inspection by unit tests.
+
+        Args:
+            sender (django_evolution.evolve.Evolver):
+                The sender of the signal.
+
+            app_label (unicode):
+                The app label the models are associated with.
+
+            model_names (list of unicode):
+                The list of model names that were created.
+
+            **kwargs (dict):
+                Additional keyword arguments from the signal.
+        """
+        self.saw_signals.append(('created_models', {
+            'app_label': app_label,
+            'model_names': model_names,
+            'sender': sender,
+        }))
 
 
 class PurgeAppTaskTests(BaseEvolverTestCase):
