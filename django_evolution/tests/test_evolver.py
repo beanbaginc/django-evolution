@@ -11,8 +11,6 @@ except ImportError:
     # Django < 1.7
     migrations = None
 
-from nose import SkipTest
-
 from django_evolution.compat.apps import (get_app,
                                           get_apps,
                                           register_app_models)
@@ -33,7 +31,6 @@ from django_evolution.signals import (applied_evolution,
                                       created_models,
                                       creating_models)
 from django_evolution.signature import AppSignature, ModelSignature
-from django_evolution.support import supports_migrations
 from django_evolution.tests import models as evo_test
 from django_evolution.tests.evolutions_app import models as test_app2
 from django_evolution.tests.base_test_case import (EvolutionTestCase,
@@ -43,6 +40,7 @@ from django_evolution.tests.utils import (ensure_test_db,
                                           execute_test_sql,
                                           register_models)
 from django_evolution.utils.apps import get_app_label
+from django_evolution.tests.decorators import requires_migrations
 from django_evolution.utils.migrations import (MigrationList,
                                                record_applied_migrations)
 
@@ -611,13 +609,11 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         creating_models.disconnect(self._on_creating_models)
         created_models.disconnect(self._on_created_models)
 
+    @requires_migrations
     def test_prepare_tasks_with_migrations_new_app(self):
         """Testing EvolveAppTask.prepare_tasks with migrations for new
         app
         """
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
         class MigrationTestModel(BaseTestModel):
             field1 = models.IntegerField()
             field3 = models.BooleanField()
@@ -703,13 +699,11 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                 ('tests', '0003_remove_field'),
             ])
 
+    @requires_migrations
     def test_prepare_tasks_with_migrations_some_applied(self):
         """Testing EvolveAppTask.prepare_tasks with migrations and some
         already applied
         """
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
         class MigrationTestModel(BaseTestModel):
             field1 = models.IntegerField()
             field3 = models.BooleanField()
@@ -794,11 +788,9 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                 ('tests', '0003_remove_field'),
             ])
 
+    @requires_migrations
     def test_execute_tasks_with_migrations(self):
         """Testing EvolveAppTask.execute_tasks with migrations"""
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
         class MigrationTestModel(BaseTestModel):
             field1 = models.IntegerField()
             field2 = models.CharField(max_length=10)
@@ -895,12 +887,10 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                                               field2='foo',
                                               field3=True)
 
+    @requires_migrations
     def test_execute_tasks_with_evolutions_and_migrations(self):
         """Testing EvolveAppTask.execute_tasks with evolutions and migrations
         """
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
         class EvolveMigrateTestModel(BaseTestModel):
             field1 = models.IntegerField()
 

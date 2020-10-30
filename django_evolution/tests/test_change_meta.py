@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 
 from django.db import models
 from django.db.models import Q
-from nose import SkipTest
 
 try:
     # Django >= 2.2
@@ -23,9 +22,11 @@ except ImportError:
 
 from django_evolution.mutations import ChangeMeta
 from django_evolution.support import (supports_constraints,
-                                      supports_indexes,
-                                      supports_index_together)
+                                      supports_indexes)
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.decorators import (requires_meta_constraints,
+                                               requires_meta_index_together,
+                                               requires_meta_indexes)
 from django_evolution.tests.models import BaseTestModel
 
 
@@ -111,12 +112,9 @@ class ChangeMetaConstraintsTests(EvolutionTestCase):
     )
 
     @classmethod
+    @requires_meta_constraints
     def setUpClass(cls):
         super(ChangeMetaConstraintsTests, cls).setUpClass()
-
-        if not supports_constraints:
-            raise SkipTest('Meta.constraints is not supported on this version '
-                           'of Django')
 
     def test_keeping_empty(self):
         """Testing ChangeMeta(constraints) and keeping list empty"""
@@ -372,12 +370,9 @@ class ChangeMetaIndexesTests(EvolutionTestCase):
     )
 
     @classmethod
+    @requires_meta_indexes
     def setUpClass(cls):
         super(ChangeMetaIndexesTests, cls).setUpClass()
-
-        if not supports_indexes:
-            raise SkipTest('Meta.indexes is not supported on this version '
-                           'of Django')
 
     def test_keeping_empty(self):
         """Testing ChangeMeta(indexes) and keeping list empty"""
@@ -580,12 +575,9 @@ class ChangeMetaIndexTogetherTests(EvolutionTestCase):
     )
 
     @classmethod
+    @requires_meta_index_together
     def setUpClass(cls):
         super(ChangeMetaIndexTogetherTests, cls).setUpClass()
-
-        if not supports_index_together:
-            raise SkipTest('Meta.index_together is not supported on this '
-                           'version of Django')
 
     def test_keeping_empty(self):
         """Testing ChangeMeta(index_together) and keeping list empty"""

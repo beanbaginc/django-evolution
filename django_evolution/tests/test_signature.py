@@ -6,7 +6,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import Q
 from django.db.utils import DEFAULT_DB_ALIAS
-from nose import SkipTest
 
 try:
     # Django >= 2.2
@@ -38,6 +37,8 @@ from django_evolution.signature import (AppSignature,
                                         ProjectSignature)
 from django_evolution.support import supports_constraints, supports_indexes
 from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.decorators import (requires_meta_constraints,
+                                               requires_meta_indexes)
 from django_evolution.tests.models import BaseTestModel
 
 
@@ -125,11 +126,8 @@ class ConstraintSignatureTests(BaseSignatureTestCase):
     """Unit tests for ConstraintSignature."""
 
     @classmethod
+    @requires_meta_constraints
     def setUpClass(cls):
-        if not supports_constraints:
-            raise SkipTest('Meta.constraints is not supported on this version '
-                           'of Django')
-
         super(ConstraintSignatureTests, cls).setUpClass()
 
     def test_from_constraint(self):
@@ -1698,12 +1696,9 @@ class ModelSignatureTests(BaseSignatureTestCase):
         with self.assertRaisesMessage(MissingSignatureError, message):
             model_sig.remove_field_sig('char_field')
 
+    @requires_meta_constraints
     def test_add_constraint(self):
         """Testing ModelSignature.add_constraint"""
-        if not supports_constraints:
-            raise SkipTest('Meta.constraints is not supported on this version '
-                           'of Django')
-
         model_sig = ModelSignature(model_name='TestModel',
                                    table_name='testmodel')
         model_sig.add_constraint(UniqueConstraint(
@@ -1722,12 +1717,9 @@ class ModelSignatureTests(BaseSignatureTestCase):
             'condition': Q(field1__gte=100),
         })
 
+    @requires_meta_constraints
     def test_add_constraint_sig(self):
         """Testing ModelSignature.add_constraint_sig"""
-        if not supports_constraints:
-            raise SkipTest('Meta.constraints is not supported on this version '
-                           'of Django')
-
         model_sig = ModelSignature(model_name='TestModel',
                                    table_name='testmodel')
 
@@ -1742,12 +1734,9 @@ class ModelSignatureTests(BaseSignatureTestCase):
 
         self.assertEqual(list(model_sig.constraint_sigs), [constraint_sig])
 
+    @requires_meta_indexes
     def test_add_index(self):
         """Testing ModelSignature.add_index"""
-        if Index is None:
-            raise SkipTest('Meta.indexes is not supported on this version '
-                           'of Django')
-
         model_sig = ModelSignature(model_name='TestModel',
                                    table_name='testmodel')
         model_sig.add_index(Index(name='index1', fields=['field1', 'field2']))
@@ -2210,13 +2199,10 @@ class ModelSignatureTests(BaseSignatureTestCase):
                                            table_name='testmodel',
                                            db_tablespace='space2'))
 
+    @requires_meta_constraints
     def test_ne_with_different_constraint_sigs(self):
         """Testing ModelSignature.__ne__ with different constraint signatures
         """
-        if not supports_constraints:
-            raise SkipTest('Meta.constraints is not supported on this version '
-                           'of Django')
-
         model_sig1 = ModelSignature(model_name='TestModel',
                                     table_name='testmodel')
         model_sig1.add_constraint_sig(ConstraintSignature(
@@ -2317,12 +2303,9 @@ class ModelSignatureTests(BaseSignatureTestCase):
 class IndexSignatureTests(BaseSignatureTestCase):
     """Unit tests for IndexSignature."""
 
+    @requires_meta_indexes
     def test_from_index(self):
         """Testing IndexSignature.from_index"""
-        if Index is None:
-            raise SkipTest('Meta.indexes is not supported on this version '
-                           'of Django')
-
         index_sig = IndexSignature.from_index(
             Index(name='index1', fields=['field1', 'field2']))
 

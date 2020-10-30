@@ -2,9 +2,6 @@
 
 from __future__ import unicode_literals
 
-from unittest import SkipTest
-
-import django
 from django.db import DEFAULT_DB_ALIAS, connections, models
 
 try:
@@ -24,6 +21,9 @@ from django_evolution.signature import AppSignature
 from django_evolution.support import supports_migrations
 from django_evolution.tests.base_test_case import (MigrationsTestsMixin,
                                                    TestCase)
+from django_evolution.tests.decorators import (
+    requires_migrations,
+    requires_migration_history_checks)
 from django_evolution.tests.models import BaseTestModel
 from django_evolution.tests.utils import register_models
 from django_evolution.utils.migrations import (MigrationExecutor,
@@ -92,11 +92,9 @@ class MigrationListTests(TestCase):
         self.assertTrue(migration_list.has_migration_info(app_label='tests',
                                                           name='0002_stuff'))
 
+    @requires_migrations
     def test_from_database(self):
         """Testing MigrationList.from_database"""
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
         connection = connections[DEFAULT_DB_ALIAS]
 
         applied_migrations = MigrationList()
@@ -182,11 +180,9 @@ class MigrationListTests(TestCase):
                 ],
             })
 
+    @requires_migrations
     def test_add_migration(self):
         """Testing MigrationList.add_migration"""
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
         migration1 = InitialMigration('0001_initial', 'tests')
         migration2 = AddFieldMigration('0002_add_field', 'tests')
 
@@ -229,11 +225,9 @@ class MigrationListTests(TestCase):
                 ],
             })
 
+    @requires_migrations
     def test_add_recorded_migration(self):
         """Testing MigrationList.add_recorded_migration"""
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
         recorded_migration1 = MigrationRecorder.Migration(
             app='tests',
             name='0001_initial',
@@ -672,11 +666,9 @@ class MigrationListTests(TestCase):
 class MigrationLoadTests(MigrationsTestsMixin, TestCase):
     """Unit tests for django_evolution.utils.migrations.MigrationLoader."""
 
+    @requires_migrations
     def test_build_graph(self):
         """Testing MigrationLoader.build_graph"""
-        if django.VERSION[:2] < (1, 7):
-            raise SkipTest('Not supported on Django < 1.7')
-
         loader = MigrationLoader(connection=connections[DEFAULT_DB_ALIAS])
         graph = loader.graph
         migration = loader.get_migration('auth', '0001_initial')
@@ -686,11 +678,9 @@ class MigrationLoadTests(MigrationsTestsMixin, TestCase):
         self.assertIsNot(loader.get_migration('auth', '0001_initial'),
                          migration)
 
+    @requires_migrations
     def test_build_graph_with_reload_migrations_false(self):
         """Testing MigrationLoader.build_graph with reload_migrations=False"""
-        if django.VERSION[:2] < (1, 7):
-            raise SkipTest('Not supported on Django < 1.7')
-
         loader = MigrationLoader(connection=connections[DEFAULT_DB_ALIAS])
         graph = loader.graph
         migration = loader.get_migration('auth', '0001_initial')
@@ -704,11 +694,9 @@ class MigrationLoadTests(MigrationsTestsMixin, TestCase):
 class MigrationExecutorTests(MigrationsTestsMixin, TestCase):
     """Unit tests for django_evolution.utils.migrations.MigrationExecutor."""
 
+    @requires_migration_history_checks
     def test_run_checks_with_bad_history(self):
         """Testing MigrationExecutor.run_checks with bad history"""
-        if django.VERSION[:2] < (1, 10):
-            raise SkipTest('Not supported on Django < 1.10')
-
         connection = connections[DEFAULT_DB_ALIAS]
 
         applied_migrations = MigrationList()
@@ -729,11 +717,9 @@ class MigrationExecutorTests(MigrationsTestsMixin, TestCase):
         with self.assertRaises(MigrationHistoryError):
             executor.run_checks()
 
+    @requires_migrations
     def test_run_checks_with_conflicts(self):
         """Testing MigrationExecutor.run_checks with conflicts"""
-        if django.VERSION[:2] < (1, 7):
-            raise SkipTest('Not supported on Django < 1.7')
-
         connection = connections[DEFAULT_DB_ALIAS]
 
         custom_migrations = MigrationList()
@@ -758,19 +744,15 @@ class MigrationExecutorTests(MigrationsTestsMixin, TestCase):
 class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
     """Unit tests for django_evolution.utils.migrations."""
 
+    @requires_migrations
     def test_has_migrations_module(self):
         """Testing has_migrations_module"""
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
         self.assertFalse(has_migrations_module(get_app('django_evolution')))
         self.assertTrue(has_migrations_module(get_app('auth')))
 
+    @requires_migrations
     def test_record_applied_migrations(self):
         """Testing record_applied_migrations"""
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
         connection = connections[DEFAULT_DB_ALIAS]
 
         # Ideally we'd do an assertNumQueries(2), but MigrationRecorder doesn't
@@ -792,11 +774,9 @@ class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
         self.assertIn(('tests', '0001_initial'), applied_migrations)
         self.assertIn(('tests', '0002_stuff'), applied_migrations)
 
+    @requires_migrations
     def test_unrecord_applied_migrations(self):
         """Testing unrecord_applied_migrations"""
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
         connection = connections[DEFAULT_DB_ALIAS]
 
         migrations = MigrationList()
@@ -866,34 +846,28 @@ class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
                 ('app4', '0002_more_stuff'),
             ])
 
+    @requires_migrations
     def test_is_migration_initial_with_false(self):
         """Testing is_migration_initial with Migration.initial = False"""
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
         class MyMigration(migrations.Migration):
             initial = False
 
         self.assertFalse(is_migration_initial(MyMigration('0001_initial',
                                                           'tests')))
 
+    @requires_migrations
     def test_is_migration_initial_with_true(self):
         """Testing is_migration_initial with Migration.initial = True"""
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
         class MyMigration(migrations.Migration):
             initial = True
 
         self.assertTrue(is_migration_initial(MyMigration('0001_initial',
                                                          'tests')))
 
+    @requires_migrations
     def test_is_migration_initial_with_no_parent_dep_in_app(self):
         """Testing is_migration_initial with no parent dependency in same app
         """
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
         class MyMigration(migrations.Migration):
             dependencies = [
                 ('other_app', 'some_dep'),
@@ -902,11 +876,9 @@ class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
         self.assertTrue(is_migration_initial(MyMigration('0001_initial',
                                                          'tests')))
 
+    @requires_migrations
     def test_is_migration_initial_with_parent_dep_in_app(self):
         """Testing is_migration_initial with parent dependency in same app"""
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
         class MyMigration(migrations.Migration):
             dependencies = [
                 ('tests', 'some_dep'),
@@ -915,11 +887,9 @@ class MigrationUtilsTests(MigrationsTestsMixin, TestCase):
         self.assertFalse(is_migration_initial(MyMigration('0001_initial',
                                                           'tests')))
 
+    @requires_migrations
     def test_apply_migrations(self):
         """Testing apply_migrations"""
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
         database_state = DatabaseState(db_name=DEFAULT_DB_ALIAS)
         register_models(database_state=database_state,
                         models=[('MigrationTestModel', MigrationTestModel)])

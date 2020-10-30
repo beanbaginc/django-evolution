@@ -2,8 +2,6 @@
 
 from __future__ import unicode_literals
 
-from unittest import SkipTest
-
 from django.db import DEFAULT_DB_ALIAS, connections
 
 from django_evolution.compat.apps import get_app
@@ -11,6 +9,7 @@ from django_evolution.models import Evolution, Version
 from django_evolution.support import supports_migrations
 from django_evolution.tests.base_test_case import (MigrationsTestsMixin,
                                                    TestCase)
+from django_evolution.tests.decorators import requires_migrations
 from django_evolution.tests.evolutions_app.models import EvolutionsAppTestModel
 from django_evolution.tests.evolutions_app2.models import \
     EvolutionsApp2TestModel
@@ -153,11 +152,9 @@ class EvolutionGraphTests(MigrationsTestsMixin, TestCase):
                 'app': app,
             })
 
+    @requires_migrations
     def test_add_migration_plan(self):
         """Testing EvolutionGraph.add_migration_plan"""
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
         class TestsInitialMigration(migrations.Migration):
             pass
 
@@ -290,11 +287,9 @@ class EvolutionGraphTests(MigrationsTestsMixin, TestCase):
                 'app': app,
             })
 
+    @requires_migrations
     def test_mark_migrations_applied(self):
         """Testing EvolutionGraph.mark_migrations_applied"""
-        if not supports_migrations:
-            raise SkipTest('Not used on Django < 1.7')
-
         class TestsInitialMigration(migrations.Migration):
             pass
 
