@@ -18,6 +18,7 @@ from django_evolution.compat.apps import (get_app,
                                           register_app_models)
 from django_evolution.compat.db import sql_delete
 from django_evolution.consts import UpgradeMethod
+from django_evolution.db.state import DatabaseState
 from django_evolution.errors import (EvolutionTaskAlreadyQueuedError,
                                      QueueEvolverTaskError)
 from django_evolution.evolve import (BaseEvolutionTask, EvolveAppTask,
@@ -100,9 +101,10 @@ class EvolverTests(BaseEvolverTestCase):
         execute_transaction(sql_delete(get_app('django_evolution')))
 
         # Make sure these are really gone.
-        with self.assertRaises(DatabaseError):
-            Version.objects.count()
+        state = DatabaseState(db_name='default')
+        self.assertFalse(state.has_model(Version))
 
+        # Create the new Evolver, which will re-create the tables.
         Evolver()
 
         version = Version.objects.get()

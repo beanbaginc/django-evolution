@@ -1167,10 +1167,17 @@ class Evolver(object):
         self._tasks_by_id = OrderedDict()
         self._tasks_prepared = False
 
-        try:
-            latest_version = \
-                Version.objects.current_version(using=database_name)
-        except (DatabaseError, Version.DoesNotExist):
+        latest_version = None
+
+        if self.database_state.has_model(Version):
+            try:
+                latest_version = \
+                    Version.objects.current_version(using=database_name)
+            except Version.DoesNotExist:
+                # We'll populate this next.
+                pass
+
+        if latest_version is None:
             # Either the models aren't yet synced to the database, or we
             # don't have a saved project signature, so let's set these up.
             self.project_sig = ProjectSignature()
