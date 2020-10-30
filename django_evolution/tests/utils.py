@@ -299,7 +299,7 @@ def execute_transaction(sql, database=DEFAULT_DB_ALIAS):
     Args:
         sql (unicode or list):
             The SQL to execute. This must be a value accepted by
-            :py:func:`~django_evolution.utils.execute_sql`.
+            :py:func:`~django_evolution.utils.sql.execute_sql`.
 
         database (unicode, optional):
             The name of the database to use.
@@ -325,19 +325,31 @@ def execute_transaction(sql, database=DEFAULT_DB_ALIAS):
 
 
 @contextmanager
-def ensure_test_db(model_entries=[], app_label='tests',
-                   database=DEFAULT_DB_ALIAS):
+def ensure_test_db(model_entries=[], end_model_entries=None,
+                   app_label='tests', database=DEFAULT_DB_ALIAS):
     """Ensure tables are created and destroyed when running code.
 
     This will register all necessary models and indexes, provided by the
     caller, and populate them in the database. After the inner context has
     completed, the models and indexes will be destroyed.
 
+    Version Changed:
+        2.1:
+        Added the ``end_model_entries`` argument.
+
     Args:
         model_entries (list of tuple, optional):
             The list of model entries to add to the database. Each entry
             is a tuple containing the model class and the name to register
             for it.
+
+        end_model_entries (list of tuple, optional):
+            The list of model entries to add/replace in the database, once the
+            models in ``model_entries`` are written. This allows the model
+            state to reflect the ending signature for a test.
+
+            Each entry is a tuple containing the model class and the name to
+            register for it.
 
         app_label (unicode, optional):
             The application label for the models to register.
@@ -347,12 +359,20 @@ def ensure_test_db(model_entries=[], app_label='tests',
     """
     # Set up the initial state of the app cache.
     if model_entries:
-        register_app_models(app_label, model_entries, reset=True)
+        register_app_models(app_label=app_label,
+                            model_infos=model_entries,
+                            reset=True)
 
         # Install the initial tables and indexes.
         execute_transaction(sql_create_app(app=evo_test,
                                            db_name=database),
                             database)
+
+    if end_model_entries:
+        # Set the app cache to the end state.
+        register_app_models(app_label=app_label,
+                            model_infos=end_model_entries,
+                            reset=True)
 
     try:
         yield
@@ -360,56 +380,6 @@ def ensure_test_db(model_entries=[], app_label='tests',
         # Clean up the database.
         execute_transaction(sql_delete(evo_test, database),
                             database)
-
-
-def execute_test_sql(start_models, end_models, generate_sql_func,
-                     app_label='tests', database=DEFAULT_DB_ALIAS):
-    """Execute SQL for a unit test.
-
-    This will register all necessary models and indexes, as defined by the
-    starting signature, and populate them in the database. It then sets the
-    model state to reflect the ending signature, allowing the unit test to
-    perform operations to go from the in-database starting state to the
-    new ending signature state.
-
-    The SQL provided by ``generate_sql_func`` will be output to the console,
-    to aid in debugging when tests fail.
-
-    Args:
-        start_models (dict):
-            The models for the initial database state, used to generate
-            tables and indexes in the database.
-
-        end_models (dict):
-            The models for the ending database state, reflecting what the
-            evolutions will be attempting to evolve to.
-
-        generate_sql_func (callable):
-            A function that takes no parameters and returns SQL to execute,
-            once the database and app/model states are set up.
-
-        app_label (unicode, optional):
-            The application label for any models contained in the signature.
-
-        database (unicode, optional):
-            The name of the database to execute on.
-
-    Returns:
-        list of unicode:
-        The list of executed SQL statements for the test.
-    """
-    with ensure_test_db(model_entries=six.iteritems(start_models),
-                        app_label=app_label,
-                        database=database):
-        # Set the app cache to the end state. generate_sql will depend on
-        # this state.
-        register_app_models(app_label, six.iteritems(end_models), reset=True)
-
-        # Execute and output the SQL for the test.
-        sql = generate_sql_func()
-        sql_out = execute_transaction(sql, database)
-
-        return sql_out
 
 
 def get_sql_mappings(mapping_key, db_name):

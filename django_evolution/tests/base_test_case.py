@@ -15,7 +15,8 @@ from django_evolution.diff import Diff
 from django_evolution.mutators import AppMutator
 from django_evolution.support import supports_migrations
 from django_evolution.tests.utils import (create_test_project_sig,
-                                          execute_test_sql,
+                                          ensure_test_db,
+                                          execute_transaction,
                                           get_sql_mappings,
                                           register_models)
 from django_evolution.utils.migrations import unrecord_applied_migrations
@@ -441,11 +442,13 @@ class EvolutionTestCase(TestCase):
             django.db.utils.OperationalError:
                 There was an error executing SQL.
         """
+        app_label = 'tests'
+
         def run_mutations():
             if rescan_indexes:
                 self.test_database_state.rescan_tables()
 
-            app_mutator = AppMutator(app_label='tests',
+            app_mutator = AppMutator(app_label=app_label,
                                      project_sig=test_sig,
                                      database_state=self.test_database_state,
                                      database=db_name)
@@ -458,10 +461,12 @@ class EvolutionTestCase(TestCase):
         self.test_database_state = self.database_state.clone()
         test_sig = self.start_sig.clone()
 
-        sql = execute_test_sql(start_models=self.start,
-                               end_models=end,
-                               generate_sql_func=run_mutations,
-                               database=db_name)
+        with ensure_test_db(model_entries=six.iteritems(self.start),
+                            end_model_entries=six.iteritems(end),
+                            app_label=app_label,
+                            database=db_name):
+            sql = execute_transaction(run_mutations(),
+                                      database=db_name)
 
         if sql_name is not None:
             self.assertSQLMappingEqual(sql, sql_name, db_name)
