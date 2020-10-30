@@ -12,8 +12,10 @@ from django_evolution.support import supports_migrations
 from django_evolution.tests.base_test_case import TestCase
 from django_evolution.utils.evolutions import (get_app_upgrade_info,
                                                get_applied_evolutions,
+                                               get_evolution_module,
                                                get_evolution_sequence,
                                                get_evolutions_module,
+                                               get_evolutions_module_name,
                                                get_evolutions_path,
                                                get_evolutions_source)
 
@@ -52,6 +54,35 @@ class GetEvolutionsSequenceTests(TestCase):
                          [])
 
 
+class GetEvolutionsModuleNameTests(TestCase):
+    """Unit tests for get_evolutions_module_name."""
+
+    def test_with_app(self):
+        """Testing get_evolutions_module_name with app-provided evolutions"""
+        self.assertEqual(
+            get_evolutions_module_name(get_app('django_evolution')),
+            'django_evolution.evolutions')
+
+    def test_with_builtin(self):
+        """Testing get_evolutions_module with built-in evolutions"""
+        self.assertEqual(
+            get_evolutions_module_name(get_app('auth')),
+            'django_evolution.builtin_evolutions')
+
+    def test_with_project(self):
+        """Testing get_evolutions_module_name with project-provided evolutions
+        """
+        custom_evolutions = {
+            'django_evolution':
+                'django_evolution.tests.evolutions_app.evolutions',
+        }
+
+        with self.settings(CUSTOM_EVOLUTIONS=custom_evolutions):
+            self.assertEqual(
+                get_evolutions_module_name(get_app('django_evolution')),
+                'django_evolution.tests.evolutions_app.evolutions')
+
+
 class GetEvolutionsModuleTests(TestCase):
     """Unit tests for get_evolutions_module."""
 
@@ -74,17 +105,58 @@ class GetEvolutionsModuleTests(TestCase):
         from django_evolution.tests.evolutions_app import evolutions
 
         custom_evolutions = {
-            'django_evolution.tests.evolutions_app':
+            'django_evolution':
                 'django_evolution.tests.evolutions_app.evolutions',
         }
 
         with self.settings(CUSTOM_EVOLUTIONS=custom_evolutions):
-            self.assertIs(get_evolutions_module(get_app('evolutions_app')),
+            self.assertIs(get_evolutions_module(get_app('django_evolution')),
                           evolutions)
 
     def test_with_not_found(self):
         """Testing get_evolutions_module with evolutions not found"""
         self.assertIsNone(get_evolutions_module(get_app('migrations_app')))
+
+
+class GetEvolutionModuleTests(TestCase):
+    """Unit tests for get_evolution_module."""
+
+    def test_with_app(self):
+        """Testing get_evolution_module with app-provided evolutions"""
+        from django_evolution.tests.evolutions_app.evolutions import \
+            first_evolution
+
+        self.assertIs(get_evolution_module(get_app('evolutions_app'),
+                                           'first_evolution'),
+                      first_evolution)
+
+    def test_with_builtin(self):
+        """Testing get_evolution_module with built-in evolutions"""
+        from django_evolution.builtin_evolutions import auth_delete_message
+
+        self.assertIs(get_evolution_module(get_app('auth'),
+                                           'auth_delete_message'),
+                      auth_delete_message)
+
+    def test_with_project(self):
+        """Testing get_evolution_module with project-provided evolutions"""
+        from django_evolution.tests.evolutions_app.evolutions import \
+            first_evolution
+
+        custom_evolutions = {
+            'django_evolution':
+                'django_evolution.tests.evolutions_app.evolutions',
+        }
+
+        with self.settings(CUSTOM_EVOLUTIONS=custom_evolutions):
+            self.assertIs(get_evolution_module(get_app('django_evolution'),
+                                               'first_evolution'),
+                          first_evolution)
+
+    def test_with_not_found(self):
+        """Testing get_evolution_module with evolutions not found"""
+        self.assertIsNone(get_evolution_module(get_app('evolutions_app'),
+                                               'xxx'))
 
 
 class GetEvolutionsPathTests(TestCase):

@@ -58,6 +58,33 @@ def get_evolutions_source(app):
         return EvolutionsSource.APP
 
 
+def get_evolutions_module_name(app):
+    """Return the name of the evolutions module for an app.
+
+    Version Added:
+        2.1
+
+    Args:
+        app (module):
+            The app.
+
+    Returns:
+        unicode:
+        The name of the evolutions module for the app. This is not guaranteed
+        to be importable.
+    """
+    app_name = get_app_name(app)
+
+    if app_name in BUILTIN_SEQUENCES:
+        module_name = 'django_evolution.builtin_evolutions'
+    elif app_name in getattr(settings, 'CUSTOM_EVOLUTIONS', {}):
+        module_name = settings.CUSTOM_EVOLUTIONS[app_name]
+    else:
+        module_name = '%s.evolutions' % app_name
+
+    return module_name
+
+
 def get_evolutions_module(app):
     """Return the evolutions module for an app.
 
@@ -70,17 +97,32 @@ def get_evolutions_module(app):
         The evolutions module for the app, or ``None`` if it could not be
         found.
     """
-    app_name = get_app_name(app)
-
-    if app_name in BUILTIN_SEQUENCES:
-        module_name = 'django_evolution.builtin_evolutions'
-    elif app_name in getattr(settings, 'CUSTOM_EVOLUTIONS', {}):
-        module_name = settings.CUSTOM_EVOLUTIONS[app_name]
-    else:
-        module_name = '%s.evolutions' % app_name
-
     try:
-        return import_module(module_name)
+        return import_module(get_evolutions_module_name(app))
+    except ImportError:
+        return None
+
+
+def get_evolution_module(app, evolution_label):
+    """Return the module for a given evolution for an app.
+
+    Version Added:
+        2.1
+
+    Args:
+        app (module):
+            The app.
+
+        evolution_label (unicode):
+            The label of the evolution.
+
+    Returns:
+        module:
+        The evolution module, or ``None`` if it could not be found.
+    """
+    try:
+        return import_module('%s.%s' % (get_evolutions_module_name(app),
+                                        evolution_label))
     except ImportError:
         return None
 
@@ -249,9 +291,9 @@ def get_app_mutations(app, evolution_labels=None, database=DEFAULT_DB_ALIAS):
 
         if not found:
             try:
-                module = import_module('%s.%s' % (evolutions_module.__name__,
-                                                  label))
-                mutations += module.MUTATIONS
+                module = get_evolution_module(app=app,
+                                              evolution_label=label)
+                mutations += getattr(module, 'MUTATIONS', [])
             except ImportError:
                 raise EvolutionException(
                     'Error: Failed to find an SQL or Python evolution named %s'
