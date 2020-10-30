@@ -41,6 +41,7 @@ Module and Class References
    django_evolution.db.sqlite3
    django_evolution.db.state
    django_evolution.utils.apps
+   django_evolution.utils.datastructures
    django_evolution.utils.evolutions
    django_evolution.utils.migrations
    django_evolution.utils.models
