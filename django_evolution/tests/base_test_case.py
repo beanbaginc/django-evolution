@@ -53,9 +53,11 @@ class MigrationsTestsMixin(object):
         super(MigrationsTestsMixin, self).setUp()
 
         if supports_migrations:
-            unrecord_applied_migrations(
-                connection=connections[DEFAULT_DB_ALIAS],
-                app_label='tests')
+            connection = connections[DEFAULT_DB_ALIAS]
+
+            for app_label in ('tests', 'migrations_app', 'migrations_app2'):
+                unrecord_applied_migrations(connection=connection,
+                                            app_label=app_label)
 
 
 class EvolutionTestCase(TestCase):

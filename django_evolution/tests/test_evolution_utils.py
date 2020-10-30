@@ -9,9 +9,12 @@ from django_evolution.compat.apps import get_app
 from django_evolution.consts import EvolutionsSource, UpgradeMethod
 from django_evolution.models import Evolution
 from django_evolution.support import supports_migrations
-from django_evolution.tests.base_test_case import TestCase
+from django_evolution.tests.base_test_case import (MigrationsTestsMixin,
+                                                   TestCase)
 from django_evolution.utils.evolutions import (get_app_upgrade_info,
                                                get_applied_evolutions,
+                                               get_evolution_app_dependencies,
+                                               get_evolution_dependencies,
                                                get_evolution_module,
                                                get_evolution_sequence,
                                                get_evolutions_module,
@@ -20,13 +23,120 @@ from django_evolution.utils.evolutions import (get_app_upgrade_info,
                                                get_evolutions_source)
 
 
+class GetEvolutionAppDependenciesTests(TestCase):
+    """Unit tests for get_evolution_app_dependencies."""
+
+    def test_with_dependencies(self):
+        """Testing get_evolution_app_dependencies with dependencies"""
+        self.assertEqual(
+            get_evolution_app_dependencies(get_app('app_deps_app')),
+            {
+                'after_evolutions': {
+                    'evolutions_app',
+                    ('evolutions_app', 'first_evolution'),
+                },
+                'after_migrations': {
+                    ('migrations_app', '0001_initial'),
+                },
+                'before_evolutions': {
+                    'evolutions_app2',
+                    ('evolutions_app2', 'second_evolution'),
+                },
+                'before_migrations': {
+                    ('migrations_app2', '0002_add_field'),
+                },
+            })
+
+    def test_without_dependencies(self):
+        """Testing get_evolution_app_dependencies without dependencies"""
+        self.assertEqual(
+            get_evolution_app_dependencies(get_app('evolution_deps_app')),
+            {
+                'after_evolutions': set(),
+                'after_migrations': set(),
+                'before_evolutions': set(),
+                'before_migrations': set(),
+            })
+
+    def test_with_invalid_app(self):
+        """Testing get_evolution_app_dependencies with non-evolution app"""
+        self.assertIsNone(
+            get_evolution_app_dependencies(get_app('migrations_app')))
+
+
+class GetEvolutionDependenciesTests(TestCase):
+    """Unit tests for get_evolution_dependencies."""
+
+    def test_with_dependencies(self):
+        """Testing get_evolution_dependencies with dependencies"""
+        self.assertEqual(
+            get_evolution_dependencies(get_app('evolution_deps_app'),
+                                       'test_evolution'),
+            {
+                'after_evolutions': {
+                    'evolutions_app',
+                    ('evolutions_app', 'first_evolution'),
+                },
+                'after_migrations': {
+                    ('migrations_app', '0001_initial'),
+                },
+                'before_evolutions': {
+                    'evolutions_app2',
+                    ('evolutions_app2', 'second_evolution'),
+                },
+                'before_migrations': {
+                    ('migrations_app2', '0002_add_field'),
+                },
+            })
+
+    def test_without_dependencies(self):
+        """Testing get_evolution_dependencies without dependencies"""
+        self.assertEqual(
+            get_evolution_dependencies(get_app('app_deps_app'),
+                                       'test_evolution'),
+            {
+                'after_evolutions': set(),
+                'after_migrations': set(),
+                'before_evolutions': set(),
+                'before_migrations': set(),
+            })
+
+    def test_with_move_to_django_migrations(self):
+        """Testing get_evolution_dependencies with MoveToDjangoMigrations
+        mutation
+        """
+        self.assertEqual(
+            get_evolution_dependencies(get_app('admin'),
+                                       'admin_move_to_migrations'),
+            {
+                'after_evolutions': set(),
+                'after_migrations': {
+                    ('admin', '0001_initial'),
+                },
+                'before_evolutions': set(),
+                'before_migrations': set(),
+            })
+
+    def test_with_invalid_app(self):
+        """Testing get_evolution_dependencies with non-evolution app"""
+        self.assertIsNone(
+            get_evolution_dependencies(app=get_app('migrations_app'),
+                                       evolution_label='invalid_evolution'))
+
+    def test_with_invalid_evolution(self):
+        """Testing get_evolution_dependencies with invalid evolution name"""
+        self.assertIsNone(
+            get_evolution_dependencies(app=get_app('django_evolution'),
+                                       evolution_label='invalid_evolution'))
+
+
 class GetEvolutionsSequenceTests(TestCase):
     """Unit tests for get_evolution_sequence."""
 
     def test_with_app(self):
         """Testing get_evolution_sequence with app-provided evolutions"""
         self.assertEqual(get_evolution_sequence(get_app('evolutions_app')),
-                         ['first_evolution'])
+                         ['first_evolution', 'second_evolution'])
 
     def test_with_builtin(self):
         """Testing get_evolution_sequence with built-in evolutions"""
@@ -46,7 +156,7 @@ class GetEvolutionsSequenceTests(TestCase):
 
         with self.settings(CUSTOM_EVOLUTIONS=custom_evolutions):
             self.assertEqual(get_evolution_sequence(get_app('migrations_app')),
-                             ['first_evolution'])
+                             ['first_evolution', 'second_evolution'])
 
     def test_with_not_found(self):
         """Testing get_evolution_sequence with evolutions not found"""
@@ -223,7 +333,7 @@ class GetEvolutionsSourceTests(TestCase):
                          EvolutionsSource.APP)
 
 
-class GetAppUpgradeInfoTests(TestCase):
+class GetAppUpgradeInfoTests(MigrationsTestsMixin, TestCase):
     """Unit tests for get_app_upgrade_info."""
 
     maxDiff = None

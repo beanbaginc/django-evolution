@@ -108,7 +108,11 @@ INSTALLED_APPS = [
     'django_evolution',
 
     # The following are needed for some tests.
+    'django_evolution.tests.app_deps_app',
+    'django_evolution.tests.evolution_deps_app',
     'django_evolution.tests.evolutions_app',
+    'django_evolution.tests.evolutions_app2',
     'django_evolution.tests.no_models_app',
     'django_evolution.tests.migrations_app',
+    'django_evolution.tests.migrations_app2',
 ]

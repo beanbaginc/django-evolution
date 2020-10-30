@@ -10,6 +10,7 @@ from django.db import connections
 from django.db.utils import DEFAULT_DB_ALIAS
 
 from django_evolution.builtin_evolutions import BUILTIN_SEQUENCES
+from django_evolution.compat import six
 from django_evolution.consts import EvolutionsSource, UpgradeMethod
 from django_evolution.errors import EvolutionException
 from django_evolution.support import supports_migrations
@@ -169,6 +170,120 @@ def get_evolution_sequence(app):
         return module.SEQUENCE
 
     return []
+
+
+def get_evolution_dependencies(app, evolution_label):
+    """Return dependencies for an evolution.
+
+    Evolutions can depend on other evolutions or migrations, and can be
+    marked as being a dependency of them as well (forcing the evolution to
+    apply before another evolution/migration).
+
+    Dependencies are generally specified as a tuple of ``(app_label, name)``,
+    where ``name`` is either a migration name or an evolution label.
+
+    Dependencies on evolutions can also be specified as simply a string
+    containing an app label, which will reference the sequence of evolutions
+    as a whole for that app.
+
+    Version Added:
+        2.1
+
+    Args:
+        app (module):
+            The app the evolution is for.
+
+        evolution_label (unicode):
+            The label identifying the evolution for the app.
+
+    Returns:
+        dict:
+        A dictionary of dependency information for the evolution. This has
+        the following keys:
+
+        * ``before_migrations``
+        * ``after_migrations``
+        * ``before_evolutions``
+        * ``after_evolutions``
+
+        If the evolution module was not found, this will return ``None``
+        instead.
+    """
+    module = get_evolution_module(app=app,
+                                  evolution_label=evolution_label)
+
+    if not module:
+        return None
+
+    deps = {
+        'after_evolutions': set(getattr(module, 'AFTER_EVOLUTIONS', [])),
+        'after_migrations': set(getattr(module, 'AFTER_MIGRATIONS', [])),
+        'before_evolutions': set(getattr(module, 'BEFORE_EVOLUTIONS', [])),
+        'before_migrations': set(getattr(module, 'BEFORE_MIGRATIONS', [])),
+    }
+
+    app_label = get_app_label(app)
+
+    # Check if any mutations have dependencies to inject.
+    for mutation in getattr(module, 'MUTATIONS', []):
+        mutation_deps = mutation.generate_dependencies(app_label=app_label)
+
+        if mutation_deps:
+            for key, value in six.iteritems(mutation_deps):
+                assert key in deps, (
+                    '"%s" is not a valid dependency key from mutation %r'
+                    % (key, mutation))
+
+                deps[key].update(value)
+
+    return deps
+
+
+def get_evolution_app_dependencies(app):
+    """Return dependencies governing all evolutions for an app.
+
+    These dependencies are defined in an :file:`evolutions/__init__.py` file,
+    and will ensure that other evolutions or migrations apply either before
+    or after the app's evolutions.
+
+    Dependencies are generally specified as a tuple of ``(app_label, name)``,
+    where ``name`` is either a migration name or an evolution label.
+
+    Dependencies on evolutions can also be specified as simply a string
+    containing an app label, which will reference the sequence of evolutions
+    as a whole for that app.
+
+    Version Added:
+        2.1
+
+    Args:
+        app (module):
+            The app the evolution is for.
+
+    Returns:
+        dict:
+        A dictionary of dependency information for the app. This has the
+        following keys:
+
+        * ``before_migrations``
+        * ``after_migrations``
+        * ``before_evolutions``
+        * ``after_evolutions``
+
+        If the evolutions module was not found, this will return ``None``
+        instead.
+    """
+    module = get_evolutions_module(app)
+
+    if not module:
+        return None
+
+    return {
+        'after_evolutions': set(getattr(module, 'AFTER_EVOLUTIONS', [])),
+        'after_migrations': set(getattr(module, 'AFTER_MIGRATIONS', [])),
+        'before_evolutions': set(getattr(module, 'BEFORE_EVOLUTIONS', [])),
+        'before_migrations': set(getattr(module, 'BEFORE_MIGRATIONS', [])),
+    }
 
 
 def get_unapplied_evolutions(app, database=DEFAULT_DB_ALIAS):
