@@ -68,11 +68,31 @@ class MigrationList(object):
             MigrationList:
             The new migration list.
         """
-        migration_list = cls()
-        app_label = app_sig.app_id
+        return cls.from_names(app_label=app_sig.app_id,
+                              migration_names=app_sig.applied_migrations)
 
-        if app_sig.applied_migrations:
-            for name in app_sig.applied_migrations:
+    @classmethod
+    def from_names(cls, app_label, migration_names):
+        """Create a MigrationList based on a list of migration names.
+
+        Version Added:
+            2.1
+
+        Args:
+            app_label (unicode):
+                The app label common to each migration name.
+
+            migration_names (list of unicode):
+                The list of migration names.
+
+        Returns:
+            MigrationList:
+            The new migration list.
+        """
+        migration_list = cls()
+
+        if migration_names:
+            for name in migration_names:
                 migration_list.add_migration_info(app_label=app_label,
                                                   name=name)
 

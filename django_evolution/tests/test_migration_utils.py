@@ -113,6 +113,16 @@ class MigrationListTests(TestCase):
         self.assertTrue(migration_list.has_migration_info(app_label='tests',
                                                           name='0002_stuff'))
 
+    def test_from_names(self):
+        """Testing MigrationList.from_names"""
+        migration_list = MigrationList.from_names(
+            app_label='tests',
+            migration_names=['0001_initial', '0002_stuff'])
+        self.assertTrue(migration_list.has_migration_info(app_label='tests',
+                                                          name='0001_initial'))
+        self.assertTrue(migration_list.has_migration_info(app_label='tests',
+                                                          name='0002_stuff'))
+
     def test_has_migration_info(self):
         """Testing MigrationList.has_migration_info"""
         migration_list = MigrationList()
