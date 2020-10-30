@@ -124,6 +124,8 @@ class Diff(object):
         self.changed = diff.get('changed', OrderedDict())
         self.deleted = diff.get('deleted', OrderedDict())
 
+        self._mutations = None
+
     def is_empty(self, ignore_apps=True):
         """Return whether the diff is empty.
 
@@ -218,6 +220,9 @@ class Diff(object):
             An ordered dictionary of mutations. Each key is an application
             label, and each value is a list of mutations for the application.
         """
+        if self._mutations is not None:
+            return self._mutations
+
         mutations = OrderedDict()
 
         for app_label, app_changes in six.iteritems(self.changed):
@@ -359,6 +364,8 @@ class Diff(object):
 
             if app_mutations:
                 mutations[app_label] = app_mutations
+
+        self._mutations = mutations
 
         return mutations
 
