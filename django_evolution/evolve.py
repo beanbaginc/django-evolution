@@ -909,7 +909,8 @@ class EvolveAppTask(BaseEvolutionTask):
             for label in evolutions
         ]
 
-    def execute(self, cursor, create_models_now=False):
+    def execute(self, cursor, sql=None, evolutions=None,
+                create_models_now=False):
         """Execute the task.
 
         This will apply any evolutions queued up for the app.
@@ -919,9 +920,25 @@ class EvolveAppTask(BaseEvolutionTask):
         be emitted. After,
         :py:data:`~django_evolution.signals.applied_evolution` will be emitted.
 
+        Version Changed:
+            2.1:
+            Added ``sql`` and ``evolutions`` arguments.
+
         Args:
             cursor (django.db.backends.util.CursorWrapper):
                 The database cursor used to execute queries.
+
+            sql (list, optional):
+                A list of explicit SQL statements to execute.
+
+                This will override :py:attr:`sql` if provided.
+
+            evolutions (list of django_evolution.models.Evolution, optional):
+                A list of evolutions being applied. These will be sent in the
+                :py:data:`~django_evolution.signals.applying_evolution` and
+                :py:data:`~django_evolution.signals.applied_evolution` signals.
+
+                This will override :py:attr:`new_evolutions` if provided.
 
             create_models_now (bool, optional):
                 Whether to create models as part of this execution. Normally,
@@ -933,21 +950,27 @@ class EvolveAppTask(BaseEvolutionTask):
             django_evolution.errors.EvolutionExecutionError:
                 The evolution task failed. Details are in the error.
         """
+        evolver = self.evolver
+
         if create_models_now and self._new_models_sql:
             EvolveAppTask._create_models(cursor=cursor,
-                                         evolver=self.evolver,
+                                         evolver=evolver,
                                          sql=self._new_models_sql,
                                          tasks=[self])
 
-        evolutions = self.new_evolutions
+        if evolutions is None:
+            evolutions = self.new_evolutions
 
-        if self.sql:
-            applying_evolution.send(sender=self.evolver,
+        if sql is None:
+            sql = self.sql
+
+        if sql:
+            applying_evolution.send(sender=evolver,
                                     task=self,
                                     evolutions=evolutions)
 
             try:
-                execute_sql(cursor, self.sql, self.evolver.database_name)
+                execute_sql(cursor, sql, evolver.database_name)
             except Exception as e:
                 raise EvolutionExecutionError(
                     _('Error applying evolution for %s: %s')
@@ -956,7 +979,7 @@ class EvolveAppTask(BaseEvolutionTask):
                     detailed_error=six.text_type(e),
                     last_sql_statement=getattr(e, 'last_sql_statement'))
 
-            applied_evolution.send(sender=self.evolver,
+            applied_evolution.send(sender=evolver,
                                    task=self,
                                    evolutions=evolutions)
 
