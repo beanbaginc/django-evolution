@@ -650,11 +650,12 @@ class EvolveAppTask(BaseEvolutionTask):
             project_sig = evolver.project_sig
 
             for app_label in applied_migrations.get_app_labels():
-                app_sig = project_sig.get_app_sig(app_label, required=True)
+                app_sig = project_sig.get_app_sig(app_label)
 
-                # The signature will take care of storing only the migrations
-                # that apply to it when we assign this.
-                app_sig.applied_migrations = applied_migrations
+                if app_sig is not None:
+                    # The signature will take care of storing only the
+                    # migrations that apply to it when we assign this.
+                    app_sig.applied_migrations = applied_migrations
 
         # Let any listeners know that we've finished the process.
         emit_post_migrate_or_sync(verbosity=evolver.verbosity,
@@ -833,9 +834,9 @@ class EvolveAppTask(BaseEvolutionTask):
             if new_models:
                 app_sig = target_app_sig.clone()
                 project_sig.add_app_sig(app_sig)
-
-                evolutions = get_evolution_sequence(app)
                 orig_upgrade_method = app_sig.upgrade_method
+
+            evolutions = get_evolution_sequence(app)
         else:
             orig_upgrade_method = app_sig.upgrade_method
 

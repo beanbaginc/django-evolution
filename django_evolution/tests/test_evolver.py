@@ -837,6 +837,14 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
             evolver.project_sig.get_app_sig('tests').upgrade_method = \
                 UpgradeMethod.MIGRATIONS
 
+            # Record some migrations that don't match anything we're evolving,
+            # just to make sure nothing blows up.
+            migration_list = MigrationList()
+            migration_list.add_migration_info(app_label='some_app',
+                                              name='0001_initial')
+            record_applied_migrations(connection=evolver.connection,
+                                      migrations=migration_list)
+
             app_migrations = [
                 InitialMigration('0001_initial', 'tests'),
                 AddFieldMigration('0002_add_field', 'tests'),
@@ -1156,6 +1164,33 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         self.assertEqual(len(task.new_evolutions), 0)
         self.assertEqual(task.new_model_names, ['TestModel'])
         self.assertSQLMappingEqual(task._new_models_sql, 'create_table')
+
+    def test_prepare_with_new_app_no_models(self):
+        """Testing EvolveAppTask.prepare with new app and no models"""
+        app = get_app('evolution_deps_app')
+
+        register_app_models('evolution_deps_app',
+                            model_infos=[],
+                            reset=True)
+
+        evolver = Evolver(hinted=True)
+        evolver.project_sig.remove_app_sig('evolution_deps_app')
+
+        task = EvolveAppTask(evolver=evolver,
+                             app=app)
+        task.prepare(hinted=False)
+
+        self.assertFalse(task.evolution_required)
+        self.assertFalse(task.can_simulate)
+        self.assertEqual(task.sql, [])
+        self.assertEqual(task.new_model_names, [])
+        self.assertEqual(task._new_models_sql, [])
+
+        self.assertEqual(len(task.new_evolutions), 1)
+
+        evolution = task.new_evolutions[0]
+        self.assertEqual(evolution.app_label, 'evolution_deps_app')
+        self.assertEqual(evolution.label, 'test_evolution')
 
     def test_prepare_with_new_models(self):
         """Testing EvolveAppTask.prepare with new models"""
