@@ -70,6 +70,7 @@ class BaseEvolverTestCase(EvolutionTestCase):
 
     default_base_model = EvolverTestModel
     sql_mapping_key = 'evolver'
+    needs_evolution_models = True
 
 
 class EvolverTests(BaseEvolverTestCase):
@@ -1174,7 +1175,8 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                             reset=True)
 
         evolver = Evolver(hinted=True)
-        evolver.project_sig.remove_app_sig('evolution_deps_app')
+        self.assertIsNone(
+            evolver.project_sig.get_app_sig('evolution_deps_app'))
 
         task = EvolveAppTask(evolver=evolver,
                              app=app)

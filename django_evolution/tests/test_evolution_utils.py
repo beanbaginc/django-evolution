@@ -7,7 +7,6 @@ import os
 import django_evolution
 from django_evolution.compat.apps import get_app
 from django_evolution.consts import EvolutionsSource, UpgradeMethod
-from django_evolution.models import Evolution
 from django_evolution.support import supports_migrations
 from django_evolution.tests.base_test_case import (MigrationsTestsMixin,
                                                    TestCase)
@@ -379,7 +378,6 @@ class GetAppUpgradeInfoTests(MigrationsTestsMixin, TestCase):
         """
         app = get_app('auth')
 
-        Evolution.objects.filter(label='auth_move_to_migrations').delete()
         self.assertNotIn('auth_move_to_migrations',
                          get_applied_evolutions(app))
 
@@ -417,6 +415,7 @@ class GetAppUpgradeInfoTests(MigrationsTestsMixin, TestCase):
         """
         app = get_app('auth')
 
+        self.ensure_evolved_apps([app])
         self.assertIn('auth_move_to_migrations', get_applied_evolutions(app))
 
         # Check without the evolutions applied.

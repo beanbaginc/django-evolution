@@ -4,14 +4,17 @@ import copy
 import re
 from contextlib import contextmanager
 
+import django
 from django.db import ConnectionRouter, DEFAULT_DB_ALIAS, connections, router
-from django.test.testcases import TransactionTestCase
+from django.test.testcases import TestCase as DjangoTestCase
 from django.test.utils import override_settings
 
 from django_evolution.compat import six
 from django_evolution.compat.apps import unregister_app
 from django_evolution.db.state import DatabaseState
 from django_evolution.diff import Diff
+from django_evolution.evolve import Evolver
+from django_evolution.models import Evolution, Version
 from django_evolution.mutators import AppMutator
 from django_evolution.support import supports_migrations
 from django_evolution.tests.utils import (create_test_project_sig,
@@ -22,10 +25,55 @@ from django_evolution.tests.utils import (create_test_project_sig,
 from django_evolution.utils.migrations import unrecord_applied_migrations
 
 
-class TestCase(TransactionTestCase):
+class TestCase(DjangoTestCase):
     """Base class for all Django Evolution test cases."""
 
     ws_re = re.compile(r'\s+')
+
+    needs_evolution_models = False
+
+    # Allow for diffs for large dictionary structures, to help debug
+    # signature failures.
+    maxDiff = 10000
+
+    # The list of databases we may test against, required by Django 2.2+.
+    databases = ['default', 'db_multi']
+
+    # Override some internal functions on Django's TestCase to avoid setting
+    # up transactions. We won't bother documenting these, since we're just
+    # trying to turn off logic.
+    if django.VERSION[:2] >= (1, 8):
+        # Django >= 1.8
+        @classmethod
+        def _enter_atomics(cls):
+            return
+
+        @classmethod
+        def _rollback_atomics(cls, atomics):
+            return
+    else:
+        # Django <= 1.7
+        def _fixture_setup(self):
+            return
+
+        def _fixture_teardown(self):
+            return
+
+    def setUp(self):
+        super(TestCase, self).setUp()
+
+        # If these are in the database, we need to delete them so we don't
+        # carry signatures between tests.
+        try:
+            Evolution.objects.all().delete()
+            Version.objects.all().delete()
+        except Exception:
+            pass
+
+        # If the test case indicates it needs the Evolution and Version
+        # models pre-populated, then do that now.
+        if self.needs_evolution_models:
+            self.ensure_evolution_models()
 
     def shortDescription(self):
         """Returns the description of the current test.
@@ -42,6 +90,25 @@ class TestCase(TransactionTestCase):
 
         return doc
 
+    def ensure_evolution_models(self):
+        """Create the Evolution and Version models if missing."""
+        Evolver()
+        assert Version.objects.exists()
+
+    def ensure_evolved_apps(self, apps):
+        """Ensure an app's models and evolutions are applied to the database.
+
+        Args:
+            apps (list of module):
+                The app modules to evolve.
+        """
+        evolver = Evolver()
+
+        for app in apps:
+            evolver.queue_evolve_app(app)
+
+        evolver.evolve()
+
 
 class MigrationsTestsMixin(object):
     """Mixin for test suites that work with migrations.
@@ -49,6 +116,8 @@ class MigrationsTestsMixin(object):
     This will ensure that no test migrations are marked as applied before
     the tests run.
     """
+
+    needs_evolution_models = True
 
     def setUp(self):
         super(MigrationsTestsMixin, self).setUp()
@@ -71,14 +140,9 @@ class EvolutionTestCase(TestCase):
     default_pre_extra_models = []
     default_extra_models = []
 
-    # Allow for diffs for large dictionary structures, to help debug
-    # signature failures.
-    maxDiff = 10000
-
-    # The list of databases we may test against, required by Django 2.2+.
-    databases = ['default', 'db_multi']
-
     def setUp(self):
+        super(EvolutionTestCase, self).setUp()
+
         self.base_model = None
         self.pre_extra_models = []
         self.extra_models = []
@@ -96,6 +160,8 @@ class EvolutionTestCase(TestCase):
     def tearDown(self):
         if self._models_registered:
             unregister_app('tests')
+
+        super(EvolutionTestCase, self).tearDown()
 
     def set_base_model(self, base_model, name=None, extra_models=[],
                        pre_extra_models=[], db_name=None):

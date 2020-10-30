@@ -9,7 +9,8 @@ from django.db import DEFAULT_DB_ALIAS, connections
 from django_evolution.compat.apps import get_app
 from django_evolution.models import Evolution, Version
 from django_evolution.support import supports_migrations
-from django_evolution.tests.base_test_case import TestCase
+from django_evolution.tests.base_test_case import (MigrationsTestsMixin,
+                                                   TestCase)
 from django_evolution.tests.evolutions_app.models import EvolutionsAppTestModel
 from django_evolution.tests.evolutions_app2.models import \
     EvolutionsApp2TestModel
@@ -29,7 +30,7 @@ except ImportError:
     migrations = None
 
 
-class EvolutionGraphTests(TestCase):
+class EvolutionGraphTests(MigrationsTestsMixin, TestCase):
     """Unit tests for django_evolution.utils.graph.EvolutionGraph."""
 
     def test_add_evolutions(self):
