@@ -1549,6 +1549,9 @@ def evolver(connection):
         dict:
         The dictionary of SQL mappings.
     """
+    generate_constraint_name = make_generate_constraint_name(connection)
+    generate_index_name = make_generate_index_name(connection)
+
     mappings = {
         'evolve_app_task': [
             'UPDATE `tests_testmodel` SET `value`=LEFT(`value`,100);',
@@ -1577,8 +1580,81 @@ def evolver(connection):
                 '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
                 '    `value` varchar(100) NOT NULL',
                 ')',
-
                 ';',
+            ],
+        })
+
+    if django_version >= (1, 8):
+        mappings.update({
+            'create_tables_with_deferred_refs': [
+                'CREATE TABLE `tests_testmodel` '
+                '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                ' `value` varchar(100) NOT NULL,'
+                ' `ref_id` integer NOT NULL);',
+
+                'CREATE TABLE `evolutions_app_reffedevolvertestmodel` '
+                '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                ' `value` varchar(100) NOT NULL);',
+
+                'ALTER TABLE `tests_testmodel`'
+                ' ADD CONSTRAINT `%s` FOREIGN KEY (`ref_id`)'
+                ' REFERENCES `evolutions_app_reffedevolvertestmodel` (`id`);'
+                % generate_constraint_name(
+                    'ref_id',
+                    'id',
+                    'tests_testmodel',
+                    'evolutions_app_reffedevolvertestmodel'),
+            ],
+        })
+    elif django_version >= (1, 7):
+        mappings.update({
+            'create_tables_with_deferred_refs': [
+                'CREATE TABLE `tests_testmodel` '
+                '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                ' `value` varchar(100) NOT NULL,'
+                ' `ref_id` integer NOT NULL);',
+
+                'CREATE TABLE `evolutions_app_reffedevolvertestmodel` '
+                '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                ' `value` varchar(100) NOT NULL);',
+
+                'ALTER TABLE `tests_testmodel`'
+                ' ADD CONSTRAINT `%s` FOREIGN KEY (`ref_id`)'
+                ' REFERENCES `evolutions_app_reffedevolvertestmodel` (`id`);'
+                % generate_constraint_name(
+                    'ref_id',
+                    'id',
+                    'tests_testmodel',
+                    'evolutions_app_reffedevolvertestmodel'),
+
+                'CREATE INDEX `%s` ON `tests_testmodel` (`ref_id`);'
+                % generate_index_name('tests_testmodel', 'ref_id'),
+            ],
+        })
+    else:
+        mappings.update({
+            'create_tables_with_deferred_refs': [
+                'CREATE TABLE `tests_testmodel` (',
+                '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
+                '    `value` varchar(100) NOT NULL,',
+                '    `ref_id` integer NOT NULL',
+                ')',
+                ';',
+
+                'CREATE TABLE `evolutions_app_reffedevolvertestmodel` (',
+                '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
+                '    `value` varchar(100) NOT NULL',
+                ')',
+                ';',
+
+                'ALTER TABLE `tests_testmodel`'
+                ' ADD CONSTRAINT `%s` FOREIGN KEY (`ref_id`)'
+                ' REFERENCES `evolutions_app_reffedevolvertestmodel` (`id`);'
+                % generate_constraint_name(
+                    'ref_id',
+                    'id',
+                    'tests_testmodel',
+                    'evolutions_app_reffedevolvertestmodel'),
             ],
         })
 

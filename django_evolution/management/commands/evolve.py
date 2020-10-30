@@ -430,7 +430,7 @@ class Command(BaseCommand):
             if getattr(e, 'last_sql_statement', None):
                 self.stderr.write(
                     _('The SQL statement that failed was: %s\n')
-                    % e.last_sql_statement)
+                    % (e.last_sql_statement,))
 
             raise CommandError(six.text_type(e))
 

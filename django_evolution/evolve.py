@@ -407,6 +407,14 @@ class EvolveAppTask(BaseEvolutionTask):
             tasks=tasks,
             **kwargs)
 
+        cls._new_models_sql = sql_create_models(
+            itertools.chain.from_iterable(
+                task.new_models
+                for task in tasks
+                if task._new_models_sql
+            ),
+            db_name=evolver.database_name)
+
         if supports_migrations:
             # Now that we have updated signatures from any evolutions (which
             # may have applied MoveToDjangoMigrations mutators), we can start
@@ -465,7 +473,7 @@ class EvolveAppTask(BaseEvolutionTask):
                 pre_migrate_state = \
                     create_pre_migrate_state(migration_executor)
 
-                # First, try to find all the initial migrations. These will
+                # Next, try to find all the initial migrations. These will
                 # be ones that are root migrations (have no parents in the
                 # app) and aren't already marked as applied.
                 pre_migration_targets = []
@@ -598,9 +606,14 @@ class EvolveAppTask(BaseEvolutionTask):
         # apps. We can then work on evolving/migrating those apps.
         with evolver.connection.constraint_checks_disabled():
             with evolver.transaction() as cursor:
-                for task in tasks:
-                    if task.new_models_sql:
-                        task._create_models(cursor)
+                cls._create_models(
+                    cursor=cursor,
+                    evolver=evolver,
+                    tasks=[
+                        task
+                        for task in tasks
+                        if task._new_models_sql
+                    ])
 
                 # Process any evolutions for the apps.
                 for task in tasks:
@@ -638,6 +651,80 @@ class EvolveAppTask(BaseEvolutionTask):
                                   post_migrate_state=migrate_state,
                                   plan=cls._full_migration_plan)
 
+    @classmethod
+    def _create_models(cls, cursor, evolver, tasks, sql=None):
+        """Create tables for models in the database.
+
+        Args:
+            cursor (django.db.backends.util.CursorWrapper):
+                The database cursor used to install the models.
+
+            evolver (Evolver):
+                The evolver executing the tasks.
+
+            tasks (list of EvolveAppTask):
+                The list of tasks containing models to create.
+
+        Returns:
+            list:
+            The list of SQL statements used to create the model. This is
+            used primarily for unit tests.
+
+        Raises:
+            django_evolution.errors.EvolutionExecutionError:
+                There was an unexpected error creating database models.
+        """
+        if sql is None:
+            assert hasattr(cls, '_new_models_sql'), \
+                'prepare_tasks() must be called before models an be created.'
+
+            sql = cls._new_models_sql
+
+        if not sql:
+            return None
+
+        # We need to create all models at once, in order to allow Django to
+        # handle deferring SQL statements referencing a model until after the
+        # model has been created.
+        #
+        # Because of this, we also need to emit the creating_models and
+        # created_models signals for every set of models up-front.
+        for task in tasks:
+            creating_models.send(sender=evolver,
+                                 app_label=task.app_label,
+                                 model_names=task.new_model_names)
+
+        try:
+            result = execute_sql(cursor=cursor,
+                                 sql=sql,
+                                 database=evolver.database_name,
+                                 capture=True)
+        except Exception as e:
+            last_sql_statement = getattr(e, 'last_sql_statement', None)
+            detailed_error = six.text_type(e)
+
+            if len(tasks) == 1:
+                app_label = tasks[0].app_label
+
+                raise EvolutionExecutionError(
+                    _('Error creating database models for %s: %s')
+                    % (app_label, e),
+                    app_label=app_label,
+                    detailed_error=detailed_error,
+                    last_sql_statement=last_sql_statement)
+            else:
+                raise EvolutionExecutionError(
+                    _('Error creating database models: %s') % e,
+                    detailed_error=detailed_error,
+                    last_sql_statement=last_sql_statement)
+
+        for task in tasks:
+            created_models.send(sender=evolver,
+                                app_label=task.app_label,
+                                model_names=task.new_model_names)
+
+        return result
+
     def __init__(self, evolver, app, evolutions=None, migrations=None):
         """Initialize the task.
 
@@ -669,10 +756,10 @@ class EvolveAppTask(BaseEvolutionTask):
         self.legacy_app_label = get_legacy_app_label(app)
 
         self.app_sig = None
-        self.new_models_sql = []
         self.new_model_names = []
         self.new_models = []
 
+        self._new_models_sql = []
         self._evolutions = evolutions
         self._migrations = migrations
         self._mutations = None
@@ -807,8 +894,13 @@ class EvolveAppTask(BaseEvolutionTask):
             else:
                 logger.debug('Using SQL to create models for %s',
                              app_label)
-                self.new_models_sql = sql_create_models(new_models,
-                                                        db_name=database_name)
+
+                # This is only going to be directly used if
+                # execute(create_models_now=True) is called. Normally,
+                # EvolveAppTask._new_models_sql will be used instead. We
+                # don't know which way this will be called, so we need both.
+                self._new_models_sql = sql_create_models(new_models,
+                                                         db_name=database_name)
 
         self.app_sig = app_sig
         self.new_evolutions = [
@@ -841,8 +933,11 @@ class EvolveAppTask(BaseEvolutionTask):
             django_evolution.errors.EvolutionExecutionError:
                 The evolution task failed. Details are in the error.
         """
-        if create_models_now and self.new_models_sql:
-            self._create_models(cursor)
+        if create_models_now and self._new_models_sql:
+            EvolveAppTask._create_models(cursor=cursor,
+                                         evolver=self.evolver,
+                                         sql=self._new_models_sql,
+                                         tasks=[self])
 
         if self.sql:
             applying_evolution.send(sender=self.evolver,
@@ -927,37 +1022,6 @@ class EvolveAppTask(BaseEvolutionTask):
             The string description.
         """
         return 'Evolve application "%s"' % self.app_label
-
-    def _create_models(self, cursor):
-        """Create tables for models in the database.
-
-        Args:
-            cursor (django.db.backends.util.CursorWrapper):
-                The database cursor used to install the models.
-        """
-        app_label = self.app_label
-        evolver = self.evolver
-        new_model_names = self.new_model_names
-
-        creating_models.send(sender=evolver,
-                             app_label=app_label,
-                             model_names=new_model_names)
-
-        try:
-            execute_sql(cursor,
-                        self.new_models_sql,
-                        evolver.database_name)
-        except Exception as e:
-            raise EvolutionExecutionError(
-                _('Error creating database models for %s: %s')
-                % (app_label, e),
-                app_label=app_label,
-                detailed_error=six.text_type(e),
-                last_sql_statement=getattr(e, 'last_sql_statement'))
-
-        created_models.send(sender=evolver,
-                            app_label=app_label,
-                            model_names=new_model_names)
 
 
 class Evolver(object):

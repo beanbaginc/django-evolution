@@ -34,10 +34,14 @@ from django_evolution.signals import (applied_evolution,
 from django_evolution.signature import AppSignature, ModelSignature
 from django_evolution.support import supports_migrations
 from django_evolution.tests import models as evo_test
+from django_evolution.tests.evolutions_app import models as test_app2
 from django_evolution.tests.base_test_case import (EvolutionTestCase,
                                                    MigrationsTestsMixin)
 from django_evolution.tests.models import BaseTestModel
-from django_evolution.tests.utils import ensure_test_db, execute_transaction
+from django_evolution.tests.utils import (ensure_test_db,
+                                          execute_transaction,
+                                          register_models)
+from django_evolution.utils.apps import get_app_label
 from django_evolution.utils.migrations import (MigrationList,
                                                record_applied_migrations)
 
@@ -982,6 +986,61 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                                           field2='foo',
                                           field3=True)
 
+    def test_create_models_with_deferred_refs(self):
+        """Testing EvolveAppTask.create_models with deferred refs between
+        app-owned models
+        """
+        # We need evolution-friendly apps we can anchor to.
+        app1 = evo_test
+        app2 = test_app2
+        app_label1 = get_app_label(app1)
+        app_label2 = get_app_label(app2)
+
+        class ReffedEvolverTestModel(BaseTestModel):
+            # Needed in Django 1.6 to ensure the model isn't filtered out
+            # in our own get_models() call.
+            __module__ = app2.__name__
+
+            value = models.CharField(max_length=100)
+
+            class Meta:
+                app_label = app_label2
+
+        class ReffingEvolverTestModel(BaseTestModel):
+            value = models.CharField(max_length=100)
+            ref = models.ForeignKey(ReffedEvolverTestModel,
+                                    on_delete=models.CASCADE)
+
+            class Meta:
+                app_label = app_label1
+
+        register_models(
+            database_state=self.database_state,
+            models=[('ReffedEvolverTestModel', ReffedEvolverTestModel)],
+            new_app_label=app_label2,
+            db_name=self.default_database_name)
+
+        self.set_base_model(ReffingEvolverTestModel)
+
+        evolver = Evolver()
+        task1 = EvolveAppTask(evolver=evolver,
+                              app=app1)
+        task2 = EvolveAppTask(evolver=evolver,
+                              app=app2)
+
+        evolver.queue_task(task1)
+        evolver.queue_task(task2)
+        EvolveAppTask.prepare_tasks(evolver, [task1, task2])
+
+        with ensure_test_db(app_label=app_label1):
+            with ensure_test_db(app_label=app_label2):
+                with evolver.transaction() as cursor:
+                    sql = EvolveAppTask._create_models(cursor=cursor,
+                                                       evolver=evolver,
+                                                       tasks=[task1, task2])
+
+        self.assertSQLMappingEqual(sql, 'create_tables_with_deferred_refs')
+
     def test_prepare_with_hinted_false(self):
         """Testing EvolveAppTask.prepare with hinted=False"""
         register_app_models('tests', [('TestModel', EvolverTestModel)],
@@ -1006,8 +1065,9 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         self.assertTrue(task.can_simulate)
         self.assertSQLMappingEqual(task.sql, 'evolve_app_task')
         self.assertEqual(len(task.new_evolutions), 1)
+        self.assertEqual(task.new_models, [])
         self.assertEqual(task.new_model_names, [])
-        self.assertEqual(task.new_models_sql, [])
+        self.assertEqual(task._new_models_sql, [])
 
         evolution = task.new_evolutions[0]
         self.assertEqual(evolution.app_label, 'tests')
@@ -1028,8 +1088,9 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         self.assertTrue(task.can_simulate)
         self.assertSQLMappingEqual(task.sql, 'evolve_app_task')
         self.assertEqual(len(task.new_evolutions), 0)
+        self.assertEqual(task.new_models, [])
         self.assertEqual(task.new_model_names, [])
-        self.assertEqual(task.new_models_sql, [])
+        self.assertEqual(task._new_models_sql, [])
 
     def test_prepare_with_new_app(self):
         """Testing EvolveAppTask.prepare with new app"""
@@ -1048,7 +1109,7 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         self.assertEqual(task.sql, [])
         self.assertEqual(len(task.new_evolutions), 0)
         self.assertEqual(task.new_model_names, ['TestModel'])
-        self.assertSQLMappingEqual(task.new_models_sql, 'create_table')
+        self.assertSQLMappingEqual(task._new_models_sql, 'create_table')
 
     def test_prepare_with_new_models(self):
         """Testing EvolveAppTask.prepare with new models"""
@@ -1067,7 +1128,7 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         self.assertEqual(task.sql, [])
         self.assertEqual(len(task.new_evolutions), 0)
         self.assertEqual(task.new_model_names, ['TestModel'])
-        self.assertSQLMappingEqual(task.new_models_sql, 'create_table')
+        self.assertSQLMappingEqual(task._new_models_sql, 'create_table')
 
     def test_execute(self):
         """Testing EvolveAppTask.execute"""

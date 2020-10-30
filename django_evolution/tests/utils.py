@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import hashlib
 import logging
 from contextlib import contextmanager
 from functools import partial
@@ -671,6 +672,13 @@ def generate_constraint_name(connection, r_col, col, r_table, table):
 
         if len(full_name) > max_length:
             full_name = '%s%s' % (r_table[:(max_length - len(name))], name)
+
+            if len(full_name) > max_length:
+                md5 = hashlib.md5(full_name.decode('utf-8'))
+                full_name = md5.hexdigest()[:max_length]
+
+        if full_name[0].isdigit():
+            full_name = 'D%s' % full_name[:-1]
 
         return full_name
     else:

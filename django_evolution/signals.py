@@ -54,6 +54,10 @@ applied_migration = Signal(providing_args=['migration'])
 
 #: Emitted when creating new models for an app outside of a migration.
 #:
+#: Note:
+#:     There's no guarantee that a :py:data:`created_models` will be emitted
+#:     in-between two :py:data:`creating_models`.
+#:
 #: Args:
 #:     app_label (unicode):
 #:         The app label for the models being created.
@@ -63,6 +67,10 @@ applied_migration = Signal(providing_args=['migration'])
 creating_models = Signal(providing_args=['app_label', 'model_names'])
 
 #: Emitted when finished creating new models for an app outside of a migration.
+#:
+#: Note:
+#:     There's no guarantee that a :py:data:`creating_models` will be emitted
+#:     in-between two :py:data:`created_models`.
 #:
 #: Args:
 #:     migration (django.db.migrations.migration.Migration):

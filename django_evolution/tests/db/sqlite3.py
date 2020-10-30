@@ -2550,6 +2550,8 @@ def evolver(connection):
         dict:
         The dictionary of SQL mappings.
     """
+    generate_index_name = make_generate_index_name(connection)
+
     mappings = {
         'evolve_app_task': [
             'CREATE TABLE "TEMP_TABLE" '
@@ -2585,6 +2587,59 @@ def evolver(connection):
                 '    "value" varchar(100) NOT NULL',
                 ')',
 
+                ';',
+            ],
+        })
+
+    if django_version >= (2, 0):
+        mappings.update({
+            'create_tables_with_deferred_refs': [
+                'CREATE TABLE "tests_testmodel" '
+                '("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,'
+                ' "value" varchar(100) NOT NULL,'
+                ' "ref_id" integer NOT NULL'
+                ' REFERENCES "evolutions_app_reffedevolvertestmodel" ("id")'
+                ' DEFERRABLE INITIALLY DEFERRED);',
+
+                'CREATE TABLE "evolutions_app_reffedevolvertestmodel" '
+                '("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,'
+                ' "value" varchar(100) NOT NULL);',
+
+                'CREATE INDEX "%s" ON "tests_testmodel" ("ref_id");'
+                % generate_index_name('tests_testmodel', 'ref_id'),
+            ],
+        })
+    elif django_version >= (1, 7):
+        mappings.update({
+            'create_tables_with_deferred_refs': [
+                'CREATE TABLE "tests_testmodel" '
+                '("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,'
+                ' "value" varchar(100) NOT NULL,'
+                ' "ref_id" integer NOT NULL'
+                ' REFERENCES "evolutions_app_reffedevolvertestmodel" ("id"));',
+
+                'CREATE TABLE "evolutions_app_reffedevolvertestmodel" '
+                '("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,'
+                ' "value" varchar(100) NOT NULL);',
+
+                'CREATE INDEX "%s" ON "tests_testmodel" ("ref_id");'
+                % generate_index_name('tests_testmodel', 'ref_id'),
+            ],
+        })
+    else:
+        mappings.update({
+            'create_tables_with_deferred_refs': [
+                'CREATE TABLE "tests_testmodel" (',
+                '    "id" integer NOT NULL PRIMARY KEY,',
+                '    "value" varchar(100) NOT NULL,',
+                '    "ref_id" integer NOT NULL',
+                ')',
+                ';',
+
+                'CREATE TABLE "evolutions_app_reffedevolvertestmodel" (',
+                '    "id" integer NOT NULL PRIMARY KEY,',
+                '    "value" varchar(100) NOT NULL',
+                ')',
                 ';',
             ],
         })
