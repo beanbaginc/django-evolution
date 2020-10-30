@@ -4,13 +4,18 @@ from __future__ import unicode_literals
 
 import os
 
+from django.db import models
+
 import django_evolution
 from django_evolution.compat.apps import get_app
 from django_evolution.consts import EvolutionsSource, UpgradeMethod
+from django_evolution.models import Version
+from django_evolution.mutations import AddField, ChangeField, RenameModel
 from django_evolution.support import supports_migrations
 from django_evolution.tests.base_test_case import (MigrationsTestsMixin,
                                                    TestCase)
-from django_evolution.utils.evolutions import (get_app_upgrade_info,
+from django_evolution.utils.evolutions import (get_app_pending_mutations,
+                                               get_app_upgrade_info,
                                                get_applied_evolutions,
                                                get_evolution_app_dependencies,
                                                get_evolution_dependencies,
@@ -20,6 +25,85 @@ from django_evolution.utils.evolutions import (get_app_upgrade_info,
                                                get_evolutions_module_name,
                                                get_evolutions_path,
                                                get_evolutions_source)
+
+
+class GetAppPendingMutationsTests(TestCase):
+    """Unit tests for get_app_pending_mutations."""
+
+    def test_with_unregistered_app_sig(self):
+        """Testing get_app_pending_mutations with unregistered app signature
+        """
+        self.ensure_evolution_models()
+
+        latest_version = Version.objects.current_version()
+        self.assertIsNone(
+            latest_version.signature.get_app_sig('evolutions_app'))
+
+        mutations = [
+            ChangeField('EvolutionsAppTestModel', 'char_field',
+                        models.CharField, max_length=10),
+            AddField('EvolutionsAppTestModel', 'new_field',
+                     models.IntegerField, default=42,
+                     null=True),
+        ]
+
+        pending_mutations = get_app_pending_mutations(
+            app=get_app('evolutions_app'),
+            mutations=mutations)
+
+        self.assertEqual(pending_mutations, mutations)
+
+    def test_excludes_unchanged_models(self):
+        """Testing get_app_pending_mutations excludes mutations for unchanged
+        models
+        """
+        self.ensure_evolution_models()
+
+        latest_version = Version.objects.current_version()
+        old_project_sig = latest_version.signature
+
+        # Make a change in the new signature for Evolution, so it will be
+        # considered for pending mutations.
+        new_project_sig = old_project_sig.clone()
+        model_sig = (
+            new_project_sig
+            .get_app_sig('django_evolution')
+            .get_model_sig('Evolution')
+        )
+        model_sig.get_field_sig('app_label').field_attrs['max_length'] = 500
+
+        # Only the first mutation should match.
+        mutations = [
+            ChangeField('Evolution', 'app_label', models.CharField,
+                        max_length=500),
+            AddField('Version', 'new_field', models.BooleanField,
+                     default=True),
+        ]
+
+        pending_mutations = get_app_pending_mutations(
+            app=get_app('django_evolution'),
+            old_project_sig=old_project_sig,
+            project_sig=new_project_sig,
+            mutations=mutations)
+
+        self.assertEqual(pending_mutations, [mutations[0]])
+
+    def test_with_rename_model(self):
+        """Testing get_app_pending_mutations always includes RenameModel
+        mutations
+        """
+        self.ensure_evolution_models()
+
+        mutations = [
+            RenameModel('Version', 'ProjectVersion',
+                        db_table='django_project_version'),
+        ]
+
+        pending_mutations = get_app_pending_mutations(
+            app=get_app('django_evolution'),
+            mutations=mutations)
+
+        self.assertEqual(pending_mutations, mutations)
 
 
 class GetEvolutionAppDependenciesTests(TestCase):

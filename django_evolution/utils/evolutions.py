@@ -417,7 +417,8 @@ def get_app_mutations(app, evolution_labels=None, database=DEFAULT_DB_ALIAS):
     return mutations
 
 
-def get_app_pending_mutations(app, evolution_labels,
+def get_app_pending_mutations(app, evolution_labels=[], mutations=None,
+                              old_project_sig=None, project_sig=None,
                               database=DEFAULT_DB_ALIAS):
     """Return an app's pending mutations provided by the given evolution names.
 
@@ -434,6 +435,20 @@ def get_app_pending_mutations(app, evolution_labels,
 
             If ``None``, this will factor in all evolution labels for the
             app.
+
+        mutations (list of django_evolution.mutations.BaseMutation, optional):
+            An explicit list of mutations to use. If provided,
+            ``evolution_labels`` will be ignored.
+
+        old_project_sig (django_evolution.signature.ProjectSignature,
+                         optional):
+            A pre-fetched old project signature. If provided, this will be
+            used instead of the latest one in the database.
+
+        project_sig (django_evolution.signature.ProjectSignature, optional):
+            A project signature representing the current state of the database.
+            If provided, this will be used instead of generating a new one
+            from the current database state.
 
         database (unicode, optional):
             The name of the database the evolutions cover.
@@ -452,16 +467,19 @@ def get_app_pending_mutations(app, evolution_labels,
     from django_evolution.mutations import RenameModel
     from django_evolution.signature import ProjectSignature
 
-    mutations = get_app_mutations(app=app,
-                                  evolution_labels=evolution_labels,
-                                  database=database)
+    if mutations is None:
+        mutations = get_app_mutations(app=app,
+                                      evolution_labels=evolution_labels,
+                                      database=database)
 
-    latest_version = Version.objects.current_version(using=database)
+    if old_project_sig is None:
+        latest_version = Version.objects.current_version(using=database)
+        old_project_sig = latest_version.signature
+
+    if project_sig is None:
+        project_sig = ProjectSignature.from_database(database)
 
     app_id = get_app_label(app)
-    old_project_sig = latest_version.signature
-    project_sig = ProjectSignature.from_database(database)
-
     old_app_sig = old_project_sig.get_app_sig(app_id)
     app_sig = project_sig.get_app_sig(app_id)
 
