@@ -12,20 +12,35 @@ Module and Class References
    implementations and some internal modules are not included.
 
 
+.. _public-python-api:
+
+Public API
+==========
+
 .. autosummary::
    :toctree: python
 
    django_evolution
    django_evolution.consts
-   django_evolution.diff
    django_evolution.errors
    django_evolution.evolve
-   django_evolution.mock_models
    django_evolution.models
    django_evolution.mutations
-   django_evolution.mutators
    django_evolution.signals
    django_evolution.signature
+
+
+.. _private-python-api:
+
+Private API
+===========
+
+.. autosummary::
+   :toctree: python
+
+   django_evolution.diff
+   django_evolution.mock_models
+   django_evolution.mutators
    django_evolution.support
    django_evolution.compat.apps
    django_evolution.compat.commands

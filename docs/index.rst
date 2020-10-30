@@ -91,6 +91,7 @@ Reference
 .. toctree::
    :maxdepth: 1
 
+   versioning
    coderef/index
 
 
