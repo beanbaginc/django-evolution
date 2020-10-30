@@ -13,6 +13,7 @@ from django_evolution.compat.models import (get_remote_field,
 from django_evolution.db.common import (AlterTableSQLResult,
                                         BaseEvolutionOperations,
                                         SQLResult)
+from django_evolution.utils.sql import NewTransactionSQL, NoTransactionSQL
 
 
 TEMP_TABLE_NAME = 'TEMP_TABLE'
@@ -304,13 +305,9 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
             # adding this as a dynamic function to run later, rather than
             # hard-coding any SQL now.
             #
-            # This also has to be done in its own transaction, but there's no
-            # mechanism to easily construct a new transaction at this point.
-            # However, when it comes down to it, Django's transaction logic
-            # is just wrappers around SQL statements, so we're going to play
-            # dirty. We'll just commit any existing transaction, start a new
-            # one, commit it, and then start a new one for any remaining
-            # SQL statements.
+            # Most of this can be done in a transaction, but not all. We have
+            # to execute much of this in its own transaction, and then write
+            # the new schema to disk with a VACUUM outside of a transaction.
             def _update_refs(cursor):
                 schema_version = \
                     cursor.execute('PRAGMA schema_version').fetchone()[0]
@@ -318,40 +315,35 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
                 refs_template = ' REFERENCES "%s" ("%%s") ' % table_name
 
                 return [
-                    # Commit anything that's occurred already and create a
-                    # new transaction. If that previous transaction fails to
-                    # apply, we won't reach any of the subsequent statements.
-                    'COMMIT;',
-                    'BEGIN;',
+                    NewTransactionSQL(
+                        [
+                            # Allow us to update the database schema by
+                            # manipulating the sqlite_master table.
+                            'PRAGMA writable_schema = 1;',
+                        ] + [
+                            # Update all tables that reference any renamed
+                            # columns, setting their references to point to
+                            # the new names.
+                            ('UPDATE sqlite_master SET sql ='
+                             ' replace(sql, %s, %s);',
+                             (refs_template % old_column,
+                              refs_template % new_column))
+                            for old_column, new_column in reffed_renamed_cols
+                        ] + [
+                            # Tell SQLite that we're done writing the schema,
+                            # and give it a new schema version number.
+                            ('PRAGMA schema_version = %s;'
+                             % (schema_version + 1)),
 
-                    # Allow us to update the database schema by manipulating
-                    # the sqlite_master table.
-                    'PRAGMA writable_schema = 1;',
-                ] + [
-                    # Update all tables that reference any renamed columns,
-                    # setting their references to point to the new names.
-                    ('UPDATE sqlite_master SET sql = replace(sql, %s, %s);',
-                     (refs_template % old_column,
-                      refs_template % new_column))
-                    for old_column, new_column in reffed_renamed_cols
-                 ] + [
-                    # Tell SQLite that we're done writing the schema, and
-                    # give it a new schema version number.
-                    'PRAGMA schema_version = %s;' % (schema_version + 1),
-                    'PRAGMA writable_schema = 0;',
+                            'PRAGMA writable_schema = 0;',
 
-                    # Make sure everything went well. We want to bail here
-                    # before we commit the transaction if anything goes wrong.
-                    'PRAGMA integrity_check;',
-
-                    # Commit the transaction and tell SQLite to vacuum
-                    # (rebuild and clean up) the database.
-                    'COMMIT;',
-                    'VACUUM;',
-
-                    # Begin a new transaction for any subsequent SQL
-                    # statements.
-                    'BEGIN;',
+                            # Make sure everything went well. We want to bail
+                            # here before we commit the transaction if
+                            # anything goes wrong.
+                            'PRAGMA integrity_check;',
+                        ]
+                    ),
+                    NoTransactionSQL(['VACUUM;']),
                 ]
 
             sql.append(_update_refs)

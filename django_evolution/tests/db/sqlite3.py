@@ -1415,9 +1415,7 @@ def rename_field(connection):
                 % generate_index_name('tests_testmodel', 'fk_field_id',
                                       'fk_field'),
 
-                'COMMIT;',
-
-                'BEGIN;',
+                '-- Start of a new transaction:',
 
                 'PRAGMA writable_schema = 1;',
 
@@ -1431,11 +1429,9 @@ def rename_field(connection):
 
                 'PRAGMA integrity_check;',
 
-                'COMMIT;',
+                '-- Run outside of a transaction:',
 
                 'VACUUM;',
-
-                'BEGIN;',
             ]
         else:
             # Django 1.6 and earlier don't generate those references on the

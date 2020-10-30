@@ -9,6 +9,35 @@ from django_evolution.compat.db import atomic
 from django_evolution.db import EvolutionOperationsMulti
 
 
+class BaseGroupedSQL(object):
+    """Base class for a grouped list of SQL statements.
+
+    This is a simple wrapper around a list of SQL statements, used to
+    group statements under some category defined by a subclass.
+
+    Attributes:
+        sql (list):
+            A list of SQL statements, as allowed by :py:func:`run_sql`.
+    """
+
+    def __init__(self, sql):
+        """Initialize the group.
+
+        Args:
+            sql (list):
+                A list of SQL statements, as allowed by :py:func:`run_sql`.
+        """
+        self.sql = sql
+
+
+class NewTransactionSQL(BaseGroupedSQL):
+    """A list of SQL statements to execute in its own transaction."""
+
+
+class NoTransactionSQL(BaseGroupedSQL):
+    """A list of SQL statements to execute outside of a transaction."""
+
+
 class SQLExecutor(object):
     """Management for the execution of SQL.
 
@@ -60,6 +89,9 @@ class SQLExecutor(object):
         """
         connection = self._connection
         database = self._database
+
+        assert not connection.in_atomic_block, \
+            'SQLExecutor cannot be run inside a transaction.'
 
         if not self._check_constraints:
             self._constraints_disabled = \
@@ -150,20 +182,34 @@ class SQLExecutor(object):
         out_sql = []
 
         try:
-            self.ensure_transaction()
+            batches = self._prepare_transaction_batches(
+                self._prepare_sql(sql))
 
-            for statement, params in self._prepare_sql(sql):
-                if capture:
-                    if params:
-                        out_sql.append(statement % tuple(
-                            qp(param)
-                            for param in params
-                        ))
-                    else:
-                        out_sql.append(statement)
-
+            for i, (batch, use_transaction) in enumerate(batches):
                 if execute:
-                    cursor.execute(statement, params)
+                    if use_transaction:
+                        self.new_transaction()
+                    else:
+                        self.finish_transaction()
+
+                if capture and i > 0:
+                    if use_transaction:
+                        out_sql.append('-- Start of a new transaction:')
+                    else:
+                        out_sql.append('-- Run outside of a transaction:')
+
+                for statement, params in batch:
+                    if capture:
+                        if params:
+                            out_sql.append(statement % tuple(
+                                qp(param)
+                                for param in params
+                            ))
+                        else:
+                            out_sql.append(statement)
+
+                    if execute:
+                        cursor.execute(statement, params)
         except Exception as e:
             # Augment the exception so that callers can get the SQL statement
             # that failed.
@@ -179,21 +225,14 @@ class SQLExecutor(object):
         This will take the SQL statements that have been scheduled to be run
         and yields them one-by-one for execution.
 
-        Each entry in ``sql`` may be a single statement, a list of statements,
-        or a function that takes a cursor and returns a statement/list of
-        statements.
-
-        Each statement can be either a string or a tuple consisting of the
-        statement and parameters to pass to it.
-
         All comments and blank lines will be filtered out.
 
         Args:
             sql (object):
-                The list of statements to prepare for execution. Each entry
-                might be a string, a tuple consisting of a format string and
-                formatting arguments, or a callable that returns a list of the
-                above.
+                A list of SQL statements. Each entry might be a string, a
+                tuple consisting of a format string and formatting arguments,
+                or a subclass of :py:class:`BaseGroupedSQL`, or a callable
+                that returns a list of the above.
 
         Yields:
             tuple:
@@ -203,6 +242,10 @@ class SQLExecutor(object):
             1. The SQL statement as a string
             2. A tuple of parameters for the SQL statements (which may be
                empty)
+            3. Whether this statement should be run in a transaction.
+            4. Whether this statement's transaction should be the start of a
+               brand new, independent transaction (rather than using a
+               previous one).
         """
         normalize_value = self._evolver_backend.normalize_value
 
@@ -210,25 +253,81 @@ class SQLExecutor(object):
             if callable(statements):
                 statements = statements(self._cursor)
 
-            if not isinstance(statements, list):
-                statements = [statements]
+                for result in self._prepare_sql(statements):
+                    yield result
+            else:
+                new_transaction = False
 
-            for statement in statements:
-                if isinstance(statement, tuple):
-                    statement, params = statement
-                    assert isinstance(params, tuple)
+                if isinstance(statements, NoTransactionSQL):
+                    use_transaction = False
+                    statements = statements.sql
+                elif isinstance(statements, NewTransactionSQL):
+                    new_transaction = True
+                    use_transaction = True
+                    statements = statements.sql
                 else:
-                    params = None
+                    use_transaction = True
 
-                assert isinstance(statement, six.text_type)
+                    if not isinstance(statements, list):
+                        statements = [statements]
 
-                statement = statement.strip()
+                for statement in statements:
+                    if isinstance(statement, tuple):
+                        statement, params = statement
+                        assert isinstance(params, tuple)
+                    else:
+                        params = None
 
-                if statement and not statement.startswith('--'):
-                    if params is not None:
-                        params = tuple(
-                            normalize_value(param)
-                            for param in params
-                        )
+                    assert isinstance(statement, six.text_type)
 
-                    yield statement, params
+                    statement = statement.strip()
+
+                    if statement and not statement.startswith('--'):
+                        if params is not None:
+                            params = tuple(
+                                normalize_value(param)
+                                for param in params
+                            )
+
+                        yield (statement, params, use_transaction,
+                               new_transaction)
+
+                        # If we've set this above, reset it. We only want the
+                        # first statement in a batch to flag a new transaction.
+                        new_transaction = False
+
+    def _prepare_transaction_batches(self, prepared_sql):
+        """Prepare batches of SQL statements to run together.
+
+        This takes in prepared SQL statements and generates batches of
+        statements to run together inside or outside of a transaction.
+
+        Args:
+            prepared_sql (list of tuple):
+                A list of SQL statement information generated by
+                :py:meth:`_prepare_sql`.
+
+        Yields:
+            tuple:
+            Information on a batch of statements to to execute. This will be
+            a tuple containing:
+
+            1. The list of SQL statements.
+            2. Whether to execute these statements in a transaction.
+        """
+        batch = None
+        last_use_transaction = None
+
+        for (statement, params, use_transaction,
+             new_transaction) in prepared_sql:
+            if new_transaction or use_transaction is not last_use_transaction:
+                if batch:
+                    yield batch, last_use_transaction
+
+                batch = []
+                last_use_transaction = use_transaction
+
+            batch.append((statement, params))
+
+        if batch:
+            yield batch, last_use_transaction
