@@ -96,26 +96,48 @@ class ModelMutator(object):
 
         Type:
             django_evolution.signature.ModelSignature
+
+        Raises:
+            django_evolution.errors.EvolutionBaselineMissingError:
+                The model signature or parent app signature could not be found.
         """
-        app_sig = self.project_sig.get_app_sig(self.app_label)
+        app_label = self.app_label
+        app_sig = self.project_sig.get_app_sig(app_label)
 
         if app_sig is None:
             if (self.legacy_app_label is not None and
-                self.legacy_app_label != self.app_label):
+                self.legacy_app_label != app_label):
                 # Check if it can be found by the legacy label.
                 app_sig = self.project_sig.get_app_sig(self.legacy_app_label)
 
             if app_sig is None:
-                raise EvolutionBaselineMissingError()
+                raise EvolutionBaselineMissingError(
+                    'The app signature for "%s" could not be found.'
+                    % app_label)
 
-        return app_sig.get_model_sig(self.model_name)
+        model_sig = app_sig.get_model_sig(self.model_name)
+
+        if model_sig is None:
+            raise EvolutionBaselineMissingError(
+                'The model signature for "%s.%s" could not be found.'
+                % (app_label, self.model_name))
+
+        return model_sig
 
     def create_model(self):
-        """Creates a mock model instance with the stored information.
+        """Create a mock model instance with the stored information.
 
         This is typically used when calling a mutation's mutate() function
         and passing a model instance, but can also be called whenever
         a new instance of the model is needed for any lookups.
+
+        Returns:
+            django_evolution.mock_models.MockModel:
+            The resulting mock model.
+
+        Raises:
+            django_evolution.errors.EvolutionBaselineMissingError:
+                The model signature or parent app signature could not be found.
         """
         return MockModel(project_sig=self.project_sig,
                          app_name=self.app_label,
@@ -237,12 +259,20 @@ class ModelMutator(object):
         })
 
     def run_mutation(self, mutation):
-        """Runs the specified mutation.
+        """Run the specified mutation.
 
         The mutation will be provided with a temporary mock instance of a
         model that can be used for field or meta lookups.
 
-        The mutation must be an instance of BaseModelMutation.
+        The mutator must be finalized before this can be called.
+
+        Args:
+            mutation (django_evolution.mutations.BaseModelMutation):
+                The mutation to run.
+
+        Raises:
+            django_evolution.errors.EvolutionBaselineMissingError:
+                The model signature or parent app signature could not be found.
         """
         assert isinstance(mutation, BaseModelMutation)
         assert not self._finalized

@@ -206,6 +206,9 @@ class MockMeta(object):
                 Whether this represents an auto-created model (such as an
                 intermediary many-to-many model).
         """
+        assert model_sig, \
+            'model_sig for %s.%s cannot be None!' % (app_name, model_name)
+
         self.object_name = model_name
         self.app_label = app_name
         self.meta = {
@@ -416,6 +419,9 @@ class MockModel(object):
                 The name of the database where the model would be read from or
                 written to.
         """
+        assert model_sig, \
+            'model_sig for %s.%s cannot be None!' % (app_name, model_name)
+
         self.app_name = app_name
         self.model_name = model_name
         self._meta = MockMeta(project_sig=project_sig,
