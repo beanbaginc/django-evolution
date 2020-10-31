@@ -1040,6 +1040,10 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         app_label1 = get_app_label(app1)
         app_label2 = get_app_label(app2)
 
+        # Put the default model from evolutions_app in the database, so it
+        # don't appear in the SQL below.
+        self.ensure_evolved_apps([app2])
+
         class ReffedEvolverTestModel(BaseTestModel):
             # Needed in Django 1.6 to ensure the model isn't filtered out
             # in our own get_models() call.

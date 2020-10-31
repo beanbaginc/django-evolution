@@ -34,6 +34,7 @@ from django_evolution.utils.sql import SQLExecutor
 test_connections = ConnectionHandler(settings.TEST_DATABASES)
 
 _sql_mapping_cache = {}
+_registered_test_models = []
 
 
 def register_models(database_state, models, register_indexes=False,
@@ -238,6 +239,8 @@ def register_models(database_state, models, register_indexes=False,
             app_cache[through_new_model_name] = through
             register_app_models(new_app_label,
                                 [(through_new_model_name, through)])
+            _registered_test_models.append((new_app_label,
+                                            through_new_model_name))
 
         # Unregister with the old model name and register the new one.
         if orig_model_name in all_models[orig_app_label]:
@@ -246,11 +249,24 @@ def register_models(database_state, models, register_indexes=False,
         register_app_models(new_app_label, [(new_model_name, model)])
         app_cache[new_model_name] = model
 
+        _registered_test_models.append((new_app_label, new_model_name))
+
     # If the app hasn't yet been registered, do that now.
     if not is_app_registered(app):
         register_app(new_app_label, app)
 
     return app_cache
+
+
+def unregister_test_models():
+    """Unregister any previously-registered testing models."""
+    global _registered_test_models
+
+    for app_label, model_name in _registered_test_models:
+        if model_name in all_models[app_label]:
+            unregister_app_model(app_label, model_name)
+
+    _registered_test_models = []
 
 
 def create_test_project_sig(models, app_label='tests', version=1):

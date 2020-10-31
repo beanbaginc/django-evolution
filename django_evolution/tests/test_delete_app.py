@@ -101,4 +101,5 @@ class DeleteAppTests(EvolutionTestCase):
         app_mutator.run_mutation(mutation)
         sql = app_mutator.to_sql()
 
-        self.assertSQLMappingEqual(sql, sql_name, database)
+        self.assertSQLMappingEqual(sql, sql_name,
+                                   database=database)

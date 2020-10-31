@@ -10,7 +10,8 @@ from django.test.testcases import TestCase as DjangoTestCase
 from django.test.utils import override_settings
 
 from django_evolution.compat import six
-from django_evolution.compat.apps import unregister_app
+from django_evolution.compat.apps import get_app, unregister_app
+from django_evolution.compat.db import sql_delete
 from django_evolution.db.state import DatabaseState
 from django_evolution.diff import Diff
 from django_evolution.evolve import Evolver
@@ -21,8 +22,11 @@ from django_evolution.tests.utils import (create_test_project_sig,
                                           ensure_test_db,
                                           execute_test_sql,
                                           get_sql_mappings,
-                                          register_models)
-from django_evolution.utils.migrations import unrecord_applied_migrations
+                                          register_models,
+                                          unregister_test_models)
+from django_evolution.utils.migrations import (MigrationList,
+                                               record_applied_migrations,
+                                               unrecord_applied_migrations)
 
 
 class TestCase(DjangoTestCase):
@@ -38,6 +42,18 @@ class TestCase(DjangoTestCase):
 
     # The list of databases we may test against, required by Django 2.2+.
     databases = ['default', 'db_multi']
+
+    default_database_name = 'default'
+    sql_mapping_key = None
+
+    builtin_test_app_labels = [
+        'evolution_deps_app',
+        'evolutions_app',
+        'evolutions_app2',
+        'migrations_app',
+        'migrations_app2',
+        'tests',
+    ]
 
     # Override some internal functions on Django's TestCase to avoid setting
     # up transactions. We won't bother documenting these, since we're just
@@ -75,6 +91,12 @@ class TestCase(DjangoTestCase):
         if self.needs_evolution_models:
             self.ensure_evolution_models()
 
+    def tearDown(self):
+        super(TestCase, self).tearDown()
+
+        self.ensure_deleted_apps()
+        unregister_test_models()
+
     def shortDescription(self):
         """Returns the description of the current test.
 
@@ -95,6 +117,35 @@ class TestCase(DjangoTestCase):
         Evolver()
         assert Version.objects.exists()
 
+    def ensure_deleted_apps(self, app_labels=None):
+        """Ensure an app's models and evolutions aren't in the database.
+
+        Args:
+            app_labels (list of unicode, optional):
+                An explicit list of app labels to delete. This defaults
+                to the built-in list of test app labels.
+        """
+        if app_labels is None:
+            app_labels = self.builtin_test_app_labels
+
+        # Do this one-by-one, since we might have some but not all of the
+        # apps in the database.
+        sql = []
+
+        for app_label in app_labels:
+            try:
+                app = get_app(app_label)
+            except Exception:
+                # This wasn't registered, so we can skip it.
+                continue
+
+            sql += sql_delete(app)
+
+        if sql:
+            execute_test_sql(sql)
+
+        Evolution.objects.filter(app_label__in=app_labels).delete()
+
     def ensure_evolved_apps(self, apps):
         """Ensure an app's models and evolutions are applied to the database.
 
@@ -108,6 +159,268 @@ class TestCase(DjangoTestCase):
             evolver.queue_evolve_app(app)
 
         evolver.evolve()
+
+    def record_evolutions(self, version, evolutions,
+                          database=DEFAULT_DB_ALIAS):
+        """Record evolutions in the database.
+
+        This is a convenience around creating and saving `Evolution` models.
+
+        Args:
+            version (django_evolution.models.Version):
+                The version to associate the evolutions with.
+
+            evolutions (list of tuple):
+                The list of evolutions to store. Each item is a tuple in
+                ``(app_label, label)`` form.
+
+            database (unicode, optional):
+                The name of the database to save these on.
+        """
+        Evolution.objects.using(database).bulk_create([
+            Evolution(version=version,
+                      app_label=app_label,
+                      label=label)
+            for app_label, label in evolutions
+        ])
+
+    def record_applied_migrations(self, migration_targets,
+                                  database=DEFAULT_DB_ALIAS):
+        """Record applied migrations in the database.
+
+        This is a convenience around creating a migration list and then
+        recording it in the database.
+
+        Args:
+            migration_targets (list of tuple):
+                The list of migration targets to store. Each item is a tuple
+                in ``(app_label, label)`` form.
+
+            database (unicode, optional):
+                The name of the database to save these on.
+        """
+        assert supports_migrations
+
+        migration_list = MigrationList()
+        migration_list.add_migration_targets(migration_targets)
+
+        record_applied_migrations(connection=connections[database],
+                                  migrations=migration_list)
+
+    def get_sql_mapping(self, name, sql_mappings_key=None, db_name=None):
+        """Return the SQL for the given mapping name and database.
+
+        Args:
+            name (unicode):
+                The registered name in the list of SQL mappings for this test
+                suite and database.
+
+            sql_mappings_key (unicode, optional):
+                The key identifying the SQL mappings. This defaults to
+                :py:attr:`sql_mapping_key`.
+
+            db_name (unicode, optional):
+                The name of the database to return SQL mappings for.
+
+        Returns:
+            list of unicode:
+            The resulting list of SQL statements.
+
+        Raises:
+            ValueError:
+                The provided name is not valid.
+        """
+        sql_mappings_key = sql_mappings_key or self.sql_mapping_key
+        assert sql_mappings_key
+
+        db_name = db_name or self.default_database_name
+        assert db_name
+
+        sql_mappings = get_sql_mappings(mapping_key=sql_mappings_key,
+                                        db_name=db_name)
+
+        try:
+            sql = sql_mappings[name]
+        except KeyError:
+            raise ValueError('"%s" is not a valid SQL mapping name.'
+                             % name)
+
+        if isinstance(sql, six.text_type):
+            sql = sql.splitlines()
+
+        return sql
+
+    def assertEvolutionsEqual(self, evolutions, expected_evolutions):
+        """Assert that a list of evolutions models match expectations.
+
+        Args:
+            evolutions (list of django_evolution.models.Evolution):
+                The list of evolution models.
+
+            expected_evolutions (list of tuple):
+                A list of evolution information to compare against the models.
+                Each item is a tuple in ``(app_label, label)`` form.
+
+        Raises:
+            AssertionError:
+                The lists do not match.
+        """
+        self.assertEqual(
+            [
+                (evolution.app_label, evolution.label)
+                for evolution in evolutions
+            ],
+            expected_evolutions)
+
+    def assertAppliedEvolutions(self, expected_evolutions, version=None,
+                                database=DEFAULT_DB_ALIAS):
+        """Assert that applied evolutions match expectations.
+
+        Args:
+            expected_evolutions (list of tuple):
+                A list of evolution information to compare against the models.
+                Each item is a tuple in ``(app_label, label)`` form.
+
+            version (django_evolution.models.Version, optional):
+                The stored project version that the evolutions must be
+                associated with. If not provided, all evolutions in the
+                database will be used.
+
+            database (unicode, optional):
+                The name of the database to query evolutions against. This
+                is only used if ``version`` is not provided.
+
+        Raises:
+            AssertionError:
+                The lists do not match.
+        """
+        if version is None:
+            queryset = Evolution.objects.using(database)
+        else:
+            queryset = version.evolutions.all()
+
+        applied_evolutions = set(queryset.values_list('app_label', 'label'))
+
+        for app_label, name in expected_evolutions:
+            self.assertIn((app_label, name), applied_evolutions)
+
+    def assertAppliedMigrations(self, expected_migration_targets,
+                                database=DEFAULT_DB_ALIAS):
+        """Assert that applied migrations match expectations.
+
+        Args:
+            expected_migration_targets (list of tuple):
+                A list of migration targets to compare against the applied
+                migrations. Each item is a tuple in ``(app_label, name)``
+                form.
+
+            database (unicode, optional):
+                The name of the database to query appliedm migrations against.
+
+        Raises:
+            AssertionError:
+                The lists do not match.
+        """
+        applied_migrations = MigrationList.from_database(connections[database])
+
+        for app_label, name in expected_migration_targets:
+            self.assertTrue(applied_migrations.has_migration_info(
+                app_label=app_label,
+                name=name))
+
+    def assertSQLMappingEqual(self, sql, sql_mapping_name,
+                              sql_mappings_key=None, database=None):
+        """Assert generated SQL against database-specific mapped test SQL.
+
+        This will output the provided generated SQL and the expectation test
+        SQL mapped by the given key and optional database name, for debugging,
+        and will then compare the contents of both.
+
+        The expected SQL may contain regexes, which are used for comparing
+        against generated SQL that may depend on some dynamic value pulled from
+        the database). If found, the pattern in the regex will be applied to
+        the corresponding generated SQL to determine if there's a match. Other
+        lines will be compared directly.
+
+        If any part of the SQL does not match, a diff will be shown in the
+        test output.
+
+        Args:
+            sql (list of unicode):
+                The list of generated SQL statements.
+
+            sql_mapping_name (unicode):
+                The mapping name in the database-specific test data to compare
+                against.
+
+            sql_mappings_key (unicode, optional):
+                The key identifying the SQL mappings. This defaults to
+                :py:attr:`sql_mapping_key`.
+
+            database (unicode, optional):
+                An explicit database name to use for resolving
+                ``sql_mapping_name``.
+
+        Raises:
+            AssertionError:
+                The generated and expected SQL did not match.
+        """
+        # Normalize the generated and expected SQL so that we are
+        # guaranteed to have a list with one item per line.
+        generated_sql = '\n'.join(sql).splitlines()
+        expected_sql = self.get_sql_mapping(name=sql_mapping_name,
+                                            sql_mappings_key=sql_mappings_key,
+                                            db_name=database)
+
+        # Output the statements one-by-one, to help with diagnosing
+        # differences.
+
+        print()
+        print("** Comparing SQL against '%s'" % sql_mapping_name)
+        print('** Generated:')
+        print()
+
+        for line in generated_sql:
+            print('    %s' % line)
+
+        print()
+        print('** Expected:')
+        print()
+
+        has_regex = False
+
+        for line in expected_sql:
+            if (not isinstance(line, six.text_type) and
+                hasattr(line, 'pattern')):
+                line = '/%s/' % line.pattern
+                has_regex = True
+
+            print('    %s' % line)
+
+        print()
+
+        if has_regex:
+            # We can't compare directly at first, so let's see if things
+            # are otherwise a match and then, if we spot anything wrong,
+            # we'll just do an assertListEqual to get detailed output.
+            match = (len(generated_sql) == len(expected_sql))
+
+            if match:
+                for gen_line, expected_line in zip(generated_sql,
+                                                   expected_sql):
+                    if ((isinstance(expected_line, six.text_type) and
+                         gen_line != expected_line) or
+                        (hasattr(line, 'pattern') and
+                         not line.match(gen_line))):
+                        match = False
+                        break
+
+            if not match:
+                # Now show that detailed output.
+                self.assertListEqual(generated_sql, expected_sql)
+        else:
+            # Compare as lists, so that we can better spot inconsistencies.
+            self.assertListEqual(generated_sql, expected_sql)
 
 
 class MigrationsTestsMixin(object):
@@ -133,8 +446,6 @@ class MigrationsTestsMixin(object):
 class EvolutionTestCase(TestCase):
     """Base class for test cases that need to evolve the database."""
 
-    sql_mapping_key = None
-    default_database_name = 'default'
     default_model_name = 'TestModel'
     default_base_model = None
     default_pre_extra_models = []
@@ -535,129 +846,9 @@ class EvolutionTestCase(TestCase):
                                    database=db_name)
 
         if sql_name is not None:
-            self.assertSQLMappingEqual(sql, sql_name, db_name)
-
-    def get_sql_mapping(self, name, db_name=None):
-        """Return the SQL for the given mapping name and database.
-
-        Args:
-            name (unicode):
-                The registered name in the list of SQL mappings for this test
-                suite and database.
-
-            db_name (unicode, optional):
-                The name of the database to return SQL mappings for.
-
-        Returns:
-            list of unicode:
-            The resulting list of SQL statements.
-
-        Raises:
-            ValueError:
-                The provided name is not valid.
-        """
-        db_name = db_name or self.default_database_name
-        sql_mappings = get_sql_mappings(mapping_key=self.sql_mapping_key,
-                                        db_name=db_name)
-
-        try:
-            sql = sql_mappings[name]
-        except KeyError:
-            raise ValueError('"%s" is not a valid SQL mapping name.'
-                             % name)
-
-        if isinstance(sql, six.text_type):
-            sql = sql.splitlines()
-
-        return sql
-
-    def assertSQLMappingEqual(self, sql, sql_mapping_name, db_name=None):
-        """Assert generated SQL against database-specific mapped test SQL.
-
-        This will output the provided generated SQL and the expectation test
-        SQL mapped by the given key and optional database name, for debugging,
-        and will then compare the contents of both.
-
-        The expected SQL may contain regexes, which are used for comparing
-        against generated SQL that may depend on some dynamic value pulled from
-        the database). If found, the pattern in the regex will be applied to
-        the corresponding generated SQL to determine if there's a match. Other
-        lines will be compared directly.
-
-        If any part of the SQL does not match, a diff will be shown in the
-        test output.
-
-        Args:
-            sql (list of unicode):
-                The list of generated SQL statements.
-
-            sql_mapping_name (unicode):
-                The mapping name in the database-specific test data to compare
-                against.
-
-            db_name (unicode, optional):
-                An explicit database name to use for resolving
-                ``sql_mapping_name``.
-
-        Raises:
-            AssertionError:
-                The generated and expected SQL did not match.
-        """
-        # Normalize the generated and expected SQL so that we are
-        # guaranteed to have a list with one item per line.
-        generated_sql = '\n'.join(sql).splitlines()
-        expected_sql = self.get_sql_mapping(name=sql_mapping_name,
-                                            db_name=db_name)
-
-        # Output the statements one-by-one, to help with diagnosing
-        # differences.
-
-        print()
-        print("** Comparing SQL against '%s'" % sql_mapping_name)
-        print('** Generated:')
-        print()
-
-        for line in generated_sql:
-            print('    %s' % line)
-
-        print()
-        print('** Expected:')
-        print()
-
-        has_regex = False
-
-        for line in expected_sql:
-            if (not isinstance(line, six.text_type) and
-                hasattr(line, 'pattern')):
-                line = '/%s/' % line.pattern
-                has_regex = True
-
-            print('    %s' % line)
-
-        print()
-
-        if has_regex:
-            # We can't compare directly at first, so let's see if things
-            # are otherwise a match and then, if we spot anything wrong,
-            # we'll just do an assertListEqual to get detailed output.
-            match = (len(generated_sql) == len(expected_sql))
-
-            if match:
-                for gen_line, expected_line in zip(generated_sql,
-                                                   expected_sql):
-                    if ((isinstance(expected_line, six.text_type) and
-                         gen_line != expected_line) or
-                        (hasattr(line, 'pattern') and
-                         not line.match(gen_line))):
-                        match = False
-                        break
-
-            if not match:
-                # Now show that detailed output.
-                self.assertListEqual(generated_sql, expected_sql)
-        else:
-            # Compare as lists, so that we can better spot inconsistencies.
-            self.assertListEqual(generated_sql, expected_sql)
+            self.assertSQLMappingEqual(sql,
+                                       sql_name,
+                                       database=db_name)
 
     def register_model(self, model, name, db_name=None, **kwargs):
         """Register a model for the test.
