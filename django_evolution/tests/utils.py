@@ -11,7 +11,9 @@ from django.db import connections
 from django.db.utils import ConnectionHandler, DEFAULT_DB_ALIAS
 
 from django_evolution.compat import six
-from django_evolution.compat.apps import (is_app_registered, register_app,
+from django_evolution.compat.apps import (get_app,
+                                          is_app_registered,
+                                          register_app,
                                           register_app_models,
                                           unregister_app_model)
 from django_evolution.compat.datastructures import OrderedDict
@@ -21,6 +23,7 @@ from django_evolution.compat.db import (atomic, create_index_name,
                                         truncate_name)
 from django_evolution.compat.models import (all_models,
                                             get_model_name,
+                                            get_models,
                                             get_remote_field,
                                             get_remote_field_model,
                                             set_model_name)
@@ -267,6 +270,58 @@ def unregister_test_models():
             unregister_app_model(app_label, model_name)
 
     _registered_test_models = []
+
+
+@contextmanager
+def replace_models(database_state, apps_to_models):
+    """Temporarily replace existing models with new definitions.
+
+    This allows a unit test to replace some previously-defined models, backing
+    up the old ones and restoring them once the operations are complete.
+
+    Args:
+        database_state (django_evolution.db.state.DatabaseState):
+            The currently-computed database state.
+
+        apps_to_models (dict):
+            A mapping of app labels to lists of tuples. Each tuple contains:
+
+            1. The model class name to register (which can be different from
+               the real class name).
+            2. The model class.
+
+    Context:
+        The replaced models will be available in Django.
+    """
+    old_models_info = []
+
+    for app_label, app_models in six.iteritems(apps_to_models):
+        app = get_app(app_label)
+        old_models_info.append((app_label, get_models(app)))
+
+        # Needed in Django 1.6 to ensure the model isn't filtered out in
+        # our own get_models() calls.
+        for name, app_model in app_models:
+            app_model.__module__ = app.__name__
+
+    try:
+        for app_label, app_models in six.iteritems(apps_to_models):
+            register_models(database_state=database_state,
+                            models=app_models,
+                            new_app_label=app_label)
+
+        yield
+    finally:
+        unregister_test_models()
+
+        for app_label, old_models in old_models_info:
+            register_app_models(
+                app_label,
+                [
+                    (model._meta.object_name.lower(), model)
+                    for model in old_models
+                ],
+                reset=True)
 
 
 def create_test_project_sig(models, app_label='tests', version=1):
@@ -660,9 +715,12 @@ def generate_constraint_name(connection, r_col, col, r_table, table):
         if len(full_name) > max_length:
             full_name = '%s%s' % (r_table[:(max_length - len(name))], name)
 
-            if len(full_name) > max_length:
-                md5 = hashlib.md5(full_name.decode('utf-8'))
-                full_name = md5.hexdigest()[:max_length]
+        if full_name.startswith('_'):
+            full_name = full_name[1:]
+
+        if len(full_name) > max_length:
+            md5 = hashlib.md5(full_name.decode('utf-8'))
+            full_name = md5.hexdigest()[:max_length]
 
         if full_name[0].isdigit():
             full_name = 'D%s' % full_name[:-1]

@@ -132,7 +132,7 @@ class TestCase(DjangoTestCase):
         # apps in the database.
         sql = []
 
-        for app_label in app_labels:
+        for app_label in reversed(app_labels):
             try:
                 app = get_app(app_label)
             except Exception:

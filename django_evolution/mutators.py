@@ -353,7 +353,8 @@ class AppMutator(object):
     """
 
     @classmethod
-    def from_evolver(cls, evolver, app_label, legacy_app_label=None):
+    def from_evolver(cls, evolver, app_label, legacy_app_label=None,
+                     update_evolver=True):
         """Create an AppMutator based on the state from an Evolver.
 
         Args:
@@ -372,10 +373,17 @@ class AppMutator(object):
             AppMutator:
             The new app mutator.
         """
+        project_sig = evolver.project_sig
+        database_state = evolver.database_state
+
+        if not update_evolver:
+            project_sig = project_sig.clone()
+            database_state = database_state.clone()
+
         return cls(app_label=app_label,
                    legacy_app_label=legacy_app_label,
-                   project_sig=evolver.project_sig,
-                   database_state=evolver.database_state,
+                   project_sig=project_sig,
+                   database_state=database_state,
                    database=evolver.database_name)
 
     def __init__(self, app_label, project_sig, database_state,

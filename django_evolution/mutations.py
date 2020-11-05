@@ -449,6 +449,32 @@ class BaseMutation(object):
         """
         return '%s=%s' % (attr_name, self.serialize_value(attr_value))
 
+    def __hash__(self):
+        """Return a hash of this mutation.
+
+        Returns:
+            int:
+            The mutation's hash.
+        """
+        return id(self)
+
+    def __eq__(self, other):
+        """Return whether this mutation equals another.
+
+        Two mutations are equal if they're of the same type and generate
+        the same hinted evolution.
+
+        Args:
+            other (BaseMutation):
+                The mutation to compare against.
+
+        Returns:
+            bool:
+            ``True`` if the mutations are equal. ``False`` if they are not.
+        """
+        return (type(self) is type(other) and
+                self.generate_hint() == other.generate_hint())
+
     def __str__(self):
         """Return a hinted evolution for the mutation.
 

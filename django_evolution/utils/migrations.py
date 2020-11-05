@@ -795,7 +795,7 @@ def create_pre_migrate_state(executor):
             The migration executor that will handle the migrations.
 
     Returns:
-        object:
+        django.db.migrations.state.ProjectState:
         The state needed for applying migrations.
     """
     assert supports_migrations, \
@@ -889,6 +889,8 @@ def finalize_migrations(post_migrate_state):
             post_migrate_state.clear_delayed_apps_cache()
 
         post_migrate_apps = post_migrate_state.apps
+        assert post_migrate_apps is not None
+
         model_keys = []
 
         with post_migrate_apps.bulk_update():

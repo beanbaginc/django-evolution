@@ -2,7 +2,9 @@
 
 from __future__ import unicode_literals
 
-from django.db import DatabaseError, connections, models
+from collections import OrderedDict
+
+from django.db import DEFAULT_DB_ALIAS, models
 
 try:
     # Django >= 1.7
@@ -11,17 +13,18 @@ except ImportError:
     # Django < 1.7
     migrations = None
 
+from django_evolution.compat import six
 from django_evolution.compat.apps import (get_app,
                                           get_apps,
                                           register_app_models)
-from django_evolution.compat.db import sql_delete
+from django_evolution.compat.db import sql_create_app, sql_delete
 from django_evolution.consts import UpgradeMethod
 from django_evolution.db.state import DatabaseState
 from django_evolution.errors import (EvolutionTaskAlreadyQueuedError,
                                      QueueEvolverTaskError)
 from django_evolution.evolve import (BaseEvolutionTask, EvolveAppTask,
                                      Evolver, PurgeAppTask)
-from django_evolution.models import Version
+from django_evolution.models import Evolution, Version
 from django_evolution.mutations import (AddField, ChangeField,
                                         MoveToDjangoMigrations)
 from django_evolution.signals import (applied_evolution,
@@ -31,16 +34,25 @@ from django_evolution.signals import (applied_evolution,
                                       created_models,
                                       creating_models)
 from django_evolution.signature import AppSignature, ModelSignature
+from django_evolution.support import supports_migrations
 from django_evolution.tests import models as evo_test
 from django_evolution.tests.evolutions_app import models as test_app2
 from django_evolution.tests.base_test_case import (EvolutionTestCase,
                                                    MigrationsTestsMixin)
+from django_evolution.tests.decorators import requires_migrations
+from django_evolution.tests.evolutions_app.models import EvolutionsAppTestModel
+from django_evolution.tests.evolutions_app2.models import (
+    EvolutionsApp2TestModel,
+    EvolutionsApp2TestModel2)
+from django_evolution.tests.migrations_app.models import MigrationsAppTestModel
+from django_evolution.tests.migrations_app2.models import \
+    MigrationsApp2TestModel
 from django_evolution.tests.models import BaseTestModel
 from django_evolution.tests.utils import (ensure_test_db,
                                           execute_test_sql,
-                                          register_models)
+                                          register_models,
+                                          replace_models)
 from django_evolution.utils.apps import get_app_label
-from django_evolution.tests.decorators import requires_migrations
 from django_evolution.utils.migrations import (MigrationList,
                                                record_applied_migrations)
 
@@ -591,6 +603,9 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         version.signature.add_app_sig(app_sig)
         version.save()
 
+        self.version = version
+        self.app_sig = app_sig
+
         self.saw_signals = []
         applying_evolution.connect(self._on_applying_evolution)
         applied_evolution.connect(self._on_applied_evolution)
@@ -676,27 +691,46 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         evolver.queue_task(task)
 
         EvolveAppTask.prepare_tasks(evolver, [task])
-        self.assertIsNotNone(EvolveAppTask._migration_executor)
+
+        state = evolver._evolve_app_task_state
+        self.assertIsNotNone(state['migration_executor'])
 
         self._check_migration_plan(
-            EvolveAppTask._pre_migration_plan,
+            state['pre_migration_plan'],
             [
                 ('tests', '0001_initial', False),
             ])
         self._check_migration_plan(
-            EvolveAppTask._post_migration_plan,
+            state['post_migration_plan'],
             [
                 ('tests', '0002_add_field', False),
                 ('tests', '0003_remove_field', False),
             ])
         self.assertEqual(
-            EvolveAppTask._pre_migration_targets,
+            state['pre_migration_targets'],
             [
                 ('tests', '0001_initial'),
             ])
         self.assertEqual(
-            EvolveAppTask._post_migration_targets,
+            state['post_migration_targets'],
             [
+                ('tests', '0003_remove_field'),
+            ])
+
+        # Check the batches.
+        batches = state['batches']
+        self.assertEqual(len(batches), 1)
+
+        self._check_migration_batch(
+            batches[0],
+            expected_migration_plan=[
+                ('tests', '0001_initial', False),
+                ('tests', '0002_add_field', False),
+                ('tests', '0003_remove_field', False),
+            ],
+            expected_migration_targets=[
+                ('tests', '0001_initial'),
+                ('tests', '0002_add_field'),
                 ('tests', '0003_remove_field'),
             ])
 
@@ -774,21 +808,278 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         evolver.queue_task(task)
 
         EvolveAppTask.prepare_tasks(evolver, [task])
-        self.assertIsNotNone(EvolveAppTask._migration_executor)
-        self.assertIsNone(EvolveAppTask._pre_migration_plan)
-        self.assertIsNone(EvolveAppTask._pre_migration_targets)
+        state = evolver._evolve_app_task_state
+
+        self.assertIsNotNone(state['migration_executor'])
+        self.assertIsNone(state['pre_migration_plan'])
+        self.assertIsNone(state['pre_migration_targets'])
 
         self._check_migration_plan(
-            EvolveAppTask._post_migration_plan,
+            state['post_migration_plan'],
             [
                 ('tests', '0002_add_field', False),
                 ('tests', '0003_remove_field', False),
             ])
         self.assertEqual(
-            EvolveAppTask._post_migration_targets,
+            state['post_migration_targets'],
             [
                 ('tests', '0003_remove_field'),
             ])
+
+        # Check the batches.
+        batches = state['batches']
+        self.assertEqual(len(batches), 1)
+
+        self._check_migration_batch(
+            batches[0],
+            expected_migration_plan=[
+                ('tests', '0002_add_field', False),
+                ('tests', '0003_remove_field', False),
+            ],
+            expected_migration_targets=[
+                ('tests', '0002_add_field'),
+                ('tests', '0003_remove_field'),
+            ])
+
+    def test_prepare_tasks_with_dependencies_and_new_db(self):
+        """Testing EvolveAppTask.prepare_tasks with complex dependencies and
+        new database
+        """
+        self.ensure_deleted_apps()
+
+        evolver = Evolver()
+        tasks = self._get_test_apps_tasks(evolver)
+        EvolveAppTask.prepare_tasks(evolver, tasks)
+
+        state = evolver._evolve_app_task_state
+
+        # Make sure we've collected the evolutions we expect. See
+        # _get_test_apps() for the order.
+        self.assertEvolutionsEqual(
+            tasks[0].new_evolutions,
+            [
+                ('evolutions_app', 'first_evolution'),
+                ('evolutions_app', 'second_evolution'),
+            ])
+        self.assertEvolutionsEqual(
+            tasks[1].new_evolutions,
+            [
+                ('evolutions_app2', 'test_evolution'),
+            ])
+        self.assertEvolutionsEqual(
+            tasks[2].new_evolutions,
+            [
+                ('evolution_deps_app', 'test_evolution'),
+            ])
+
+        if supports_migrations:
+            self.assertEqual(tasks[3].new_evolutions, [])
+            self.assertEqual(tasks[4].new_evolutions, [])
+            self.assertIsNotNone(state['migration_executor'])
+        else:
+            self.assertIsNone(state['migration_executor'])
+
+        if supports_migrations:
+            self._check_migration_plan(
+                state['pre_migration_plan'],
+                [
+                    ('migrations_app', '0001_initial', False),
+                    ('migrations_app', '0002_add_field', False),
+                    ('migrations_app2', '0001_initial', False),
+                ])
+            self.assertEqual(
+                state['pre_migration_targets'],
+                [
+                    ('migrations_app', '0001_initial'),
+                    ('migrations_app2', '0001_initial'),
+                ])
+            self._check_migration_plan(
+                state['post_migration_plan'],
+                [
+                    ('migrations_app2', '0002_add_field', False),
+                ])
+            self.assertEqual(
+                state['post_migration_targets'],
+                [
+                    ('migrations_app', '0002_add_field'),
+                    ('migrations_app2', '0002_add_field'),
+                ])
+        else:
+            self.assertIsNone(state['pre_migration_plan'])
+            self.assertIsNone(state['pre_migration_targets'])
+            self.assertIsNone(state['post_migration_plan'])
+            self.assertIsNone(state['post_migration_targets'])
+
+        # Check the batches.
+        batches = state['batches']
+
+        if supports_migrations:
+            self.assertEqual(len(batches), 3)
+        else:
+            self.assertEqual(len(batches), 1)
+
+        batches = iter(batches)
+
+        # Batch 1.
+        if supports_migrations:
+            self._check_migration_batch(
+                next(batches),
+                expected_migration_plan=[
+                    ('migrations_app', '0001_initial', False),
+                ],
+                expected_migration_targets=[
+                    ('migrations_app', '0001_initial'),
+                ])
+
+        # Batch 2.
+        self._check_evolution_batch(
+            next(batches),
+            expected_new_models_sql='complex_deps_new_db_new_models',
+            expected_new_models_tasks=[tasks[1], tasks[0]],
+            expected_task_evolutions=OrderedDict([
+                (tasks[1], {
+                    'evolutions': ['test_evolution'],
+                }),
+                (tasks[0], {
+                    'evolutions': ['first_evolution', 'second_evolution'],
+                }),
+            ]))
+
+        # Batch 3.
+        if supports_migrations:
+            self._check_migration_batch(
+                next(batches),
+                expected_migration_plan=[
+                    ('migrations_app', '0002_add_field', False),
+                    ('migrations_app2', '0001_initial', False),
+                    ('migrations_app2', '0002_add_field', False),
+                ],
+                expected_migration_targets=[
+                    ('migrations_app', '0002_add_field'),
+                    ('migrations_app2', '0001_initial'),
+                    ('migrations_app2', '0002_add_field'),
+                ])
+
+    def test_prepare_tasks_with_dependencies_and_upgrade_db(self):
+        """Testing EvolveAppTask.prepare_tasks with complex dependencies and
+        upgrading database
+        """
+        self._setup_pre_upgrade()
+
+        evolver = Evolver()
+        tasks = self._get_test_apps_tasks(evolver)
+        EvolveAppTask.prepare_tasks(evolver, tasks)
+
+        state = evolver._evolve_app_task_state
+
+        # Make sure we've collected the evolutions we expect. See
+        # _get_test_apps() for the order.
+        self.assertEvolutionsEqual(
+            tasks[0].new_evolutions,
+            [
+                ('evolutions_app', 'second_evolution'),
+            ])
+        self.assertEvolutionsEqual(
+            tasks[1].new_evolutions,
+            [
+                ('evolutions_app2', 'test_evolution'),
+            ])
+        self.assertEvolutionsEqual(
+            tasks[2].new_evolutions,
+            [
+                ('evolution_deps_app', 'test_evolution'),
+            ])
+
+        if supports_migrations:
+            self.assertEqual(tasks[3].new_evolutions, [])
+            self.assertEqual(tasks[4].new_evolutions, [])
+            self.assertIsNotNone(state['migration_executor'])
+        else:
+            self.assertIsNone(state['migration_executor'])
+
+        if supports_migrations:
+            self._check_migration_plan(
+                state['pre_migration_plan'],
+                [
+                    ('migrations_app', '0002_add_field', False),
+                    ('migrations_app2', '0001_initial', False),
+                ])
+            self.assertEqual(
+                state['pre_migration_targets'],
+                [
+                    ('migrations_app2', '0001_initial'),
+                ])
+            self._check_migration_plan(
+                state['post_migration_plan'],
+                [
+                    ('migrations_app2', '0002_add_field', False),
+                ])
+            self.assertEqual(
+                state['post_migration_targets'],
+                [
+                    ('migrations_app', '0002_add_field'),
+                    ('migrations_app2', '0002_add_field'),
+                ])
+        else:
+            self.assertIsNone(state['pre_migration_plan'])
+            self.assertIsNone(state['pre_migration_targets'])
+            self.assertIsNone(state['post_migration_plan'])
+            self.assertIsNone(state['post_migration_targets'])
+
+        # Check the batches.
+        batches = state['batches']
+
+        if supports_migrations:
+            self.assertEqual(len(batches), 2)
+        else:
+            self.assertEqual(len(batches), 1)
+
+        batches = iter(batches)
+
+        # Batch 1.
+        self._check_evolution_batch(
+            next(batches),
+            expected_task_evolutions=OrderedDict([
+                (tasks[1], {
+                    'evolutions': ['test_evolution'],
+                    'mutations': [
+                        AddField('EvolutionsApp2TestModel', 'fkey',
+                                 models.ForeignKey, null=True,
+                                 related_model=('evolutions_app.'
+                                                'EvolutionsAppTestModel')),
+                    ],
+                    'sql': 'complex_deps_upgrade_task_2',
+                }),
+                (tasks[0], {
+                    'evolutions': ['second_evolution'],
+                    'mutations': [
+                        ChangeField('EvolutionsAppTestModel',
+                                    'char_field',
+                                    max_length=10,
+                                    null=True),
+                        ChangeField('EvolutionsAppTestModel',
+                                    'char_field2',
+                                    max_length=20,
+                                    null=True),
+                    ],
+                    'sql': 'complex_deps_upgrade_task_1',
+                }),
+            ]))
+
+        # Batch 2.
+        if supports_migrations:
+            self._check_migration_batch(
+                next(batches),
+                expected_migration_plan=[
+                    ('migrations_app', '0002_add_field', False),
+                    ('migrations_app2', '0001_initial', False),
+                    ('migrations_app2', '0002_add_field', False),
+                ],
+                expected_migration_targets=[
+                    ('migrations_app', '0002_add_field'),
+                    ('migrations_app2', '0001_initial'),
+                    ('migrations_app2', '0002_add_field'),
+                ])
 
     @requires_migrations
     def test_execute_tasks_with_migrations(self):
@@ -902,6 +1193,7 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
             field3 = models.BooleanField()
 
             class Meta:
+                app_label = 'tests'
                 db_table = 'tests_testmodel'
 
         class InitialMigration(migrations.Migration):
@@ -932,6 +1224,10 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
             ]
 
         self.set_base_model(EvolveMigrateTestModel)
+        self.app_sig.remove_model_sig('TestModel')
+        self.app_sig.add_model_sig(ModelSignature.from_model(
+            EvolveMigrateTestModel))
+        self.version.save()
 
         model_entries = [
             ('TestModel', EvolveMigrateTestModel),
@@ -941,6 +1237,7 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
             evolver = Evolver()
             app_sig = evolver.project_sig.get_app_sig('tests')
             app_sig.upgrade_method = UpgradeMethod.EVOLUTIONS
+            assert app_sig.get_model_sig('TestModel').get_field_sig('field1')
 
             app_migrations = [
                 InitialMigration('0001_initial', 'tests'),
@@ -1032,6 +1329,208 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                                           field2='foo',
                                           field3=True)
 
+    def test_execute_tasks_with_dependencies_and_new_db(self):
+        """Testing EvolveAppTask.execute_tasks with complex dependencies and
+        new database
+        """
+        self.ensure_deleted_apps()
+
+        evolver = Evolver()
+        tasks = self._get_test_apps_tasks(evolver)
+        EvolveAppTask.prepare_tasks(evolver, tasks)
+        EvolveAppTask.execute_tasks(evolver, tasks)
+
+        # Check that we've seen all the signals we expect.
+        expected_signals = []
+
+        if supports_migrations:
+            expected_signals += [
+                ('applying_migration', {
+                    'migration': ('migrations_app', '0001_initial'),
+                    'sender': evolver,
+                }),
+                ('applied_migration', {
+                    'migration': ('migrations_app', '0001_initial'),
+                    'sender': evolver,
+                }),
+            ]
+
+        expected_signals += [
+            ('creating_models', {
+                'app_label': 'evolutions_app2',
+                'model_names': [
+                    'EvolutionsApp2TestModel',
+                    'EvolutionsApp2TestModel2',
+                ],
+                'sender': evolver,
+            }),
+            ('creating_models', {
+                'app_label': 'evolutions_app',
+                'model_names': ['EvolutionsAppTestModel'],
+                'sender': evolver,
+            }),
+            ('created_models', {
+                'app_label': 'evolutions_app2',
+                'model_names': [
+                    'EvolutionsApp2TestModel',
+                    'EvolutionsApp2TestModel2',
+                ],
+                'sender': evolver,
+            }),
+            ('created_models', {
+                'app_label': 'evolutions_app',
+                'model_names': ['EvolutionsAppTestModel'],
+                'sender': evolver,
+            }),
+        ]
+
+        if supports_migrations:
+            expected_signals += [
+                ('applying_migration', {
+                    'migration': ('migrations_app', '0002_add_field'),
+                    'sender': evolver,
+                }),
+                ('applied_migration', {
+                    'migration': ('migrations_app', '0002_add_field'),
+                    'sender': evolver,
+                }),
+                ('applying_migration', {
+                    'migration': ('migrations_app2', '0001_initial'),
+                    'sender': evolver,
+                }),
+                ('applied_migration', {
+                    'migration': ('migrations_app2', '0001_initial'),
+                    'sender': evolver,
+                }),
+                ('applying_migration', {
+                    'migration': ('migrations_app2', '0002_add_field'),
+                    'sender': evolver,
+                }),
+                ('applied_migration', {
+                    'migration': ('migrations_app2', '0002_add_field'),
+                    'sender': evolver,
+                }),
+            ]
+
+        self.assertEqual(self.saw_signals, expected_signals)
+
+        # Make sure all evolutions and migrations are applied.
+        if supports_migrations:
+            self.assertAppliedMigrations([
+                ('migrations_app', '0001_initial'),
+                ('migrations_app', '0002_add_field'),
+                ('migrations_app2', '0001_initial'),
+                ('migrations_app2', '0002_add_field'),
+            ])
+
+        # Make sure we can now use the models.
+        model1 = EvolutionsAppTestModel.objects.create(char_field='abc123')
+        model2 = EvolutionsApp2TestModel.objects.create(char_field='def456',
+                                                        fkey=model1)
+        EvolutionsApp2TestModel2.objects.create(int_field=42,
+                                                fkey=model2)
+
+        if supports_migrations:
+            MigrationsAppTestModel.objects.create(char_field='abc123',
+                                                  added_field=100)
+            MigrationsApp2TestModel.objects.create(char_field='def456',
+                                                   added_field=True)
+
+    def test_execute_tasks_with_dependencies_and_upgrade_db(self):
+        """Testing EvolveAppTask.execute_tasks with complex dependencies and
+        upgrading database
+        """
+        return
+        self._setup_pre_upgrade()
+
+        evolver = Evolver()
+        tasks = self._get_test_apps_tasks(evolver)
+        EvolveAppTask.prepare_tasks(evolver, tasks)
+        EvolveAppTask.execute_tasks(evolver, tasks)
+
+        # Check that we've seen all the signals we expect.
+        expected_signals = [
+            ('applying_evolution', {
+                'evolutions': [
+                    ('evolutions_app2', 'test_evolution'),
+                ],
+                'sender': evolver,
+                'task': tasks[1],
+            }),
+            ('applied_evolution', {
+                'evolutions': [
+                    ('evolutions_app2', 'test_evolution'),
+                ],
+                'sender': evolver,
+                'task': tasks[1],
+            }),
+            ('applying_evolution', {
+                'evolutions': [
+                    ('evolutions_app', 'second_evolution'),
+                ],
+                'sender': evolver,
+                'task': tasks[0],
+            }),
+            ('applied_evolution', {
+                'evolutions': [
+                    ('evolutions_app', 'second_evolution'),
+                ],
+                'sender': evolver,
+                'task': tasks[0],
+            }),
+        ]
+
+        if supports_migrations:
+            expected_signals += [
+                ('applying_migration', {
+                    'migration': ('migrations_app', '0002_add_field'),
+                    'sender': evolver,
+                }),
+                ('applied_migration', {
+                    'migration': ('migrations_app', '0002_add_field'),
+                    'sender': evolver,
+                }),
+                ('applying_migration', {
+                    'migration': ('migrations_app2', '0001_initial'),
+                    'sender': evolver,
+                }),
+                ('applied_migration', {
+                    'migration': ('migrations_app2', '0001_initial'),
+                    'sender': evolver,
+                }),
+                ('applying_migration', {
+                    'migration': ('migrations_app2', '0002_add_field'),
+                    'sender': evolver,
+                }),
+                ('applied_migration', {
+                    'migration': ('migrations_app2', '0002_add_field'),
+                    'sender': evolver,
+                }),
+            ]
+
+        self.assertEqual(self.saw_signals, expected_signals)
+
+        # Make sure all evolutions and migrations are applied.
+        self.assertAppliedMigrations([
+            ('migrations_app', '0001_initial'),
+            ('migrations_app', '0002_add_field'),
+            ('migrations_app2', '0001_initial'),
+            ('migrations_app2', '0002_add_field'),
+        ])
+
+        # Make sure we can now use the models.
+        model1 = EvolutionsAppTestModel.objects.create(char_field='abc123')
+        model2 = EvolutionsApp2TestModel.objects.create(char_field='def456',
+                                                        fkey=model1)
+        EvolutionsApp2TestModel2.objects.create(int_field=42,
+                                                fkey=model2)
+
+        if supports_migrations:
+            MigrationsAppTestModel.objects.create(char_field='abc123',
+                                                  added_field=100)
+            MigrationsApp2TestModel.objects.create(char_field='def456',
+                                                   added_field=True)
+
     def test_create_models_with_deferred_refs(self):
         """Testing EvolveAppTask.create_models with deferred refs between
         app-owned models
@@ -1082,12 +1581,18 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         evolver.queue_task(task2)
         EvolveAppTask.prepare_tasks(evolver, [task1, task2])
 
+        state = evolver._evolve_app_task_state
+
+        self.assertEqual(len(state['batches']), 1)
+        batch = state['batches'][0]
+
         with ensure_test_db(app_label=app_label1):
             with ensure_test_db(app_label=app_label2):
                 with evolver.sql_executor() as sql_executor:
                     sql = EvolveAppTask._create_models(
                         sql_executor=sql_executor,
                         evolver=evolver,
+                        sql=batch['new_models_sql'],
                         tasks=[task1, task2])
 
         self.assertSQLMappingEqual(sql, 'create_tables_with_deferred_refs')
@@ -1323,6 +1828,105 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
             " max_length=100),\n"
             "]")
 
+    def _get_test_apps(self):
+        """Return a standard list of apps used to test evolutions/migrations.
+
+        Returns:
+            list of module:
+            The list of test apps.
+        """
+        apps = [
+            get_app('evolutions_app'),
+            get_app('evolutions_app2'),
+            get_app('evolution_deps_app'),
+        ]
+
+        if supports_migrations:
+            apps += [
+                get_app('migrations_app'),
+                get_app('migrations_app2'),
+            ]
+
+        return apps
+
+    def _get_test_apps_tasks(self, evolver):
+        """Return a standard list of tasks for test evolutions/migrations.
+
+        Returns:
+            list of django_evolution.evolve.EvolveAppTask:
+            The list of tasks.
+        """
+        return [
+            EvolveAppTask(evolver=evolver,
+                          app=app)
+            for app in self._get_test_apps()
+        ]
+
+    def _setup_pre_upgrade(self):
+        """Set up database and signature state before an upgrade test.
+
+        This will register some models that contain a
+        pre-evolution/pre-migration schema, store the signature in the
+        database as the current verson, and create the matching tables in the
+        database. Upgrades can then be performed against the database and
+        signature state.
+        """
+        self.ensure_deleted_apps()
+
+        class InitialEvolutionsAppTestModel(models.Model):
+            char_field = models.CharField(max_length=10)
+            char_field2 = models.CharField(max_length=20)
+
+            class Meta:
+                db_table = EvolutionsAppTestModel._meta.db_table
+
+        class InitialEvolutionsApp2TestModel(models.Model):
+            char_field = models.CharField(max_length=10)
+
+            class Meta:
+                db_table = EvolutionsApp2TestModel._meta.db_table
+
+        apps_to_models = {
+            'evolutions_app': [
+                ('EvolutionsAppTestModel', InitialEvolutionsAppTestModel),
+            ],
+            'evolutions_app2': [
+                ('EvolutionsApp2TestModel', InitialEvolutionsApp2TestModel),
+                ('EvolutionsApp2TestModel2', EvolutionsApp2TestModel2),
+            ],
+        }
+
+        version = Version.objects.current_version()
+        project_sig = version.signature
+
+        database = DEFAULT_DB_ALIAS
+        sql = []
+
+        with replace_models(database_state=self.database_state,
+                            apps_to_models=apps_to_models):
+            for app in self._get_test_apps():
+                project_sig.add_app_sig(AppSignature.from_app(
+                    app,
+                    database=database))
+
+                sql += sql_create_app(app=app,
+                                      db_name=database)
+
+        execute_test_sql(sql,
+                         database=database)
+        version.save()
+
+        # Record evolutions and migrations in the database that we want to
+        # say are applied.
+        self.assertFalse(Evolution.objects.exists())
+        self.record_evolutions(version,
+                               [('evolutions_app', 'first_evolution')])
+
+        if supports_migrations:
+            self.record_applied_migrations([
+                ('migrations_app', '0001_initial'),
+            ])
+
     def _check_migration_plan(self, migration_plan, expected_items):
         """Check a migration plan for the expected informaton.
 
@@ -1348,6 +1952,124 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                 for migration, reverse in migration_plan
             ],
             expected_items)
+
+    def _check_evolution_batch(self, batch, expected_task_evolutions=None,
+                               expected_new_models_sql=None,
+                               expected_new_models_tasks=None):
+        """Check an evolution batch for the expected information.
+
+        Args:
+            batch (dict):
+                The batch item to check.
+
+            expected_task_evolutions (collections.OrderedDict, optional):
+                A normalized version of the ``task_evolutions`` data to
+                compare. This looks for the following optional keys:
+
+                ``evolutions``:
+                    The expected list of evolution labels.
+
+                ``mutations``:
+                    The expected list of mutations.
+
+                ``sql_mapping_name``:
+                    The SQL mapping name to compare generated SQL against.
+
+            expected_new_models_sql (unicode, optional):
+                The SQL mapping name representing the SQL used to create
+                new models.
+
+            expected_new_models_tasks (list of
+                                       django_evolution.evolve.EvolveAppTask,
+                                       optional):
+                The list of tasks introducing new models.
+
+        Raises:
+            AssertionError:
+                One of the batch items did not match.
+        """
+        self.assertEqual(batch['type'], 'evolutions')
+
+        if expected_new_models_sql is None:
+            self.assertNotIn('new_models_sql', batch)
+        else:
+            self.assertIn('new_models_sql', batch)
+            self.assertSQLMappingEqual(batch['new_models_sql'],
+                                       expected_new_models_sql,
+                                       sql_mappings_key='evolver')
+
+        if expected_new_models_tasks is None:
+            self.assertNotIn('new_models_tasks', batch)
+        else:
+            self.assertIn('new_models_tasks', batch)
+            self.assertEqual(batch['new_models_tasks'],
+                             expected_new_models_tasks)
+
+        if expected_task_evolutions is None:
+            self.assertNotIn('task_evolutions', batch)
+        else:
+            self.assertIn('task_evolutions', batch)
+            batch_task_evolutions = batch['task_evolutions']
+
+            # Order will matter here.
+            self.assertEqual(list(six.iterkeys(batch_task_evolutions)),
+                             list(six.iterkeys(expected_task_evolutions)))
+
+            for task, info in six.iteritems(expected_task_evolutions):
+                batch_task_info = batch_task_evolutions[task]
+
+                if 'evolutions' in info:
+                    self.assertIn('evolutions', batch_task_info)
+                    self.assertEqual(batch_task_info['evolutions'],
+                                     info['evolutions'])
+                else:
+                    self.assertNotIn('evolutions', batch_task_info)
+
+                if 'mutations' in info:
+                    self.assertIn('mutations', batch_task_info)
+                    self.assertListEqual(batch_task_info['mutations'],
+                                         info['mutations'])
+                else:
+                    self.assertNotIn('mutations', batch_task_info)
+
+                if 'sql' in info:
+                    self.assertIn('sql', batch_task_info)
+                    self.assertSQLMappingEqual(batch_task_info['sql'],
+                                               info['sql'],
+                                               sql_mappings_key='evolver')
+                    self.assertEqual(batch_task_info['mutations'],
+                                     info['mutations'])
+                else:
+                    self.assertNotIn('sql', batch_task_info)
+
+    def _check_migration_batch(self, batch, expected_migration_plan,
+                               expected_migration_targets):
+        """Check a migration batch for the expected informaton.
+
+        Args:
+            batch (dict):
+                The batch item to check.
+
+            expected_migration_plan (list of tuple):
+                A normalized version of a migration plan to compare against
+                the batch. Each item is a tuple containing:
+
+                1. The app label.
+                2. The migration name.
+                3. The "reverse" boolean flag.
+
+            expected_migration_targets (list of tuple):
+                A list of migration targets.
+
+        Raises:
+            AssertionError:
+                One of the batch items did not match.
+        """
+        self.assertEqual(batch['type'], 'migrations')
+        self.assertEqual(batch['migration_targets'],
+                         expected_migration_targets)
+        self._check_migration_plan(batch['migration_plan'],
+                                   expected_migration_plan)
 
     def _on_applying_evolution(self, sender, task, evolutions, **kwargs):
         """Handle the applying_evolution signal.

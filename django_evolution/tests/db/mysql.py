@@ -1553,6 +1553,23 @@ def evolver(connection):
     generate_index_name = make_generate_index_name(connection)
 
     mappings = {
+        'complex_deps_upgrade_task_1': [
+            'ALTER TABLE `evolutions_app_evolutionsapptestmodel`'
+            ' MODIFY COLUMN `char_field` varchar(10) DEFAULT NULL,'
+            ' MODIFY COLUMN `char_field2` varchar(20) DEFAULT NULL;',
+        ],
+
+        'complex_deps_upgrade_task_2': [
+            'ALTER TABLE `evolutions_app2_evolutionsapp2testmodel`'
+            ' ADD COLUMN `fkey_id` integer NULL'
+            ' REFERENCES `evolutions_app_evolutionsapptestmodel` (`id`);',
+
+            'CREATE INDEX `%s` ON `evolutions_app2_evolutionsapp2testmodel`'
+            ' (`fkey_id`);'
+            % generate_index_name('evolutions_app2_evolutionsapp2testmodel',
+                                  'fkey_id', 'fkey'),
+        ],
+
         'evolve_app_task': [
             'UPDATE `tests_testmodel` SET `value`=LEFT(`value`,100);',
 
@@ -1586,6 +1603,41 @@ def evolver(connection):
 
     if django_version >= (1, 8):
         mappings.update({
+            'complex_deps_new_db_new_models': [
+                'CREATE TABLE `evolutions_app2_evolutionsapp2testmodel`'
+                ' (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                ' `char_field` varchar(10) NOT NULL,'
+                ' `fkey_id` integer NULL);',
+
+                'CREATE TABLE `evolutions_app2_evolutionsapp2testmodel2`'
+                ' (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                ' `fkey_id` integer NULL,'
+                ' `int_field` integer NOT NULL);',
+
+                'CREATE TABLE `evolutions_app_evolutionsapptestmodel`'
+                ' (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                ' `char_field` varchar(10) NULL,'
+                ' `char_field2` varchar(20) NULL);',
+
+                'ALTER TABLE `evolutions_app2_evolutionsapp2testmodel`'
+                ' ADD CONSTRAINT `%s` FOREIGN KEY (`fkey_id`)'
+                ' REFERENCES `evolutions_app_evolutionsapptestmodel` (`id`);'
+                % generate_constraint_name(
+                    'fkey_id',
+                    'id',
+                    'evolutions_app2_evolutionsapp2testmodel',
+                    'evolutions_app_evolutionsapptestmodel'),
+
+                'ALTER TABLE `evolutions_app2_evolutionsapp2testmodel2`'
+                ' ADD CONSTRAINT `%s` FOREIGN KEY (`fkey_id`)'
+                ' REFERENCES `evolutions_app2_evolutionsapp2testmodel` (`id`);'
+                % generate_constraint_name(
+                    'fkey_id',
+                    'id',
+                    'evolutions_app2_evolutionsapp2testmodel2',
+                    'evolutions_app2_evolutionsapp2testmodel'),
+            ],
+
             'create_tables_with_deferred_refs': [
                 'CREATE TABLE `tests_testmodel` '
                 '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
@@ -1608,6 +1660,55 @@ def evolver(connection):
         })
     elif django_version >= (1, 7):
         mappings.update({
+            'complex_deps_new_db_new_models': [
+                'CREATE TABLE `evolutions_app2_evolutionsapp2testmodel`'
+                ' (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                ' `char_field` varchar(10) NOT NULL,'
+                ' `fkey_id` integer NULL);',
+
+                'CREATE TABLE `evolutions_app2_evolutionsapp2testmodel2`'
+                ' (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                ' `fkey_id` integer NULL,'
+                ' `int_field` integer NOT NULL);',
+
+                'CREATE TABLE `evolutions_app_evolutionsapptestmodel`'
+                ' (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                ' `char_field` varchar(10) NULL,'
+                ' `char_field2` varchar(20) NULL);',
+
+                'ALTER TABLE `evolutions_app2_evolutionsapp2testmodel`'
+                ' ADD CONSTRAINT `%s` FOREIGN KEY (`fkey_id`)'
+                ' REFERENCES `evolutions_app_evolutionsapptestmodel` (`id`);'
+                % generate_constraint_name(
+                    'fkey_id',
+                    'id',
+                    'evolutions_app2_evolutionsapp2testmodel',
+                    'evolutions_app_evolutionsapptestmodel'),
+
+                'CREATE INDEX `%s`'
+                ' ON `evolutions_app2_evolutionsapp2testmodel` (`fkey_id`);'
+                % generate_index_name(
+                    'evolutions_app2_evolutionsapp2testmodel',
+                    'fkey_id',
+                    'fkey'),
+
+                'ALTER TABLE `evolutions_app2_evolutionsapp2testmodel2`'
+                ' ADD CONSTRAINT `%s` FOREIGN KEY (`fkey_id`)'
+                ' REFERENCES `evolutions_app2_evolutionsapp2testmodel` (`id`);'
+                % generate_constraint_name(
+                    'fkey_id',
+                    'id',
+                    'evolutions_app2_evolutionsapp2testmodel2',
+                    'evolutions_app2_evolutionsapp2testmodel'),
+
+                'CREATE INDEX `%s`'
+                ' ON `evolutions_app2_evolutionsapp2testmodel2` (`fkey_id`);'
+                % generate_index_name(
+                    'evolutions_app2_evolutionsapp2testmodel2',
+                    'fkey_id',
+                    'fkey'),
+            ],
+
             'create_tables_with_deferred_refs': [
                 'CREATE TABLE `tests_testmodel` '
                 '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
@@ -1628,11 +1729,66 @@ def evolver(connection):
                     'evolutions_app_reffedevolvertestmodel'),
 
                 'CREATE INDEX `%s` ON `tests_testmodel` (`ref_id`);'
-                % generate_index_name('tests_testmodel', 'ref_id'),
+                % generate_index_name('tests_testmodel', 'ref_id', 'ref'),
             ],
         })
     else:
         mappings.update({
+            'complex_deps_new_db_new_models': [
+                'CREATE TABLE `evolutions_app2_evolutionsapp2testmodel` (',
+                '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
+                '    `char_field` varchar(10) NOT NULL,',
+                '    `fkey_id` integer',
+                ')',
+                ';',
+
+                'CREATE TABLE `evolutions_app2_evolutionsapp2testmodel2` (',
+                '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
+                '    `fkey_id` integer,',
+                '    `int_field` integer NOT NULL',
+                ')',
+                ';',
+
+                'ALTER TABLE `evolutions_app2_evolutionsapp2testmodel2`'
+                ' ADD CONSTRAINT `%s` FOREIGN KEY (`fkey_id`)'
+                ' REFERENCES `evolutions_app2_evolutionsapp2testmodel` (`id`);'
+                % generate_constraint_name(
+                    'fkey_id',
+                    'id',
+                    'evolutions_app2_evolutionsapp2testmodel2',
+                    'evolutions_app2_evolutionsapp2testmodel'),
+
+                'CREATE TABLE `evolutions_app_evolutionsapptestmodel` (',
+                '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
+                '    `char_field` varchar(10),',
+                '    `char_field2` varchar(20)',
+                ')',
+                ';',
+
+                'ALTER TABLE `evolutions_app2_evolutionsapp2testmodel`'
+                ' ADD CONSTRAINT `%s` FOREIGN KEY (`fkey_id`)'
+                ' REFERENCES `evolutions_app_evolutionsapptestmodel` (`id`);'
+                % generate_constraint_name(
+                    'fkey_id',
+                    'id',
+                    'evolutions_app2_evolutionsapp2testmodel',
+                    'evolutions_app_evolutionsapptestmodel'),
+
+                'CREATE INDEX `%s`'
+                ' ON `evolutions_app2_evolutionsapp2testmodel` (`fkey_id`);'
+                % generate_index_name(
+                    'evolutions_app2_evolutionsapp2testmodel',
+                    'fkey_id',
+                    'fkey'),
+
+                'CREATE INDEX `%s`'
+                ' ON `evolutions_app2_evolutionsapp2testmodel2` (`fkey_id`);'
+                % generate_index_name(
+                    'evolutions_app2_evolutionsapp2testmodel2',
+                    'fkey_id',
+                    'fkey'),
+            ],
+
             'create_tables_with_deferred_refs': [
                 'CREATE TABLE `tests_testmodel` (',
                 '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
@@ -1655,6 +1811,9 @@ def evolver(connection):
                     'id',
                     'tests_testmodel',
                     'evolutions_app_reffedevolvertestmodel'),
+
+                'CREATE INDEX `%s` ON `tests_testmodel` (`ref_id`);'
+                % generate_index_name('tests_testmodel', 'ref_id', 'ref'),
             ],
         })
 
