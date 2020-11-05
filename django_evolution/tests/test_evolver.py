@@ -525,12 +525,12 @@ class EvolverTests(BaseEvolverTestCase):
         self.assertNotEqual(version, orig_version)
         self.assertFalse(version.is_hinted())
 
-        evolutions = list(version.evolutions.all())
-        self.assertEqual(len(evolutions), 2)
-        self.assertEqual(evolutions[0].app_label, 'tests')
-        self.assertEqual(evolutions[0].label, 'my_evolution1')
-        self.assertEqual(evolutions[1].app_label, 'tests')
-        self.assertEqual(evolutions[1].label, 'my_evolution2')
+        self.assertAppliedEvolutions(
+            [
+                ('tests', 'my_evolution1'),
+                ('tests', 'my_evolution2'),
+            ],
+            version=version)
 
         model_sig = (
             version.signature
@@ -677,16 +677,17 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
 
         EvolveAppTask.prepare_tasks(evolver, [task])
         self.assertIsNotNone(EvolveAppTask._migration_executor)
-        self.assertEqual(
+
+        self._check_migration_plan(
             EvolveAppTask._pre_migration_plan,
             [
-                (app_migrations[0], False),
+                ('tests', '0001_initial', False),
             ])
-        self.assertEqual(
+        self._check_migration_plan(
             EvolveAppTask._post_migration_plan,
             [
-                (app_migrations[1], False),
-                (app_migrations[2], False),
+                ('tests', '0002_add_field', False),
+                ('tests', '0003_remove_field', False),
             ])
         self.assertEqual(
             EvolveAppTask._pre_migration_targets,
@@ -776,11 +777,12 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         self.assertIsNotNone(EvolveAppTask._migration_executor)
         self.assertIsNone(EvolveAppTask._pre_migration_plan)
         self.assertIsNone(EvolveAppTask._pre_migration_targets)
-        self.assertEqual(
+
+        self._check_migration_plan(
             EvolveAppTask._post_migration_plan,
             [
-                (app_migrations[1], False),
-                (app_migrations[2], False),
+                ('tests', '0002_add_field', False),
+                ('tests', '0003_remove_field', False),
             ])
         self.assertEqual(
             EvolveAppTask._post_migration_targets,
@@ -856,19 +858,19 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                 [
                     ('applying_migration', {
                         'sender': evolver,
-                        'migration': app_migrations[0],
+                        'migration': ('tests', '0001_initial'),
                     }),
                     ('applied_migration', {
                         'sender': evolver,
-                        'migration': app_migrations[0],
+                        'migration': ('tests', '0001_initial'),
                     }),
                     ('applying_migration', {
                         'sender': evolver,
-                        'migration': app_migrations[1],
+                        'migration': ('tests', '0002_add_field'),
                     }),
                     ('applied_migration', {
                         'sender': evolver,
-                        'migration': app_migrations[1],
+                        'migration': ('tests', '0002_add_field'),
                     }),
                 ])
 
@@ -994,11 +996,11 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                     }),
                     ('applying_migration', {
                         'sender': evolver,
-                        'migration': app_migrations[1],
+                        'migration': ('tests', '0002_add_field'),
                     }),
                     ('applied_migration', {
                         'sender': evolver,
-                        'migration': app_migrations[1],
+                        'migration': ('tests', '0002_add_field'),
                     }),
                 ])
 
@@ -1321,6 +1323,32 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
             " max_length=100),\n"
             "]")
 
+    def _check_migration_plan(self, migration_plan, expected_items):
+        """Check a migration plan for the expected informaton.
+
+        Args:
+            migration_plan (list):
+                The migration plan to check.
+
+            expected_items (list of tuple):
+                A normalized version of a migration plan to compare against
+                ``migration_plan``. Each item is a tuple containing:
+
+                1. The app label.
+                2. The migration name.
+                3. The "reverse" boolean flag.
+
+        Raises:
+            AssertionError:
+                The migration plan did not match.
+        """
+        self.assertEqual(
+            [
+                (migration.app_label, migration.name, reverse)
+                for migration, reverse in migration_plan
+            ],
+            expected_items)
+
     def _on_applying_evolution(self, sender, task, evolutions, **kwargs):
         """Handle the applying_evolution signal.
 
@@ -1395,7 +1423,7 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         """
         self.saw_signals.append(('applying_migration', {
             'sender': sender,
-            'migration': migration,
+            'migration': (migration.app_label, migration.name),
         }))
 
     def _on_applied_migration(self, sender, migration, **kwargs):
@@ -1416,7 +1444,7 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         """
         self.saw_signals.append(('applied_migration', {
             'sender': sender,
-            'migration': migration,
+            'migration': (migration.app_label, migration.name),
         }))
 
     def _on_creating_models(self, sender, app_label, model_names, **kwargs):
