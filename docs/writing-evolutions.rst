@@ -176,3 +176,144 @@ You can make changes to your models as often as you need to. Add and delete
 the same field a dozen times across dozens of evolutions, if you like.
 Evolutions are automatically optimized before applied, resulting in the
 smallest set of changes needed to get your database updated.
+
+
+.. _evolution-dependencies:
+
+Adding Dependencies
+-------------------
+
+.. versionadded:: 2.1
+
+Both individual evolution modules and the main
+``myapp/evolutions/__init__.py`` module can define other evolutions or
+migrations that must be applied before or after the individual evolution or
+app as a whole.
+
+This is done by adding any of the following to the appropriate module:
+
+``AFTER_EVOLUTIONS``:
+    A list of specific evolutions (tuples in the form of
+    ``(app_label, evolution_label)``) or app labels (a single string) that
+    must be applied before this evolution can be applied.
+
+``BEFORE_EVOLUTIONS``:
+    A list of specific evolutions (tuples in the form of
+    ``(app_label, evolution_label)``) or app labels (a single string) that
+    must be applied sometime after this evolution is applied.
+
+``AFTER_MIGRATIONS``:
+    A list of migration targets (tuples in the form of
+    ``(app_label, migration_name)`` that must be applied before this evolution
+    can be applied.
+
+``BEFORE_MIGRATIONS``:
+    A list of migration targets (tuples in the form of
+    ``(app_label, migration_name)`` that must be applied sometime after this
+    evolution is applied.
+
+Django Evolution will apply the evolutions and migrations in the right order
+based on any dependencies.
+
+This is important to set if you have evolutions that a migration may depend on
+(e.g., a swappable model that the migration requires), or if your evolutions
+are being applied in the wrong order (often only a problem if there are
+evolutions depending on migrations).
+
+.. note:: It's up to you to decide where to put these.
+
+   You may want to define this as its own empty ``initial.py`` evolution
+   at the beginning of the ``SEQUENCE`` list, or to a more specific
+   ``evolution`` within.
+
+
+So, let's look at an example:
+
+.. code-block:: python
+   :caption: blogs/evolutions/add_my_field.py
+
+   from __future__ import unicode_literals
+
+   from django_evolution.mutations import ...
+
+
+   BEFORE_EVOLUTIONS = [
+       'blog_exporter',
+       ('myapi', 'add_blog_fields'),
+   ]
+
+   AFTER_MIGRATIONS = [
+       ('fancy_text', '0001_initial'),
+   ]
+
+   MUTATIONS = [
+       ...
+   ]
+
+
+This will ensure this evolution is applied before both the ``blog_exporter``
+app's evolutions/models and the ``myapi`` app's ``add_blog_fields`` evolution.
+At the same time, it'll also ensure that it will be applied only after the
+``fancy_text`` app's ``0001_initial`` migration has been applied.
+
+Similarly, these can be added to the top-level ``evolutions/__init__.py`` file
+for an app:
+
+.. code-block:: python
+   :caption: blogs/evolutions/__init__.py
+
+   from __future__ import unicode_literals
+
+
+   BEFORE_EVOLUTIONS = [
+       'blog_exporter',
+       ('myapi', 'add_blog_fields'),
+   ]
+
+   AFTER_MIGRATIONS = [
+       ('fancy_text', '0001_initial'),
+   ]
+
+   SEQUENCE = [
+       'add_my_field',
+   ]
+
+This is handy if you need to be sure that this module's evolutions or model
+creations always happen before or after that of another module, no matter
+which models may exist or which evolutions may have already been applied.
+
+
+.. hint::
+
+   Don't add dependencies if you don't need to. Django Evolution will try to
+   apply the ordering in the correct way. Use dependencies when it gets it
+   wrong.
+
+   Make sure you test not only upgrades but the creation of brand-new
+   databases, to make sure your dependencies are correct in both cases.
+
+
+MoveToDjangoMigrations
+~~~~~~~~~~~~~~~~~~~~~~
+
+If an evolution uses the
+:py:class:`~django_evolution.mutations.MoveToDjangoMigrations` mutation,
+dependencies will automatically be created to ensure that your evolution is
+applied in the correct order relative to any new migrations in that app.
+
+That means that this:
+
+.. code-block:: python
+
+   MUTATIONS = [
+       MoveToDjangoMigrations(mark_applied=['0001_initial'])
+   ]
+
+
+implies:
+
+.. code-block:: python
+
+   AFTER_MIGRATIONS = [
+       ('myapp', '0001_initial'),
+   ]
