@@ -2,11 +2,17 @@
 
 from __future__ import print_function, unicode_literals
 
+import logging
+
 from django.db import connections
+from django.db.transaction import TransactionManagementError
 
 from django_evolution.compat import six
 from django_evolution.compat.db import atomic
 from django_evolution.db import EvolutionOperationsMulti
+
+
+logger = logging.getLogger(__name__)
 
 
 class BaseGroupedSQL(object):
@@ -90,8 +96,11 @@ class SQLExecutor(object):
         connection = self._connection
         database = self._database
 
-        assert not connection.in_atomic_block, \
-            'SQLExecutor cannot be run inside a transaction.'
+        if (connection.in_atomic_block and
+            not connection.features.can_rollback_ddl):
+            logger.warning('Some database schema modifications may not be '
+                           'able to be rolled back on this database if '
+                           'something goes wrong.')
 
         if not self._check_constraints:
             self._constraints_disabled = \
@@ -173,6 +182,11 @@ class SQLExecutor(object):
             list of unicode:
             The list of SQL statements executed, if passing
             ``capture_sql=True``. Otherwise, this will just be an empty list.
+
+        Raises:
+            django.db.transaction.TransactionManagementError:
+                Could not execute a batch of SQL statements inside of an
+                existing transaction.
         """
         qp = self._evolver_backend.quote_sql_param
         cursor = self._cursor
@@ -184,6 +198,23 @@ class SQLExecutor(object):
         try:
             batches = self._prepare_transaction_batches(
                 self._prepare_sql(sql))
+
+            if execute and self._connection.in_atomic_block:
+                # Check if there are any statements that must run outside of
+                # a transaction.
+                batches = list(batches)
+
+                for batch, use_transaction in batches:
+                    if not use_transaction:
+                        logging.error(
+                            'Unable to execute the following SQL inside of a '
+                            'transaction: %r',
+                            batch)
+
+                        raise TransactionManagementError(
+                            'Unable to execute SQL inside of an existing '
+                            'transaction. See the logging for more '
+                            'information.')
 
             for i, (batch, use_transaction) in enumerate(batches):
                 if execute:
