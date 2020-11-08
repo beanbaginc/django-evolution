@@ -40,8 +40,15 @@ def get_package_version():
     if VERSION[2]:
         version += ".%s" % VERSION[2]
 
-    if VERSION[3] != 'final':
-        version += '%s%s' % (VERSION[3], VERSION[4])
+    tag = VERSION[3]
+
+    if tag != 'final':
+        if tag == 'alpha':
+            tag = 'a'
+        elif tag == 'beta':
+            tag = 'b'
+
+        version += '%s%s' % (tag, VERSION[4])
 
     return version
 
