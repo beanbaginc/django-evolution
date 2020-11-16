@@ -2,7 +2,7 @@
 Django Evolution 2.1
 ====================
 
-**Release date:** TBD
+**Release date:** November 16, 2020
 
 
 New Features
@@ -60,3 +60,9 @@ MySQL/MariaDB
   These versions of Django "temporarily" unset the ``db_index`` attribute on
   fields when generating SQL for creating indexes, and then never restore it.
   We now monkey-patch these versions of Django to restore these values.
+
+
+Contributors
+============
+
+* Christian Hammond
