@@ -4,12 +4,13 @@
 Release Notes
 =============
 
-2.0 Releases
+2.x Releases
 ============
 
 .. toctree::
    :maxdepth: 1
 
+   2.1
    2.0
 
 

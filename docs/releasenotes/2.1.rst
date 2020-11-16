@@ -1,0 +1,62 @@
+====================
+Django Evolution 2.1
+====================
+
+**Release date:** TBD
+
+
+New Features
+============
+
+* Dependency management for evolutions and migrations.
+
+  Evolutions can now specify other evolutions and migrations that must be
+  applied either before or after. This allows evolutions to, for instance,
+  introduce a model that would be required by another migration (useful for
+  Django apps that have migrations that depend on a swappable model specified
+  in settings).
+
+  Django Evolution will determine the correct order in which to apply
+  migrations and evolutions, so as to correctly create or update the database.
+
+  Dependencies can be defined per-evolution or per-app. They can depend on
+  specific evolutions or on app evolutions for an app, or on specific
+  migrations.
+
+  See :ref:`evolution-dependencies` for more information.
+
+* Improved transaction management.
+
+  Transactions are managed a bit more closely now, allowing more operations to
+  be performed in a transaction at a time and for those operations to be
+  rolled back if anything goes wrong. This should improve reliability of an
+  upgrade.
+
+
+Bug Fixes
+=========
+
+General
+-------
+
+* Fixed the order in which models are created.
+
+  There was a regression in 2.0 where models could be created in the wrong
+  order, causing issues with applying constraints between those models.
+
+* Fixed error messages in places if stored schema signatures were missing.
+
+  Previously, some missing schema signatures could lead to outright crashes,
+  if things went wrong. There's now checks in more places to ensure there's
+  at least a reasonable error message.
+
+
+MySQL/MariaDB
+-------------
+
+* Fixed preserving the ``db_index=`` values for fields on Django 1.8 through
+  1.10.
+
+  These versions of Django "temporarily" unset the ``db_index`` attribute on
+  fields when generating SQL for creating indexes, and then never restore it.
+  We now monkey-patch these versions of Django to restore these values.
