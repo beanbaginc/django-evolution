@@ -784,15 +784,20 @@ def change_field(connection):
             ' "int_field4" integer NOT NULL,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "char_field1" varchar(25) NOT NULL,'
-            ' "char_field2" varchar(30) NOT NULL);',
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2")'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2"'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2"'
             ' FROM "tests_testmodel";',
 
             'UPDATE "TEMP_TABLE" SET "char_field1" = \'abc\\\'s xyz\';',
@@ -816,15 +821,20 @@ def change_field(connection):
             ' "int_field4" integer NOT NULL,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "char_field1" varchar(25) NOT NULL,'
-            ' "char_field2" varchar(30) NOT NULL);',
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2")'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2"'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2"'
             ' FROM "tests_testmodel";',
 
             'UPDATE "TEMP_TABLE" SET "char_field1" = "char_field";',
@@ -848,15 +858,20 @@ def change_field(connection):
             ' "int_field4" integer NOT NULL,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "char_field1" varchar(25) NULL,'
-            ' "char_field2" varchar(30) NULL);',
+            ' "char_field2" varchar(30) NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2")'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2"'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -880,15 +895,20 @@ def change_field(connection):
             ' "int_field4" integer NOT NULL,'
             ' "char_field" varchar(45) NOT NULL,'
             ' "char_field1" varchar(25) NULL,'
-            ' "char_field2" varchar(30) NOT NULL);',
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2")'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2"'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -910,15 +930,20 @@ def change_field(connection):
             ' "int_field4" integer NOT NULL,'
             ' "char_field" varchar(1) NOT NULL,'
             ' "char_field1" varchar(25) NULL,'
-            ' "char_field2" varchar(30) NOT NULL);',
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2")'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2"'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -961,15 +986,20 @@ def change_field(connection):
             ' "int_field4" integer NOT NULL UNIQUE,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "char_field1" varchar(25) NULL,'
-            ' "char_field2" varchar(30) NOT NULL);',
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2")'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2"'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -991,15 +1021,20 @@ def change_field(connection):
             ' "int_field4" integer NOT NULL,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "char_field1" varchar(25) NULL,'
-            ' "char_field2" varchar(30) NOT NULL);',
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2")'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2"'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -1021,15 +1056,125 @@ def change_field(connection):
             ' "int_field4" integer NOT NULL,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "char_field1" varchar(25) NULL,'
-            ' "char_field2" varchar(35) NULL);',
+            ' "char_field2" varchar(35) NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2")'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2"'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'decimal_field_decimal_places': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'decimal_field_decimal_places_max_digits': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'decimal_field_max_digits': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -1059,15 +1204,20 @@ def change_field(connection):
                 ' "int_field4" integer NOT NULL,'
                 ' "char_field" varchar(35) NOT NULL,'
                 ' "char_field1" varchar(25) NULL,'
-                ' "char_field2" varchar(30) NULL);',
+                ' "char_field2" varchar(30) NULL,'
+                ' "dec_field" decimal NOT NULL,'
+                ' "dec_field1" decimal NULL,'
+                ' "dec_field2" decimal NOT NULL);',
 
                 'INSERT INTO "TEMP_TABLE"'
                 ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
-                ' "char_field1", "char_field2")'
+                ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+                ' "dec_field2")'
                 ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
-                ' "char_field1", "char_field2"'
+                ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+                ' "dec_field2"'
                 ' FROM "tests_testmodel";',
 
                 'DROP TABLE "tests_testmodel";',
@@ -1092,15 +1242,20 @@ def change_field(connection):
                 ' "int_field4" integer NOT NULL,'
                 ' "char_field" varchar(35) NOT NULL,'
                 ' "char_field1" varchar(25) NULL,'
-                ' "char_field2" varchar(30) NULL);',
+                ' "char_field2" varchar(30) NULL,'
+                ' "dec_field" decimal NOT NULL,'
+                ' "dec_field1" decimal NULL,'
+                ' "dec_field2" decimal NOT NULL);',
 
                 'INSERT INTO "TEMP_TABLE"'
                 ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
-                ' "char_field1", "char_field2")'
+                ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+                ' "dec_field2")'
                 ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
-                ' "char_field1", "char_field2"'
+                ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+                ' "dec_field2"'
                 ' FROM "tests_testmodel";',
 
                 'DROP TABLE "tests_testmodel";',
@@ -1127,15 +1282,20 @@ def change_field(connection):
                 ' "int_field4" integer NOT NULL,'
                 ' "char_field" varchar(20) NOT NULL,'
                 ' "char_field1" varchar(25) NULL,'
-                ' "char_field2" varchar(30) NOT NULL);',
+                ' "char_field2" varchar(30) NOT NULL,'
+                ' "dec_field" decimal NOT NULL,'
+                ' "dec_field1" decimal NULL,'
+                ' "dec_field2" decimal NOT NULL);',
 
                 'INSERT INTO "TEMP_TABLE"'
                 ' ("my_id", "alt_pk", "customised_db_column", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
-                ' "char_field1", "char_field2")'
+                ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+                ' "dec_field2")'
                 ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
-                ' "char_field1", "char_field2"'
+                ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+                ' "dec_field2"'
                 ' FROM "tests_testmodel";',
 
                 'DROP TABLE "tests_testmodel";',
@@ -1157,15 +1317,20 @@ def change_field(connection):
                 ' "int_field4" integer NOT NULL,'
                 ' "char_field" varchar(35) NOT NULL,'
                 ' "char_field1" varchar(25) NULL,'
-                ' "char_field2" varchar(30) NULL);',
+                ' "char_field2" varchar(30) NULL,'
+                ' "dec_field" decimal NOT NULL,'
+                ' "dec_field1" decimal NULL,'
+                ' "dec_field2" decimal NOT NULL);',
 
                 'INSERT INTO "TEMP_TABLE"'
                 ' ("my_id", "alt_pk", "custom_db_column2", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
-                ' "char_field1", "char_field2")'
+                ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+                ' "dec_field2")'
                 ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
-                ' "char_field1", "char_field2"'
+                ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+                ' "dec_field2"'
                 ' FROM "tests_testmodel";',
 
                 'DROP TABLE "tests_testmodel";',
@@ -1187,15 +1352,20 @@ def change_field(connection):
                 ' "int_field4" integer NOT NULL,'
                 ' "char_field" varchar(35) NOT NULL,'
                 ' "char_field1" varchar(25) NULL,'
-                ' "char_field2" varchar(30) NULL);',
+                ' "char_field2" varchar(30) NULL,'
+                ' "dec_field" decimal NOT NULL,'
+                ' "dec_field1" decimal NULL,'
+                ' "dec_field2" decimal NOT NULL);',
 
                 'INSERT INTO "TEMP_TABLE"'
                 ' ("my_id", "alt_pk", "custom_db_column3", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
-                ' "char_field1", "char_field2")'
+                ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+                ' "dec_field2")'
                 ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
-                ' "char_field1", "char_field2"'
+                ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+                ' "dec_field2"'
                 ' FROM "tests_testmodel";',
 
                 'DROP TABLE "tests_testmodel";',

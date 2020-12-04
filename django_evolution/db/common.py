@@ -26,9 +26,17 @@ from django_evolution.errors import EvolutionNotImplementedError
 
 
 class BaseEvolutionOperations(object):
-    supported_change_attrs = (
-        'null', 'max_length', 'db_column', 'db_index', 'db_table', 'unique',
-    )
+    #: A set of attributes that can be changed in the database.
+    supported_change_attrs = {
+        'db_column',
+        'db_index',
+        'db_table',
+        'decimal_places',
+        'max_digits',
+        'max_length',
+        'null',
+        'unique',
+    }
 
     # Build the list of ChangeMeta attributes that databases support by
     # default.
@@ -566,40 +574,86 @@ class BaseEvolutionOperations(object):
             [field.name for field in fields])
 
     def change_column_attrs(self, model, mutation, field_name, new_attrs):
-        """Returns the SQL for changing one or more column attributes.
+        """Return the SQL for changing one or more column attributes.
 
         This will generate all the statements needed for changing a set
         of attributes for a column.
 
         The resulting AlterTableSQLResult contains all the SQL needed
         to apply these attributes.
+
+        Args:
+            model (type):
+                The model class that owns the field.
+
+            mutation (django_evolution.mutations.BaseModelMutation):
+                The mutation applying this change.
+
+            field_name (unicode):
+                The name of the field on the model.
+
+            new_attrs (dict):
+                A dictionary mapping attributes to new values.
+
+        Returns:
+            django_evolution.db.sql_result.AlterTableSQLResult:
+            The SQL for modifying the column.
         """
         field = model._meta.get_field(field_name)
-        ignored_m2m_attrs = self.ignored_m2m_attrs.get(type(field))
-
+        ignored_m2m_attrs = self.ignored_m2m_attrs.get(type(field), set())
         attrs_sql_result = self.alter_table_sql_result_cls(self, model)
+        change_calls = []
 
-        new_attrs = sorted(six.iteritems(new_attrs),
-                           key=lambda pair: pair[0])
-
-        for attr_name, attr_info in new_attrs:
-            if ignored_m2m_attrs and attr_name in ignored_m2m_attrs:
-                # This attribute is allowed by the field's constructor, but
-                # isn't something we can change in the database. Skip it.
-                continue
-
-            method_name = 'change_column_attr_%s' % attr_name
-            evolve_func = getattr(self, method_name)
+        if (isinstance(field, models.DecimalField) and
+            ('max_digits' in new_attrs or 'decimal_places' in new_attrs)):
+            # DecimalFields generally map to something like a
+            # NUMERIC(max_digits, decimal_places) or a DECIMAL(...) version,
+            # and as such we need to incorporate both values.
+            try:
+                new_max_digits = new_attrs.pop('max_digits')['new_value']
+            except KeyError:
+                new_max_digits = None
 
             try:
-                sql_result = evolve_func(model, mutation, field,
-                                         attr_info['old_value'],
-                                         attr_info['new_value'])
+                new_decimal_places = \
+                    new_attrs.pop('decimal_places')['new_value']
+            except KeyError:
+                new_decimal_places = None
+
+            change_calls.append({
+                'func': self.change_column_attr_decimal_type,
+                'kwargs': {
+                    'new_max_digits': new_max_digits,
+                    'new_decimal_places': new_decimal_places,
+                },
+            })
+
+        change_calls += [
+            {
+                'func': getattr(self, 'change_column_attr_%s' % attr_name),
+                'kwargs': {
+                    'old_value': attr_info['old_value'],
+                    'new_value': attr_info['new_value'],
+                },
+            }
+            for attr_name, attr_info in sorted(six.iteritems(new_attrs),
+                                               key=lambda pair: pair[0])
+            if attr_name not in ignored_m2m_attrs
+        ]
+
+        for change_call in change_calls:
+            func = change_call['func']
+
+            try:
+                sql_result = func(model=model,
+                                  mutation=mutation,
+                                  field=field,
+                                  **change_call['kwargs'])
                 assert not sql_result or isinstance(sql_result, SQLResult)
             except Exception as e:
                 logging.critical(
                     'Error running database evolver function %s: %s',
-                    method_name, e,
+                    func.__name__, e,
                     exc_info=1)
                 raise
 
@@ -636,6 +690,53 @@ class BaseEvolutionOperations(object):
         sql_result.add_pre_sql(pre_sql)
 
         return sql_result
+
+    def change_column_attr_decimal_type(self, model, mutation, field,
+                                        new_max_digits, new_decimal_places):
+        """Return SQL for changing a column's max digits and decimal places.
+
+        This is used for :py:class:`~django.db.models.DecimalField` and
+        subclasses to change the maximum number of digits or decimal places.
+        As these are used together as a column type, they must be considered
+        together as one attribute change.
+
+        Args:
+            model (type):
+                The model class that owns the field.
+
+            mutation (django_evolution.mutations.BaseModelMutation):
+                The mutation applying this change.
+
+            field (django.db.models.DecimalField):
+                The field being modified.
+
+            new_max_digits (int):
+                The new value for ``max_digits``. If ``None``, it wasn't
+                provided in the attribute change.
+
+            new_decimal_places (int):
+                The new value for ``decimal_places``. If ``None``, it wasn't
+                provided in the attribute change.
+
+        Returns:
+            django_evolution.db.sql_result.AlterTableSQLResult:
+            The SQL for modifying the value.
+        """
+        if new_max_digits is not None:
+            field.max_digits = new_max_digits
+
+        if new_decimal_places is not None:
+            field.decimal_places = new_decimal_places
+
+        return self.alter_table_sql_result_cls(
+            self,
+            model,
+            alter_table=[{
+                'op': 'MODIFY COLUMN',
+                'column': field.column,
+                'db_type': field.db_type(connection=self.connection)
+            }]
+        )
 
     def change_column_attr_max_length(self, model, mutation, field, old_value,
                                       new_value):

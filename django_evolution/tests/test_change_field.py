@@ -37,6 +37,14 @@ class ChangeBaseModel(BaseTestModel):
     char_field = models.CharField(max_length=20)
     char_field1 = models.CharField(max_length=25, null=True)
     char_field2 = models.CharField(max_length=30, null=False)
+    dec_field = models.DecimalField(max_digits=5,
+                                    decimal_places=2)
+    dec_field1 = models.DecimalField(max_digits=6,
+                                     decimal_places=3,
+                                     null=True)
+    dec_field2 = models.DecimalField(max_digits=7,
+                                     decimal_places=4,
+                                     null=False)
     m2m_field1 = models.ManyToManyField(
         ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -119,6 +127,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=False)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -157,6 +173,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=False)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -194,6 +218,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=False)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -225,6 +257,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=False)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -258,6 +298,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=30, null=True)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -291,6 +339,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -319,6 +375,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=45)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -350,6 +414,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=1)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -381,6 +453,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -412,6 +492,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='custom_m2m_db_table_name')
 
@@ -443,6 +531,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1,
                 db_table='change_field_non-default_m2m_table',
@@ -475,6 +571,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -516,6 +620,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -566,6 +678,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -607,6 +727,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -649,6 +777,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -690,6 +826,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -718,6 +862,127 @@ class ChangeFieldTests(EvolutionTestCase):
             columns=['int_field3'],
             unique=True))
 
+    def test_with_decimal_field_set_decimal_places(self):
+        """Testing ChangeField with DecimalField and setting decimal_places"""
+        class DestModel(BaseTestModel):
+            my_id = models.AutoField(primary_key=True)
+            alt_pk = models.IntegerField()
+            int_field = models.IntegerField(db_column='custom_db_column')
+            int_field1 = models.IntegerField(db_index=True)
+            int_field2 = models.IntegerField(db_index=False)
+            int_field3 = models.IntegerField(unique=True)
+            int_field4 = models.IntegerField(unique=False)
+            char_field = models.CharField(max_length=20)
+            char_field1 = models.CharField(max_length=25, null=True)
+            char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=2,
+                                             null=False)
+            m2m_field1 = models.ManyToManyField(
+                ChangeAnchor1,
+                db_table='change_field_non-default_m2m_table')
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeField('TestModel', 'dec_field2', decimal_places=2),
+            ],
+            ("In model tests.TestModel:\n"
+             "    In field 'dec_field2':\n"
+             "        Property 'decimal_places' has changed"),
+            [
+                "ChangeField('TestModel', 'dec_field2', decimal_places=2,"
+                " initial=None)"
+            ],
+            'decimal_field_decimal_places')
+
+    def test_with_decimal_field_set_max_digits(self):
+        """Testing ChangeField with DecimalField and setting max_digits"""
+        class DestModel(BaseTestModel):
+            my_id = models.AutoField(primary_key=True)
+            alt_pk = models.IntegerField()
+            int_field = models.IntegerField(db_column='custom_db_column')
+            int_field1 = models.IntegerField(db_index=True)
+            int_field2 = models.IntegerField(db_index=False)
+            int_field3 = models.IntegerField(unique=True)
+            int_field4 = models.IntegerField(unique=False)
+            char_field = models.CharField(max_length=20)
+            char_field1 = models.CharField(max_length=25, null=True)
+            char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=10,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
+            m2m_field1 = models.ManyToManyField(
+                ChangeAnchor1,
+                db_table='change_field_non-default_m2m_table')
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeField('TestModel', 'dec_field1', max_digits=10),
+            ],
+            ("In model tests.TestModel:\n"
+             "    In field 'dec_field1':\n"
+             "        Property 'max_digits' has changed"),
+            [
+                "ChangeField('TestModel', 'dec_field1', initial=None,"
+                " max_digits=10)"
+            ],
+            'decimal_field_max_digits')
+
+    def test_with_decimal_field_set_decimal_places_and_max_digits(self):
+        """Testing ChangeField with DecimalField and setting decimal_places and
+        max_digits
+        """
+        class DestModel(BaseTestModel):
+            my_id = models.AutoField(primary_key=True)
+            alt_pk = models.IntegerField()
+            int_field = models.IntegerField(db_column='custom_db_column')
+            int_field1 = models.IntegerField(db_index=True)
+            int_field2 = models.IntegerField(db_index=False)
+            int_field3 = models.IntegerField(unique=True)
+            int_field4 = models.IntegerField(unique=False)
+            char_field = models.CharField(max_length=20)
+            char_field1 = models.CharField(max_length=25, null=True)
+            char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=10,
+                                             decimal_places=1,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
+            m2m_field1 = models.ManyToManyField(
+                ChangeAnchor1,
+                db_table='change_field_non-default_m2m_table')
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeField('TestModel', 'dec_field1', max_digits=10,
+                            decimal_places=1),
+            ],
+            ("In model tests.TestModel:\n"
+             "    In field 'dec_field1':\n"
+             "        Property 'decimal_places' has changed\n"
+             "        Property 'max_digits' has changed"),
+            [
+                "ChangeField('TestModel', 'dec_field1', decimal_places=1,"
+                " initial=None, max_digits=10)"
+            ],
+            'decimal_field_decimal_places_max_digits')
+
     def test_change_multiple_attrs_multi_fields(self):
         """Testing ChangeField with multiple attributes on different fields"""
         class DestModel(BaseTestModel):
@@ -731,6 +996,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=35)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=30, null=True)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -776,6 +1049,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=35, null=True)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -808,6 +1089,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=35)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=30, null=True)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -858,6 +1147,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -881,6 +1178,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=False)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
 
@@ -923,6 +1228,14 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field = models.CharField(max_length=20)
             char_field1 = models.CharField(max_length=25, null=True)
             char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
             test_field = models.CharField(max_length=32, null=False)

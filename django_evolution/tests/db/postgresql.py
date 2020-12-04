@@ -878,6 +878,21 @@ def change_field(connection):
         ],
 
         'M2MNullChangeModel': [],
+
+        'decimal_field_decimal_places': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "dec_field2" TYPE numeric(7, 2);',
+        ],
+
+        'decimal_field_decimal_places_max_digits': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "dec_field1" TYPE numeric(10, 1);',
+        ],
+
+        'decimal_field_max_digits': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "dec_field1" TYPE numeric(10, 3);',
+        ],
     }
 
     if django_version >= (1, 11):

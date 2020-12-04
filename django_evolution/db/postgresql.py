@@ -123,3 +123,50 @@ class EvolutionOperations(BaseEvolutionOperations):
             return True
         else:
             return False
+
+    def change_column_attr_decimal_type(self, model, mutation, field,
+                                        new_max_digits, new_decimal_places):
+        """Return SQL for changing a column's max digits and decimal places.
+
+        This is used for :py:class:`~django.db.models.DecimalField` and
+        subclasses to change the maximum number of digits or decimal places.
+        As these are used together as a column type, they must be considered
+        together as one attribute change.
+
+        Args:
+            model (type):
+                The model class that owns the field.
+
+            mutation (django_evolution.mutations.BaseModelMutation):
+                The mutation applying this change.
+
+            field (django.db.models.DecimalField):
+                The field being modified.
+
+            new_max_digits (int):
+                The new value for ``max_digits``. If ``None``, it wasn't
+                provided in the attribute change.
+
+            new_decimal_places (int):
+                The new value for ``decimal_places``. If ``None``, it wasn't
+                provided in the attribute change.
+
+        Returns:
+            django_evolution.db.sql_result.AlterTableSQLResult:
+            The SQL for modifying the value.
+        """
+        if new_max_digits is not None:
+            field.max_digits = new_max_digits
+
+        if new_decimal_places is not None:
+            field.decimal_places = new_decimal_places
+
+        return self.alter_table_sql_result_cls(
+            self,
+            model,
+            alter_table=[{
+                'op': 'ALTER COLUMN',
+                'column': field.column,
+                'params': ['TYPE', field.db_type(connection=self.connection)],
+            }]
+        )
