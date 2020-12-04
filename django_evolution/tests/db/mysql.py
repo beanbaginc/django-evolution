@@ -785,6 +785,21 @@ def change_field(connection):
             ' integer NOT NULL,'
             ' MODIFY COLUMN `char_field` varchar(35);',
         ],
+
+        'decimal_field_decimal_places': [
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY COLUMN `dec_field2` numeric(7, 2);',
+        ],
+
+        'decimal_field_decimal_places_max_digits': [
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY COLUMN `dec_field1` numeric(10, 1);',
+        ],
+
+        'decimal_field_max_digits': [
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY COLUMN `dec_field1` numeric(10, 3);',
+        ],
     }
 
 
