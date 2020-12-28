@@ -182,7 +182,7 @@ class Command(BaseCommand):
 
             if not self.evolver.get_evolution_required():
                 if self.verbosity > 0:
-                    self.stdout.write(_('No upgrade required.\n'))
+                    self.stdout.write(_('No database upgrade required.\n'))
             elif execute:
                 if not interactive or self._confirm_execute():
                     self._perform_evolution()
