@@ -4,8 +4,7 @@ import django
 
 from django_evolution.tests.utils import (make_generate_constraint_name,
                                           make_generate_index_name,
-                                          make_generate_unique_constraint_name,
-                                          test_connections)
+                                          make_generate_unique_constraint_name)
 
 
 django_version = django.VERSION[:2]

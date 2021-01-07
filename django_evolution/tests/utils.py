@@ -17,9 +17,11 @@ from django_evolution.compat.apps import (get_app,
                                           register_app_models,
                                           unregister_app_model)
 from django_evolution.compat.datastructures import OrderedDict
-from django_evolution.compat.db import (atomic, create_index_name,
-                                        create_index_together_name, digest,
-                                        sql_create_app, sql_delete,
+from django_evolution.compat.db import (create_index_name,
+                                        create_index_together_name,
+                                        digest,
+                                        sql_create_app,
+                                        sql_delete,
                                         truncate_name)
 from django_evolution.compat.models import (all_models,
                                             get_model_name,
