@@ -6,8 +6,7 @@ import django
 from django.db.backends.sqlite3.base import Database
 
 from django_evolution.tests.utils import (make_generate_index_name,
-                                          make_generate_unique_constraint_name,
-                                          test_connections)
+                                          make_generate_unique_constraint_name)
 
 
 django_version = django.VERSION[:2]

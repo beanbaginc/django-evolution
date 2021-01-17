@@ -1,0 +1,24 @@
+======================
+Django Evolution 2.1.1
+======================
+
+**Release date:** January 17, 2021
+
+
+Bug Fixes
+=========
+
+* Fixed changing a :py:class:`~django.db.models.DecimalField`'s
+  ``decimal_places`` and ``max_digits`` attributes.
+
+* Changed the "No upgrade required" text to "No database upgrade required."
+
+  While not a bug, this does help avoid confusion when running as part of a
+  project's upgrade process, when database changes aren't the only changes
+  being made.
+
+
+Contributors
+============
+
+* Christian Hammond

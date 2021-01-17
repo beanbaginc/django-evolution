@@ -12,15 +12,6 @@ from django.db.utils import DEFAULT_DB_ALIAS
 from django.dispatch import receiver
 from django.utils.translation import ngettext, ugettext as _
 
-try:
-    # Django >= 1.7
-    from django.core.management.sql import (emit_post_migrate_signal,
-                                            emit_pre_migrate_signal)
-except ImportError:
-    # Django < 1.7
-    emit_post_migrate_signal = None
-    emit_pre_migrate_signal = None
-
 from django_evolution.compat import six
 from django_evolution.compat.apps import get_app
 from django_evolution.compat.commands import BaseCommand
@@ -182,7 +173,7 @@ class Command(BaseCommand):
 
             if not self.evolver.get_evolution_required():
                 if self.verbosity > 0:
-                    self.stdout.write(_('No upgrade required.\n'))
+                    self.stdout.write(_('No database upgrade required.\n'))
             elif execute:
                 if not interactive or self._confirm_execute():
                     self._perform_evolution()
