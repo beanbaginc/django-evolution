@@ -2,6 +2,8 @@
 
 from __future__ import unicode_literals
 
+from collections import OrderedDict
+
 from django.db import models
 from django.db.backends.sqlite3.base import Database
 
@@ -123,35 +125,36 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
             if _field.column not in deleted_columns
         ]
 
-        old_column_names = [
-            _field.column
-            for _field in old_fields
-        ]
+        field_values = OrderedDict()
 
-        copy_old_column_names = old_column_names
+        for field in old_fields:
+            old_column = field.column
 
-        if renamed_columns:
-            copy_new_column_names = (
-                renamed_columns.get(col_name, col_name)
-                for col_name in old_column_names
-            )
-        else:
-            copy_new_column_names = old_column_names
+            if old_column not in deleted_columns:
+                new_column = renamed_columns.get(old_column, old_column)
 
-        if deleted_columns:
-            deleted_columns = set(deleted_columns)
+                field_values[new_column] = qn(old_column)
 
-            copy_old_column_names = [
-                column
-                for column in copy_old_column_names
-                if column not in deleted_columns
-            ]
+        field_initials = []
 
-            copy_new_column_names = [
-                column
-                for column in copy_new_column_names
-                if column not in deleted_columns
-            ]
+        # If we have any new fields, add their defaults.
+        if new_initial:
+            for column, initial in six.iteritems(new_initial):
+                # Note that initial will only be None if null=True. Otherwise,
+                # it will be set to a user-defined callable or the default
+                # AddFieldInitialCallback, which will raise an exception in
+                # common code before we get too much further.
+                if initial is not None:
+                    if callable(initial):
+                        field_values[column] = initial()
+                    else:
+                        field_initials.append(initial)
+
+                        if column in field_values:
+                            field_values[column] = \
+                                'coalesce(%s, %%s)' % qn(column)
+                        else:
+                            field_values[column] = '%s'
 
         sql = []
 
@@ -173,9 +176,6 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
                 column_type = field.db_type(connection=connection)
                 params = [column_name, column_type]
 
-                # Always use null if this is a temporary table. It may be
-                # used to create a new field (which will be null while data is
-                # copied across from the old table).
                 if field.null:
                     params.append('NULL')
                 else:
@@ -216,47 +216,19 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
                       ', '.join(columns_sql + constraints_sql)))
 
         # Step 2: Copy over any data from the old table into the new one.
-        sql.append(
+        sql.append((
             'INSERT INTO %s (%s) SELECT %s FROM %s;'
             % (
                 qn(TEMP_TABLE_NAME),
                 ', '.join(
                     qn(column)
-                    for column in copy_new_column_names
+                    for column in six.iterkeys(field_values)
                 ),
-                ', '.join(
-                    qn(column)
-                    for column in copy_old_column_names
-                ),
+                ', '.join(six.itervalues(field_values)),
                 qn(table_name),
-            ))
-
-        # Note that initial will only be None if null=True. Otherwise, it
-        # will be set to a user-defined callable or the default
-        # AddFieldInitialCallback, which will raise an exception in common
-        # code before we get too much further.
-        if new_initial:
-            initial_column_sql = []
-            initial_values = []
-
-            for column, initial in six.iteritems(new_initial):
-                if initial is not None:
-                    if callable(initial):
-                        value_sql = initial()
-                    else:
-                        initial_values.append(initial)
-                        value_sql = '%s'
-
-                    initial_column_sql.append('%s = %s' % (qn(column),
-                                                           value_sql))
-
-            if initial_column_sql:
-                update_sql = 'UPDATE %s SET %s;' % (
-                    qn(TEMP_TABLE_NAME),
-                    ', '.join(initial_column_sql)
-                )
-
-                sql.append((update_sql, tuple(initial_values)))
+            ),
+            tuple(field_initials)
+        ))
 
         # Step 3: Drop the old table, making room for us to recreate the
         #         new schema table in its place.

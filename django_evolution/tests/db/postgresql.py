@@ -1551,7 +1551,7 @@ def constraints(connection):
 
             'ALTER TABLE "tests_testmodel"'
             ' ADD CONSTRAINT "new_check_constraint"'
-            ' CHECK ("char_field1"::text LIKE \'foo%%\');',
+            ' CHECK ("char_field1"::text LIKE \'test%%\');',
 
             'CREATE UNIQUE INDEX "new_unique_constraint_condition"'
             ' ON "tests_testmodel" ("int_field2")'
@@ -1565,7 +1565,7 @@ def constraints(connection):
         'setting_from_empty': [
             'ALTER TABLE "tests_testmodel"'
             ' ADD CONSTRAINT "new_check_constraint"'
-            ' CHECK ("char_field1"::text LIKE \'foo%%\');',
+            ' CHECK ("char_field1"::text LIKE \'test%%\');',
 
             'CREATE UNIQUE INDEX "new_unique_constraint_condition"'
             ' ON "tests_testmodel" ("int_field2")'

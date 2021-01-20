@@ -1,0 +1,20 @@
+======================
+Django Evolution 2.1.2
+======================
+
+**Release date:** January 19, 2021
+
+
+Bug Fixes
+=========
+
+* Fixed a regression with adding new non-NULL columns on SQLite databases.
+
+* Fixed a possible data loss bug when changing NULL columns to non-NULL on
+  SQLite databases.
+
+
+Contributors
+============
+
+* Christian Hammond

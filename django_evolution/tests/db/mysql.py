@@ -1286,7 +1286,7 @@ def constraints(connection):
 
                 "ALTER TABLE `tests_testmodel`"
                 " ADD CONSTRAINT `new_check_constraint`"
-                " CHECK (`char_field1` LIKE BINARY 'foo%%');",
+                " CHECK (`char_field1` LIKE BINARY 'test%%');",
 
                 "ALTER TABLE `tests_testmodel`"
                 " ADD CONSTRAINT `new_unique_constraint_plain`"
@@ -1296,7 +1296,7 @@ def constraints(connection):
             'setting_from_empty': [
                 "ALTER TABLE `tests_testmodel`"
                 " ADD CONSTRAINT `new_check_constraint`"
-                " CHECK (`char_field1` LIKE BINARY 'foo%%');",
+                " CHECK (`char_field1` LIKE BINARY 'test%%');",
 
                 "ALTER TABLE `tests_testmodel`"
                 " ADD CONSTRAINT `new_unique_constraint_plain`"

@@ -58,6 +58,26 @@ class RenameFieldTests(EvolutionTestCase):
         ('RenameAnchor3', RenameAnchor3),
     ]
 
+    def default_create_test_data(self, db_name):
+        """Create test data for the base model.
+
+        Args:
+            db_name (unicode):
+                The name of the database to create models on.
+        """
+        anchor1 = RenameAnchor1.objects.using(db_name).create(value=100)
+        anchor2 = RenameAnchor2.objects.using(db_name).create(value=200)
+        anchor3 = RenameAnchor3.objects.using(db_name).create(value=300)
+
+        model = RenameFieldBaseModel.objects.using(db_name).create(
+            char_field='test',
+            int_field=1,
+            int_field_named=2,
+            int_field_named_indexed=3,
+            fk_field=anchor1)
+        model.m2m_field.add(anchor2)
+        model.m2m_field_named.add(anchor3)
+
     def test_with_bad_app(self):
         """Testing RenameField with application not in signature"""
         mutation = RenameField('TestModel', 'char_field1', 'char_field2')
@@ -354,6 +374,10 @@ class RenameFieldTests(EvolutionTestCase):
             class Meta(BaseTestModel.Meta):
                 db_table = 'custom_rename_table_name'
 
+        def create_test_data(db_name):
+            CustomRenameTableModel.objects.create(value=1,
+                                                  alt_value='test')
+
         self.set_base_model(CustomRenameTableModel,
                             name='CustomRenameTableModel')
 
@@ -373,7 +397,8 @@ class RenameFieldTests(EvolutionTestCase):
                 "DeleteField('CustomRenameTableModel', 'value')",
             ],
             'RenameColumnCustomTableModel',
-            model_name='CustomRenameTableModel')
+            model_name='CustomRenameTableModel',
+            create_test_data_func=create_test_data)
 
     def test_rename_m2m_table(self):
         """Testing RenameField with renaming ManyToManyField table name"""

@@ -101,7 +101,24 @@ class ChangeMetaUniqueTogetherBaseModel(BaseTestModel):
         unique_together = [('int_field1', 'char_field1')]
 
 
-class ChangeMetaConstraintsTests(EvolutionTestCase):
+class BaseChangeMetaTestCase(EvolutionTestCase):
+    """Base class for ChangeMeta test cases."""
+
+    def default_create_test_data(self, db_name):
+        """Create test data for the base model.
+
+        Args:
+            db_name (unicode):
+                The name of the database to create models on.
+        """
+        self.base_model.objects.using(db_name).create(
+            int_field1=100,
+            int_field2=200,
+            char_field1='test1',
+            char_field2='test2')
+
+
+class ChangeMetaConstraintsTests(BaseChangeMetaTestCase):
     """Unit tests for ChangeMeta with constraints."""
 
     sql_mapping_key = 'constraints'
@@ -146,7 +163,7 @@ class ChangeMetaConstraintsTests(EvolutionTestCase):
             class Meta(BaseTestModel.Meta):
                 constraints = [
                     CheckConstraint(name='new_check_constraint',
-                                    check=Q(char_field1__startswith='foo')),
+                                    check=Q(char_field1__startswith='test')),
                     UniqueConstraint(name='new_unique_constraint_condition',
                                      fields=['int_field2'],
                                      condition=Q(int_field2=100)),
@@ -165,7 +182,7 @@ class ChangeMetaConstraintsTests(EvolutionTestCase):
                         {
                             'type': CheckConstraint,
                             'name': 'new_check_constraint',
-                            'check': Q(char_field1__startswith='foo'),
+                            'check': Q(char_field1__startswith='test'),
                         },
                         {
                             'type': UniqueConstraint,
@@ -183,7 +200,7 @@ class ChangeMetaConstraintsTests(EvolutionTestCase):
             diff_text=self.DIFF_TEXT,
             expected_hint=[
                 "ChangeMeta('TestModel', 'constraints',"
-                " [{'check': models.Q(char_field1__startswith='foo'),"
+                " [{'check': models.Q(char_field1__startswith='test'),"
                 " 'name': 'new_check_constraint',"
                 " 'type': models.CheckConstraint},"
                 " {'condition': models.Q(int_field2=100),"
@@ -207,7 +224,7 @@ class ChangeMetaConstraintsTests(EvolutionTestCase):
             class Meta(BaseTestModel.Meta):
                 constraints = [
                     CheckConstraint(name='new_check_constraint',
-                                    check=Q(char_field1__startswith='foo')),
+                                    check=Q(char_field1__startswith='test')),
                     UniqueConstraint(name='new_unique_constraint_condition',
                                      condition=Q(char_field2='bar'),
                                      fields=['int_field2']),
@@ -226,7 +243,7 @@ class ChangeMetaConstraintsTests(EvolutionTestCase):
                         {
                             'type': CheckConstraint,
                             'name': 'new_check_constraint',
-                            'check': Q(char_field1__startswith='foo'),
+                            'check': Q(char_field1__startswith='test'),
                         },
                         {
                             'type': UniqueConstraint,
@@ -244,7 +261,7 @@ class ChangeMetaConstraintsTests(EvolutionTestCase):
             diff_text=self.DIFF_TEXT,
             expected_hint=[
                 "ChangeMeta('TestModel', 'constraints',"
-                " [{'check': models.Q(char_field1__startswith='foo'),"
+                " [{'check': models.Q(char_field1__startswith='test'),"
                 " 'name': 'new_check_constraint',"
                 " 'type': models.CheckConstraint},"
                 " {'condition': models.Q(char_field2='bar'),"
@@ -359,7 +376,7 @@ class ChangeMetaConstraintsTests(EvolutionTestCase):
             sql_name='removing')
 
 
-class ChangeMetaIndexesTests(EvolutionTestCase):
+class ChangeMetaIndexesTests(BaseChangeMetaTestCase):
     """Unit tests for ChangeMeta with indexes."""
 
     sql_mapping_key = 'indexes'
@@ -564,7 +581,7 @@ class ChangeMetaIndexesTests(EvolutionTestCase):
             rescan_indexes=False)
 
 
-class ChangeMetaIndexTogetherTests(EvolutionTestCase):
+class ChangeMetaIndexTogetherTests(BaseChangeMetaTestCase):
     """Unit tests for ChangeMeta with index_together."""
 
     sql_mapping_key = 'index_together'
@@ -731,7 +748,7 @@ class ChangeMetaIndexTogetherTests(EvolutionTestCase):
             rescan_indexes=False)
 
 
-class ChangeMetaUniqueTogetherTests(EvolutionTestCase):
+class ChangeMetaUniqueTogetherTests(BaseChangeMetaTestCase):
     """Unit tests for ChangeMeta with unique_together."""
 
     sql_mapping_key = 'unique_together'

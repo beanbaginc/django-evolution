@@ -27,6 +27,16 @@ class SQLMutationTests(EvolutionTestCase):
     sql_mapping_key = 'sql_mutation'
     default_base_model = SQLBaseModel
 
+    def default_create_test_data(self, db_name):
+        """Create test data for the base model.
+
+        Args:
+            db_name (unicode):
+                The name of the database to create models on.
+        """
+        SQLBaseModel.objects.using(db_name).create(char_field='test',
+                                                   int_field=1)
+
     def test_add_fields_no_update_func(self):
         """Testing SQLMutation and no update_func provided"""
         mutation = SQLMutation('test', '')

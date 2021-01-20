@@ -59,6 +59,26 @@ class DeleteFieldTests(EvolutionTestCase):
         ('DeleteAnchor4', DeleteAnchor4),
     ]
 
+    def default_create_test_data(self, db_name):
+        """Create test data for the base model.
+
+        Args:
+            db_name (unicode):
+                The name of the database to create models on.
+        """
+        anchor1 = DeleteAnchor1.objects.using(db_name).create(value=100)
+        anchor2 = DeleteAnchor3.objects.using(db_name).create(value=200)
+        anchor3 = DeleteAnchor4.objects.using(db_name).create(value=300)
+
+        model = DeleteBaseModel.objects.using(db_name).create(
+            char_field='test',
+            int_field=1,
+            int_field2=2,
+            int_field3=3,
+            fk_field1=anchor1)
+        model.m2m_field1.add(anchor2)
+        model.m2m_field2.add(anchor3)
+
     def test_with_bad_app(self):
         """Testing DeleteField with application not in signature"""
         mutation = DeleteField('TestModel', 'char_field1')
@@ -277,6 +297,10 @@ class DeleteFieldTests(EvolutionTestCase):
             class Meta(BaseTestModel.Meta):
                 db_table = 'custom_table_name'
 
+        def create_test_data(db_name):
+            CustomDeleteTableModel.objects.create(value=100,
+                                                  alt_value='test')
+
         self.set_base_model(CustomDeleteTableModel, name='CustomTableModel')
 
         self.perform_evolution_tests(
@@ -290,4 +314,5 @@ class DeleteFieldTests(EvolutionTestCase):
                 "DeleteField('CustomTableModel', 'value')",
             ],
             'DeleteColumnCustomTableModel',
-            model_name='CustomTableModel')
+            model_name='CustomTableModel',
+            create_test_data_func=create_test_data)

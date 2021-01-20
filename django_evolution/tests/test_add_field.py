@@ -60,6 +60,16 @@ class AddFieldTests(EvolutionTestCase):
         "    Field 'added_field' has been added"
     )
 
+    def default_create_test_data(self, db_name):
+        """Create test data for the base model.
+
+        Args:
+            db_name (unicode):
+                The name of the database to create models on.
+        """
+        AddBaseModel.objects.using(db_name).create(char_field='test',
+                                                   int_field=100)
+
     def test_with_bad_app(self):
         """Testing AddField with application not in signature"""
         mutation = AddField('TestModel', 'char_field1', models.CharField)
@@ -177,17 +187,17 @@ class AddFieldTests(EvolutionTestCase):
             added_field = models.IntegerField()
 
         self.perform_evolution_tests(
-            DestModel,
-            [
+            dest_model=DestModel,
+            evolutions=[
                 AddField('TestModel', 'added_field', models.IntegerField,
                          initial=1),
             ],
-            self.DIFF_TEXT,
-            [
+            diff_text=self.DIFF_TEXT,
+            expected_hint=[
                 "AddField('TestModel', 'added_field', models.IntegerField,"
                 " initial=<<USER VALUE REQUIRED>>)",
             ],
-            'AddNonNullNonCallableColumnModel')
+            sql_name='AddNonNullNonCallableColumnModel')
 
     def test_add_non_null_column_with_callable_initial(self):
         """Testing AddField with non-NULL column with callable initial value"""
@@ -403,6 +413,10 @@ class AddFieldTests(EvolutionTestCase):
             class Meta(BaseTestModel.Meta):
                 db_table = 'custom_table_name'
 
+        def create_test_data(db_name):
+            CustomAddTableModel.objects.create(value=100,
+                                               alt_value='test')
+
         self.set_base_model(CustomAddTableModel, name='CustomTableModel')
 
         self.perform_evolution_tests(
@@ -418,7 +432,8 @@ class AddFieldTests(EvolutionTestCase):
                 " models.IntegerField, null=True)",
             ],
             'AddColumnCustomTableModel',
-            model_name='CustomTableModel')
+            model_name='CustomTableModel',
+            create_test_data_func=create_test_data)
 
     def test_add_primary_key_with_delete_old_fails(self):
         """Testing AddField with primary key and deleting old key fails"""

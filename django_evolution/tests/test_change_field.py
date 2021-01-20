@@ -57,6 +57,30 @@ class ChangeFieldTests(EvolutionTestCase):
         ('ChangeAnchor1', ChangeAnchor1),
     ]
 
+    def default_create_test_data(self, db_name):
+        """Create test data for the base model.
+
+        Args:
+            db_name (unicode):
+                The name of the database to create models on.
+        """
+        model = ChangeBaseModel.objects.using(db_name).create(
+            alt_pk=1,
+            int_field=2,
+            int_field1=3,
+            int_field2=4,
+            int_field3=5,
+            int_field4=6,
+            char_field='test1',
+            char_field1='test2',
+            char_field2='test3',
+            dec_field=100.25,
+            dec_field1=200.50,
+            dec_field2=300.75)
+
+        anchor = ChangeAnchor1.objects.using(db_name).create(value=42)
+        model.m2m_field1.add(anchor)
+
     def test_with_bad_app(self):
         """Testing ChangeField with application not in signature"""
         mutation = ChangeField('TestModel', 'char_field1')
