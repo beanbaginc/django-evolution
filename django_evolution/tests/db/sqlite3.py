@@ -58,11 +58,10 @@ def add_field(connection):
             ' "int_field" integer NOT NULL,'
             ' "added_field" integer NOT NULL);',
 
-            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
-            ' SELECT "id", "char_field", "int_field"'
+            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field",'
+            ' "added_field")'
+            ' SELECT "id", "char_field", "int_field", 1'
             ' FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "added_field" = 1;',
 
             'DROP TABLE "tests_testmodel";',
 
@@ -76,11 +75,10 @@ def add_field(connection):
             ' "int_field" integer NOT NULL,'
             ' "added_field" integer NOT NULL);',
 
-            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
-            ' SELECT "id", "char_field", "int_field"'
+            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field",'
+            ' "added_field")'
+            ' SELECT "id", "char_field", "int_field", "int_field"'
             ' FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "added_field" = "int_field";',
 
             'DROP TABLE "tests_testmodel";',
 
@@ -94,11 +92,10 @@ def add_field(connection):
             ' "int_field" integer NOT NULL,'
             ' "added_field" integer NULL);',
 
-            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
-            ' SELECT "id", "char_field", "int_field"'
+            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field",'
+            ' "added_field")'
+            ' SELECT "id", "char_field", "int_field", 1'
             ' FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "added_field" = 1;',
 
             'DROP TABLE "tests_testmodel";',
 
@@ -112,11 +109,10 @@ def add_field(connection):
             ' "int_field" integer NOT NULL,'
             ' "added_field" varchar(10) NOT NULL);',
 
-            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
-            ' SELECT "id", "char_field", "int_field"'
+            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field",'
+            ' "added_field")'
+            ' SELECT "id", "char_field", "int_field", \'abc\\\'s xyz\''
             ' FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "added_field" = \'abc\\\'s xyz\';',
 
             'DROP TABLE "tests_testmodel";',
 
@@ -130,11 +126,10 @@ def add_field(connection):
             ' "int_field" integer NOT NULL,'
             ' "added_field" varchar(10) NOT NULL);',
 
-            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
-            ' SELECT "id", "char_field", "int_field"'
+            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field",'
+            ' "added_field")'
+            ' SELECT "id", "char_field", "int_field", \'\''
             ' FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "added_field" = \'\';',
 
             'DROP TABLE "tests_testmodel";',
 
@@ -148,11 +143,10 @@ def add_field(connection):
             ' "int_field" integer NOT NULL,'
             ' "added_field" datetime NOT NULL);',
 
-            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
-            ' SELECT "id", "char_field", "int_field"'
+            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field",'
+            ' "added_field")'
+            ' SELECT "id", "char_field", "int_field", 2007-12-13 16:42:00'
             ' FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "added_field" = 2007-12-13 16:42:00;',
 
             'DROP TABLE "tests_testmodel";',
 
@@ -166,11 +160,10 @@ def add_field(connection):
             ' "int_field" integer NOT NULL,'
             ' "added_field" integer NOT NULL);',
 
-            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
-            ' SELECT "id", "char_field", "int_field"'
+            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field",'
+            ' "added_field")'
+            ' SELECT "id", "char_field", "int_field", 42'
             ' FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "added_field" = 42;',
 
             'DROP TABLE "tests_testmodel";',
 
@@ -184,11 +177,10 @@ def add_field(connection):
             ' "int_field" integer NOT NULL,'
             ' "added_field" bool NOT NULL);',
 
-            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
-            ' SELECT "id", "char_field", "int_field"'
+            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field",'
+            ' "added_field")'
+            ' SELECT "id", "char_field", "int_field", 0'
             ' FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "added_field" = 0;',
 
             'DROP TABLE "tests_testmodel";',
 
@@ -202,11 +194,10 @@ def add_field(connection):
             ' "int_field" integer NOT NULL,'
             ' "added_field" varchar(20) NOT NULL);',
 
-            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
-            ' SELECT "id", "char_field", "int_field"'
+            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field",'
+            ' "added_field")'
+            ' SELECT "id", "char_field", "int_field", \'\''
             ' FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "added_field" = \'\';',
 
             'DROP TABLE "tests_testmodel";',
 
@@ -795,11 +786,10 @@ def change_field(connection):
             ' "dec_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' coalesce("char_field1", \'abc\\\'s xyz\'), "char_field2",'
+            ' "dec_field", "dec_field1",'
             ' "dec_field2"'
             ' FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "char_field1" = \'abc\\\'s xyz\';',
 
             'DROP TABLE "tests_testmodel";',
 
@@ -832,11 +822,9 @@ def change_field(connection):
             ' "dec_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
-            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "char_field", "char_field2", "dec_field", "dec_field1",'
             ' "dec_field2"'
             ' FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "char_field1" = "char_field";',
 
             'DROP TABLE "tests_testmodel";',
 
@@ -2314,10 +2302,9 @@ def preprocessing(connection):
             ' "char_field" varchar(20) NOT NULL,'
             ' "added_field" varchar(50) NULL);',
 
-            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
-            ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "added_field" = \'bar\';',
+            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field",'
+            ' "added_field")'
+            ' SELECT "my_id", "char_field", \'bar\' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
 
@@ -2330,10 +2317,9 @@ def preprocessing(connection):
             ' "char_field" varchar(20) NOT NULL,'
             ' "renamed_field" varchar(50) NULL);',
 
-            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
-            ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "renamed_field" = \'bar\';',
+            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field",'
+            ' "renamed_field")'
+            ' SELECT "my_id", "char_field", \'bar\' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
 
@@ -2346,10 +2332,9 @@ def preprocessing(connection):
             ' "char_field" varchar(20) NOT NULL,'
             ' "added_field" integer NOT NULL);',
 
-            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
-            ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "added_field" = 42;',
+            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field",'
+            ' "added_field")'
+            ' SELECT "my_id", "char_field", 42 FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
 
@@ -2362,10 +2347,9 @@ def preprocessing(connection):
             ' "char_field" varchar(20) NOT NULL,'
             ' "renamed_field" integer NOT NULL);',
 
-            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
-            ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "renamed_field" = 42;',
+            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field",'
+            ' "renamed_field")'
+            ' SELECT "my_id", "char_field", 42 FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
 
@@ -2378,10 +2362,9 @@ def preprocessing(connection):
             ' "char_field" varchar(20) NOT NULL,'
             ' "renamed_field" varchar(50) NULL);',
 
-            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
-            ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "renamed_field" = \'bar\';',
+            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field",'
+            ' "renamed_field")'
+            ' SELECT "my_id", "char_field", \'bar\' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
 
@@ -2394,10 +2377,9 @@ def preprocessing(connection):
             ' "char_field" varchar(20) NOT NULL,'
             ' "renamed_field" varchar(50) NULL);',
 
-            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
-            ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "renamed_field" = \'foo\';',
+            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field",'
+            ' "renamed_field")'
+            ' SELECT "my_id", "char_field", \'foo\' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
 
@@ -2464,10 +2446,9 @@ def preprocessing(connection):
             ' "char_field" varchar(20) NOT NULL,'
             ' "added_field" varchar(20) NOT NULL);',
 
-            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
-            ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
-
-            'UPDATE "TEMP_TABLE" SET "added_field" = \'foo\';',
+            'INSERT INTO "TEMP_TABLE" ("my_id", "char_field",'
+            ' "added_field")'
+            ' SELECT "my_id", "char_field", \'foo\' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
 

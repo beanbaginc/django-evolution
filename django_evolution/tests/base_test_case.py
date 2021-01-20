@@ -365,9 +365,25 @@ class TestCase(DjangoTestCase):
             AssertionError:
                 The generated and expected SQL did not match.
         """
+        if database is None:
+            database = DEFAULT_DB_ALIAS
+
         # Normalize the generated and expected SQL so that we are
         # guaranteed to have a list with one item per line.
-        generated_sql = '\n'.join(sql).splitlines()
+        try:
+            generated_sql = '\n'.join(sql).splitlines()
+        except TypeError:
+            # This probably has an entry that isn't normalized to a flat list
+            # of strings. Do that now.
+            from django_evolution.utils.sql import SQLExecutor
+
+            with SQLExecutor(database) as sql_executor:
+                sql = sql_executor.run_sql(sql,
+                                           capture=True,
+                                           execute=False)
+
+            generated_sql = '\n'.join(sql).splitlines()
+
         expected_sql = self.get_sql_mapping(name=sql_mapping_name,
                                             sql_mappings_key=sql_mappings_key,
                                             db_name=database)

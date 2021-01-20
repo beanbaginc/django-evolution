@@ -187,17 +187,17 @@ class AddFieldTests(EvolutionTestCase):
             added_field = models.IntegerField()
 
         self.perform_evolution_tests(
-            DestModel,
-            [
+            dest_model=DestModel,
+            evolutions=[
                 AddField('TestModel', 'added_field', models.IntegerField,
                          initial=1),
             ],
-            self.DIFF_TEXT,
-            [
+            diff_text=self.DIFF_TEXT,
+            expected_hint=[
                 "AddField('TestModel', 'added_field', models.IntegerField,"
                 " initial=<<USER VALUE REQUIRED>>)",
             ],
-            'AddNonNullNonCallableColumnModel')
+            sql_name='AddNonNullNonCallableColumnModel')
 
     def test_add_non_null_column_with_callable_initial(self):
         """Testing AddField with non-NULL column with callable initial value"""

@@ -181,7 +181,7 @@ class SQLExecutor(object):
         Returns:
             list of unicode:
             The list of SQL statements executed, if passing
-            ``capture_sql=True``. Otherwise, this will just be an empty list.
+            ``capture=True``. Otherwise, this will just be an empty list.
 
         Raises:
             django.db.transaction.TransactionManagementError:
