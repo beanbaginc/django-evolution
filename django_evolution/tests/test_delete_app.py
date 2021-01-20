@@ -49,6 +49,22 @@ class DeleteAppTests(EvolutionTestCase):
         ('CustomTestModel', AppDeleteCustomTableModel),
     ]
 
+    def default_create_test_data(self, db_name):
+        """Create test data for the base model.
+
+        Args:
+            db_name (unicode):
+                The name of the database to create models on.
+        """
+        anchor1 = AppDeleteAnchor1.objects.using(db_name).create(value=100)
+        anchor2 = AppDeleteAnchor1.objects.using(db_name).create(value=100)
+
+        model = AppDeleteBaseModel.objects.using(db_name).create(
+            char_field='test',
+            int_field=1,
+            anchor_fk=anchor1)
+        model.m2m.add(anchor2)
+
     def test_with_bad_app(self):
         """Testing DeleteApplication with application not in signature"""
         mutation = DeleteApplication()

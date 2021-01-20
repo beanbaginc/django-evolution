@@ -23,6 +23,15 @@ class PreprocessingTests(EvolutionTestCase):
     sql_mapping_key = 'preprocessing'
     default_base_model = PreprocBaseModel
 
+    def default_create_test_data(self, db_name):
+        """Create test data for the base model.
+
+        Args:
+            db_name (unicode):
+                The name of the database to create models on.
+        """
+        PreprocBaseModel.objects.using(db_name).create(char_field='test')
+
     def test_add_delete_field(self):
         """Testing pre-processing AddField + DeleteField"""
         class DestModel(BaseTestModel):

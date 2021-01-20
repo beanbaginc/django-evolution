@@ -474,6 +474,17 @@ class EvolutionTestCase(TestCase):
 
         super(EvolutionTestCase, self).tearDown()
 
+    def default_create_test_data(self, db_name):
+        """Default function for creating test data for base models.
+
+        By default, this won't do anything.
+
+        Args:
+            db_name (unicode):
+                The name of the database to create models on.
+        """
+        pass
+
     def set_base_model(self, base_model, name=None, extra_models=[],
                        pre_extra_models=[], db_name=None):
         """Set the base model(s) that will be mutated in a test.
@@ -576,7 +587,8 @@ class EvolutionTestCase(TestCase):
                                 use_hinted_evolutions=False,
                                 perform_simulations=True,
                                 perform_mutations=True,
-                                db_name=None):
+                                db_name=None,
+                                create_test_data_func=None):
         """Perform test evolutions and validate results.
 
         This is used for most common evolution-related tests. It handles
@@ -650,6 +662,14 @@ class EvolutionTestCase(TestCase):
                 The name of the database to apply evolutions to. This
                 defaults to :py:attr:`default_database_name`.
 
+            create_test_data_func (callable, optional):
+                A function to call in order to create data in the database for
+                the initial models, before applying mutations. It must take
+                a database name.
+
+                If not provided, :py:meth:`default_create_test_data` will be
+                used.
+
         Raises:
             AssertionError:
                 A diff, simulation, or mutation test has failed.
@@ -682,12 +702,15 @@ class EvolutionTestCase(TestCase):
                                      db_name=db_name)
 
         if perform_mutations:
-            self.perform_mutations(evolutions=evolutions,
-                                   end=end,
-                                   end_sig=end_sig,
-                                   sql_name=sql_name,
-                                   rescan_indexes=rescan_indexes,
-                                   db_name=db_name)
+            self.perform_mutations(
+                evolutions=evolutions,
+                end=end,
+                end_sig=end_sig,
+                sql_name=sql_name,
+                rescan_indexes=rescan_indexes,
+                db_name=db_name,
+                create_test_data_func=(create_test_data_func or
+                                       self.default_create_test_data))
 
     def perform_diff_test(self, end_sig, diff_text=None, expected_hint=None,
                           expect_empty=False):
@@ -782,7 +805,8 @@ class EvolutionTestCase(TestCase):
         return test_sig
 
     def perform_mutations(self, evolutions, end, end_sig, sql_name=None,
-                          rescan_indexes=True, db_name=None):
+                          rescan_indexes=True, db_name=None,
+                          create_test_data_func=None):
         """Apply mutations that and verify the results.
 
         This will run through the evolution chain, applying each mutation
@@ -811,6 +835,11 @@ class EvolutionTestCase(TestCase):
 
             db_name (unicode, optional):
                 The name of the database to apply the evolutions against.
+
+            create_test_data_func (callable, optional):
+                A function to call in order to create data in the database for
+                the initial models, before applying mutations. It must take
+                a database name.
 
         Raises:
             AssertionError:
@@ -842,6 +871,9 @@ class EvolutionTestCase(TestCase):
                             end_model_entries=six.iteritems(end),
                             app_label=app_label,
                             database=db_name):
+            if create_test_data_func:
+                create_test_data_func(db_name)
+
             sql = execute_test_sql(run_mutations(),
                                    database=db_name)
 

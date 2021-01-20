@@ -2193,7 +2193,7 @@ def constraints(connection):
             ' "char_field1" varchar(20) NOT NULL,'
             ' "char_field2" varchar(40) NOT NULL,'
             ' CONSTRAINT "new_check_constraint"'
-            ' CHECK ("char_field1" LIKE \'foo%\' ESCAPE \'\\\'),'
+            ' CHECK ("char_field1" LIKE \'test%\' ESCAPE \'\\\'),'
             ' CONSTRAINT "new_unique_constraint_plain"'
             ' UNIQUE ("int_field1", "char_field1"));',
 
@@ -2215,7 +2215,7 @@ def constraints(connection):
             ' "char_field1" varchar(20) NOT NULL,'
             ' "char_field2" varchar(40) NOT NULL,'
             ' CONSTRAINT "new_check_constraint"'
-            ' CHECK ("char_field1" LIKE \'foo%\' ESCAPE \'\\\'),'
+            ' CHECK ("char_field1" LIKE \'test%\' ESCAPE \'\\\'),'
             ' CONSTRAINT "new_unique_constraint_plain"'
             ' UNIQUE ("int_field1", "int_field2"));',
 
