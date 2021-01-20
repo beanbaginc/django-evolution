@@ -2,7 +2,7 @@
 Django Evolution 2.1.2
 ======================
 
-**Release date:** TBD
+**Release date:** January 19, 2021
 
 
 Bug Fixes
