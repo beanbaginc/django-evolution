@@ -372,7 +372,8 @@ def sql_indexes_for_field(connection, model, field):
             return []
 
         with connection.schema_editor() as schema_editor:
-            return ['%s;' % schema_editor._create_index_sql(model, [field])]
+            return ['%s;' % schema_editor._create_index_sql(model,
+                                                            fields=[field])]
     else:
         # Django < 1.7
         return connection.creation.sql_indexes_for_field(model, field,
@@ -409,7 +410,8 @@ def sql_indexes_for_fields(connection, model, fields, index_together=False):
             suffix = ''
 
         with connection.schema_editor() as schema_editor:
-            return ['%s;' % schema_editor._create_index_sql(model, fields,
+            return ['%s;' % schema_editor._create_index_sql(model,
+                                                            fields=fields,
                                                             suffix=suffix)]
     else:
         # Django < 1.7
