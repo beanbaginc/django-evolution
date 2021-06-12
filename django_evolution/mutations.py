@@ -1138,24 +1138,25 @@ class RenameField(BaseModelFieldMutation):
             new_field_sig.field_attrs.pop('db_column', None)
 
         # Create the mock field instances.
-        old_field = create_field(project_sig=mutator.project_sig,
-                                 field_name=self.old_field_name,
-                                 field_type=field_type,
-                                 field_attrs=old_field_sig.field_attrs,
-                                 related_model=old_field_sig.related_model,
-                                 parent_model=None)
-        new_field = create_field(project_sig=mutator.project_sig,
-                                 field_name=self.new_field_name,
-                                 field_type=field_type,
-                                 field_attrs=new_field_sig.field_attrs,
-                                 related_model=new_field_sig.related_model,
-                                 parent_model=None)
-
         new_model = MockModel(project_sig=mutator.project_sig,
                               app_name=mutator.app_label,
                               model_name=self.model_name,
                               model_sig=mutator.model_sig,
                               db_name=mutator.database)
+
+        old_field = create_field(project_sig=mutator.project_sig,
+                                 field_name=self.old_field_name,
+                                 field_type=field_type,
+                                 field_attrs=old_field_sig.field_attrs,
+                                 related_model=old_field_sig.related_model,
+                                 parent_model=new_model)
+        new_field = create_field(project_sig=mutator.project_sig,
+                                 field_name=self.new_field_name,
+                                 field_type=field_type,
+                                 field_attrs=new_field_sig.field_attrs,
+                                 related_model=new_field_sig.related_model,
+                                 parent_model=new_model)
+
         evolver = mutator.evolver
 
         if issubclass(field_type, models.ManyToManyField):
