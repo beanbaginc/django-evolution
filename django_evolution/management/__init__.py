@@ -16,7 +16,7 @@ from django_evolution.utils.apps import get_app_label
 from django_evolution.utils.evolutions import get_evolution_sequence
 
 
-django_evolution_app = get_app('django_evolution')
+_django_evolution_app = None
 
 
 _evolve_lock = 0
@@ -78,8 +78,13 @@ def _on_app_models_updated(app, using=DEFAULT_DB_ALIAS, **kwargs):
             Additional keyword arguments provided by the signal handler for
             the syncdb or migrate operation.
     """
+    global _django_evolution_app
+
+    if _django_evolution_app is None:
+        _django_evolution_app = get_app('django_evolution')
+
     if (_evolve_lock > 0 or
-        app is not django_evolution_app or
+        app is not _django_evolution_app or
         Version.objects.using(using).exists()):
         return
 
