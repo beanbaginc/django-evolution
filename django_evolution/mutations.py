@@ -1632,8 +1632,7 @@ class ChangeMeta(BaseModelMutation):
         if prop_name == 'index_together':
             model_sig.index_together = self.new_value
         elif prop_name == 'unique_together':
-            model_sig.unique_together = self.new_value
-            model_sig._unique_together_applied = True
+            model_sig.apply_unique_together(self.new_value)
         elif prop_name == 'constraints':
             # Django >= 2.2
             constraint_sigs = []

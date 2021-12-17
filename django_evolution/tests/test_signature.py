@@ -1758,53 +1758,47 @@ class ModelSignatureTests(BaseSignatureTestCase):
 
         self.assertEqual(list(model_sig.index_sigs), [index_sig])
 
-    def test_has_unique_together_changed_and_old_applied(self):
+    def test_has_unique_together_applied_changed(self):
         """Testing ModelSignature.has_unique_together_changed with equal
-        unique_together contents and old unique_together applied
+        unique_together contents and different unique_together_applied flags
         """
-        new_model_sig = ModelSignature(model_name='TestModel',
-                                       table_name='testmodel',
-                                       unique_together=[['field1', 'field2']])
+        new_model_sig = ModelSignature(
+            model_name='TestModel',
+            table_name='testmodel',
+            unique_together=[['field1', 'field2']],
+            unique_together_applied=False)
 
-        old_model_sig = ModelSignature(model_name='TestModel',
-                                       table_name='testmodel',
-                                       unique_together=(('field1', 'field2',)))
-        old_model_sig._unique_together_applied = True
-
-        self.assertFalse(
-            new_model_sig.has_unique_together_changed(old_model_sig))
-
-    def test_has_unique_together_changed_and_old_not_applied(self):
-        """Testing ModelSignature.has_unique_together_changed with equal
-        unique_together contents and old unique_together not applied
-        """
-        new_model_sig = ModelSignature(model_name='TestModel',
-                                       table_name='testmodel',
-                                       unique_together=[['field1', 'field2']])
-
-        old_model_sig = ModelSignature(model_name='TestModel',
-                                       table_name='testmodel',
-                                       unique_together=(('field1', 'field2',)))
-        old_model_sig._unique_together_applied = False
+        old_model_sig = ModelSignature(
+            model_name='TestModel',
+            table_name='testmodel',
+            unique_together=(('field1', 'field2',)),
+            unique_together_applied=True)
 
         self.assertTrue(
             new_model_sig.has_unique_together_changed(old_model_sig))
+        self.assertTrue(
+            old_model_sig.has_unique_together_changed(new_model_sig))
 
     def test_has_unique_together_changed_and_changed(self):
         """Testing ModelSignature.has_unique_together_changed with differences
         in unique_together
         """
-        new_model_sig = ModelSignature(model_name='TestModel',
-                                       table_name='testmodel',
-                                       unique_together=[['field1', 'field3']])
+        new_model_sig = ModelSignature(
+            model_name='TestModel',
+            table_name='testmodel',
+            unique_together=[['field1', 'field3']],
+            unique_together_applied=True)
 
-        old_model_sig = ModelSignature(model_name='TestModel',
-                                       table_name='testmodel',
-                                       unique_together=(('field1', 'field2',)))
-        old_model_sig._unique_together_applied = True
+        old_model_sig = ModelSignature(
+            model_name='TestModel',
+            table_name='testmodel',
+            unique_together=(('field1', 'field2',)),
+            unique_together_applied=True)
 
         self.assertTrue(
             new_model_sig.has_unique_together_changed(old_model_sig))
+        self.assertTrue(
+            old_model_sig.has_unique_together_changed(new_model_sig))
 
     def test_has_unique_together_changed_and_both_empty(self):
         """Testing ModelSignature.has_unique_together_changed with both empty
@@ -1819,6 +1813,8 @@ class ModelSignatureTests(BaseSignatureTestCase):
 
         self.assertFalse(
             new_model_sig.has_unique_together_changed(old_model_sig))
+        self.assertFalse(
+            old_model_sig.has_unique_together_changed(new_model_sig))
 
     def test_clone(self):
         """Testing ModelSignature.clone"""
