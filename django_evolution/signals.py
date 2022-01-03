@@ -16,7 +16,7 @@ evolved = Signal()
 #: Args:
 #:     exception (Exception):
 #:         The exception raised when evolution failed.
-evolving_failed = Signal(providing_args=['exception'])
+evolving_failed = Signal()
 
 #: Emitted when an evolution is about to be applied to an app.
 #:
@@ -33,7 +33,7 @@ evolving_failed = Signal(providing_args=['exception'])
 #:
 #:     evolutions (list of django_evolution.models.Evolution):
 #:         The list of evolutions that will be applied.
-applying_evolution = Signal(providing_args=['app_label', 'task', 'evolutions'])
+applying_evolution = Signal()
 
 #: Emitted when an evolution has been applied to an app.
 #:
@@ -50,21 +50,21 @@ applying_evolution = Signal(providing_args=['app_label', 'task', 'evolutions'])
 #:
 #:     evolutions (list of django_evolution.models.Evolution):
 #:         The list of evolutions that were applied.
-applied_evolution = Signal(providing_args=['app_label', 'task', 'evolutions'])
+applied_evolution = Signal()
 
 #: Emitted when a migration is about to be applied to an app.
 #:
 #: Args:
 #:     migration (django.db.migrations.migration.Migration):
 #:         The migration that's being applied.
-applying_migration = Signal(providing_args=['migration'])
+applying_migration = Signal()
 
 #: Emitted when a migration has been applied to an app.
 #:
 #: Args:
 #:     migration (django.db.migrations.migration.Migration):
 #:         The migration that was applied.
-applied_migration = Signal(providing_args=['migration'])
+applied_migration = Signal()
 
 #: Emitted when creating new models for an app outside of a migration.
 #:
@@ -78,7 +78,7 @@ applied_migration = Signal(providing_args=['migration'])
 #:
 #:     model_names (list of unicode):
 #:         The list of models being created.
-creating_models = Signal(providing_args=['app_label', 'model_names'])
+creating_models = Signal()
 
 #: Emitted when finished creating new models for an app outside of a migration.
 #:
@@ -92,4 +92,4 @@ creating_models = Signal(providing_args=['app_label', 'model_names'])
 #:
 #:     model_names (list of unicode):
 #:         The list of models that were created.
-created_models = Signal(providing_args=['app_label', 'model_names'])
+created_models = Signal()
