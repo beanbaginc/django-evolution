@@ -491,14 +491,19 @@ def get_app_pending_mutations(app, evolution_labels=[], mutations=None,
         # The reason for this is that we may have just installed a baseline,
         # which would have the up-to-date signature, and we might be trying
         # to apply evolutions on top of that (which would already be applied).
-        # These would generate errors. So, try hard to prevent that.
+        # Or we may be working with models that weren't present in the old
+        # signature and will soon be added. In either case, these would
+        # generate errors. So, try hard to prevent that.
         #
         # First, Find the list of models in the latest signature of this app
-        # that aren't in the old signature.
+        # that aren't in the old signature. If a model signature isn't found
+        # in the old app signature, it's a new model, and we don't want to
+        # try to apply evolutions to it.
         changed_models = set(
             model_sig.model_name
             for model_sig in app_sig.model_sigs
-            if old_app_sig.get_model_sig(model_sig.model_name) != model_sig
+            if old_app_sig.get_model_sig(model_sig.model_name) not in (
+                None, model_sig)
         )
 
         # Now do the same for models in the old signature, in case the

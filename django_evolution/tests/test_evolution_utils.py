@@ -88,6 +88,45 @@ class GetAppPendingMutationsTests(TestCase):
 
         self.assertEqual(pending_mutations, [mutations[0]])
 
+    def test_excludes_new_models(self):
+        """Testing get_app_pending_mutations excludes mutations for new models
+        """
+        self.ensure_evolution_models()
+
+        latest_version = Version.objects.current_version()
+        old_project_sig = latest_version.signature
+
+        # Remove the model signature from the old project signature.
+        old_project_sig.get_app_sig('django_evolution').remove_model_sig(
+            'Evolution')
+
+        # Make a change in the new signature for Evolution, so it will be
+        # considered for pending mutations.
+        new_project_sig = old_project_sig.clone()
+
+        model_sig = (
+            new_project_sig
+            .get_app_sig('django_evolution')
+            .get_model_sig('Version')
+        )
+        model_sig.get_field_sig('when').field_attrs['null'] = False
+
+        # Only the first mutation should match.
+        mutations = [
+            ChangeField('Evolution', 'field1', models.CharField,
+                        max_length=500),
+            ChangeField('Version', 'when', models.DateTimeField,
+                        null=True),
+        ]
+
+        pending_mutations = get_app_pending_mutations(
+            app=get_app('django_evolution'),
+            old_project_sig=old_project_sig,
+            project_sig=new_project_sig,
+            mutations=mutations)
+
+        self.assertEqual(pending_mutations, [mutations[1]])
+
     def test_with_rename_model(self):
         """Testing get_app_pending_mutations always includes RenameModel
         mutations
