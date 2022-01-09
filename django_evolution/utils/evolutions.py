@@ -440,8 +440,7 @@ def get_app_pending_mutations(app, evolution_labels=[], mutations=None,
             An explicit list of mutations to use. If provided,
             ``evolution_labels`` will be ignored.
 
-        old_project_sig (django_evolution.signature.ProjectSignature,
-                         optional):
+        old_project_sig (django_evolution.signature.ProjectSignature, optional):
             A pre-fetched old project signature. If provided, this will be
             used instead of the latest one in the database.
 

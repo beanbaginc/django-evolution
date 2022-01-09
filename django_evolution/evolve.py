@@ -1376,13 +1376,13 @@ class EvolveAppTask(BaseEvolutionTask):
             The resulting information from running the mutations. This
             includes the following:
 
-            ``app_mutator`` (:py:class:`~django_evolution.mutations.AppMutator):
+            ``app_mutator`` (:py:class:`~django_evolution.mutations.AppMutator`):
                 The app mutator that ran the mutations.
 
             ``applied_migrations`` (list of tuple):
                 The list of migrations that were ultimately marked as applied.
 
-            ``mutations`` (list of :py:class:`~django_evolution.mutations.BaseMutation):
+            ``mutations`` (list of :py:class:`~django_evolution.mutations.BaseMutation`):
                 The optimized list of mutations.
 
             ``sql`` (list):
