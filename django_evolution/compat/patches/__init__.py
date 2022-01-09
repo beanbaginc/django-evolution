@@ -18,12 +18,20 @@ patches = [
 ]
 
 
+_patches_applied = False
+
+
 def apply_patches():
     """Apply any necessary patches.
 
     This will check which patches are required, applying them to the
     runtime environment.
     """
-    for patch in patches:
-        if patch.needs_patch():
-            patch.apply_patch()
+    global _patches_applied
+
+    if not _patches_applied:
+        for patch in patches:
+            if patch.needs_patch():
+                patch.apply_patch()
+
+        _patches_applied = True
