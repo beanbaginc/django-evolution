@@ -20,6 +20,13 @@ Compatibility Changes
   2.1 release. To maintain compatibility, Django Evolution now patches
   Django's own copy of the mapping table to restore the right behavior.
 
+* Patched Python 3.10+'s :py:mod:`collections` module to include legacy
+  imports when using Django 2.0 or older.
+
+  Django 2.0 and older made use of some imports that no longer exist on
+  Python 3.10. Django Evolution will now bring back this support when
+  running this combination of versions of Django.
+
 
 Bug Fixes
 =========
