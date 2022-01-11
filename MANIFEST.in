@@ -8,6 +8,7 @@ include LICENSE
 include NEWS
 include README.rst
 include *-requirements.txt
+include conftest.py
 include tests/test_db_settings.py.tmpl
 
 exclude tests/test_db_settings.py
