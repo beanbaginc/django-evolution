@@ -2,7 +2,7 @@
 Django Evolution 2.1.3
 ======================
 
-**Release date:** TBD
+**Release date:** January 25, 2022
 
 
 Compatibility Changes
@@ -43,8 +43,15 @@ Bug Fixes
 * Fixed an edge case where the ``django_evolution`` app could be loaded
   too early when setting up a new database, causing crashes.
 
+* Updated to avoid using some deprecated Python and Django functionality.
+
+  We had some imports and function calls that were emitting deprecation
+  warnings, depending on the versions of Python and Django. Code has been
+  update to use modern imports and calls where possible,
+
 
 Contributors
 ============
 
 * Christian Hammond
+* David Trowbridge
