@@ -9,13 +9,13 @@ from contextlib import contextmanager
 
 from django.db import connections
 from django.db.utils import DEFAULT_DB_ALIAS
-from django.utils.translation import ugettext as _
 
 from django_evolution.compat import six
 from django_evolution.compat.apps import get_app, get_apps
 from django_evolution.compat.db import (atomic,
                                         db_get_installable_models_for_app,
                                         sql_create_models)
+from django_evolution.compat.translation import gettext as _
 from django_evolution.consts import UpgradeMethod
 from django_evolution.db.state import DatabaseState
 from django_evolution.diff import Diff
