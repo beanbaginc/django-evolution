@@ -20,7 +20,9 @@ except ImportError:
     psycopg2 = None
 
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+top_dir = os.path.dirname(__file__)
+sys.path.insert(0, top_dir)
+sys.path.insert(0, os.path.join(top_dir, 'tests'))
 
 
 def pytest_addoption(parser):
@@ -82,6 +84,10 @@ class DjangoSetupPlugin(object):
             'DJANGO_SETTINGS_MODULE': 'tests.settings',
             'DJANGO_EVOLUTION_TEST_DB': config.option.db,
         })
+
+        # Ensure that all Django Evolution patches are applied for Django.
+        from django_evolution.compat.patches import apply_patches
+        apply_patches()
 
         from django.conf import settings
         from django.core import management
