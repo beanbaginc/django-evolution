@@ -42,11 +42,18 @@ setup(
     maintainer_email='reviewboard@googlegroups.com',
     download_url=download_url,
     packages=find_packages(exclude=['tests']),
+    include_package_data=True,
     install_requires=[
         'Django>=1.6,<3.1.999',
         'python2-secrets; python_version == "3.5"',
     ],
-    include_package_data=True,
+    python_requires=','.join([
+        '>=2.7',
+        '!=3.0.*',
+        '!=3.1.*',
+        '!=3.2.*',
+        '!=3.3.*',
+    ]),
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Framework :: Django',
@@ -73,6 +80,8 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Topic :: Software Development',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ]

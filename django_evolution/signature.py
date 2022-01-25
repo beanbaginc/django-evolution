@@ -125,7 +125,6 @@ from importlib import import_module
 from django.conf import global_settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db import DEFAULT_DB_ALIAS, models
-from django.utils.translation import ugettext as _
 
 from django_evolution.compat import six
 from django_evolution.compat.apps import get_apps, get_app
@@ -135,6 +134,7 @@ from django_evolution.compat.models import (GenericRelation,
                                             get_models,
                                             get_remote_field,
                                             get_remote_field_model)
+from django_evolution.compat.translation import gettext as _
 from django_evolution.consts import UpgradeMethod
 from django_evolution.errors import (InvalidSignatureVersion,
                                      MissingSignatureError)
@@ -1069,12 +1069,12 @@ class ModelSignature(BaseSignature):
         """
         meta = model._meta
         model_sig = cls(db_tablespace=meta.db_tablespace,
-                        index_together=deepcopy(meta.index_together),
+                        index_together=meta.index_together,
                         model_name=meta.object_name,
                         pk_column=six.text_type(meta.pk.column),
                         table_name=meta.db_table,
-                        unique_together=deepcopy(meta.unique_together))
-        model_sig._unique_together_applied = True
+                        unique_together=meta.unique_together,
+                        unique_together_applied=True)
 
         if getattr(meta, 'constraints', None):
             # Django >= 2.2
@@ -1130,9 +1130,9 @@ class ModelSignature(BaseSignature):
             model_name=model_name,
             pk_column=meta_sig_dict.get('pk_column'),
             table_name=meta_sig_dict.get('db_table'),
-            unique_together=meta_sig_dict.get('unique_together', []))
-        model_sig._unique_together_applied = \
-            meta_sig_dict.get('__unique_together_applied', False)
+            unique_together=meta_sig_dict.get('unique_together', []),
+            unique_together_applied=meta_sig_dict.get(
+                '__unique_together_applied', False))
 
         # Django >= 2.2
         for constraint_sig_dict in meta_sig_dict.get('constraints', []):
@@ -1159,7 +1159,8 @@ class ModelSignature(BaseSignature):
         return model_sig
 
     def __init__(self, model_name, table_name, db_tablespace=None,
-                 index_together=[], pk_column=None, unique_together=[]):
+                 index_together=[], pk_column=None, unique_together=[],
+                 unique_together_applied=False):
         """Initialize the signature.
 
         Args:
@@ -1180,18 +1181,73 @@ class ModelSignature(BaseSignature):
 
             unique_together (list of tuple, optional):
                 The list of fields that are unique together.
+
+            unique_together_applied (bool, optional):
+                Whether the ``unique_together`` value was applied to the
+                database, rather than simply stored in the signature.
+
+                Version Added:
+                    2.1.3
         """
         self.model_name = model_name
         self.db_tablespace = db_tablespace
         self.table_name = table_name
-        self.index_together = self._normalize_together(index_together)
         self.pk_column = pk_column
-        self.unique_together = self._normalize_together(unique_together)
 
         self.constraint_sigs = []
         self.index_sigs = []
         self._field_sigs = OrderedDict()
-        self._unique_together_applied = False
+        self._index_together = []
+        self._unique_together = []
+        self._unique_together_applied = unique_together_applied
+
+        # Set these after we've set up the private state backing it.
+        self.index_together = index_together
+        self.unique_together = unique_together
+
+    @property
+    def index_together(self):
+        """A list of fields that are indexed together.
+
+        Type:
+            list
+        """
+        return self._index_together
+
+    @index_together.setter
+    def index_together(self, new_value):
+        """A list of fields that are indexed together.
+
+        When setting this property, the value will be normalized for storage
+        and comparison.
+
+        Args:
+            new_value (list):
+                The new list of fields indexed together.
+        """
+        self._index_together = self._normalize_together(new_value)
+
+    @property
+    def unique_together(self):
+        """A list of fields that are unique together.
+
+        Type:
+            list
+        """
+        return self._unique_together
+
+    @unique_together.setter
+    def unique_together(self, new_value):
+        """A list of fields that are unique together.
+
+        When setting this property, the value will be normalized for storage
+        and comparison.
+
+        Args:
+            new_value (list):
+                The new list of fields that are unique together.
+        """
+        self._unique_together = self._normalize_together(new_value)
 
     @property
     def field_sigs(self):
@@ -1321,6 +1377,26 @@ class ModelSignature(BaseSignature):
         """
         self.index_sigs.append(index_sig)
 
+    def apply_unique_together(self, unique_together):
+        """Record an applied unique_together change to the model.
+
+        This will store the new unique together value and set a flag indicating
+        it's been applied to the database.
+
+        The flag exists to deal with a situation from old versions of
+        Django Evolution where the unique_together state was stored in the
+        signature but not applied to the database.
+
+        Version Added:
+            2.1.3
+
+        Args:
+            unique_together (list):
+                The new unique_together value.
+        """
+        self.unique_together = unique_together
+        self._unique_together_applied = True
+
     def has_unique_together_changed(self, old_model_sig):
         """Return whether unique_together has changed between signatures.
 
@@ -1346,7 +1422,8 @@ class ModelSignature(BaseSignature):
 
         return (old_unique_together != new_unique_together or
                 ((old_unique_together or new_unique_together) and
-                 not old_model_sig._unique_together_applied))
+                 old_model_sig._unique_together_applied is not
+                 self._unique_together_applied))
 
     def diff(self, old_model_sig):
         """Diff against an older model signature.
@@ -1457,9 +1534,9 @@ class ModelSignature(BaseSignature):
             model_name=self.model_name,
             table_name=self.table_name,
             db_tablespace=self.db_tablespace,
-            index_together=deepcopy(self.index_together),
+            index_together=self.index_together,
             pk_column=self.pk_column,
-            unique_together=deepcopy(self.unique_together))
+            unique_together=self.unique_together)
         cloned_sig._unique_together_applied = self._unique_together_applied
 
         for field_sig in self.field_sigs:
@@ -1499,13 +1576,13 @@ class ModelSignature(BaseSignature):
                 ],
                 'db_table': self.table_name,
                 'db_tablespace': self.db_tablespace,
-                'index_together': self.index_together,
+                'index_together': deepcopy(self.index_together),
                 'indexes': [
                     index_sig.serialize(sig_version)
                     for index_sig in self.index_sigs
                 ],
                 'pk_column': self.pk_column,
-                'unique_together': self.unique_together,
+                'unique_together': deepcopy(self.unique_together),
                 '__unique_together_applied': self._unique_together_applied,
             },
             'fields': OrderedDict(
@@ -1531,8 +1608,7 @@ class ModelSignature(BaseSignature):
                 self.db_tablespace == other.db_tablespace and
                 set(self.constraint_sigs) == set(other.constraint_sigs) and
                 set(self.index_sigs) == set(other.index_sigs) and
-                (set(self._normalize_together(self.index_together)) ==
-                 set(self._normalize_together(other.index_together))) and
+                set(self.index_together) == set(other.index_together) and
                 self.model_name == other.model_name and
                 self.pk_column == other.pk_column and
                 dict.__eq__(self._field_sigs, other._field_sigs) and
@@ -1569,8 +1645,11 @@ class ModelSignature(BaseSignature):
             together = (together,)
 
         return [
-            tuple(item)
-            for item in together
+            tuple(
+                six.text_type(_value)
+                for _value in _item
+            )
+            for _item in together
         ]
 
 

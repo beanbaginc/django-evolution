@@ -1,4 +1,6 @@
 mysqlclient
-nose
-nose-exclude
 psycopg2-binary
+
+pytest~=4.6.11; python_version == "2.7"
+pytest~=6.2.5; python_version > "3"
+pytest-env~=0.6.2

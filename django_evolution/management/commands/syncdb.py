@@ -5,7 +5,6 @@ from __future__ import unicode_literals
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.utils.translation import ugettext as _
 
 try:
     from django.core.management.commands.syncdb import Command as BaseCommand
@@ -13,6 +12,8 @@ try:
 except ImportError:
     from django_evolution.compat.commands import BaseCommand
     has_syncdb = False
+
+from django_evolution.compat.translation import gettext as _
 
 
 class Command(BaseCommand):

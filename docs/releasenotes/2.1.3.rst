@@ -1,0 +1,57 @@
+======================
+Django Evolution 2.1.3
+======================
+
+**Release date:** January 25, 2022
+
+
+Compatibility Changes
+=====================
+
+* Patched compatibility between modern versions of :pypi:`mysqlclient`
+  and Django <= 1.11.
+
+  Django, up through 1.11, attempted to access a ``bytes`` key in an internal
+  mapping on the database connection handle supplied by :pypi:`mysqlclient`.
+  This wasn't intended to be present, and was due to a Python 2/3
+  compatibility issue.
+
+  They worked around this for a while, but dropped that support in the recent
+  2.1 release. To maintain compatibility, Django Evolution now patches
+  Django's own copy of the mapping table to restore the right behavior.
+
+* Patched Python 3.10+'s :py:mod:`collections` module to include legacy
+  imports when using Django 2.0 or older.
+
+  Django 2.0 and older made use of some imports that no longer exist on
+  Python 3.10. Django Evolution will now bring back this support when
+  running this combination of versions of Django.
+
+
+Bug Fixes
+=========
+
+* During upgrade, evolutions are no longer applied to newly-added models.
+
+* Fixed comparison issues between ``unique_together`` state from very old
+  databases and newer evolutions.
+
+  This could lead to issues applying evolutions that only supply a
+  ``unique_together`` baseline, or that differ in terms of using tuples or
+  lists.
+
+* Fixed an edge case where the ``django_evolution`` app could be loaded
+  too early when setting up a new database, causing crashes.
+
+* Updated to avoid using some deprecated Python and Django functionality.
+
+  We had some imports and function calls that were emitting deprecation
+  warnings, depending on the versions of Python and Django. Code has been
+  update to use modern imports and calls where possible,
+
+
+Contributors
+============
+
+* Christian Hammond
+* David Trowbridge

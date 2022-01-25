@@ -221,6 +221,10 @@ autodoc_excludes = {
     ],
 }
 
+extlinks = {
+    'pypi': ('https://pypi.org/project/%s/', ''),
+}
+
 
 napolean_beanbag_docstring = True
 napolean_google_docstring = False

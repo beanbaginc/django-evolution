@@ -756,7 +756,12 @@ class SQLMutation(BaseMutation):
                 message. This would be run by :py:attr:`update_func`.
         """
         if callable(self.update_func):
-            argspec = inspect.getargspec(self.update_func)
+            if hasattr(inspect, 'getfullargspec'):
+                # Python 3
+                argspec = inspect.getfullargspec(self.update_func)
+            else:
+                # Python 2
+                argspec = inspect.getargspec(self.update_func)
 
             if len(argspec.args) == 1 and argspec.args[0] == 'simulation':
                 # New-style simulation function.
@@ -1632,8 +1637,7 @@ class ChangeMeta(BaseModelMutation):
         if prop_name == 'index_together':
             model_sig.index_together = self.new_value
         elif prop_name == 'unique_together':
-            model_sig.unique_together = self.new_value
-            model_sig._unique_together_applied = True
+            model_sig.apply_unique_together(self.new_value)
         elif prop_name == 'constraints':
             # Django >= 2.2
             constraint_sigs = []
