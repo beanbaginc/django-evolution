@@ -756,7 +756,12 @@ class SQLMutation(BaseMutation):
                 message. This would be run by :py:attr:`update_func`.
         """
         if callable(self.update_func):
-            argspec = inspect.getargspec(self.update_func)
+            if hasattr(inspect, 'getfullargspec'):
+                # Python 3
+                argspec = inspect.getfullargspec(self.update_func)
+            else:
+                # Python 2
+                argspec = inspect.getargspec(self.update_func)
 
             if len(argspec.args) == 1 and argspec.args[0] == 'simulation':
                 # New-style simulation function.
