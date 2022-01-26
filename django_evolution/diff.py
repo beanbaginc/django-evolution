@@ -1,4 +1,10 @@
-"""Support for diffing project signatures."""
+"""Support for diffing project signatures.
+
+Version Changed:
+    2.2:
+    Moved :py:class:`django_evolution.placeholders.NullFieldInitialCallback`
+    into its own module.
+"""
 
 from __future__ import unicode_literals
 
@@ -7,69 +13,14 @@ from django.db import models
 from django_evolution.compat import six
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.models import get_model
-from django_evolution.compat.translation import gettext as _
-from django_evolution.errors import EvolutionException
 from django_evolution.mutations import (AddField,
                                         ChangeField,
                                         ChangeMeta,
                                         DeleteField,
                                         DeleteModel,
                                         RenameAppLabel)
+from django_evolution.placeholders import NullFieldInitialCallback
 from django_evolution.signature import ProjectSignature
-
-
-class NullFieldInitialCallback(object):
-    """A placeholder for an initial value for a field.
-
-    This is used in place of an initial value in mutations for fields that
-    don't allow NULL values and don't have an explicit initial value set.
-    It will show up in hinted evolutions as ``<<USER VALUE REQUIRED>>`` and
-    will fail to evolve.
-    """
-
-    def __init__(self, app_label, model_name, field_name):
-        """Initialize the object.
-
-        Args:
-            app_label (unicode):
-                The label of the application owning the model.
-
-            model_name (unicode):
-                The name of the model owning the field.
-
-            field_name (unicode):
-                The name of the field to return an initial value for.
-        """
-        self.app_label = app_label
-        self.model_name = model_name
-        self.field_name = field_name
-
-    def __repr__(self):
-        """Return a string representation of the object.
-
-        This is used when outputting the value in a hinted evolution.
-
-        Returns:
-            unicode:
-            ``<<USER VALUE REQUIRED>>``
-        """
-        return '<<USER VALUE REQUIRED>>'
-
-    def __call__(self):
-        """Handle calls on this object.
-
-        This will raise an exception stating that the evolution cannot be
-        performed.
-
-        Raises:
-            django_evolution.errors.EvolutionException:
-                An error stating that an explicit initial value must be
-                provided in place of this object.
-        """
-        raise EvolutionException(
-            _('Cannot use hinted evolution: AddField or ChangeField mutation '
-              'for "%s.%s" in "%s" requires user-specified initial value.')
-            % (self.model_name, self.field_name, self.app_label))
 
 
 class Diff(object):
