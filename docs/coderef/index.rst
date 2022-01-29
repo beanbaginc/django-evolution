@@ -26,6 +26,7 @@ Public API
    django_evolution.evolve
    django_evolution.models
    django_evolution.mutations
+   django_evolution.serialization
    django_evolution.signals
    django_evolution.signature
 

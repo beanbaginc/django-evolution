@@ -165,10 +165,8 @@ class ConstraintSignatureTests(BaseSignatureTestCase):
                 'attrs': {
                     'condition': {
                         '_deconstructed': True,
-                        'args': (),
-                        'kwargs': {
-                            'field1__gte': 100,
-                        },
+                        'args': [('field1__gte', 100)],
+                        'kwargs': {},
                         'type': 'django.db.models.Q',
                     },
                     'fields': ['field1', 'field2'],
@@ -221,10 +219,8 @@ class ConstraintSignatureTests(BaseSignatureTestCase):
                 'attrs': {
                     'condition': {
                         '_deconstructed': True,
-                        'args': (),
-                        'kwargs': {
-                            'field1__gte': 100,
-                        },
+                        'args': [('field1__gte', 100)],
+                        'kwargs': {},
                         'type': 'django.db.models.Q',
                     },
                     'fields': ['field1', 'field2'],

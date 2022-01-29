@@ -6,6 +6,7 @@ from contextlib import contextmanager
 
 import django
 from django.db import ConnectionRouter, DEFAULT_DB_ALIAS, connections, router
+from django.db.models import Q
 from django.test.testcases import TestCase as DjangoTestCase
 from django.test.utils import override_settings
 
@@ -437,6 +438,36 @@ class TestCase(DjangoTestCase):
         else:
             # Compare as lists, so that we can better spot inconsistencies.
             self.assertListEqual(generated_sql, expected_sql)
+
+    def assertQEqual(self, q1, q2):
+        """Assert that two Q objects are identical.
+
+        This will compare correctly for all supported versions of Django.
+
+        Args:
+            q1 (django.db.models.Q):
+                The first Q object.
+
+            q2 (django.db.models.Q):
+                The second Q object.
+
+        Raises:
+            AssertionError:
+                The two Q objects were not equal.
+        """
+        if django.VERSION[0] >= 2:
+            # Django 2.0+ supports equality checks for Q objects.
+            self.assertEqual(q1, q2)
+        else:
+            # Django 1.11 and older does not, so we'll need to compare
+            # string representations.
+            #
+            # Note that this assumes that two Q() objects were constructed
+            # identically (for instance, both use native strings for field
+            # names, and not Unicode strings).
+            self.assertIsInstance(q1, Q)
+            self.assertIsInstance(q2, Q)
+            self.assertEqual(six.text_type(q1), six.text_type(q2))
 
 
 class MigrationsTestsMixin(object):
