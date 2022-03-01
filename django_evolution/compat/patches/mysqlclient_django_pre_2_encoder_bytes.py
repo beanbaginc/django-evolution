@@ -39,8 +39,8 @@ def needs_patch():
     # can be loaded.
     try:
         import django.db.backends.mysql.base
-    except ImportError:
-        # There's no MySQL support to patch.
+    except Exception:
+        # There's no MySQL support to patch, or something unusual went wrong.
         return False
 
     return True

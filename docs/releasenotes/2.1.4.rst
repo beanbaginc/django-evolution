@@ -1,0 +1,19 @@
+======================
+Django Evolution 2.1.4
+======================
+
+**Release date:** February 28, 2022
+
+
+Bug Fixes
+=========
+
+* Fixed a crash when applying Django compatibility patches on Django < 2.0
+  when :pypi:`mysqlclient` isn't installed.
+
+
+Contributors
+============
+
+* Christian Hammond
+* David Trowbridge
