@@ -21,7 +21,26 @@ from collections import OrderedDict
 from copy import deepcopy
 from importlib import import_module
 
+try:
+    from enum import Enum
+except ImportError:
+    Enum = None
+
 from django.db.models import Q
+
+try:
+    # Django >= 3.1
+    from django.db.models import Deferrable
+except ImportError:
+    # Django <= 3.0
+    Deferrable = None
+
+try:
+    # Django >= 1.8
+    from django.db.models.expressions import CombinedExpression
+except ImportError:
+    # Django <= 1.7
+    CombinedExpression = None
 
 from django_evolution.compat import six
 from django_evolution.placeholders import BasePlaceholder
@@ -290,6 +309,83 @@ class DictSerialization(BaseSerialization):
         }
 
 
+class EnumSerialization(BaseSerialization):
+    """Serialization for enums.
+
+    Version Added:
+        2.2
+    """
+
+    @classmethod
+    def serialize_to_signature(cls, value):
+        """Serialize a value to JSON-compatible signature data.
+
+        Args:
+            value (object):
+                The value to serialize.
+
+        Returns:
+            object:
+            A deep copy of the provided value.
+        """
+        cls = type(value)
+
+        return {
+            '_enum': True,
+            'type': '%s.%s' % (cls.__module__, cls.__name__),
+            'value': value._name_,
+        }
+
+    @classmethod
+    def serialize_to_python(cls, value):
+        """Serialize an enum value to a Python code string.
+
+        Args:
+            value (enum.Enum):
+                The enum value to serialize.
+
+        Returns:
+            unicode:
+            The resulting Python code.
+        """
+        cls = type(value)
+        cls_name = cls.__name__
+        mod_name = cls.__module__
+
+        if mod_name.startswith('django.db.models'):
+            cls_path = 'models.%s' % cls_name
+        else:
+            cls_path = '%s.%s' % (mod_name, cls_name)
+
+        return '%s.%s' % (cls_path, value._name_)
+
+    @classmethod
+    def deserialize_from_signature(cls, payload):
+        """Deserialize signature data to a value.
+
+        This will just return the value as-is.
+
+        Args:
+            payload (object):
+                The payload to deserialize.
+
+        Returns:
+            object or type:
+            The resulting value.
+        """
+        cls_path = payload.get('type')
+        value = payload.get('value')
+
+        cls_module, cls_name = cls_path.rsplit('.', 1)
+
+        try:
+            cls_type = getattr(import_module(cls_module), cls_name)
+        except (AttributeError, ImportError):
+            raise ImportError('Unable to locate enum type %s' % cls_path)
+
+        return cls_type[value]
+
+
 class ListSerialization(BaseIterableSerialization):
     """Base class for serialization for lists.
 
@@ -463,7 +559,7 @@ class DeconstructedSerialization(BaseSerialization):
             object:
             The resulting signature data.
         """
-        cls_path, args, kwargs = value.deconstruct()
+        cls_path, args, kwargs = cls._deconstruct_object(value)
 
         return {
             '_deconstructed': True,
@@ -486,7 +582,7 @@ class DeconstructedSerialization(BaseSerialization):
             unicode:
             The resulting Python code.
         """
-        cls_path, args, kwargs = value.deconstruct()
+        cls_path, args, kwargs = cls._deconstruct_object(value)
         module_path, cls_name = cls_path.rsplit('.', 1)
 
         if cls_path.startswith('django.db.models'):
@@ -538,14 +634,52 @@ class DeconstructedSerialization(BaseSerialization):
         if cls_type in _deconstructed_serialization_map:
             serialization = _deconstructed_serialization_map[cls_type]
 
-            return serialization.deserialize_from_deconstructed(
-                cls_type, args, kwargs)
+            try:
+                return serialization.deserialize_from_deconstructed(
+                    cls_type, args, kwargs)
+            except NotImplementedError:
+                # This doesn't provide explicit deserialization. Fall back
+                # on defaults.
+                pass
 
         # Let any exception bubble up.
         return cls_type(*args, **kwargs)
 
     @classmethod
+    def _deconstruct_object(cls, obj):
+        """Deconstruct an object.
+
+        This can be overridden by subclasses to work around lack of
+        deconstruction support on earlier versions of Django.
+
+        Args:
+            obj (object):
+                The object to deconstruct.
+        """
+        if not hasattr(obj, 'deconstruct'):
+            raise NotImplementedError(
+                '%s.deconstruct() is not available on this version of '
+                'Django. Subclases of the serializer should override '
+                '_deconstruct_object to support this.')
+
+        return obj.deconstruct()
+
+    @classmethod
     def _deserialize_deconstructed(cls, payload):
+        """Deserialize a deconstructed object payload.
+
+        Args:
+            payload (dict):
+                The payload representing a deconstructed object.
+
+        Returns:
+            tuple:
+            A tuple containing:
+
+            1. The object class.
+            2. Positional arguments to pass to the constructor.
+            3. Keyword arguments to pass to the constructor,
+        """
         cls_path = payload['type']
         cls_module, cls_name = cls_path.rsplit('.', 1)
 
@@ -587,6 +721,67 @@ class PlaceholderSerialization(BaseSerialization):
             The resulting Python code.
         """
         return repr(value)
+
+
+class CombinedExpressionSerialization(DeconstructedSerialization):
+    """Base class for serialization for CombinedExpression objects.
+
+    This ensures a consistent representation of
+    :py:class:`django.db.models.CombinedExpression` objects across all
+    supported versions of Django.
+
+    Note that while this can technically be used in version of Django prior
+    to 2.0, many of the objects nested within won't be supported. In practice,
+    database features really start to make use of this in a way that impacts
+    serialization code in Django 2.0 and higher.
+
+    Version Added:
+        2.2
+    """
+
+    @classmethod
+    def serialize_to_python(cls, value):
+        """Serialize a CombinedExpression object to a Python code string.
+
+        Args:
+            value (object):
+                The object to serialize.
+
+        Returns:
+            unicode:
+            The resulting Python code.
+        """
+        return '%s %s %s' % (
+            serialize_to_python(value.lhs),
+            value.connector,
+            serialize_to_python(value.rhs),
+        )
+
+    @classmethod
+    def _deconstruct_object(cls, obj):
+        """Deconstruct a CombinedExpression.
+
+        Args:
+            obj (django.db.models.expressions.CombinedExpression):
+                The object to deconstruct.
+        """
+        if hasattr(obj, 'deconstruct'):
+            # Django >= 2.0
+            return (
+                super(CombinedExpressionSerialization, cls)
+                ._deconstruct_object(obj)
+            )
+        else:
+            # Django <= 1.11
+            return (
+                '%s.%s' % (CombinedExpression.__module__,
+                           CombinedExpression.__name__),
+                (
+                    serialize_to_signature(obj.lhs),
+                    serialize_to_signature(obj.connector),
+                    serialize_to_signature(obj.rhs)),
+                {},
+            )
 
 
 class QSerialization(DeconstructedSerialization):
@@ -765,6 +960,10 @@ def _init_serialization():
         Q: QSerialization,
     }
 
+    if CombinedExpression is not None:
+        _deconstructed_serialization_map[CombinedExpression] = \
+            CombinedExpressionSerialization
+
     _serialization_map = {
         # String-based
         bytes: StringSerialization,
@@ -825,6 +1024,12 @@ def _get_serializer_for_value(value, serializing):
     else:
         if cls in _deconstructed_serialization_map:
             serialization_cls = _deconstructed_serialization_map[cls]
+        elif (Enum is not None and
+              (serializing and issubclass(cls, Enum)) or
+              (not serializing and
+               cls is dict and
+               value.get('_enum') is True)):
+            serialization_cls = EnumSerialization
         elif serializing and hasattr(value, 'deconstruct'):
             serialization_cls = DeconstructedSerialization
         elif (not serializing and
