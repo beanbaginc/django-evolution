@@ -1350,11 +1350,13 @@ def indexes(connection):
 
     return {
         'replace_list': [
-            'DROP INDEX `%s` ON `tests_testmodel`;'
-            % generate_index_name('tests_testmodel', ['int_field1'],
-                                  model_meta_indexes=True),
+            {
+                'DROP INDEX `%s` ON `tests_testmodel`;'
+                % generate_index_name('tests_testmodel', ['int_field1'],
+                                      model_meta_indexes=True),
 
-            'DROP INDEX `my_custom_index` ON `tests_testmodel`;',
+                'DROP INDEX `my_custom_index` ON `tests_testmodel`;',
+            },
 
             'CREATE INDEX `%s`'
             ' ON `tests_testmodel` (`int_field2`);'
@@ -1369,13 +1371,13 @@ def indexes(connection):
                                   model_meta_indexes=True),
         ],
 
-        'removing': [
+        'removing': {
             'DROP INDEX `%s` ON `tests_testmodel`;'
             % generate_index_name('tests_testmodel', ['int_field1'],
                                   model_meta_indexes=True),
 
             'DROP INDEX `my_custom_index` ON `tests_testmodel`;',
-        ],
+        },
 
         'ignore_missing_indexes': [
             'CREATE INDEX `%s`'
@@ -1384,7 +1386,7 @@ def indexes(connection):
                                   model_meta_indexes=True),
         ],
 
-        'setting_from_empty': [
+        'setting_from_empty': {
             'CREATE INDEX `%s`'
             ' ON `tests_testmodel` (`int_field1`);'
             % generate_index_name('tests_testmodel',
@@ -1394,7 +1396,7 @@ def indexes(connection):
             'CREATE INDEX `my_custom_index`'
             ' ON `tests_testmodel` (`char_field1`, `char_field2`%s);'
             % DESC,
-        ],
+        },
     }
 
 
