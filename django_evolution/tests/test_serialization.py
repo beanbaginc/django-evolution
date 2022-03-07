@@ -179,7 +179,7 @@ class DeserializeFromSignatureTests(TestCase):
 
     def test_with_q(self):
         """Testing deserialize_from_signature with Q"""
-        self.assertQEqual(
+        self.assertEqual(
             deserialize_from_signature({
                 '_deconstructed': True,
                 'args': [
@@ -212,7 +212,7 @@ class DeserializeFromSignatureTests(TestCase):
 
     def test_with_q_kwargs(self):
         """Testing deserialize_from_signature with Q and fields in kwargs"""
-        self.assertQEqual(
+        self.assertEqual(
             deserialize_from_signature({
                 '_deconstructed': True,
                 'args': [],
@@ -226,7 +226,7 @@ class DeserializeFromSignatureTests(TestCase):
 
     def test_with_q_empty(self):
         """Testing deserialize_from_signature with empty Q"""
-        self.assertQEqual(
+        self.assertEqual(
             deserialize_from_signature({
                 '_deconstructed': True,
                 'args': [],

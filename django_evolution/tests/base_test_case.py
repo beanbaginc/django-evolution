@@ -6,7 +6,7 @@ from contextlib import contextmanager
 
 import django
 from django.db import ConnectionRouter, DEFAULT_DB_ALIAS, connections, router
-from django.db.models import Q
+from django.db.models import F, Q
 from django.test.testcases import TestCase as DjangoTestCase
 from django.test.utils import override_settings
 
@@ -75,6 +75,24 @@ class TestCase(DjangoTestCase):
 
         def _fixture_teardown(self):
             return
+
+    def __init__(self, *args, **kwargs):
+        """Initialize the test suite.
+
+        This will register some equality assertion functions for helping
+        compare Q and F objects.
+
+        Args:
+            *args (tuple):
+                Positional arguments to pass to the parent constructor.
+
+            **kwargs (dict):
+                Keyword arguments to pass to the parent constructor.
+        """
+        super(TestCase, self).__init__(*args, **kwargs)
+
+        self.addTypeEqualityFunc(F, 'assertFEqual')
+        self.addTypeEqualityFunc(Q, 'assertQEqual')
 
     def setUp(self):
         super(TestCase, self).setUp()
@@ -444,10 +462,46 @@ class TestCase(DjangoTestCase):
         else:
             self.assertEqual(norm_generated_sql, norm_expected_sql)
 
-    def assertQEqual(self, q1, q2):
+    def assertFEqual(self, f1, f2):
+        """Assert that two F objects are identical.
+
+        This will compare correctly for all supported versions of Django.
+
+        Version Added:
+            2.2
+
+        Args:
+            f1 (django.db.models.F):
+                The first F object.
+
+            f2 (django.db.models.F):
+                The second F object.
+
+        Raises:
+            AssertionError:
+                The two F objects were not equal.
+        """
+        if django.VERSION[0] >= 2:
+            # Django 2.0+ supports equality checks for F objects.
+            self._baseAssertEqual(f1, f2)
+        else:
+            # Django 1.11 and older does not, so we'll need to compare
+            # string representations.
+            #
+            # Note that this assumes that two F() objects were constructed
+            # identically (for instance, both use native strings for field
+            # names, and not Unicode strings).
+            self.assertIsInstance(f1, F)
+            self.assertIsInstance(f2, F)
+            self.assertEqual(six.text_type(f1), six.text_type(f2))
+
+    def assertQEqual(self, q1, q2, msg=None):
         """Assert that two Q objects are identical.
 
         This will compare correctly for all supported versions of Django.
+
+        Version Added:
+            2.2
 
         Args:
             q1 (django.db.models.Q):
@@ -456,13 +510,16 @@ class TestCase(DjangoTestCase):
             q2 (django.db.models.Q):
                 The second Q object.
 
+            msg (unicode, optional):
+                An optional message to show if assertion fails.
+
         Raises:
             AssertionError:
                 The two Q objects were not equal.
         """
         if django.VERSION[0] >= 2:
             # Django 2.0+ supports equality checks for Q objects.
-            self.assertEqual(q1, q2)
+            self._baseAssertEqual(q1, q2, msg=msg)
         else:
             # Django 1.11 and older does not, so we'll need to compare
             # string representations.
@@ -470,9 +527,9 @@ class TestCase(DjangoTestCase):
             # Note that this assumes that two Q() objects were constructed
             # identically (for instance, both use native strings for field
             # names, and not Unicode strings).
-            self.assertIsInstance(q1, Q)
-            self.assertIsInstance(q2, Q)
-            self.assertEqual(six.text_type(q1), six.text_type(q2))
+            self.assertIsInstance(q1, Q, msg=msg)
+            self.assertIsInstance(q2, Q, msg=msg)
+            self.assertEqual(six.text_type(q1), six.text_type(q2), msg=msg)
 
     def _normalize_sql_for_compare(self, generated_sql, expected_sql):
         """Normalize the generated and expected SQL for comparison.
