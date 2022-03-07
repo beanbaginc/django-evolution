@@ -1251,6 +1251,7 @@ def constraints(connection):
         dict:
         The dictionary of SQL mappings.
     """
+    is_mariadb = getattr(connection, 'mysql_is_mariadb', False)
     supports_table_check_constraints = \
         getattr(connection.features, 'supports_table_check_constraints', False)
 
@@ -1269,30 +1270,6 @@ def constraints(connection):
                 " CHECK (`int_field1` >= 100);",
             ],
 
-            'removing': [
-                "ALTER TABLE `tests_testmodel`"
-                " DROP CONSTRAINT IF EXISTS `base_check_constraint`;",
-
-                "ALTER TABLE `tests_testmodel`"
-                " DROP INDEX `base_unique_constraint_plain`;",
-            ],
-
-            'replace_list': [
-                "ALTER TABLE `tests_testmodel`"
-                " DROP CONSTRAINT IF EXISTS `base_check_constraint`;",
-
-                "ALTER TABLE `tests_testmodel`"
-                " DROP INDEX `base_unique_constraint_plain`;",
-
-                "ALTER TABLE `tests_testmodel`"
-                " ADD CONSTRAINT `new_check_constraint`"
-                " CHECK (`char_field1` LIKE BINARY 'test%%');",
-
-                "ALTER TABLE `tests_testmodel`"
-                " ADD CONSTRAINT `new_unique_constraint_plain`"
-                " UNIQUE (`int_field1`, `char_field1`);",
-            ],
-
             'setting_from_empty': [
                 "ALTER TABLE `tests_testmodel`"
                 " ADD CONSTRAINT `new_check_constraint`"
@@ -1303,6 +1280,59 @@ def constraints(connection):
                 " UNIQUE (`int_field1`, `int_field2`);",
             ],
         })
+
+        if is_mariadb:
+            mappings.update({
+                'removing': [
+                    "ALTER TABLE `tests_testmodel`"
+                    " DROP CONSTRAINT IF EXISTS `base_check_constraint`;",
+
+                    "ALTER TABLE `tests_testmodel`"
+                    " DROP INDEX `base_unique_constraint_plain`;",
+                ],
+
+                'replace_list': [
+                    "ALTER TABLE `tests_testmodel`"
+                    " DROP CONSTRAINT IF EXISTS `base_check_constraint`;",
+
+                    "ALTER TABLE `tests_testmodel`"
+                    " DROP INDEX `base_unique_constraint_plain`;",
+
+                    "ALTER TABLE `tests_testmodel`"
+                    " ADD CONSTRAINT `new_check_constraint`"
+                    " CHECK (`char_field1` LIKE BINARY 'test%%');",
+
+                    "ALTER TABLE `tests_testmodel`"
+                    " ADD CONSTRAINT `new_unique_constraint_plain`"
+                    " UNIQUE (`int_field1`, `char_field1`);",
+                ],
+            })
+        else:
+            mappings.update({
+                'removing': [
+                    "ALTER TABLE `tests_testmodel`"
+                    " DROP CHECK `base_check_constraint`;",
+
+                    "ALTER TABLE `tests_testmodel`"
+                    " DROP INDEX `base_unique_constraint_plain`;",
+                ],
+
+                'replace_list': [
+                    "ALTER TABLE `tests_testmodel`"
+                    " DROP CHECK `base_check_constraint`;",
+
+                    "ALTER TABLE `tests_testmodel`"
+                    " DROP INDEX `base_unique_constraint_plain`;",
+
+                    "ALTER TABLE `tests_testmodel`"
+                    " ADD CONSTRAINT `new_check_constraint`"
+                    " CHECK (`char_field1` LIKE BINARY 'test%%');",
+
+                    "ALTER TABLE `tests_testmodel`"
+                    " ADD CONSTRAINT `new_unique_constraint_plain`"
+                    " UNIQUE (`int_field1`, `char_field1`);",
+                ],
+            })
     else:
         mappings.update({
             'append_list': [
