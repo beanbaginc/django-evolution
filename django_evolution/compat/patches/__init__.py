@@ -2,7 +2,11 @@
 
 from __future__ import unicode_literals
 
+import logging
 from importlib import import_module
+
+
+logger = logging.getLogger(__name__)
 
 
 #: List of patches that can be applied.
@@ -30,7 +34,22 @@ def apply_patches():
         for patch_name in patches:
             patch = import_module('%s.%s' % (__name__, patch_name))
 
-            if patch.needs_patch():
-                patch.apply_patch()
+            try:
+                needs_patch = patch.needs_patch()
+            except Exception as e:
+                logging.exception(
+                    'Error checking if Django Evolution compatibility patch '
+                    '"%s" needs to apply: %s',
+                    patch_name, e)
+                continue
+
+            if needs_patch:
+                try:
+                    patch.apply_patch()
+                except Exception as e:
+                    logging.exception(
+                        'Error applying Django Evolution compatibility  '
+                        'patch "%s": %s',
+                        patch_name, e)
 
         _patches_applied = True

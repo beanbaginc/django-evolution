@@ -55,6 +55,15 @@ class BaseEvolutionOperations(object):
         models.ManyToManyField: set(['null']),
     }
 
+    #: The default tablespace for the database, if tablespaces are supported.
+    #:
+    #: Version Added:
+    #:     2.2
+    #:
+    #: Type:
+    #:     unicode
+    default_tablespace = None
+
     alter_table_sql_result_cls = AlterTableSQLResult
 
     def __init__(self, database_state, connection=default_connection):

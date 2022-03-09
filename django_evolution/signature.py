@@ -138,6 +138,8 @@ from django_evolution.compat.translation import gettext as _
 from django_evolution.consts import UpgradeMethod
 from django_evolution.errors import (InvalidSignatureVersion,
                                      MissingSignatureError)
+from django_evolution.serialization import (deserialize_from_signature,
+                                            serialize_to_signature)
 from django_evolution.utils.apps import get_app_label, get_legacy_app_label
 from django_evolution.utils.evolutions import get_app_upgrade_info
 from django_evolution.utils.migrations import MigrationList
@@ -1717,10 +1719,7 @@ class ConstraintSignature(BaseSignature):
             raise ImportError('Unable to locate constraint type %s'
                               % '%s.%s' % (type_module, type_name))
 
-        attrs = {
-            key: cls._deserialize_attr_value(attr_value)
-            for key, attr_value in six.iteritems(constraint_sig_dict['attrs'])
-        }
+        attrs = deserialize_from_signature(constraint_sig_dict['attrs'])
 
         return cls(name=constraint_sig_dict['name'],
                    constraint_type=constraint_type,
@@ -1841,7 +1840,7 @@ class ConstraintSignature(BaseSignature):
         return {
             'name': self.name,
             'type': '%s.%s' % (type_module, self.type.__name__),
-            'attrs': attrs,
+            'attrs': serialize_to_signature(self.attrs),
         }
 
     def __eq__(self, other):
@@ -1966,8 +1965,8 @@ class IndexSignature(BaseSignature):
         """
         validate_sig_version(sig_version)
 
-        return cls(name=index_sig_dict.get('name'),
-                   fields=index_sig_dict['fields'])
+        return cls(name=deserialize_from_signature(index_sig_dict.get('name')),
+                   fields=deserialize_from_signature(index_sig_dict['fields']))
 
     def __init__(self, fields, name=None):
         """Initialize the signature.

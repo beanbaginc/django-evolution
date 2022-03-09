@@ -10,6 +10,10 @@ from django_evolution.db.sql_result import AlterTableSQLResult
 
 
 class EvolutionOperations(BaseEvolutionOperations):
+    """Evolution operations for Postgres databases."""
+
+    default_tablespace = 'pg_default'
+
     def rename_column(self, model, old_field, new_field):
         if old_field.column == new_field.column:
             # No Operation

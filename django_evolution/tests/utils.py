@@ -504,6 +504,25 @@ def get_sql_mappings(mapping_key, db_name):
     return mapping
 
 
+def get_default_tablespace(db_name):
+    """Return the default tablespace for a database.
+
+    Version Added:
+        2.2
+
+    Args:
+        db_name (unicode):
+            The name of the database.
+
+    Returns:
+        unicode:
+        The default tablespace for the database, or ``None``.
+    """
+    evolver = EvolutionOperationsMulti(db_name).get_evolver()
+
+    return evolver.default_tablespace
+
+
 def generate_index_name(connection, table, col_names, field_names=None,
                         index_together=False, model_meta_indexes=False):
     """Generate a suitable index name to test against.

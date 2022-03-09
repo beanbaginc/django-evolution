@@ -17,6 +17,7 @@ from django_evolution.db.state import DatabaseState
 from django_evolution.errors import (CannotSimulate, SimulationFailure,
                                      EvolutionNotImplementedError)
 from django_evolution.mock_models import MockModel, MockRelated, create_field
+from django_evolution.serialization import serialize_to_python
 from django_evolution.signature import (AppSignature,
                                         ConstraintSignature,
                                         FieldSignature,
@@ -355,8 +356,10 @@ class BaseMutation(object):
 
         This will attempt to represent the value as something Python can
         execute, across Python versions. The string representation of the
-        value is used by default. If that representation is of a Unicode
-        string, and that string include a ``u`` prefix, it will be stripped.
+        value is used by default.
+
+        See :py:func:`django_evolution.serialization.serialize_to_python`
+        for details.
 
         Args:
             value (object):
@@ -366,69 +369,7 @@ class BaseMutation(object):
             unicode:
             The serialized string.
         """
-        if isinstance(value, six.string_types):
-            value = repr(six.text_type(value))
-
-            if value.startswith('u'):
-                value = value[1:]
-        elif isinstance(value, list):
-            value = '[%s]' % ', '.join(
-                self.serialize_value(item)
-                for item in value
-            )
-        elif isinstance(value, tuple):
-            if len(value) == 1:
-                suffix = ','
-            else:
-                suffix = ''
-
-            value = '(%s%s)' % (
-                ', '.join(
-                    self.serialize_value(item)
-                    for item in value
-                ),
-                suffix,
-            )
-        elif isinstance(value, dict):
-            value = '{%s}' % ', '.join(
-                '%s: %s' % (self.serialize_value(dict_key),
-                            self.serialize_value(dict_value))
-                for dict_key, dict_value in six.iteritems(value)
-            )
-        elif inspect.isclass(value):
-            if value.__module__.startswith('django.db.models'):
-                prefix = 'models.'
-            else:
-                prefix = ''
-
-            return prefix + value.__name__
-        elif hasattr(value, 'deconstruct'):
-            path, args, kwargs = value.deconstruct()
-
-            if path.startswith('django.db.models'):
-                path = 'models.%s' % path.rsplit('.', 1)[-1]
-
-            parts = ['%s(' % path]
-
-            if args:
-                parts.append(', '.join(
-                    self.serialize_value(arg)
-                    for arg in args
-                ))
-
-            if kwargs:
-                parts.append(', '.join(
-                    self.serialize_attr(key, value)
-                    for key, value in six.iteritems(kwargs)
-                ))
-
-            parts.append(')')
-
-            value = ''.join(parts)
-        else:
-            value = repr(value)
-
-        return value
+        return serialize_to_python(value)
 
     def serialize_attr(self, attr_name, attr_value):
         """Serialize an attribute for use in a mutation statement.

@@ -6,6 +6,7 @@ from contextlib import contextmanager
 
 import django
 from django.db import ConnectionRouter, DEFAULT_DB_ALIAS, connections, router
+from django.db.models import F, Q
 from django.test.testcases import TestCase as DjangoTestCase
 from django.test.utils import override_settings
 
@@ -74,6 +75,24 @@ class TestCase(DjangoTestCase):
 
         def _fixture_teardown(self):
             return
+
+    def __init__(self, *args, **kwargs):
+        """Initialize the test suite.
+
+        This will register some equality assertion functions for helping
+        compare Q and F objects.
+
+        Args:
+            *args (tuple):
+                Positional arguments to pass to the parent constructor.
+
+            **kwargs (dict):
+                Keyword arguments to pass to the parent constructor.
+        """
+        super(TestCase, self).__init__(*args, **kwargs)
+
+        self.addTypeEqualityFunc(F, 'assertFEqual')
+        self.addTypeEqualityFunc(Q, 'assertQEqual')
 
     def setUp(self):
         super(TestCase, self).setUp()
@@ -405,9 +424,15 @@ class TestCase(DjangoTestCase):
 
         has_regex = False
 
-        for line in expected_sql:
-            if (not isinstance(line, six.text_type) and
-                hasattr(line, 'pattern')):
+        # We might be dealing with lists, sets, or lists containing
+        # lists/sets. The reason is that Django *sometimes* generates full SQL
+        # statements, or subsets of SQL statements, that are not guaranteed to
+        # be in a stable order. So we have to allow for some variance.
+        norm_generated_sql, norm_expected_sql = \
+            self._normalize_sql_for_compare(generated_sql, expected_sql)
+
+        for line in norm_expected_sql:
+            if hasattr(line, 'pattern'):
                 line = '/%s/' % line.pattern
                 has_regex = True
 
@@ -422,8 +447,8 @@ class TestCase(DjangoTestCase):
             match = (len(generated_sql) == len(expected_sql))
 
             if match:
-                for gen_line, expected_line in zip(generated_sql,
-                                                   expected_sql):
+                for gen_line, expected_line in zip(norm_generated_sql,
+                                                   norm_expected_sql):
                     if ((isinstance(expected_line, six.text_type) and
                          gen_line != expected_line) or
                         (hasattr(line, 'pattern') and
@@ -433,10 +458,147 @@ class TestCase(DjangoTestCase):
 
             if not match:
                 # Now show that detailed output.
-                self.assertListEqual(generated_sql, expected_sql)
+                self.assertListEqual(norm_generated_sql, norm_expected_sql)
         else:
-            # Compare as lists, so that we can better spot inconsistencies.
-            self.assertListEqual(generated_sql, expected_sql)
+            self.assertEqual(norm_generated_sql, norm_expected_sql)
+
+    def assertFEqual(self, f1, f2):
+        """Assert that two F objects are identical.
+
+        This will compare correctly for all supported versions of Django.
+
+        Version Added:
+            2.2
+
+        Args:
+            f1 (django.db.models.F):
+                The first F object.
+
+            f2 (django.db.models.F):
+                The second F object.
+
+        Raises:
+            AssertionError:
+                The two F objects were not equal.
+        """
+        if django.VERSION[0] >= 2:
+            # Django 2.0+ supports equality checks for F objects.
+            self._baseAssertEqual(f1, f2)
+        else:
+            # Django 1.11 and older does not, so we'll need to compare
+            # string representations.
+            #
+            # Note that this assumes that two F() objects were constructed
+            # identically (for instance, both use native strings for field
+            # names, and not Unicode strings).
+            self.assertIsInstance(f1, F)
+            self.assertIsInstance(f2, F)
+            self.assertEqual(six.text_type(f1), six.text_type(f2))
+
+    def assertQEqual(self, q1, q2, msg=None):
+        """Assert that two Q objects are identical.
+
+        This will compare correctly for all supported versions of Django.
+
+        Version Added:
+            2.2
+
+        Args:
+            q1 (django.db.models.Q):
+                The first Q object.
+
+            q2 (django.db.models.Q):
+                The second Q object.
+
+            msg (unicode, optional):
+                An optional message to show if assertion fails.
+
+        Raises:
+            AssertionError:
+                The two Q objects were not equal.
+        """
+        if django.VERSION[0] >= 2:
+            # Django 2.0+ supports equality checks for Q objects.
+            self._baseAssertEqual(q1, q2, msg=msg)
+        else:
+            # Django 1.11 and older does not, so we'll need to compare
+            # string representations.
+            #
+            # Note that this assumes that two Q() objects were constructed
+            # identically (for instance, both use native strings for field
+            # names, and not Unicode strings).
+            self.assertIsInstance(q1, Q, msg=msg)
+            self.assertIsInstance(q2, Q, msg=msg)
+            self.assertEqual(six.text_type(q1), six.text_type(q2), msg=msg)
+
+    def _normalize_sql_for_compare(self, generated_sql, expected_sql):
+        """Normalize the generated and expected SQL for comparison.
+
+        This will run through each statement in the expected SQL, handling
+        ordering and unordered lists of SQL, and turning it into a flat list
+        of statements suitable for comparison.
+
+        The generated SQL will be normalized along with the expected SQL.
+        Any unordered statements in the expected SQL will cause the statements
+        at the same index in the generated SQL to be in sorted order as well.
+
+        Version Added:
+            2.2
+
+        Args:
+            generated_sql (list or set):
+                The generated list of SQL.
+
+            expected_sql (list or set):
+                The expected list of SQL.
+
+        Returns:
+            tuple:
+            A tuple containing:
+
+            1. The normalized generated list of SQL.
+            2. The normalized expected list of SQL.
+        """
+        i = 0
+        norm_generated_sql = []
+        norm_expected_sql = []
+
+        for outer_expected in expected_sql:
+            if (isinstance(outer_expected, six.text_type) or
+                hasattr(outer_expected, 'pattern')):
+                norm_expected_sql.append(outer_expected)
+
+                if i < len(generated_sql):
+                    norm_generated_sql.append(generated_sql[i])
+
+                i += 1
+            elif isinstance(outer_expected, list):
+                num_lines = len(outer_expected)
+                norm_expected_sql += outer_expected
+
+                if i < len(generated_sql):
+                    norm_generated_sql += generated_sql[i:i + num_lines]
+
+                i += num_lines
+            elif isinstance(outer_expected, set):
+                num_lines = len(outer_expected)
+                norm_expected_sql += sorted(outer_expected)
+
+                if i < len(generated_sql):
+                    norm_generated_sql += sorted(
+                        generated_sql[i:i + num_lines])
+
+                i += num_lines
+            else:
+                raise TypeError(
+                    'Unexpected type %s on line %d for expected SQL %r'
+                    % (type(outer_expected), i + 1, outer_expected))
+
+        if isinstance(expected_sql, set):
+            norm_generated_sql = sorted(norm_generated_sql)
+            norm_expected_sql = sorted(norm_expected_sql)
+
+        return norm_generated_sql, norm_expected_sql
 
 
 class MigrationsTestsMixin(object):
