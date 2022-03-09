@@ -564,7 +564,8 @@ class TestCase(DjangoTestCase):
         norm_expected_sql = []
 
         for outer_expected in expected_sql:
-            if isinstance(outer_expected, six.text_type):
+            if (isinstance(outer_expected, six.text_type) or
+                hasattr(outer_expected, 'pattern')):
                 norm_expected_sql.append(outer_expected)
 
                 if i < len(generated_sql):
