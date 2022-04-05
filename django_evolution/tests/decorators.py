@@ -13,6 +13,7 @@ from unittest import SkipTest
 import django
 
 from django_evolution.support import (supports_constraints,
+                                      supports_index_feature,
                                       supports_index_together,
                                       supports_indexes,
                                       supports_migrations)
@@ -93,6 +94,22 @@ requires_meta_indexes = _build_requires_support_decorator(
     skip_message="Meta.indexes isn't supported on Django %(django_version)s")
 
 
+#: Decorator to require expressions support in Meta.indexes for running a test.
+#:
+#: Args:
+#:     func (callable):
+#:         The unit test function to wrap.
+#:
+#: Raises:
+#:     unittest.SkipTest:
+#:         The current version of Django doesn't support expressions in
+#:         ``Meta.indexes``.
+requires_index_expressions = _build_requires_support_decorator(
+    flag=supports_index_feature('expressions'),
+    skip_message=("Index doesn't support expressions on Django "
+                  "%(django_version)s"))
+
+
 #: Decorator to require migrations support for running a test.
 #:
 #: Args:
@@ -145,6 +162,27 @@ def requires_attr(cls, attr_name):
         flag=cls is not None and hasattr(cls, attr_name),
         skip_message=("%s.%s isn't supported on Django %%(django_version)s"
                       % (cls.__name__, attr_name)))
+
+
+def requires_index_feature(feature_name):
+    """Require a feature on the Index class.
+
+    Version Added:
+        2.2
+
+    Args:
+        feature_name (unicode):
+            The name of the Index feature to require.
+
+    Raises:
+        unittest.SkipTest:
+            The attribute is missing. The test will be skipped with a suitable
+            message.
+    """
+    return _build_requires_support_decorator(
+        flag=supports_index_feature(feature_name),
+        skip_message=("Index.%s isn't supported on Django %%(django_version)s"
+                      % feature_name))
 
 
 def requires_param(cls_or_func, param_name, label=None):
