@@ -91,6 +91,25 @@ class EvolutionOperations(BaseEvolutionOperations):
                                  self.connection.ops.max_name_length())
 
     def get_indexes_for_table(self, table_name):
+        """Return all known indexes on a table.
+
+        This is a fallback used only on Django 1.6, due to lack of proper
+        introspection on that release.
+
+        Args:
+            table_name (unicode):
+                The name of the table.
+
+        Returns:
+            dict:
+            A dictionary mapping index names to a dictionary containing:
+
+            ``columns`` (:py:class:`list`):
+                The list of columns that the index covers.
+
+            ``unique`` (:py:class:`bool`):
+                Whether this is a unique index.
+        """
         cursor = self.connection.cursor()
         indexes = {}
 

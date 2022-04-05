@@ -372,10 +372,10 @@ class DatabaseState(object):
             else:
                 self.add_table(table_name)
 
-            indexes = evolver.get_indexes_for_table(table_name)
+            constraints = evolver.get_constraints_for_table(table_name)
 
-            for index_name, index_info in six.iteritems(indexes):
+            for constraint_name, constraint_info in six.iteritems(constraints):
                 self.add_index(table_name=table_name,
-                               index_name=index_name,
-                               columns=index_info['columns'],
-                               unique=index_info['unique'])
+                               index_name=constraint_name,
+                               columns=constraint_info['columns'],
+                               unique=constraint_info['unique'])

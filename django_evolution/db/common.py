@@ -1295,16 +1295,81 @@ class BaseEvolutionOperations(object):
     def get_column_names_for_fields(self, fields):
         return [field.column for field in fields]
 
+    def get_constraints_for_table(self, table_name):
+        """Return all known constraints/indexes on a table.
+
+        This will scan the table for any constraints or indexes. It generally
+        will wrap Django's database introspection support if available (on
+        Django >= 1.7), falling back on in-house implementations on earlier
+        releases.
+
+        Version Added:
+            2.2
+
+        Args:
+            table_name (unicode):
+                The name of the table.
+
+        Returns:
+            dict:
+            A dictionary mapping index names to a dictionary containing:
+
+            ``columns`` (:py:class:`list`):
+                The list of columns that the index covers.
+
+            ``unique`` (:py:class:`bool`):
+                Whether this is a unique index.
+        """
+        introspection = self.connection.introspection
+        results = {}
+
+        if hasattr(introspection, 'get_constraints'):
+            # Django >= 1.7
+            cursor = self.connection.cursor()
+
+            try:
+                constraints = introspection.get_constraints(cursor,
+                                                            table_name)
+            finally:
+                cursor.close()
+
+            for index_name, info in six.iteritems(constraints):
+                results[index_name] = {
+                    'unique': info.get('unique', False),
+                    'columns': info.get('columns', []),
+                }
+        else:
+            # Django == 1.6
+            indexes = self.get_indexes_for_table(table_name)
+
+            for index_name, info in six.iteritems(indexes):
+                results[index_name] = {
+                    'columns': info['columns'],
+                    'unique': info['unique'],
+                }
+
+        return results
+
     def get_indexes_for_table(self, table_name):
-        """Returns a dictionary of indexes from the database.
+        """Return all known indexes on a table.
 
-        This introspects the database to return a mapping of index names
-        to index information, with the following keys:
+        This is a fallback used only on Django 1.6, due to lack of proper
+        introspection on that release. It should only be called internally
+        by :py:meth:`get_constraints_for_table`.
 
-            * columns -> list of column names
-            * unique -> whether it's a unique index
+        Args:
+            table_name (unicode):
+                The name of the table.
 
-        This function must be implemented by subclasses.
+        Returns:
+            dict:
+            A dictionary mapping index names to a dictionary containing:
+
+            ``columns`` (:py:class:`list`):
+                The list of columns that the index covers.
+
+            ``unique`` (:py:class:`bool`):
+                Whether this is a unique index.
         """
         raise NotImplementedError
 
