@@ -26,6 +26,10 @@ Public API
    django_evolution.deprecation
    django_evolution.errors
    django_evolution.evolve
+   django_evolution.evolve.base
+   django_evolution.evolve.evolver
+   django_evolution.evolve.evolve_app_task
+   django_evolution.evolve.purge_app_task
    django_evolution.models
    django_evolution.mutations
    django_evolution.serialization
