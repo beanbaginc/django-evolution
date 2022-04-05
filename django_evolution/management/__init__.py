@@ -9,6 +9,7 @@ from django.db.utils import DEFAULT_DB_ALIAS
 from django.dispatch import receiver
 
 from django_evolution.compat.apps import get_apps, get_app
+from django_evolution.conf import django_evolution_settings
 from django_evolution.evolve import Evolver
 from django_evolution.models import Evolution, Version
 from django_evolution.signals import evolved, evolving, evolving_failed
@@ -141,7 +142,7 @@ def _on_post_migrate(app_config, **kwargs):
     _on_app_models_updated(app=app_config.models_module, **kwargs)
 
 
-if getattr(settings, 'DJANGO_EVOLUTION_ENABLED', True):
+if django_evolution_settings.ENABLED:
     if hasattr(signals, 'post_syncdb'):
         signals.post_syncdb.connect(_on_post_syncdb)
     elif hasattr(signals, 'post_migrate'):

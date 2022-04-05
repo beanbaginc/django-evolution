@@ -5,12 +5,12 @@ from __future__ import unicode_literals
 import os
 from importlib import import_module
 
-from django.conf import settings
 from django.db import connections
 from django.db.utils import DEFAULT_DB_ALIAS
 
 from django_evolution.builtin_evolutions import BUILTIN_SEQUENCES
 from django_evolution.compat import six
+from django_evolution.conf import django_evolution_settings
 from django_evolution.consts import EvolutionsSource, UpgradeMethod
 from django_evolution.errors import EvolutionException
 from django_evolution.support import supports_migrations
@@ -53,7 +53,7 @@ def get_evolutions_source(app):
 
     if app_name in BUILTIN_SEQUENCES:
         return EvolutionsSource.BUILTIN
-    elif app_name in getattr(settings, 'CUSTOM_EVOLUTIONS', {}):
+    elif app_name in django_evolution_settings.CUSTOM_EVOLUTIONS:
         return EvolutionsSource.PROJECT
     else:
         return EvolutionsSource.APP
@@ -78,8 +78,8 @@ def get_evolutions_module_name(app):
 
     if app_name in BUILTIN_SEQUENCES:
         module_name = 'django_evolution.builtin_evolutions'
-    elif app_name in getattr(settings, 'CUSTOM_EVOLUTIONS', {}):
-        module_name = settings.CUSTOM_EVOLUTIONS[app_name]
+    elif app_name in django_evolution_settings.CUSTOM_EVOLUTIONS:
+        module_name = django_evolution_settings.CUSTOM_EVOLUTIONS[app_name]
     else:
         module_name = '%s.evolutions' % app_name
 

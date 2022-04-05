@@ -14,6 +14,7 @@ except ImportError:
     has_syncdb = False
 
 from django_evolution.compat.translation import gettext as _
+from django_evolution.conf import django_evolution_settings
 
 
 class Command(BaseCommand):
@@ -53,7 +54,7 @@ class Command(BaseCommand):
                 _('syncdb is not available on this version of Django. '
                   'Use `migrate` instead.'))
 
-        if not getattr(settings, 'DJANGO_EVOLUTION_ENABLED', True):
+        if not django_evolution_settings.ENABLED:
             # Run the original syncdb command.
             return super(Command, self).handle(*args, **options)
 

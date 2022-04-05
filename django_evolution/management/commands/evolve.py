@@ -16,6 +16,7 @@ from django_evolution.compat.apps import get_app
 from django_evolution.compat.commands import BaseCommand
 from django_evolution.compat.six.moves import input
 from django_evolution.compat.translation import ngettext, gettext as _
+from django_evolution.conf import django_evolution_settings
 from django_evolution.errors import EvolutionException
 from django_evolution.evolve import EvolveAppTask, Evolver, PurgeAppTask
 from django_evolution.signals import (applied_evolution,
@@ -117,7 +118,7 @@ class Command(BaseCommand):
                 Arguments were invalid or something went wrong. Details are
                 in the message.
         """
-        if not getattr(settings, 'DJANGO_EVOLUTION_ENABLED', True):
+        if not django_evolution_settings.ENABLED:
             raise CommandError(
                 _('Django Evolution is disabled for this project. '
                   'Evolutions cannot be manually run.'))

@@ -21,6 +21,7 @@ Public API
    :toctree: python
 
    django_evolution
+   django_evolution.conf
    django_evolution.consts
    django_evolution.deprecation
    django_evolution.errors
