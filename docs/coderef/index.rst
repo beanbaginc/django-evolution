@@ -22,6 +22,7 @@ Public API
 
    django_evolution
    django_evolution.consts
+   django_evolution.deprecation
    django_evolution.errors
    django_evolution.evolve
    django_evolution.models
