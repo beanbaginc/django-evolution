@@ -32,17 +32,26 @@ def pytest_addoption(parser):
         parser (object):
             pytest's argument parser.
     """
+    # NOTE: It's VERY important that we avoid importing tests.settings
+    #       at this stage. It's only safe to import once the environment
+    #       variable "DJANGO_EVOLUTION_TEST_DB" is set.
+    database_choices = ['sqlite3']
+
+    from default_test_db_settings import TEST_DATABASES
+    database_choices += TEST_DATABASES.keys()
+
     try:
-        from test_db_settings import TEST_DATABASES
+        from test_db_settings import TEST_DATABASES as CUSTOM_TEST_DATABASES
+        database_choices += CUSTOM_TEST_DATABASES.keys()
     except ImportError:
-        pytest.exit('Missing test_db_settings.py This is needed for '
-                    'non-sqlite unit tests.')
+        # There are no custom settings.
+        pass
 
     parser.addoption(
         '--db',
         action='store',
         default='sqlite3',
-        choices=sorted(TEST_DATABASES.keys()),
+        choices=sorted(database_choices),
         help=(
             'A database name to test (defined in your '
             'tests/test_db_settings.py)'
@@ -169,18 +178,28 @@ def pytest_report_header(config):
         list of unicode:
         The report header entries to log.
     """
+    from tests.settings import DATABASES, TEST_DB_CHOICE
+
     header = [
         'Django %s' % django.get_version(),
-        'SQLite %s' % sqlite3.sqlite_version,
     ]
 
-    if mysql_version is not None:
-        header.append('MySQLdb %s' % mysql_version)
+    test_db_name = TEST_DB_CHOICE
+    test_db_engine = DATABASES['default']['ENGINE']
 
-    if psycopg2 is not None:
-        header.append('Psycopg2 %s' % psycopg2.__version__)
+    header.append('Database: %s (%s)'
+                  % (test_db_name, test_db_engine))
 
-    header.append('Testing with database: %s'
-                  % os.environ.get('DJANGO_EVOLUTION_TEST_DB'))
+    if 'mysql' in test_db_engine:
+        from tests.default_test_db_settings import mysql_db_storage_engine
+        header.append('MySQL storage engine: %s' % mysql_db_storage_engine)
+
+        if mysql_version is not None:
+            header.append('MySQLdb %s' % mysql_version)
+    elif 'postgres' in test_db_engine:
+        if psycopg2 is not None:
+            header.append('Psycopg2 %s' % psycopg2.__version__)
+    elif 'sqlite' in test_db_engine:
+        header.append('SQLite %s' % sqlite3.sqlite_version)
 
     return header
