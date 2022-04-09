@@ -2458,8 +2458,11 @@ class FieldSignature(BaseSignature):
 
         if old_field_type is not new_field_type:
             try:
-                field_type_changed = (old_field_type().get_internal_type() !=
-                                      new_field_type().get_internal_type())
+                old_field = old_field_type(**old_field_sig.field_attrs)
+                new_field = new_field_type(**self.field_attrs)
+
+                field_type_changed = (old_field.get_internal_type() !=
+                                      new_field.get_internal_type())
             except TypeError:
                 # We can't instantiate those, so assume the field
                 # type has indeed changed.

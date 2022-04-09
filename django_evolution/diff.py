@@ -147,6 +147,12 @@ class Diff(object):
 
                 for field_name, field_change in six.iteritems(changed):
                     lines.append("    In field '%s':" % field_name)
+
+                    if 'field_type' in field_change:
+                        # This is the only change that matters. We don't
+                        # want potentially unrelated attributes to be shown.
+                        field_change = ['field_type']
+
                     lines += [
                         "        Property '%s' has changed" % prop
                         for prop in field_change
@@ -222,12 +228,23 @@ class Diff(object):
 
                 for field_name, field_change in six.iteritems(field_changes):
                     field_sig = model_sig.get_field_sig(field_name)
-                    changed_attrs = OrderedDict(
-                        (attr, field_sig.get_attr_value(attr))
-                        for attr in field_change
-                    )
+                    changed_attrs = OrderedDict()
 
-                    if ('null' in changed_attrs and
+                    field_type_changed = 'field_type' in field_change
+
+                    if field_type_changed:
+                        # If the field type changes, we're doing a hard
+                        # reset on the attributes. We won't be showing the
+                        # difference between any other attributes on here.
+                        changed_attrs['field_type'] = field_sig.field_type
+                        changed_attrs.update(field_sig.field_attrs)
+                    else:
+                        changed_attrs.update(
+                            (attr, field_sig.get_attr_value(attr))
+                            for attr in field_change
+                        )
+
+                    if ('null' in field_change and
                         not field_sig.get_attr_value('null') and
                         not issubclass(field_sig.field_type,
                                        models.ManyToManyField)):

@@ -11,6 +11,7 @@ from functools import wraps
 from unittest import SkipTest
 
 import django
+from django.db import models
 
 from django_evolution.support import (supports_constraints,
                                       supports_index_feature,
@@ -162,6 +163,27 @@ def requires_attr(cls, attr_name):
         flag=cls is not None and hasattr(cls, attr_name),
         skip_message=("%s.%s isn't supported on Django %%(django_version)s"
                       % (cls.__name__, attr_name)))
+
+
+def requires_model_field(field_name):
+    """Require the existence of a Django field for a test to run.
+
+    Version Added:
+        2.2
+
+    Args:
+        field_name (unicode):
+            The name of the field to require.
+
+    Raises:
+        unittest.SkipTest:
+            The field is missing. The test will be skipped with a suitable
+            message.
+    """
+    return _build_requires_support_decorator(
+        flag=hasattr(models, field_name),
+        skip_message=("models.%s isn't supported on Django %%(django_version)s"
+                      % field_name))
 
 
 def requires_index_feature(feature_name):

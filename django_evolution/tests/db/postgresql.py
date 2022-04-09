@@ -892,6 +892,23 @@ def change_field(connection):
             'ALTER TABLE "tests_testmodel"'
             ' ALTER COLUMN "dec_field1" TYPE numeric(10, 3);',
         ],
+
+        'field_type': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "char_field" TYPE text USING char_field::text;',
+        ],
+
+        'field_type_null_false': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "char_field1" TYPE text USING char_field1::text;',
+
+            'UPDATE "tests_testmodel"'
+            ' SET "char_field1" = \'test123\''
+            ' WHERE "char_field1" IS NULL;',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "char_field1" SET NOT NULL;',
+        ],
     }
 
     if django_version >= (1, 11):
@@ -918,6 +935,82 @@ def change_field(connection):
                                            'custom_m2m_db_table_name',
                                            'tests_testmodel'),
             ],
+
+            'field_type_primary_key_bigautofield': [
+                'SET CONSTRAINTS "%(constraint)s" IMMEDIATE;'
+                ' ALTER TABLE "change_field_non-default_m2m_table"'
+                ' DROP CONSTRAINT "%(constraint)s";'
+                % {
+                    'constraint': generate_constraint_name(
+                        'testmodel_id', 'my_id',
+                        'change_field_non-default_m2m_table',
+                        'tests_testmodel'),
+                },
+
+                'ALTER TABLE "tests_testmodel"'
+                ' ALTER COLUMN "my_id"'
+                ' TYPE bigint USING my_id::bigint;',
+
+                'DROP SEQUENCE IF EXISTS "tests_testmodel_my_id_seq" CASCADE;',
+
+                'CREATE SEQUENCE "tests_testmodel_my_id_seq";',
+
+                'ALTER TABLE "tests_testmodel"'
+                ' ALTER COLUMN "my_id"'
+                ' SET DEFAULT nextval(\'"tests_testmodel_my_id_seq"\');',
+
+                'SELECT setval(\'"tests_testmodel_my_id_seq"\', MAX("my_id"))'
+                ' FROM "tests_testmodel";',
+
+                'ALTER SEQUENCE "tests_testmodel_my_id_seq"'
+                ' OWNED BY "tests_testmodel"."my_id";',
+
+                'ALTER TABLE "change_field_non-default_m2m_table"'
+                ' ALTER COLUMN "testmodel_id" TYPE bigint;',
+
+                'ALTER TABLE "change_field_non-default_m2m_table"'
+                ' ADD CONSTRAINT "%(constraint)s" FOREIGN KEY ("testmodel_id")'
+                ' REFERENCES "tests_testmodel" ("my_id") DEFERRABLE'
+                ' INITIALLY DEFERRED;'
+                % {
+                    'constraint': generate_constraint_name(
+                        'testmodel_id', 'my_id',
+                        'change_field_non-default_m2m_table',
+                        'tests_testmodel'),
+                },
+            ],
+
+            'field_type_primary_key_smallintegerfield': [
+                'SET CONSTRAINTS "%(constraint)s" IMMEDIATE;'
+                ' ALTER TABLE "change_field_non-default_m2m_table"'
+                ' DROP CONSTRAINT "%(constraint)s";'
+                % {
+                    'constraint': generate_constraint_name(
+                        'testmodel_id', 'my_id',
+                        'change_field_non-default_m2m_table',
+                        'tests_testmodel'),
+                },
+
+                'ALTER TABLE "tests_testmodel"'
+                ' ALTER COLUMN "my_id"'
+                ' TYPE smallint USING my_id::smallint;',
+
+                'DROP SEQUENCE IF EXISTS "tests_testmodel_my_id_seq" CASCADE;',
+
+                'ALTER TABLE "change_field_non-default_m2m_table"'
+                ' ALTER COLUMN "testmodel_id" TYPE smallint;',
+
+                'ALTER TABLE "change_field_non-default_m2m_table"'
+                ' ADD CONSTRAINT "%(constraint)s" FOREIGN KEY ("testmodel_id")'
+                ' REFERENCES "tests_testmodel" ("my_id") DEFERRABLE'
+                ' INITIALLY DEFERRED;'
+                % {
+                    'constraint': generate_constraint_name(
+                        'testmodel_id', 'my_id',
+                        'change_field_non-default_m2m_table',
+                        'tests_testmodel'),
+                },
+            ],
         })
     else:
         mappings.update({
@@ -940,6 +1033,80 @@ def change_field(connection):
                 % generate_constraint_name('testmodel_id', 'my_id',
                                            'custom_m2m_db_table_name',
                                            'tests_testmodel'),
+            ],
+
+            'field_type_primary_key_bigautofield': [
+                'ALTER TABLE "change_field_non-default_m2m_table"'
+                ' DROP CONSTRAINT "%(constraint)s";'
+                % {
+                    'constraint': generate_constraint_name(
+                        'testmodel_id', 'my_id',
+                        'change_field_non-default_m2m_table',
+                        'tests_testmodel'),
+                },
+
+                'ALTER TABLE "tests_testmodel"'
+                ' ALTER COLUMN "my_id"'
+                ' TYPE bigint USING my_id::bigint;',
+
+                'DROP SEQUENCE IF EXISTS "tests_testmodel_my_id_seq" CASCADE;',
+
+                'CREATE SEQUENCE "tests_testmodel_my_id_seq";',
+
+                'ALTER TABLE "tests_testmodel"'
+                ' ALTER COLUMN "my_id"'
+                ' SET DEFAULT nextval(\'"tests_testmodel_my_id_seq"\');',
+
+                'SELECT setval(\'"tests_testmodel_my_id_seq"\', MAX("my_id"))'
+                ' FROM "tests_testmodel";',
+
+                'ALTER SEQUENCE "tests_testmodel_my_id_seq"'
+                ' OWNED BY "tests_testmodel"."my_id";',
+
+                'ALTER TABLE "change_field_non-default_m2m_table"'
+                ' ALTER COLUMN "testmodel_id" TYPE bigint;',
+
+                'ALTER TABLE "change_field_non-default_m2m_table"'
+                ' ADD CONSTRAINT "%(constraint)s" FOREIGN KEY ("testmodel_id")'
+                ' REFERENCES "tests_testmodel" ("my_id") DEFERRABLE'
+                ' INITIALLY DEFERRED;'
+                % {
+                    'constraint': generate_constraint_name(
+                        'testmodel_id', 'my_id',
+                        'change_field_non-default_m2m_table',
+                        'tests_testmodel'),
+                },
+            ],
+
+            'field_type_primary_key_smallintegerfield': [
+                'ALTER TABLE "change_field_non-default_m2m_table"'
+                ' DROP CONSTRAINT "%(constraint)s";'
+                % {
+                    'constraint': generate_constraint_name(
+                        'testmodel_id', 'my_id',
+                        'change_field_non-default_m2m_table',
+                        'tests_testmodel'),
+                },
+
+                'ALTER TABLE "tests_testmodel"'
+                ' ALTER COLUMN "my_id"'
+                ' TYPE smallint USING my_id::smallint;',
+
+                'DROP SEQUENCE IF EXISTS "tests_testmodel_my_id_seq" CASCADE;',
+
+                'ALTER TABLE "change_field_non-default_m2m_table"'
+                ' ALTER COLUMN "testmodel_id" TYPE smallint;',
+
+                'ALTER TABLE "change_field_non-default_m2m_table"'
+                ' ADD CONSTRAINT "%(constraint)s" FOREIGN KEY ("testmodel_id")'
+                ' REFERENCES "tests_testmodel" ("my_id") DEFERRABLE'
+                ' INITIALLY DEFERRED;'
+                % {
+                    'constraint': generate_constraint_name(
+                        'testmodel_id', 'my_id',
+                        'change_field_non-default_m2m_table',
+                        'tests_testmodel'),
+                },
             ],
         })
 

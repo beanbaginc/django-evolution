@@ -1171,6 +1171,115 @@ def change_field(connection):
             'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
             % generate_index_name('tests_testmodel', 'int_field1'),
         ],
+
+        'field_type': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" text NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'field_type_null_false': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" text NOT NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        # In this test, there are no differences between AutoField and
+        # BigAutoField, so no changes are made.
+        'field_type_primary_key_bigautofield': [],
+
+        'field_type_primary_key_smallintegerfield': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" smallint NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
     }
 
     if sqlite_version >= (3, 26):

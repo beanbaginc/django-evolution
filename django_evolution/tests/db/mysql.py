@@ -799,6 +799,60 @@ def change_field(connection):
             'ALTER TABLE `tests_testmodel`'
             ' MODIFY COLUMN `dec_field1` numeric(10, 3);',
         ],
+
+        'field_type': [
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY `char_field` longtext NULL;',
+        ],
+
+        'field_type_null_false': [
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY `char_field1` longtext NOT NULL;',
+        ],
+
+        'field_type_primary_key_bigautofield': [
+            'ALTER TABLE `change_field_non-default_m2m_table`'
+            ' DROP FOREIGN KEY `%s`;'
+            % generate_constraint_name('testmodel_id', 'my_id',
+                                       'change_field_non-default_m2m_table',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE `tests_testmodel`'
+            ' DROP PRIMARY KEY,'
+            ' MODIFY `my_id` bigint AUTO_INCREMENT NOT NULL PRIMARY KEY;',
+
+            'ALTER TABLE `change_field_non-default_m2m_table`'
+            ' MODIFY `testmodel_id` bigint NOT NULL;',
+
+            'ALTER TABLE `change_field_non-default_m2m_table`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`my_id`);'
+            % generate_constraint_name('testmodel_id', 'my_id',
+                                       'change_field_non-default_m2m_table',
+                                       'tests_testmodel'),
+        ],
+
+        'field_type_primary_key_smallintegerfield': [
+            'ALTER TABLE `change_field_non-default_m2m_table`'
+            ' DROP FOREIGN KEY `%s`;'
+            % generate_constraint_name('testmodel_id', 'my_id',
+                                       'change_field_non-default_m2m_table',
+                                       'tests_testmodel'),
+
+            'ALTER TABLE `tests_testmodel`'
+            ' DROP PRIMARY KEY,'
+            ' MODIFY `my_id` smallint NOT NULL PRIMARY KEY;',
+
+            'ALTER TABLE `change_field_non-default_m2m_table`'
+            ' MODIFY `testmodel_id` smallint NOT NULL;',
+
+            'ALTER TABLE `change_field_non-default_m2m_table`'
+            ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
+            ' REFERENCES `tests_testmodel` (`my_id`);'
+            % generate_constraint_name('testmodel_id', 'my_id',
+                                       'change_field_non-default_m2m_table',
+                                       'tests_testmodel'),
+        ],
     }
 
 

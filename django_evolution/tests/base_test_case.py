@@ -28,6 +28,7 @@ from django_evolution.tests.utils import (create_test_project_sig,
 from django_evolution.utils.migrations import (MigrationList,
                                                record_applied_migrations,
                                                unrecord_applied_migrations)
+from django_evolution.utils.models import clear_model_rel_tree
 
 
 class TestCase(DjangoTestCase):
@@ -115,6 +116,7 @@ class TestCase(DjangoTestCase):
 
         self.ensure_deleted_apps()
         unregister_test_models()
+        clear_model_rel_tree()
 
     def shortDescription(self):
         """Returns the description of the current test.
