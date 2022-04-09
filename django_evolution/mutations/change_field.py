@@ -106,27 +106,55 @@ class ChangeField(BaseModelFieldMutation):
             model (MockModel):
                 The model being mutated.
         """
-        field_sig = mutator.model_sig.get_field_sig(self.field_name)
-        field = model._meta.get_field(self.field_name)
+        field_name = self.field_name
+        field_sig = mutator.model_sig.get_field_sig(field_name)
+        field = model._meta.get_field(field_name)
 
         for attr_name in six.iterkeys(self.field_attrs):
             if attr_name not in mutator.evolver.supported_change_attrs:
                 raise EvolutionNotImplementedError(
                     "ChangeField does not support modifying the '%s' "
                     "attribute on '%s.%s'."
-                    % (attr_name, self.model_name, self.field_name))
+                    % (attr_name, self.model_name, field_name))
 
-        new_field_attrs = {}
+        # Determine which attributes have changed in this mutation. If there
+        # are changes, we'll apply them to the database.
+        changed_field_attrs = self._get_changed_field_attrs(field_sig)
+
+        if changed_field_attrs:
+            mutator.change_column(mutation=self,
+                                  field=field,
+                                  new_attrs=changed_field_attrs)
+
+    def _get_changed_field_attrs(self, old_field_sig):
+        """Return the attributes that have changed.
+
+        Version Added:
+            2.2
+
+        Args:
+            old_field_sig (django_evolution.signature.FieldSignature):
+                The signature of the old field, before any changes are
+                applied.
+
+        Returns:
+            dict:
+            A mapping of attribute names to a field change dictionary with
+            the following keys:
+
+            * ``old_value``: The value in the old field signature.
+            * ``new_value``: The new value provided to the mutation.
+        """
+        changed_field_attrs = {}
 
         for attr_name, attr_value in six.iteritems(self.field_attrs):
-            old_attr_value = field_sig.get_attr_value(attr_name)
+            old_attr_value = old_field_sig.get_attr_value(attr_name)
 
             # Avoid useless SQL commands if nothing has changed.
             if old_attr_value != attr_value:
-                new_field_attrs[attr_name] = {
+                changed_field_attrs[attr_name] = {
                     'old_value': old_attr_value,
                     'new_value': attr_value,
                 }
 
-        if new_field_attrs:
-            mutator.change_column(self, field, new_field_attrs)
+        return changed_field_attrs
