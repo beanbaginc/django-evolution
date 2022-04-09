@@ -123,6 +123,31 @@ def get_model_name(model):
         return model._meta.module_name
 
 
+def get_field_is_hidden(field):
+    """Return whether a field is hidden.
+
+    Version Added:
+        2.2
+
+    Args:
+        field (django.db.models.Field):
+            The field to check.
+
+    Returns:
+        bool:
+        ``True`` if the field is hidden. ``False`` if it is not.
+    """
+    if hasattr(field, 'hidden'):
+        # Django >= 1.8
+        return field.hidden
+    else:
+        # Django < 1.8
+        if hasattr(field, 'rel'):
+            return field.rel.is_hidden()
+        else:
+            return field.is_hidden()
+
+
 def get_field_is_many_to_many(field):
     """Return whether a field is a Many-to-Many field.
 
@@ -309,6 +334,7 @@ __all__ = [
     'GenericForeignKey',
     'GenericRelation',
     'all_models',
+    'get_field_is_hidden',
     'get_field_is_many_to_many',
     'get_field_is_relation',
     'get_model',
