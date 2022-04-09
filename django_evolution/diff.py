@@ -272,9 +272,14 @@ class Diff(object):
                     change_meta_indexes = []
 
                     for index_sig in model_sig.index_sigs:
-                        change_meta_index = {
-                            'fields': index_sig.fields,
-                        }
+                        change_meta_index = index_sig.attrs.copy()
+
+                        if index_sig.expressions:
+                            change_meta_index['expressions'] = \
+                                index_sig.expressions
+
+                        if index_sig.fields:
+                            change_meta_index['fields'] = index_sig.fields
 
                         if index_sig.name:
                             change_meta_index['name'] = index_sig.name

@@ -230,7 +230,9 @@ class MockMeta(object):
         if hasattr(models, 'Index'):
             self.meta['indexes'] = [
                 models.Index(name=index_sig.name,
-                             fields=index_sig.fields)
+                             fields=index_sig.fields or (),
+                             *(index_sig.expressions or ()),
+                             **index_sig.attrs)
                 for index_sig in model_sig.index_sigs
             ]
 

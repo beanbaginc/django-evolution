@@ -225,9 +225,13 @@ class ModelMutator(object):
             old_value = []
 
             for index_sig in self.model_sig.index_sigs:
-                index_value = {
-                    'fields': list(index_sig.fields),
-                }
+                index_value = index_sig.attrs.copy()
+
+                if index_sig.expressions:
+                    index_value['expressions'] = index_sig.expressions
+
+                if index_sig.fields:
+                    index_value['fields'] = index_sig.fields
 
                 if index_sig.name:
                     index_value['name'] = index_sig.name

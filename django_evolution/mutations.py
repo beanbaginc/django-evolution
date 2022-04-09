@@ -1597,11 +1597,21 @@ class ChangeMeta(BaseModelMutation):
             model_sig.constraint_sigs = constraint_sigs
         elif prop_name == 'indexes':
             # Django >= 1.11
-            model_sig.index_sigs = [
-                IndexSignature(name=index.get('name'),
-                               fields=index['fields'])
-                for index in self.new_value
-            ]
+            index_sigs = []
+
+            for index_data in self.new_value:
+                index_attrs = index_data.copy()
+                index_expressions = index_attrs.pop('expressions', None)
+                index_name = index_attrs.pop('name', None)
+                index_fields = index_attrs.pop('fields', None)
+
+                index_sigs.append(
+                    IndexSignature(attrs=index_attrs,
+                                   expressions=index_expressions,
+                                   fields=index_fields,
+                                   name=index_name))
+
+            model_sig.index_sigs = index_sigs
         else:
             simulation.fail('The property cannot be changed on a model.')
 

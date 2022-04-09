@@ -1378,7 +1378,50 @@ def indexes(connection):
     """
     generate_index_name = make_generate_index_name(connection)
 
-    return {
+    supports_expression_indexes = \
+        getattr(connection.features, 'supports_expression_indexes', False)
+
+    # If a tablespace is at all specified, the SQL statement would have a
+    # space, followed by the tablespace SQL, even if empty.
+    #
+    # This is pulled out into a variable for documentation purposes, and in
+    # the event that this (very minor) issue is discovered and fixed.
+    tablespace_spacer = ' '
+
+    mappings = {
+        # NOTE: condition is ignored for MySQL.
+        'replace_condition': [
+            'DROP INDEX `my_index` ON `tests_testmodel`;',
+
+            'CREATE INDEX `my_index`'
+            ' ON `tests_testmodel` (`int_field1`);',
+        ],
+
+        # NOTE: db_tablespace is ignored for MySQL.
+        'replace_db_tablespace': [
+            'DROP INDEX `my_index` ON `tests_testmodel`;',
+
+            'CREATE INDEX `my_index`'
+            ' ON `tests_testmodel` (`int_field1`)%s;'
+            % tablespace_spacer,
+        ],
+
+        # NOTE: include is ignored for MySQL.
+        'replace_include': [
+            'DROP INDEX `my_index` ON `tests_testmodel`;',
+
+            'CREATE INDEX `my_index`'
+            ' ON `tests_testmodel` (`int_field1`);',
+        ],
+
+        # NOTE: opclasses is ignored for MySQL.
+        'replace_opclasses': [
+            'DROP INDEX `my_index` ON `tests_testmodel`;',
+
+            'CREATE INDEX `my_index`'
+            ' ON `tests_testmodel` (`char_field1`);',
+        ],
+
         'replace_list': [
             {
                 'DROP INDEX `%s` ON `tests_testmodel`;'
@@ -1427,7 +1470,57 @@ def indexes(connection):
             ' ON `tests_testmodel` (`char_field1`, `char_field2`%s);'
             % DESC,
         },
+
+        # NOTE: condition is ignored for MySQL.
+        'setting_from_empty_with_condition': [
+            'CREATE INDEX `my_index`'
+            ' ON `tests_testmodel` (`int_field1`);'
+        ],
+
+        # NOTE: db_tablespace is ignored for MySQL.
+        'setting_from_empty_with_db_tablespace': [
+            'CREATE INDEX `%s`'
+            ' ON `tests_testmodel` (`int_field1`)%s;'
+            % (generate_index_name('tests_testmodel',
+                                   ['int_field1'],
+                                   model_meta_indexes=True),
+               tablespace_spacer),
+        ],
+
+        # NOTE: include is ignored for MySQL.
+        'setting_from_empty_with_include': [
+            'CREATE INDEX `my_index`'
+            ' ON `tests_testmodel` (`int_field1`);'
+        ],
+
+        # NOTE: opclasses is ignored for MySQL.
+        'setting_from_empty_with_opclasses': [
+            'CREATE INDEX `my_index`'
+            ' ON `tests_testmodel` (`char_field1`);'
+        ],
     }
+
+    if supports_expression_indexes:
+        mappings.update({
+            'replace_expressions': [
+                'DROP INDEX `my_index` ON `tests_testmodel`;',
+
+                'CREATE INDEX `my_index`'
+                ' ON `tests_testmodel` (((`int_field2` - `int_field1`)));',
+            ],
+
+            'setting_from_empty_with_expressions': [
+                'CREATE INDEX `my_index`'
+                ' ON `tests_testmodel` (((`int_field1` + `int_field2`)));'
+            ],
+        })
+    else:
+        mappings.update({
+            'replace_expressions': [],
+            'setting_from_empty_with_expressions': [],
+        })
+
+    return mappings
 
 
 def preprocessing(connection):

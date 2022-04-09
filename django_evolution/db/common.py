@@ -23,6 +23,7 @@ from django_evolution.compat.models import (get_remote_field,
                                             get_remote_field_model)
 from django_evolution.db.sql_result import AlterTableSQLResult, SQLResult
 from django_evolution.errors import EvolutionNotImplementedError
+from django_evolution.support import supports_index_feature
 
 
 class BaseEvolutionOperations(object):
@@ -78,6 +79,34 @@ class BaseEvolutionOperations(object):
         """
         self.database_state = database_state
         self.connection = connection
+
+    def can_add_index(self, index):
+        """Return whether an index can be added to this database.
+
+        This will determine if the database connection supports the state
+        represented in the index well enough to be written to the database.
+
+        Note that not all features of an index are required. At the moment,
+        to comply with Django's logic
+        (:py:meth:`BaseDatabaseSchemaEditor.add_index()
+        <django.db.backends.base.schema.BaseDatabaseSchemaEditor.add_index>`),
+        an index can be written so long as it either does not contain
+        expressions or the database backend supports expression indexes.
+
+        Args:
+            index (django.db.models.Index):
+                The index that would be written.
+
+        Returns:
+            bool:
+            ``True`` if the index can be written. ``False`` if it cannot.
+        """
+        if (supports_index_feature('expressions') and
+            index.contains_expressions and
+            not self.connection.features.supports_expression_indexes):
+            return False
+
+        return True
 
     def generate_table_ops_sql(self, mutator, ops):
         """Generates SQL for a sequence of mutation operations.
@@ -1131,8 +1160,13 @@ class BaseEvolutionOperations(object):
 
             [
                 {
-                    'name': 'optional-index-name',
+                    'condition': {<deconstructured>},
+                    'db_tablespace': '...',
+                    'expressions': [{<deconstructured>}, ...],
                     'fields': ['field1', '-field2_sorted_desc'],
+                    'include': ['...', ...],
+                    'name': 'optional-index-name',
+                    'opclasses': ['...', ...],
                 },
                 ...
             ]
@@ -1158,82 +1192,90 @@ class BaseEvolutionOperations(object):
         if not old_indexes:
             old_indexes = []
 
-        # We're working with dictionaries and lists, which we can't just pass
-        # into set() like we would for the other methods. We need to calculate
-        # an explicit, ordered list of indexes, so to do this, we're going to
-        # build a set of tuples representing the old values and the new
-        # values, and then calculate an ordered list of indexes to remove and
-        # to add based on values found in those sets.
-        def _make_index_tuple(index_info):
-            return (index_info.get('name'), tuple(index_info['fields']))
-
-        old_indexes_set = set(
-            _make_index_tuple(index_info)
+        old_indexes_map = {
+            repr(index_info): index_info
             for index_info in old_indexes
-        )
+        }
 
-        new_indexes_set = set(
-            _make_index_tuple(index_info)
+        new_indexes_map = {
+            repr(index_info): index_info
             for index_info in new_indexes
-        )
+        }
 
         to_remove = [
             index_info
-            for index_info in old_indexes
-            if _make_index_tuple(index_info) not in new_indexes_set
+            for index_key, index_info in six.iteritems(old_indexes_map)
+            if index_key not in new_indexes_map
         ]
 
         to_add = [
             index_info
-            for index_info in new_indexes
-            if _make_index_tuple(index_info) not in old_indexes_set
+            for index_key, index_info in six.iteritems(new_indexes_map)
+            if index_key not in old_indexes_map
         ]
 
         sql_result = SQLResult()
         table_name = model._meta.db_table
+        db_state = self.database_state
 
         with self.connection.schema_editor(collect_sql=True) as schema_editor:
             for index_info in to_remove:
-                index_field_names = index_info['fields']
+                index_field_names = index_info.get('fields', ())
                 index_name = index_info.get('name')
 
                 if index_name:
-                    index_state = self.database_state.get_index(
-                        table_name=table_name,
-                        index_name=index_name)
-                else:
+                    index_state = db_state.get_index(table_name=table_name,
+                                                     index_name=index_name)
+                elif index_field_names:
                     # No explicit index name was given, so see if we can find
                     # one that matches in the database.
                     fields = self.get_fields_for_names(
                         model,
                         index_field_names,
                         allow_sort_prefixes=True)
-                    index_state = self.database_state.find_index(
+                    index_state = db_state.find_index(
                         table_name=table_name,
                         columns=self.get_column_names_for_fields(fields))
+                else:
+                    index_state = None
 
                 if index_state:
                     # We found a suitable index name, and a matching index
                     # entry in the database. Remove it.
-                    index = models.Index(fields=list(index_field_names),
-                                         name=index_state.name)
+                    index_name = index_state.name
+
+                    index = self._create_index_from_mutation_info(
+                        dict(index_info, **{
+                            'name': index_name,
+                            'fields': list(index_field_names),
+                        }))
                     sql_result.add('%s;' % index.remove_sql(model,
                                                             schema_editor))
 
+                    db_state.remove_index(table_name=table_name,
+                                          index_name=index_name)
+
             for index_info in to_add:
-                index_field_names = index_info['fields']
-                index_name = index_info.get('name')
-                fields = self.get_fields_for_names(model, index_field_names,
-                                                   allow_sort_prefixes=True)
+                index_attrs = index_info.copy()
+                index_field_names = index_attrs.pop('fields', None)
+                index_name = index_attrs.pop('name', None)
+
+                if index_field_names:
+                    fields = self.get_fields_for_names(
+                        model,
+                        index_field_names,
+                        allow_sort_prefixes=True)
+                else:
+                    fields = None
 
                 if index_name:
-                    index_state = self.database_state.get_index(
+                    index_state = db_state.get_index(
                         table_name=table_name,
                         index_name=index_name)
-                else:
+                elif fields:
                     # No explicit index name was given, so see if we can find
                     # one that matches in the database.
-                    index_state = self.database_state.find_index(
+                    index_state = db_state.find_index(
                         table_name=table_name,
                         columns=self.get_column_names_for_fields(fields))
 
@@ -1241,20 +1283,23 @@ class BaseEvolutionOperations(object):
                         index_name = index_state.name
 
                 if not index_name or not index_state:
-                    # This is a new index not found in the database. We can
-                    # record it and proceed.
-                    index = models.Index(fields=list(index_field_names),
-                                         name=index_name)
+                    # This is a new index not found in the database, or a
+                    # replacement for one that's being removed. We can record
+                    # it and proceed.
+                    index = self._create_index_from_mutation_info(index_info)
 
-                    if not index_name:
-                        index.set_name_with_model(model)
+                    if self.can_add_index(index):
+                        if not index_name:
+                            index.set_name_with_model(model)
 
-                    self.database_state.add_index(
-                        table_name=table_name,
-                        index_name=index.name,
-                        columns=self.get_column_names_for_fields(fields))
-                    sql_result.add('%s;' % index.create_sql(model,
-                                                            schema_editor))
+                        db_state.add_index(
+                            table_name=table_name,
+                            index_name=index.name,
+                            columns=self.get_column_names_for_fields(
+                                fields or []))
+
+                        sql_result.add(
+                            '%s;' % index.create_sql(model, schema_editor))
 
         return sql_result
 
@@ -1592,3 +1637,49 @@ class BaseEvolutionOperations(object):
         """
         return (op1['type'] in self.mergeable_ops and
                 op2['type'] in self.mergeable_ops)
+
+    def _create_index_from_mutation_info(self, index_info):
+        """Create and return a new index based on mutation information.
+
+        This will parse out attributes passed to a mutation class and
+        create a :py:class:`~django.db.models.Index` suitable for the
+        current version of Django.
+
+        Version Added:
+            2.2
+
+        Args:
+            index_info (dict):
+                Information passed to the mutation.
+
+        Returns:
+            django.db.models.Index:
+            The resulting Index.
+        """
+        condition = index_info.get('condition')
+        db_tablespace = index_info.get('db_tablespace')
+        expressions = index_info.get('expressions')
+        fields = index_info.get('fields')
+        include = index_info.get('include')
+        name = index_info.get('name')
+        opclasses = index_info.get('opclasses')
+
+        if expressions and supports_index_feature('expressions'):
+            index_args = expressions
+        else:
+            index_args = ()
+
+        index_kwargs = {
+            _attr_name: _value
+            for _attr_name, _value in (
+                ('fields', fields),
+                ('name', name),
+                ('condition', condition),
+                ('db_tablespace', db_tablespace),
+                ('include', include),
+                ('opclasses', opclasses),
+            )
+            if _value is not None and supports_index_feature(_attr_name)
+        }
+
+        return models.Index(*index_args, **index_kwargs)

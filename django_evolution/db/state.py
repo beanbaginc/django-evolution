@@ -15,21 +15,20 @@ from django_evolution.errors import DatabaseStateError
 class IndexState(object):
     """An index recorded in the database state."""
 
-    def __init__(self, name, columns, unique=False):
+    def __init__(self, name, columns=[], unique=False):
         """Initialize the index state.
 
         Args:
-            name (unicode):
+            name (unicode, optional):
                 The name of the index.
 
-            columns (list of unicode):
+            columns (list of unicode, optional):
                 A list of columns that the index is comprised of.
 
             unique (bool, optional):
                 Whether this is a unique index.
         """
         assert name
-        assert columns
 
         self.name = name
         self.columns = columns

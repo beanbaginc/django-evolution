@@ -2232,7 +2232,58 @@ def indexes(connection):
     """
     generate_index_name = make_generate_index_name(connection)
 
+    # If a tablespace is at all specified, the SQL statement would have a
+    # space, followed by the tablespace SQL, even if empty.
+    #
+    # This is pulled out into a variable for documentation purposes, and in
+    # the event that this (very minor) issue is discovered and fixed.
+    tablespace_spacer = ' '
+
+    # NOTE: Some of these use a set instead of a list of statements.
+    #       Internally, for some Meta.indexes-related operations, Django
+    #       will build a set of index names and process it based on that
+    #       order. We can't assume an order, so we must compare sets.
     return {
+        'replace_condition': [
+            'DROP INDEX "my_index";',
+
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("int_field1")'
+            ' WHERE "int_field2" <= 20;',
+        ],
+
+        # NOTE: db_tablespace is ignored for SQLite3.
+        'replace_db_tablespace': [
+            'DROP INDEX "my_index";',
+
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("int_field1")%s;'
+            % tablespace_spacer,
+        ],
+
+        'replace_expressions': [
+            'DROP INDEX "my_index";',
+
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ((("int_field2" - "int_field1")));',
+        ],
+
+        # NOTE: include is ignored for SQLite3.
+        'replace_include': [
+            'DROP INDEX "my_index";',
+
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("int_field1");',
+        ],
+
+        # NOTE: opclasses is ignored for SQLite3.
+        'replace_opclasses': [
+            'DROP INDEX "my_index";',
+
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("char_field1");',
+        ],
+
         'replace_list': [
             {
                 'DROP INDEX "%s";'
@@ -2281,6 +2332,39 @@ def indexes(connection):
             ' ON "tests_testmodel" ("char_field1", "char_field2"%s);'
             % DESC,
         },
+
+        'setting_from_empty_with_condition': [
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("int_field1")'
+            ' WHERE "int_field2" >= 10;'
+        ],
+
+        # NOTE: db_tablespace is ignored for SQLite3.
+        'setting_from_empty_with_db_tablespace': [
+            'CREATE INDEX "%s"'
+            ' ON "tests_testmodel" ("int_field1")%s;'
+            % (generate_index_name('tests_testmodel',
+                                   ['int_field1'],
+                                   model_meta_indexes=True),
+               tablespace_spacer),
+        ],
+
+        'setting_from_empty_with_expressions': [
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ((("int_field1" + "int_field2")));'
+        ],
+
+        # NOTE: include is ignored for SQLite3.
+        'setting_from_empty_with_include': [
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("int_field1");'
+        ],
+
+        # NOTE: opclasses is ignored for SQLite3.
+        'setting_from_empty_with_opclasses': [
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("char_field1");'
+        ],
     }
 
 

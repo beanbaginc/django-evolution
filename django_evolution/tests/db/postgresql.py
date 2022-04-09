@@ -1591,7 +1591,56 @@ def indexes(connection):
     """
     generate_index_name = make_generate_index_name(connection)
 
+    if django_version <= (3, 0):
+        opclass_spacer = ' '
+    else:
+        opclass_spacer = ''
+
     return {
+        'replace_condition': [
+            '%s "my_index";'
+            % drop_index_sql,
+
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("int_field1")'
+            ' WHERE "int_field2" <= 20;',
+        ],
+
+        'replace_db_tablespace': [
+            '%s "my_index";'
+            % drop_index_sql,
+
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("int_field1")'
+            ' TABLESPACE "pg_default";',
+        ],
+
+        'replace_expressions': [
+            '%s "my_index";'
+            % drop_index_sql,
+
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ((("int_field2" - "int_field1")));',
+        ],
+
+        'replace_include': [
+            '%s "my_index";'
+            % drop_index_sql,
+
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("int_field1")'
+            ' INCLUDE ("char_field2", "char_field1");',
+        ],
+
+        'replace_opclasses': [
+            '%s "my_index";'
+            % drop_index_sql,
+
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("char_field1" text_pattern_ops%s);'
+            % opclass_spacer,
+        ],
+
         'replace_list': [
             {
                 '%s "%s";'
@@ -1644,6 +1693,38 @@ def indexes(connection):
             ' ON "tests_testmodel" ("char_field1", "char_field2"%s);'
             % DESC,
         },
+
+        'setting_from_empty_with_condition': [
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("int_field1")'
+            ' WHERE "int_field2" >= 10;'
+        ],
+
+        'setting_from_empty_with_db_tablespace': [
+            'CREATE INDEX "%s"'
+            ' ON "tests_testmodel" ("int_field1")'
+            ' TABLESPACE "pg_default";'
+            % generate_index_name('tests_testmodel',
+                                  ['int_field1'],
+                                  model_meta_indexes=True),
+        ],
+
+        'setting_from_empty_with_expressions': [
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ((("int_field1" + "int_field2")));'
+        ],
+
+        'setting_from_empty_with_include': [
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("int_field1")'
+            ' INCLUDE ("char_field1", "char_field2");'
+        ],
+
+        'setting_from_empty_with_opclasses': [
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("char_field1" text_pattern_ops%s);'
+            % opclass_spacer,
+        ],
     }
 
 
