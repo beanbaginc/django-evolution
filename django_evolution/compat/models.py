@@ -6,6 +6,9 @@ These translate to the various versions of Django that are supported.
 
 from __future__ import unicode_literals
 
+from django.db import models
+from django.db.models.fields import related
+
 try:
     # Django >= 1.7
     from django.apps.registry import apps
@@ -120,8 +123,68 @@ def get_model_name(model):
         return model._meta.module_name
 
 
+def get_field_is_many_to_many(field):
+    """Return whether a field is a Many-to-Many field.
+
+    Version Added:
+        2.2
+
+    Args:
+        field (django.db.models.Field):
+            The field to check.
+
+    Returns:
+        bool:
+        ``True`` if the field is a Many-to-Many field. ``False`` if it is not.
+    """
+    if hasattr(field, 'many_to_many'):
+        # Django >= 1.8
+        return field.many_to_many
+    else:
+        # Django < 1.8
+        return isinstance(field, (models.ManyToManyField,
+                                  related.ManyToManyRel))
+
+
+def get_field_is_relation(field):
+    """Return whether a field is a relation.
+
+    A field is a relation if it's an object like a
+    :py:class:`django.db.models.ForeignKey` or
+    :py:class:`django.db.models.ManyToManyField`, or if it's a relation
+    utility field like
+    :py:class:`django.db.models.fields.related.ForeignObjectRel` or
+    :py:class:`django.db.models.fields.related.ManyToOneRel`.
+
+    Version Added:
+        2.2
+
+    Args:
+        field (django.db.models.Field or
+               django.db.models.fields.related.ForeignObjectRel):
+            The field to check.
+
+    Returns:
+        bool:
+        ``True`` if the field is a relation. ``False`` if it is not.
+    """
+    if hasattr(field, 'is_relation'):
+        # Django >= 1.8
+        return field.is_relation
+    else:
+        # Django < 1.8
+        return (getattr(field, 'rel', None) is not None or
+                isinstance(field, (related.ForeignObjectRel,
+                                   related.ManyToManyRel)))
+
+
 def get_rel_target_field(field):
     """Return the target field for a field's relation.
+
+    Warning:
+        Despite the name, this should only be called on a
+        :py:class:`ForeignKey` and not on a relation, in order to avoid
+        consistency issues in the data returned on Django >= 1.7.
 
     Args:
         field (django.db.models.Field):
@@ -142,8 +205,21 @@ def get_rel_target_field(field):
 def get_remote_field(field):
     """Return the remote field for a relation.
 
+    This will be an intermediary field, such as:
+
+    * :py:class:`django.db.models.fields.related.ForeignObjectRel`
+    * :py:class:`django.db.models.fields.related.ManyToOneRel`
+    * :py:class:`django.db.models.fields.related.OneToOneRel`
+    * :py:class:`django.db.models.fields.related.ManyToManyRel`
+
     This is equivalent to ``rel`` prior to Django 1.9 and ``remote_field``
     in 1.9 onward.
+
+    Version Changed:
+        2.2:
+        On Django < 1.9, a main relation field (like
+        :py:class:`django.db.models.ForeignKey`) will return the utility
+        relation, matching the behavior on >= 1.9.
 
     Args:
         field (django.db.models.Field):
@@ -158,7 +234,15 @@ def get_remote_field(field):
         return field.remote_field
     else:
         # Django < 1.9
-        return field.rel
+        if hasattr(field, 'rel'):
+            return field.rel
+        elif isinstance(field, related.ManyToManyRel):
+            return getattr(field.to, field.related_name).related.field
+        elif isinstance(field, related.ForeignObjectRel):
+            return field.field
+
+        raise NotImplementedError('Unsupported field/relation type: %r'
+                                  % field)
 
 
 def get_remote_field_model(rel):
@@ -169,11 +253,13 @@ def get_remote_field_model(rel):
 
     Args:
         rel (object):
-            The relation object.
+            The relation object. This is expected to be the result of a
+            :py:func:`get_remote_field` call.
 
     Returns:
         type:
-        The model the relation points to.
+        The model the relation points to. This should be a subclass of
+        :py:meth:`django.db.models.Model`.
     """
     if hasattr(rel, 'model'):
         # Django >= 1.9
@@ -183,16 +269,54 @@ def get_remote_field_model(rel):
         return rel.to
 
 
+def get_remote_field_related_model(rel):
+    """Return the model a relation is pointing from.
+
+    Version Added:
+        2.2
+
+    Args:
+        rel (object):
+            The relation object. This is expected to be the result of a
+            :py:func:`get_remote_field` call.
+
+    Returns:
+        type:
+        The model the relation points to. This should be a subclass of
+        :py:meth:`django.db.models.Model`.
+    """
+    if hasattr(rel, 'related_model'):
+        # Django >= 1.9
+        return rel.related_model
+    else:
+        # Django < 1.9
+        if isinstance(rel, models.ForeignKey):
+            return rel.rel.get_related_field().model
+        elif isinstance(rel, models.ManyToManyField):
+            return rel.rel.to
+        elif isinstance(rel, related.ManyToOneRel):
+            return rel.field.model
+        elif isinstance(rel, related.ManyToManyRel):
+            return getattr(rel.to, rel.related_name).related.model
+        elif isinstance(rel, related.ForeignObjectRel):
+            return rel.get_related_field().model
+
+        raise NotImplementedError('Unsupported field/relation type: %r' % rel)
+
+
 __all__ = [
     'FieldDoesNotExist',
     'GenericForeignKey',
     'GenericRelation',
     'all_models',
+    'get_field_is_many_to_many',
+    'get_field_is_relation',
     'get_model',
     'get_models',
     'get_model_name',
     'get_rel_target_field',
     'get_remote_field',
     'get_remote_field_model',
+    'get_remote_field_related_model',
     'set_model_name',
 ]
