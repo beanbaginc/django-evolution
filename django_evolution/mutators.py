@@ -160,6 +160,37 @@ class ModelMutator(object):
             'initial': initial,
         })
 
+    def change_column_type(self, mutation, old_field, new_field, new_attrs):
+        """Add a pending Change Column Type operation.
+
+        This will cause :py:meth:`to_sql` to include SQL for changing a field
+        to a new type.
+
+        Args:
+            mutation (django_evolution.mutations.ChangeField):
+                The mutation that triggered this column type change.
+
+            old_field (django.db.models.Field):
+                The old field on the model.
+
+            new_field (django.db.models.Field):
+                The new field on the model.
+
+            new_attrs (dict):
+                New attributes set in the
+                :py:class:`~django_evolution.mutations.change_field.
+                ChangeField`.
+        """
+        assert not self._finalized
+
+        self._ops.append({
+            'type': 'change_column_type',
+            'mutation': mutation,
+            'old_field': old_field,
+            'new_field': new_field,
+            'new_attrs': new_attrs,
+        })
+
     def change_column(self, mutation, field, new_attrs):
         """Adds a pending Change Column operation.
 
@@ -225,9 +256,13 @@ class ModelMutator(object):
             old_value = []
 
             for index_sig in self.model_sig.index_sigs:
-                index_value = {
-                    'fields': list(index_sig.fields),
-                }
+                index_value = index_sig.attrs.copy()
+
+                if index_sig.expressions:
+                    index_value['expressions'] = index_sig.expressions
+
+                if index_sig.fields:
+                    index_value['fields'] = index_sig.fields
 
                 if index_sig.name:
                     index_value['name'] = index_sig.name
@@ -1108,7 +1143,23 @@ class AppMutator(object):
         return mutations
 
     def _copy_change_attrs(self, source_mutation, dest_mutation):
+        """Copy attributes for a ChangeField from one mutation to another.
+
+        This will copy the field type, initial value, and any arbitrary
+        attributes from ``source_mutation`` to ``dest_mutation``, if any are
+        set.
+
+        Args:
+            source_mutation (django_evolution.mutations.ChangeField):
+                The mutation to copy from.
+
+            dest_mutation (django_evolution.mutations.ChangeField):
+                The mutation to copy to.
+        """
         dest_mutation.field_attrs.update(source_mutation.field_attrs)
+
+        if source_mutation.field_type is not None:
+            dest_mutation.field_type = source_mutation.field_type
 
         if source_mutation.initial is not None:
             dest_mutation.initial = source_mutation.initial

@@ -53,7 +53,7 @@ def add_field(connection):
     mappings = {
         'AddNonNullNonCallableColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "int_field" integer NOT NULL,'
             ' "added_field" integer NOT NULL);',
@@ -70,7 +70,7 @@ def add_field(connection):
 
         'AddNonNullCallableColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "int_field" integer NOT NULL,'
             ' "added_field" integer NOT NULL);',
@@ -87,7 +87,7 @@ def add_field(connection):
 
         'AddNullColumnWithInitialColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "int_field" integer NOT NULL,'
             ' "added_field" integer NULL);',
@@ -104,7 +104,7 @@ def add_field(connection):
 
         'AddStringColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "int_field" integer NOT NULL,'
             ' "added_field" varchar(10) NOT NULL);',
@@ -121,7 +121,7 @@ def add_field(connection):
 
         'AddBlankStringColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "int_field" integer NOT NULL,'
             ' "added_field" varchar(10) NOT NULL);',
@@ -138,7 +138,7 @@ def add_field(connection):
 
         'AddDateColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "int_field" integer NOT NULL,'
             ' "added_field" datetime NOT NULL);',
@@ -155,7 +155,7 @@ def add_field(connection):
 
         'AddDefaultColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "int_field" integer NOT NULL,'
             ' "added_field" integer NOT NULL);',
@@ -172,7 +172,7 @@ def add_field(connection):
 
         'AddMismatchInitialBoolColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "int_field" integer NOT NULL,'
             ' "added_field" bool NOT NULL);',
@@ -189,7 +189,7 @@ def add_field(connection):
 
         'AddEmptyStringDefaultColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "int_field" integer NOT NULL,'
             ' "added_field" varchar(20) NOT NULL);',
@@ -207,7 +207,7 @@ def add_field(connection):
         'AddNullColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
             '("int_field" integer NOT NULL,'
-            ' "id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            ' "id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "added_field" integer NOT NULL);',
 
@@ -222,7 +222,7 @@ def add_field(connection):
 
         'NonDefaultColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "int_field" integer NOT NULL,'
             ' "non-default_column" integer NULL);',
@@ -238,7 +238,7 @@ def add_field(connection):
 
         'AddColumnCustomTableModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "value" integer NOT NULL,'
             ' "alt_value" varchar(20) NOT NULL,'
             ' "added_field" integer NULL);',
@@ -254,7 +254,7 @@ def add_field(connection):
 
         'AddIndexedColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "int_field" integer NOT NULL,'
             ' "add_field" integer NULL);',
@@ -274,7 +274,7 @@ def add_field(connection):
 
         'AddUniqueColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "int_field" integer NOT NULL,'
             ' "added_field" integer NULL UNIQUE);',
@@ -290,7 +290,7 @@ def add_field(connection):
 
         'AddUniqueIndexedModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "int_field" integer NOT NULL,'
             ' "added_field" integer NULL UNIQUE);',
@@ -306,7 +306,7 @@ def add_field(connection):
 
         'AddForeignKeyModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "int_field" integer NOT NULL,'
             ' "added_field_id" integer NULL'
@@ -629,7 +629,7 @@ def delete_field(connection):
     return {
         'DefaultNamedColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "non-default_db_column" integer NOT NULL,'
             ' "int_field3" integer NOT NULL UNIQUE,'
@@ -655,7 +655,7 @@ def delete_field(connection):
 
         'NonDefaultNamedColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "int_field" integer NOT NULL,'
             ' "int_field3" integer NOT NULL UNIQUE,'
@@ -681,7 +681,7 @@ def delete_field(connection):
 
         'ConstrainedColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "int_field" integer NOT NULL,'
             ' "non-default_db_column" integer NOT NULL,'
@@ -715,7 +715,7 @@ def delete_field(connection):
 
         'DeleteForeignKeyModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "int_field" integer NOT NULL,'
             ' "non-default_db_column" integer NOT NULL,'
@@ -735,7 +735,7 @@ def delete_field(connection):
 
         'DeleteColumnCustomTableModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "alt_value" varchar(20) NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE" ("id", "alt_value")'
@@ -765,7 +765,7 @@ def change_field(connection):
     mappings = {
         'SetNotNullChangeModelWithConstant': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "alt_pk" integer NOT NULL,'
             ' "custom_db_column" integer NOT NULL,'
             ' "int_field1" integer NOT NULL,'
@@ -801,7 +801,7 @@ def change_field(connection):
 
         'SetNotNullChangeModelWithCallable': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "alt_pk" integer NOT NULL,'
             ' "custom_db_column" integer NOT NULL,'
             ' "int_field1" integer NOT NULL,'
@@ -836,7 +836,7 @@ def change_field(connection):
 
         'SetNullChangeModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "alt_pk" integer NOT NULL,'
             ' "custom_db_column" integer NOT NULL,'
             ' "int_field1" integer NOT NULL,'
@@ -873,7 +873,7 @@ def change_field(connection):
 
         'IncreasingMaxLengthChangeModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "alt_pk" integer NOT NULL,'
             ' "custom_db_column" integer NOT NULL,'
             ' "int_field1" integer NOT NULL,'
@@ -908,7 +908,7 @@ def change_field(connection):
 
         'DecreasingMaxLengthChangeModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "alt_pk" integer NOT NULL,'
             ' "custom_db_column" integer NOT NULL,'
             ' "int_field1" integer NOT NULL,'
@@ -964,7 +964,7 @@ def change_field(connection):
 
         'AddUniqueChangeModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "alt_pk" integer NOT NULL,'
             ' "custom_db_column" integer NOT NULL,'
             ' "int_field1" integer NOT NULL,'
@@ -999,7 +999,7 @@ def change_field(connection):
 
         'RemoveUniqueChangeModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "alt_pk" integer NOT NULL,'
             ' "custom_db_column" integer NOT NULL,'
             ' "int_field1" integer NOT NULL,'
@@ -1034,7 +1034,7 @@ def change_field(connection):
 
         'MultiAttrSingleFieldChangeModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "alt_pk" integer NOT NULL,'
             ' "custom_db_column" integer NOT NULL,'
             ' "int_field1" integer NOT NULL,'
@@ -1069,7 +1069,7 @@ def change_field(connection):
 
         'decimal_field_decimal_places': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "alt_pk" integer NOT NULL,'
             ' "custom_db_column" integer NOT NULL,'
             ' "int_field1" integer NOT NULL,'
@@ -1104,7 +1104,7 @@ def change_field(connection):
 
         'decimal_field_decimal_places_max_digits': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "alt_pk" integer NOT NULL,'
             ' "custom_db_column" integer NOT NULL,'
             ' "int_field1" integer NOT NULL,'
@@ -1139,7 +1139,116 @@ def change_field(connection):
 
         'decimal_field_max_digits': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'field_type': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" text NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'field_type_null_false': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" text NOT NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        # In this test, there are no differences between AutoField and
+        # BigAutoField, so no changes are made.
+        'field_type_primary_key_bigautofield': [],
+
+        'field_type_primary_key_smallintegerfield': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" smallint NOT NULL PRIMARY KEY,'
             ' "alt_pk" integer NOT NULL,'
             ' "custom_db_column" integer NOT NULL,'
             ' "int_field1" integer NOT NULL,'
@@ -1182,7 +1291,7 @@ def change_field(connection):
 
             'MultiAttrChangeModel': [
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "alt_pk" integer NOT NULL,'
                 ' "custom_db_column" integer NOT NULL,'
                 ' "int_field1" integer NOT NULL,'
@@ -1220,7 +1329,7 @@ def change_field(connection):
 
             'RedundantAttrsChangeModel': [
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "alt_pk" integer NOT NULL,'
                 ' "custom_db_column" integer NOT NULL,'
                 ' "int_field1" integer NOT NULL,'
@@ -1260,7 +1369,7 @@ def change_field(connection):
         mappings.update({
             'DBColumnChangeModel': [
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "alt_pk" integer NOT NULL,'
                 ' "customised_db_column" integer NOT NULL,'
                 ' "int_field1" integer NOT NULL,'
@@ -1295,7 +1404,7 @@ def change_field(connection):
 
             'MultiAttrChangeModel': [
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "alt_pk" integer NOT NULL,'
                 ' "custom_db_column2" integer NOT NULL,'
                 ' "int_field1" integer NOT NULL,'
@@ -1330,7 +1439,7 @@ def change_field(connection):
 
             'RedundantAttrsChangeModel': [
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "alt_pk" integer NOT NULL,'
                 ' "custom_db_column3" integer NOT NULL,'
                 ' "int_field1" integer NOT NULL,'
@@ -1540,7 +1649,7 @@ def rename_field(connection):
             # the new table name.
             mappings['RenamePrimaryKeyColumnModel'] = [
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_pk_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_pk_id" integer NOT NULL PRIMARY KEY,'
                 ' "char_field" varchar(20) NOT NULL,'
                 ' "int_field" integer NOT NULL,'
                 ' "custom_db_col_name" integer NOT NULL,'
@@ -1596,7 +1705,7 @@ def rename_field(connection):
             # schema rewrite.
             mappings['RenamePrimaryKeyColumnModel'] = [
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_pk_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_pk_id" integer NOT NULL PRIMARY KEY,'
                 ' "char_field" varchar(20) NOT NULL,'
                 ' "int_field" integer NOT NULL,'
                 ' "custom_db_col_name" integer NOT NULL,'
@@ -1632,7 +1741,7 @@ def rename_field(connection):
         mappings.update({
             'RenameColumnModel': [
                 'CREATE TABLE "TEMP_TABLE" '
-                '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("id" integer NOT NULL PRIMARY KEY,'
                 ' "char_field" varchar(20) NOT NULL,'
                 ' "renamed_field" integer NOT NULL,'
                 ' "custom_db_col_name" integer NOT NULL,'
@@ -1665,7 +1774,7 @@ def rename_field(connection):
 
             'RenameColumnWithTableNameModel': [
                 'CREATE TABLE "TEMP_TABLE" '
-                '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("id" integer NOT NULL PRIMARY KEY,'
                 ' "char_field" varchar(20) NOT NULL,'
                 ' "renamed_field" integer NOT NULL,'
                 ' "custom_db_col_name" integer NOT NULL,'
@@ -1706,7 +1815,7 @@ def rename_field(connection):
                 ' "renamed_field_id" integer NOT NULL'
                 ' REFERENCES "tests_renameanchor1" ("id")'
                 ' DEFERRABLE INITIALLY DEFERRED,'
-                ' "id" integer NOT NULL UNIQUE PRIMARY KEY);',
+                ' "id" integer NOT NULL PRIMARY KEY);',
 
                 'INSERT INTO "TEMP_TABLE"'
                 ' ("renamed_field", "char_field", "int_field",'
@@ -1730,7 +1839,7 @@ def rename_field(connection):
 
             'RenameNonDefaultColumnNameModel': [
                 'CREATE TABLE "TEMP_TABLE" '
-                '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("id" integer NOT NULL PRIMARY KEY,'
                 ' "char_field" varchar(20) NOT NULL,'
                 ' "int_field" integer NOT NULL,'
                 ' "renamed_field" integer NOT NULL,'
@@ -1764,7 +1873,7 @@ def rename_field(connection):
 
             'RenameNonDefaultColumnNameToNonDefaultNameModel': [
                 'CREATE TABLE "TEMP_TABLE" '
-                '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("id" integer NOT NULL PRIMARY KEY,'
                 ' "char_field" varchar(20) NOT NULL,'
                 ' "int_field" integer NOT NULL,'
                 ' "non-default_column_name" integer NOT NULL,'
@@ -1798,7 +1907,7 @@ def rename_field(connection):
 
             'RenameNonDefaultColumnNameToNonDefaultNameAndTableModel': [
                 'CREATE TABLE "TEMP_TABLE" '
-                '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("id" integer NOT NULL PRIMARY KEY,'
                 ' "char_field" varchar(20) NOT NULL,'
                 ' "int_field" integer NOT NULL,'
                 ' "non-default_column_name2" integer NOT NULL,'
@@ -1833,7 +1942,7 @@ def rename_field(connection):
 
             'RenameColumnCustomTableModel': [
                 'CREATE TABLE "TEMP_TABLE"'
-                ' ("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                ' ("id" integer NOT NULL PRIMARY KEY,'
                 ' "renamed_field" integer NOT NULL,'
                 ' "alt_value" varchar(20) NOT NULL);',
 
@@ -1906,7 +2015,7 @@ def generics(connection):
     return {
         'DeleteColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "int_field" integer NOT NULL,'
             ' "content_type_id" integer NOT NULL'
             ' REFERENCES "django_content_type" ("id")'
@@ -2011,7 +2120,7 @@ def unique_together(connection):
         mappings.update({
             'replace_list': [
                 'CREATE TABLE "TEMP_TABLE" '
-                '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("id" integer NOT NULL PRIMARY KEY,'
                 ' "int_field1" integer NOT NULL,'
                 ' "int_field2" integer NOT NULL,'
                 ' "char_field1" varchar(20) NOT NULL,'
@@ -2036,7 +2145,7 @@ def unique_together(connection):
 
             'removing': [
                 'CREATE TABLE "TEMP_TABLE" '
-                '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("id" integer NOT NULL PRIMARY KEY,'
                 ' "int_field1" integer NOT NULL,'
                 ' "int_field2" integer NOT NULL,'
                 ' "char_field1" varchar(20) NOT NULL,'
@@ -2131,7 +2240,7 @@ def constraints(connection):
     return {
         'append_list': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "int_field1" integer NOT NULL,'
             ' "int_field2" integer NOT NULL,'
             ' "char_field1" varchar(20) NOT NULL,'
@@ -2157,7 +2266,7 @@ def constraints(connection):
 
         'removing': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "int_field1" integer NOT NULL,'
             ' "int_field2" integer NOT NULL,'
             ' "char_field1" varchar(20) NOT NULL,'
@@ -2175,7 +2284,7 @@ def constraints(connection):
 
         'replace_list': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "int_field1" integer NOT NULL,'
             ' "int_field2" integer NOT NULL,'
             ' "char_field1" varchar(20) NOT NULL,'
@@ -2197,7 +2306,7 @@ def constraints(connection):
 
         'setting_from_empty': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "int_field1" integer NOT NULL,'
             ' "int_field2" integer NOT NULL,'
             ' "char_field1" varchar(20) NOT NULL,'
@@ -2232,7 +2341,58 @@ def indexes(connection):
     """
     generate_index_name = make_generate_index_name(connection)
 
+    # If a tablespace is at all specified, the SQL statement would have a
+    # space, followed by the tablespace SQL, even if empty.
+    #
+    # This is pulled out into a variable for documentation purposes, and in
+    # the event that this (very minor) issue is discovered and fixed.
+    tablespace_spacer = ' '
+
+    # NOTE: Some of these use a set instead of a list of statements.
+    #       Internally, for some Meta.indexes-related operations, Django
+    #       will build a set of index names and process it based on that
+    #       order. We can't assume an order, so we must compare sets.
     return {
+        'replace_condition': [
+            'DROP INDEX "my_index";',
+
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("int_field1")'
+            ' WHERE "int_field2" <= 20;',
+        ],
+
+        # NOTE: db_tablespace is ignored for SQLite3.
+        'replace_db_tablespace': [
+            'DROP INDEX "my_index";',
+
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("int_field1")%s;'
+            % tablespace_spacer,
+        ],
+
+        'replace_expressions': [
+            'DROP INDEX "my_index";',
+
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ((("int_field2" - "int_field1")));',
+        ],
+
+        # NOTE: include is ignored for SQLite3.
+        'replace_include': [
+            'DROP INDEX "my_index";',
+
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("int_field1");',
+        ],
+
+        # NOTE: opclasses is ignored for SQLite3.
+        'replace_opclasses': [
+            'DROP INDEX "my_index";',
+
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("char_field1");',
+        ],
+
         'replace_list': [
             {
                 'DROP INDEX "%s";'
@@ -2281,6 +2441,39 @@ def indexes(connection):
             ' ON "tests_testmodel" ("char_field1", "char_field2"%s);'
             % DESC,
         },
+
+        'setting_from_empty_with_condition': [
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("int_field1")'
+            ' WHERE "int_field2" >= 10;'
+        ],
+
+        # NOTE: db_tablespace is ignored for SQLite3.
+        'setting_from_empty_with_db_tablespace': [
+            'CREATE INDEX "%s"'
+            ' ON "tests_testmodel" ("int_field1")%s;'
+            % (generate_index_name('tests_testmodel',
+                                   ['int_field1'],
+                                   model_meta_indexes=True),
+               tablespace_spacer),
+        ],
+
+        'setting_from_empty_with_expressions': [
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ((("int_field1" + "int_field2")));'
+        ],
+
+        # NOTE: include is ignored for SQLite3.
+        'setting_from_empty_with_include': [
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("int_field1");'
+        ],
+
+        # NOTE: opclasses is ignored for SQLite3.
+        'setting_from_empty_with_opclasses': [
+            'CREATE INDEX "my_index"'
+            ' ON "tests_testmodel" ("char_field1");'
+        ],
     }
 
 
@@ -2300,7 +2493,7 @@ def preprocessing(connection):
     mappings = {
         'add_change_field': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "added_field" varchar(50) NULL);',
 
@@ -2315,7 +2508,7 @@ def preprocessing(connection):
 
         'add_change_rename_field': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "renamed_field" varchar(50) NULL);',
 
@@ -2330,7 +2523,7 @@ def preprocessing(connection):
 
         'add_delete_add_field': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "added_field" integer NOT NULL);',
 
@@ -2345,7 +2538,7 @@ def preprocessing(connection):
 
         'add_delete_add_rename_field': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "renamed_field" integer NOT NULL);',
 
@@ -2360,7 +2553,7 @@ def preprocessing(connection):
 
         'add_rename_change_field': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "renamed_field" varchar(50) NULL);',
 
@@ -2375,7 +2568,7 @@ def preprocessing(connection):
 
         'add_rename_change_rename_change_field': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "renamed_field" varchar(50) NULL);',
 
@@ -2390,7 +2583,7 @@ def preprocessing(connection):
 
         'add_rename_field_with_db_column': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "added_field" varchar(50) NULL);',
 
@@ -2404,7 +2597,7 @@ def preprocessing(connection):
 
         'add_field_rename_model': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "added_field_id" integer NULL'
             ' REFERENCES "tests_reffedpreprocmodel" ("id")'
@@ -2424,7 +2617,7 @@ def preprocessing(connection):
 
         'add_rename_field_rename_model': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "renamed_field_id" integer NULL'
             ' REFERENCES "tests_reffedpreprocmodel" ("id")'
@@ -2444,7 +2637,7 @@ def preprocessing(connection):
 
         'add_sql_delete': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
             ' "added_field" varchar(20) NOT NULL);',
 
@@ -2457,7 +2650,7 @@ def preprocessing(connection):
             'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("my_id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
@@ -2470,7 +2663,7 @@ def preprocessing(connection):
 
         'delete_char_field': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL UNIQUE PRIMARY KEY);',
+            '("my_id" integer NOT NULL PRIMARY KEY);',
 
             'INSERT INTO "TEMP_TABLE" ("my_id")'
             ' SELECT "my_id" FROM "tests_testmodel";',
@@ -2491,7 +2684,7 @@ def preprocessing(connection):
         mappings.update({
             'change_rename_field': [
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "char_field" varchar(20) NULL);',
 
                 'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
@@ -2508,7 +2701,7 @@ def preprocessing(connection):
             'change_rename_change_rename_field': [
                 # Change char_field to length of 30 and allow NULL.
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "char_field" varchar(30) NULL);',
 
                 'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
@@ -2530,7 +2723,7 @@ def preprocessing(connection):
 
                 # Remove NULL from renamed_field.
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "renamed_field" varchar(20) NOT NULL,'
                 ' "char_field" varchar(50) NULL);',
 
@@ -2549,7 +2742,7 @@ def preprocessing(connection):
 
                 # Set renamed_field to allow NULL and set length to 50.
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "renamed_field" varchar(50) NULL);',
 
                 'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
@@ -2569,7 +2762,7 @@ def preprocessing(connection):
         mappings.update({
             'change_rename_field': [
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "char_field" varchar(20) NULL);',
 
                 'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
@@ -2580,7 +2773,7 @@ def preprocessing(connection):
                 'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
 
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "renamed_field" varchar(20) NULL);',
 
                 'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
@@ -2594,7 +2787,7 @@ def preprocessing(connection):
             'change_rename_change_rename_field': [
                 # Change char_field to length of 30 and allow NULL.
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "char_field" varchar(30) NULL);',
 
                 'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
@@ -2606,7 +2799,7 @@ def preprocessing(connection):
 
                 # Rename char_field to renamed_field.
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "renamed_field" varchar(30) NULL);',
 
                 'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
@@ -2620,7 +2813,7 @@ def preprocessing(connection):
             'rename_add_field': [
                 # Rename char_field to renamed_field.
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "renamed_field" varchar(20) NOT NULL);',
 
                 'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
@@ -2632,7 +2825,7 @@ def preprocessing(connection):
 
                 # Remove NULL from renamed_field.
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "renamed_field" varchar(20) NOT NULL,'
                 ' "char_field" varchar(50) NULL);',
 
@@ -2647,7 +2840,7 @@ def preprocessing(connection):
             'rename_change_rename_change_field': [
                 # Rename char_field to renamed_field.
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "renamed_field" varchar(20) NOT NULL);',
 
                 'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
@@ -2659,7 +2852,7 @@ def preprocessing(connection):
 
                 # Set renamed_field to allow NULL and set length to 50.
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "renamed_field" varchar(50) NULL);',
 
                 'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
@@ -2672,7 +2865,7 @@ def preprocessing(connection):
 
             'rename_rename_field': [
                 'CREATE TABLE "TEMP_TABLE" '
-                '("my_id" integer NOT NULL UNIQUE PRIMARY KEY,'
+                '("my_id" integer NOT NULL PRIMARY KEY,'
                 ' "renamed_field" varchar(20) NOT NULL);',
 
                 'INSERT INTO "TEMP_TABLE" ("my_id", "renamed_field")'
@@ -2734,7 +2927,7 @@ def evolver(connection):
 
         'complex_deps_upgrade_task_1': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(10) NULL,'
             ' "char_field2" varchar(20) NULL);',
 
@@ -2750,7 +2943,7 @@ def evolver(connection):
 
         'complex_deps_upgrade_task_2': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(10) NOT NULL,'
             ' "fkey_id" integer NULL'
             ' REFERENCES "evolutions_app_evolutionsapptestmodel" ("id")'
@@ -2773,7 +2966,7 @@ def evolver(connection):
 
         'evolve_app_task': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL UNIQUE PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "value" varchar(100) NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE" ("id", "value")'

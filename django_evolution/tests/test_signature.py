@@ -4,8 +4,15 @@ from __future__ import unicode_literals
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.db.models import Q
+from django.db.models import F, Q
 from django.db.utils import DEFAULT_DB_ALIAS
+
+try:
+    # Django >= 3.1
+    from django.db.models import Deferrable
+except ImportError:
+    # Django <= 3.0
+    Deferrable = None
 
 try:
     # Django >= 2.2
@@ -35,9 +42,12 @@ from django_evolution.signature import (AppSignature,
                                         IndexSignature,
                                         ModelSignature,
                                         ProjectSignature)
-from django_evolution.support import supports_constraints, supports_indexes
+from django_evolution.support import (supports_constraints,
+                                      supports_index_feature,
+                                      supports_indexes)
 from django_evolution.tests.base_test_case import EvolutionTestCase
-from django_evolution.tests.decorators import (requires_meta_constraints,
+from django_evolution.tests.decorators import (requires_index_feature,
+                                               requires_meta_constraints,
                                                requires_meta_indexes)
 from django_evolution.tests.models import BaseTestModel
 
@@ -203,12 +213,28 @@ class ConstraintSignatureTests(BaseSignatureTestCase):
 
     def test_serialize_v2(self):
         """Testing ConstraintSignature.serialize (signature v2)"""
+        if Deferrable is None:
+            # Django <= 3.0
+            deferrable = None
+            expected_deferrable = None
+        else:
+            # Django >= 3.0
+            deferrable = Deferrable.DEFERRED
+            expected_deferrable = {
+                '_enum': True,
+                'type': 'django.db.models.constraints.Deferrable',
+                'value': 'DEFERRED',
+            }
+
         constraint_sig = ConstraintSignature(
             name='my_constraint',
             constraint_type=UniqueConstraint,
             attrs={
-                'fields': ['field1', 'field2'],
                 'condition': Q(field1__gte=100),
+                'deferrable': deferrable,
+                'fields': ['field1', 'field2'],
+                'include': ['field3', 'field4'],
+                'opclasses': ['op1', 'op2'],
             })
 
         self.assertEqual(
@@ -223,7 +249,10 @@ class ConstraintSignatureTests(BaseSignatureTestCase):
                         'kwargs': {},
                         'type': 'django.db.models.Q',
                     },
+                    'deferrable': expected_deferrable,
                     'fields': ['field1', 'field2'],
+                    'include': ['field3', 'field4'],
+                    'opclasses': ['op1', 'op2'],
                 },
             })
 
@@ -2303,6 +2332,87 @@ class IndexSignatureTests(BaseSignatureTestCase):
 
         self.assertEqual(index_sig.name, 'index1')
         self.assertEqual(index_sig.fields, ['field1', 'field2'])
+        self.assertEqual(index_sig.expressions, None)
+        self.assertEqual(index_sig.attrs, {})
+
+    @requires_meta_indexes
+    @requires_index_feature('condition')
+    def test_from_index_with_condition(self):
+        """Testing IndexSignature.from_index with condition"""
+        index_sig = IndexSignature.from_index(
+            Index(condition=Q(i__gt=42),
+                  fields=['field1', 'field2'],
+                  name='index1'))
+
+        self.assertEqual(index_sig.name, 'index1')
+        self.assertEqual(index_sig.expressions, None)
+        self.assertEqual(index_sig.fields, ['field1', 'field2'])
+        self.assertEqual(index_sig.attrs, {
+            'condition': Q(i__gt=42),
+        })
+
+    @requires_meta_indexes
+    @requires_index_feature('db_tablespace')
+    def test_from_index_with_db_tablespace(self):
+        """Testing IndexSignature.from_index with db_tablespace"""
+        index_sig = IndexSignature.from_index(
+            Index(db_tablespace='test_space',
+                  fields=['field1', 'field2'],
+                  name='index1'))
+
+        self.assertEqual(index_sig.name, 'index1')
+        self.assertEqual(index_sig.expressions, None)
+        self.assertEqual(index_sig.fields, ['field1', 'field2'])
+        self.assertEqual(index_sig.attrs, {
+            'db_tablespace': 'test_space',
+        })
+
+    @requires_meta_indexes
+    @requires_index_feature('expressions')
+    def test_from_index_with_expressions(self):
+        """Testing IndexSignature.from_index with expressions"""
+        index_sig = IndexSignature.from_index(
+            Index(F('field') + 1,
+                  F('field') + 2,
+                  name='index1'))
+
+        self.assertEqual(index_sig.name, 'index1')
+        self.assertEqual(index_sig.expressions,
+                         (F('field') + 1, F('field') + 2))
+        self.assertEqual(index_sig.fields, None)
+        self.assertEqual(index_sig.attrs, {})
+
+    @requires_meta_indexes
+    @requires_index_feature('include')
+    def test_from_index_with_include(self):
+        """Testing IndexSignature.from_index with include"""
+        index_sig = IndexSignature.from_index(
+            Index(fields=['field1', 'field2'],
+                  include=['field3', 'field4'],
+                  name='index1'))
+
+        self.assertEqual(index_sig.name, 'index1')
+        self.assertEqual(index_sig.expressions, None)
+        self.assertEqual(index_sig.fields, ['field1', 'field2'])
+        self.assertEqual(index_sig.attrs, {
+            'include': ['field3', 'field4'],
+        })
+
+    @requires_meta_indexes
+    @requires_index_feature('opclasses')
+    def test_from_index_with_opclasses(self):
+        """Testing IndexSignature.from_index with opclasses"""
+        index_sig = IndexSignature.from_index(
+            Index(fields=['field1', 'field2'],
+                  opclasses=['jsonb_path_ops', 'varchar_pattern_ops'],
+                  name='index1'))
+
+        self.assertEqual(index_sig.name, 'index1')
+        self.assertEqual(index_sig.expressions, None)
+        self.assertEqual(index_sig.fields, ['field1', 'field2'])
+        self.assertEqual(index_sig.attrs, {
+            'opclasses': ['jsonb_path_ops', 'varchar_pattern_ops'],
+        })
 
     def test_deserialize_v1(self):
         """Testing IndexSignature.deserialize (signature v1)"""
@@ -2318,23 +2428,104 @@ class IndexSignatureTests(BaseSignatureTestCase):
 
     def test_deserialize_v2(self):
         """Testing IndexSignature.deserialize (signature v2)"""
+        # Ideally we'd just test condition and expressions anyway, since we're
+        # just testing signatures, but the "F" expressions can't be compared
+        # on all versions of Django.
+        if supports_index_feature('expressions'):
+            expressions = [
+                {
+                    '_deconstructed': True,
+                    'args': ('test1',),
+                    'kwargs': {},
+                    'type': 'django.db.models.expressions.F',
+                },
+                {
+                    '_deconstructed': True,
+                    'args': (
+                        {
+                            '_deconstructed': True,
+                            'args': ('test2',),
+                            'kwargs': {},
+                            'type': 'django.db.models.expressions.F',
+                        },
+                        '+',
+                        {
+                            '_deconstructed': True,
+                            'args': (1,),
+                            'kwargs': {},
+                            'type': 'django.db.models.expressions.Value',
+                        },
+                    ),
+                    'kwargs': {},
+                    'type': ('django.db.models.expressions.'
+                             'CombinedExpression'),
+                }
+            ]
+        else:
+            expressions = []
+
         index_sig = IndexSignature.deserialize(
             {
-                'name': 'index1',
+                'attrs': {
+                    'condition': {
+                        '_deconstructed': True,
+                        'args': [],
+                        'kwargs': {
+                            'i__gt': 42,
+                        },
+                        'type': 'django.db.models.Q',
+                    },
+                    'db_tablespace': 'test_space',
+                    'include': ['test1', 'test2'],
+                    'opclasses': ['op1', 'op2'],
+                },
+                'expressions': expressions,
                 'fields': ['field1', 'field2'],
+                'name': 'index1',
             },
             sig_version=2)
 
-        self.assertEqual(index_sig.name, 'index1')
+        self.assertEqual(
+            set(index_sig.attrs.keys()),
+            {'condition', 'db_tablespace', 'include', 'opclasses'})
+        self.assertEqual(index_sig.attrs['condition'], Q(i__gt=42))
+        self.assertEqual(index_sig.attrs['db_tablespace'], 'test_space')
+        self.assertEqual(index_sig.attrs['include'], ['test1', 'test2'])
+        self.assertEqual(index_sig.attrs['opclasses'], ['op1', 'op2'])
+
         self.assertEqual(index_sig.fields, ['field1', 'field2'])
+        self.assertEqual(index_sig.name, 'index1')
+
+        if expressions:
+            self.assertEqual(index_sig.expressions,
+                             [F('test1'), F('test2') + 1])
+        else:
+            self.assertIsNone(index_sig.expressions)
 
     def test_clone(self):
         """Testing IndexSignature.clone"""
-        index_sig = IndexSignature(name='index1', fields=['field1', 'field2'])
+        # Ideally we'd just test condition and expressions anyway, since we're
+        # just testing signatures, but the "F" expressions can't be compared
+        # on all versions of Django.
+        if supports_index_feature('expressions'):
+            expressions = [F('field1')]
+        else:
+            expressions = []
+
+        index_sig = IndexSignature(
+            name='index1',
+            fields=['field1', 'field2'],
+            expressions=expressions,
+            attrs={
+                'db_tablespace': 'test_space',
+            })
         cloned_index_sig = index_sig.clone()
 
         self.assertIsNot(cloned_index_sig, index_sig)
         self.assertEqual(cloned_index_sig, index_sig)
+
+        self.assertIsNot(cloned_index_sig.attrs, index_sig.attrs)
+        self.assertIsNot(cloned_index_sig.expressions, index_sig.expressions)
         self.assertIsNot(cloned_index_sig.fields, index_sig.fields)
 
     def test_serialize_v1(self):
@@ -2361,18 +2552,6 @@ class IndexSignatureTests(BaseSignatureTestCase):
 
     def test_serialize_v2(self):
         """Testing IndexSignature.serialize (signature v2)"""
-        index_sig = IndexSignature(name='index1', fields=['field1', 'field2'])
-
-        self.assertEqual(
-            index_sig.serialize(sig_version=2),
-            {
-                'name': 'index1',
-                'fields': ['field1', 'field2'],
-            })
-
-    def test_serialize_v2_without_name(self):
-        """Testing IndexSignature.serialize (signature v2) without index name
-        """
         index_sig = IndexSignature(fields=['field1', 'field2'])
 
         self.assertEqual(
@@ -2381,15 +2560,255 @@ class IndexSignatureTests(BaseSignatureTestCase):
                 'fields': ['field1', 'field2'],
             })
 
+    def test_serialize_v2_with_condition(self):
+        """Testing IndexSignature.serialize (signature v2) with condition"""
+        index_sig = IndexSignature(
+            attrs={
+                'condition': Q(i__gt=42),
+            },
+            fields=['field1', 'field2'])
+
+        self.assertEqual(
+            index_sig.serialize(sig_version=2),
+            {
+                'attrs': {
+                    'condition': {
+                        '_deconstructed': True,
+                        'args': [('i__gt', 42)],
+                        'kwargs': {},
+                        'type': 'django.db.models.Q',
+                    },
+                },
+                'fields': ['field1', 'field2'],
+            })
+
+    def test_serialize_v2_with_db_tablespace(self):
+        """Testing IndexSignature.serialize (signature v2) with db_tablespace
+        """
+        index_sig = IndexSignature(
+            attrs={
+                'db_tablespace': 'test_space',
+            },
+            fields=['field1', 'field2'])
+
+        self.assertEqual(
+            index_sig.serialize(sig_version=2),
+            {
+                'attrs': {
+                    'db_tablespace': 'test_space',
+                },
+                'fields': ['field1', 'field2'],
+            })
+
+    @requires_meta_indexes
+    @requires_index_feature('expressions')
+    def test_serialize_v2_with_expressions(self):
+        """Testing IndexSignature.serialize (signature v2) with expressions"""
+        index_sig = IndexSignature(
+            expressions=[
+                F('test1'),
+                F('test2') + 1,
+            ],
+            fields=['field1', 'field2'])
+
+        self.assertEqual(
+            index_sig.serialize(sig_version=2),
+            {
+                'expressions': [
+                    {
+                        '_deconstructed': True,
+                        'args': ('test1',),
+                        'kwargs': {},
+                        'type': 'django.db.models.expressions.F',
+                    },
+                    {
+                        '_deconstructed': True,
+                        'args': (
+                            {
+                                '_deconstructed': True,
+                                'args': ('test2',),
+                                'kwargs': {},
+                                'type': 'django.db.models.expressions.F',
+                            },
+                            '+',
+                            {
+                                '_deconstructed': True,
+                                'args': (1,),
+                                'kwargs': {},
+                                'type': 'django.db.models.expressions.Value',
+                            },
+                        ),
+                        'kwargs': {},
+                        'type': ('django.db.models.expressions.'
+                                 'CombinedExpression'),
+                    },
+                ],
+                'fields': ['field1', 'field2'],
+            })
+
+    def test_serialize_v2_with_include(self):
+        """Testing IndexSignature.serialize (signature v2) with include"""
+        index_sig = IndexSignature(
+            attrs={
+                'include': ['test1', 'test2'],
+            },
+            fields=['field1', 'field2'])
+
+        self.assertEqual(
+            index_sig.serialize(sig_version=2),
+            {
+                'attrs': {
+                    'include': ['test1', 'test2'],
+                },
+                'fields': ['field1', 'field2'],
+            })
+
+    def test_serialize_v2_with_name(self):
+        """Testing IndexSignature.serialize (signature v2) with index name"""
+        index_sig = IndexSignature(name='index1',
+                                   fields=['field1', 'field2'])
+
+        self.assertEqual(
+            index_sig.serialize(sig_version=2),
+            {
+                'fields': ['field1', 'field2'],
+                'name': 'index1',
+            })
+
+    def test_serialize_v2_with_opclasses(self):
+        """Testing IndexSignature.serialize (signature v2) with opclasses"""
+        index_sig = IndexSignature(
+            attrs={
+                'opclasses': ['op1', 'op2'],
+            },
+            fields=['field1', 'field2'])
+
+        self.assertEqual(
+            index_sig.serialize(sig_version=2),
+            {
+                'attrs': {
+                    'opclasses': ['op1', 'op2'],
+                },
+                'fields': ['field1', 'field2'],
+            })
+
     def test_eq(self):
         """Testing IndexSignature.__eq__"""
-        self.assertEqual(IndexSignature(fields=['field1', 'field2']),
-                         IndexSignature(fields=['field1', 'field2']))
+        self.assertEqual(
+            IndexSignature(fields=['field1', 'field2']),
+            IndexSignature(fields=['field1', 'field2']))
 
-        self.assertEqual(IndexSignature(name='test_index',
-                                        fields=['field1', 'field2']),
-                         IndexSignature(name='test_index',
-                                        fields=['field1', 'field2']))
+        self.assertEqual(
+            IndexSignature(
+                fields=['field1', 'field2'],
+                attrs={
+                    'db_tablespace': 'test_space',
+                    'include': ['field3', 'field4'],
+                    'opclasses': ['op1', 'op2'],
+                }),
+            IndexSignature(
+                fields=['field1', 'field2'],
+                attrs={
+                    'db_tablespace': 'test_space',
+                    'include': ['field3', 'field4'],
+                    'opclasses': ['op1', 'op2'],
+                }))
+
+    @requires_meta_indexes
+    @requires_index_feature('condition')
+    def test_eq_with_conditions(self):
+        """Testing IndexSignature.__eq__ with conditions"""
+        self.assertEqual(
+            IndexSignature(
+                name='test_index',
+                fields=['field1', 'field2'],
+                attrs={
+                    'condition': Q(i__gt=42),
+                }),
+            IndexSignature(
+                name='test_index',
+                fields=['field1', 'field2'],
+                attrs={
+                    'condition': Q(i__gt=42),
+                }))
+
+    @requires_meta_indexes
+    @requires_index_feature('expressions')
+    def test_eq_with_expressions(self):
+        """Testing IndexSignature.__eq__ with expressions"""
+        self.assertEqual(
+            IndexSignature(name='test_index',
+                           fields=['field1', 'field2'],
+                           expressions=[F('test') + 1]),
+            IndexSignature(name='test_index',
+                           fields=['field1', 'field2'],
+                           expressions=[F('test') + 1]))
+
+    @requires_meta_indexes
+    @requires_index_feature('condition')
+    def test_ne_with_different_conditions(self):
+        """Testing IndexSignature.__ne__ with different conditions"""
+        self.assertNotEqual(
+            IndexSignature(
+                fields=['field1', 'field2'],
+                attrs={
+                    'condition': Q(id__gt=42),
+                }),
+            IndexSignature(
+                fields=['field1', 'field2'],
+                attrs={
+                    'condition': Q(id__lt=100),
+                }))
+
+    def test_ne_with_different_db_tablespaces(self):
+        """Testing IndexSignature.__ne__ with different db_tablespaces"""
+        self.assertNotEqual(
+            IndexSignature(
+                fields=['field1', 'field2'],
+                attrs={
+                    'db_tablespace': 'space1',
+                }),
+            IndexSignature(
+                fields=['field1', 'field2'],
+                attrs={
+                    'db_tablespace': 'space2',
+                }))
+
+    @requires_meta_indexes
+    @requires_index_feature('expressions')
+    def test_ne_with_different_expressions(self):
+        """Testing IndexSignature.__ne__ with different expressions"""
+        self.assertNotEqual(
+            IndexSignature(
+                fields=['field1', 'field2'],
+                expressions=[F('test') + 1]),
+            IndexSignature(
+                fields=['field1', 'field2'],
+                expressions=[F('test') + 2]))
+
+    def test_ne_with_different_fields(self):
+        """Testing IndexSignature.__ne__ with different fields"""
+        self.assertNotEqual(IndexSignature(name='index1',
+                                           fields=['field1', 'field2']),
+                            IndexSignature(name='index1',
+                                           fields=['field2']))
+
+        self.assertNotEqual(IndexSignature(fields=['field1', 'field2']),
+                            IndexSignature(fields=['field2']))
+
+    def test_ne_with_different_includes(self):
+        """Testing IndexSignature.__ne__ with different includes"""
+        self.assertNotEqual(
+            IndexSignature(
+                fields=['field1', 'field2'],
+                attrs={
+                    'includes': ['field3', 'field4'],
+                }),
+            IndexSignature(
+                fields=['field1', 'field2'],
+                attrs={
+                    'includes': ['field3'],
+                }))
 
     def test_ne_with_different_names(self):
         """Testing IndexSignature.__ne__ with different names"""
@@ -2402,12 +2821,16 @@ class IndexSignatureTests(BaseSignatureTestCase):
                             IndexSignature(name='index1',
                                            fields=['field1', 'field2']))
 
-    def test_ne_with_different_fields(self):
-        """Testing IndexSignature.__ne__ with different fields"""
-        self.assertNotEqual(IndexSignature(name='index1',
-                                           fields=['field1', 'field2']),
-                            IndexSignature(name='index1',
-                                           fields=['field2']))
-
-        self.assertNotEqual(IndexSignature(fields=['field1', 'field2']),
-                            IndexSignature(fields=['field2']))
+    def test_ne_with_different_opclasses(self):
+        """Testing IndexSignature.__ne__ with different opclasses"""
+        self.assertNotEqual(
+            IndexSignature(
+                fields=['field1', 'field2'],
+                attrs={
+                    'opclasses': ['op1', 'op2'],
+                }),
+            IndexSignature(
+                fields=['field1', 'field2'],
+                attrs={
+                    'opclasses': ['op1'],
+                }))

@@ -8,13 +8,6 @@ from setuptools.command.test import test
 from django_evolution import get_package_version, VERSION
 
 
-def run_tests(*args):
-    import os
-    os.system('tests/runtests.py')
-
-test.run_tests = run_tests
-
-
 PACKAGE_NAME = 'django_evolution'
 
 download_url = (
@@ -36,8 +29,8 @@ setup(
     long_description=long_description,
     long_description_content_type='text/x-rst',
     url='https://github.com/beanbaginc/django-evolution',
-    author='Ben Khoo',
-    author_email='khoobks@westnet.com.au',
+    author='Beanbag, Inc.',
+    author_email='reviewboard@googlegroups.com',
     maintainer='Beanbag, Inc.',
     maintainer_email='reviewboard@googlegroups.com',
     download_url=download_url,
@@ -57,17 +50,22 @@ setup(
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Framework :: Django',
+        'Framework :: Django :: 1',
         'Framework :: Django :: 1.6',
         'Framework :: Django :: 1.7',
         'Framework :: Django :: 1.8',
         'Framework :: Django :: 1.9',
         'Framework :: Django :: 1.10',
         'Framework :: Django :: 1.11',
+        'Framework :: Django :: 2',
+        'Framework :: Django :: 2.0',
         'Framework :: Django :: 2.1',
         'Framework :: Django :: 2.2',
         'Framework :: Django :: 3.0',
+        'Framework :: Django :: 3',
         'Framework :: Django :: 3.1',
         'Framework :: Django :: 3.2',
+        'Framework :: Django :: 4',
         'Framework :: Django :: 4.0',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
@@ -84,6 +82,7 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
+        'Topic :: Database',
         'Topic :: Software Development',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ]

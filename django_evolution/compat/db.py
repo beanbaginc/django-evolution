@@ -502,6 +502,11 @@ def sql_delete_constraints(connection, model, remove_refs):
             The values are a tuple of (:py:class:`django.db.models.Model`,
             :py:class:`django.db.models.Field`).
 
+            Warning:
+                Keys may be removed as constraints are deleted. Make sure to
+                pass in a copy of the dictionary if the original dictionary
+                msut be preserved.
+
     Returns:
         list:
         The list of SQL statements for deleting constraints.
@@ -549,6 +554,11 @@ def sql_add_constraints(connection, model, refs):
             The keys are instances of :py:class:`django.db.models.Model`.
             The values are a tuple of (:py:class:`django.db.models.Model`,
             :py:class:`django.db.models.Field`).
+
+            Warning:
+                Keys may be removed as constraints are added. Make sure to
+                pass in a copy of the dictionary if the original dictionary
+                msut be preserved.
 
     Returns:
         list:

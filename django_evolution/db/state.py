@@ -15,21 +15,20 @@ from django_evolution.errors import DatabaseStateError
 class IndexState(object):
     """An index recorded in the database state."""
 
-    def __init__(self, name, columns, unique=False):
+    def __init__(self, name, columns=[], unique=False):
         """Initialize the index state.
 
         Args:
-            name (unicode):
+            name (unicode, optional):
                 The name of the index.
 
-            columns (list of unicode):
+            columns (list of unicode, optional):
                 A list of columns that the index is comprised of.
 
             unique (bool, optional):
                 Whether this is a unique index.
         """
         assert name
-        assert columns
 
         self.name = name
         self.columns = columns
@@ -372,10 +371,10 @@ class DatabaseState(object):
             else:
                 self.add_table(table_name)
 
-            indexes = evolver.get_indexes_for_table(table_name)
+            constraints = evolver.get_constraints_for_table(table_name)
 
-            for index_name, index_info in six.iteritems(indexes):
+            for constraint_name, constraint_info in six.iteritems(constraints):
                 self.add_index(table_name=table_name,
-                               index_name=index_name,
-                               columns=index_info['columns'],
-                               unique=index_info['unique'])
+                               index_name=constraint_name,
+                               columns=constraint_info['columns'],
+                               unique=constraint_info['unique'])

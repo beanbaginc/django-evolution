@@ -3,7 +3,7 @@
 from __future__ import unicode_literals
 
 from django.db import models
-from django.db.models import Q
+from django.db.models import F, Q
 
 try:
     # Django >= 2.2
@@ -24,10 +24,12 @@ from django_evolution.mutations import ChangeMeta
 from django_evolution.support import (supports_constraints,
                                       supports_indexes)
 from django_evolution.tests.base_test_case import EvolutionTestCase
-from django_evolution.tests.decorators import (requires_meta_constraints,
+from django_evolution.tests.decorators import (requires_index_feature,
+                                               requires_meta_constraints,
                                                requires_meta_index_together,
                                                requires_meta_indexes)
 from django_evolution.tests.models import BaseTestModel
+from django_evolution.tests.utils import get_default_tablespace
 
 
 class ChangeMetaPlainBaseModel(BaseTestModel):
@@ -453,6 +455,489 @@ class ChangeMetaIndexesTests(BaseChangeMetaTestCase):
                 " 'name': 'my_custom_index'}])"
             ],
             'setting_from_empty')
+
+    @requires_index_feature('condition')
+    def test_setting_from_empty_with_condition(self):
+        """Testing ChangeMeta(indexes) and setting to valid list with
+        Index(condition=...)
+        """
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                indexes = [
+                    Index(condition=Q(int_field2__gte=10),
+                          fields=['int_field1'],
+                          name='my_index'),
+                ]
+
+        self.set_base_model(ChangeMetaPlainBaseModel)
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta(
+                    'TestModel',
+                    'indexes',
+                    [
+                        {
+                            'condition': Q(int_field2__gte=10),
+                            'fields': ['int_field1'],
+                            'name': 'my_index',
+                        },
+                    ])
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'indexes',"
+                " [{'condition': models.Q(int_field2__gte=10),"
+                " 'fields': ['int_field1'],"
+                " 'name': 'my_index'}])"
+            ],
+            'setting_from_empty_with_condition')
+
+    @requires_index_feature('db_tablespace')
+    def test_setting_from_empty_with_db_tablespace(self):
+        """Testing ChangeMeta(indexes) and setting to valid list with
+        Index(db_tablespace=...)
+        """
+        # Tablespaces aren't supported on all databases. If we have one for
+        # the evolver, use it. Otherwise, fall back on a custom value (which
+        # shouldn't be used in that case outside of signature data).
+        tablespace = \
+            get_default_tablespace(self.default_database_name) or 'myspace'
+
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                indexes = [
+                    Index(db_tablespace=tablespace,
+                          fields=['int_field1']),
+                ]
+
+        self.set_base_model(ChangeMetaPlainBaseModel)
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta(
+                    'TestModel',
+                    'indexes',
+                    [
+                        {
+                            'db_tablespace': tablespace,
+                            'fields': ['int_field1'],
+                        },
+                    ])
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'indexes',"
+                " [{'db_tablespace': '%s',"
+                " 'fields': ['int_field1']}])"
+                % tablespace
+            ],
+            'setting_from_empty_with_db_tablespace')
+
+    @requires_index_feature('expressions')
+    def test_setting_from_empty_with_expressions(self):
+        """Testing ChangeMeta(indexes) and setting to valid list with
+        Index(*expressions)
+        """
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                indexes = [
+                    Index(F('int_field1') + F('int_field2'),
+                          name='my_index'),
+                ]
+
+        self.set_base_model(ChangeMetaPlainBaseModel)
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta(
+                    'TestModel',
+                    'indexes',
+                    [
+                        {
+                            'expressions': (
+                                F('int_field1') + F('int_field2'),
+                            ),
+                            'name': 'my_index',
+                        },
+                    ])
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'indexes',"
+                " [{'expressions': (models.F('int_field1') +"
+                " models.F('int_field2'),),"
+                " 'name': 'my_index'}])"
+            ],
+            'setting_from_empty_with_expressions')
+
+    @requires_index_feature('include')
+    def test_setting_from_empty_with_include(self):
+        """Testing ChangeMeta(indexes) and setting to valid list with
+        Index(include=...)
+        """
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                indexes = [
+                    Index(fields=['int_field1'],
+                          include=['char_field1', 'char_field2'],
+                          name='my_index'),
+                ]
+
+        self.set_base_model(ChangeMetaPlainBaseModel)
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta(
+                    'TestModel',
+                    'indexes',
+                    [
+                        {
+                            'fields': ['int_field1'],
+                            'include': ('char_field1', 'char_field2'),
+                            'name': 'my_index',
+                        },
+                    ])
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'indexes',"
+                " [{'fields': ['int_field1'],"
+                " 'include': ['char_field1', 'char_field2'],"
+                " 'name': 'my_index'}])"
+            ],
+            'setting_from_empty_with_include')
+
+    @requires_index_feature('opclasses')
+    def test_setting_from_empty_with_opclasses(self):
+        """Testing ChangeMeta(indexes) and setting to valid list with
+        Index(opclasses=...)
+        """
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                indexes = [
+                    Index(fields=['char_field1'],
+                          name='my_index',
+                          opclasses=['text_pattern_ops']),
+                ]
+
+        self.set_base_model(ChangeMetaPlainBaseModel)
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta(
+                    'TestModel',
+                    'indexes',
+                    [
+                        {
+                            'fields': ['char_field1'],
+                            'name': 'my_index',
+                            'opclasses': ['text_pattern_ops'],
+                        },
+                    ])
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'indexes',"
+                " [{'fields': ['char_field1'],"
+                " 'name': 'my_index',"
+                " 'opclasses': ['text_pattern_ops']}])"
+            ],
+            'setting_from_empty_with_opclasses')
+
+    @requires_index_feature('condition')
+    def test_replace_condition(self):
+        """Testing ChangeMeta(indexes) and replacing condition"""
+        class ChangeMetaIndexesConditionBaseModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                indexes = [
+                    Index(condition=Q(int_field1__gte=10),
+                          fields=['int_field1'],
+                          name='my_index'),
+                ]
+
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                indexes = [
+                    Index(condition=Q(int_field2__lte=20),
+                          fields=['int_field1'],
+                          name='my_index'),
+                ]
+
+        self.set_base_model(ChangeMetaIndexesConditionBaseModel)
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta(
+                    'TestModel',
+                    'indexes',
+                    [
+                        {
+                            'condition': Q(int_field2__lte=20),
+                            'fields': ['int_field1'],
+                            'name': 'my_index',
+                        },
+                    ])
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'indexes',"
+                " [{'condition': models.Q(int_field2__lte=20),"
+                " 'fields': ['int_field1'],"
+                " 'name': 'my_index'}])"
+            ],
+            'replace_condition')
+
+    @requires_index_feature('db_tablespace')
+    def test_replace_db_tablespace(self):
+        """Testing ChangeMeta(indexes) and replacing db_tablespace"""
+        # Tablespaces aren't supported on all databases. If we have one for
+        # the evolver, use it. Otherwise, fall back on a custom value (which
+        # shouldn't be used in that case outside of signature data).
+        tablespace = \
+            get_default_tablespace(self.default_database_name) or 'myspace'
+
+        class ChangeMetaIndexesTableSpaceBaseModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                indexes = [
+                    Index(fields=['int_field1'],
+                          name='my_index'),
+                ]
+
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                indexes = [
+                    Index(db_tablespace=tablespace,
+                          fields=['int_field1'],
+                          name='my_index'),
+                ]
+
+        self.set_base_model(ChangeMetaIndexesTableSpaceBaseModel)
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta(
+                    'TestModel',
+                    'indexes',
+                    [
+                        {
+                            'db_tablespace': tablespace,
+                            'fields': ['int_field1'],
+                            'name': 'my_index',
+                        },
+                    ])
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'indexes',"
+                " [{'db_tablespace': '%s',"
+                " 'fields': ['int_field1'],"
+                " 'name': 'my_index'}])"
+                % tablespace
+            ],
+            'replace_db_tablespace')
+
+    @requires_index_feature('expressions')
+    def test_replace_expression(self):
+        """Testing ChangeMeta(indexes) and replacing expressions"""
+        class ChangeMetaIndexesExpressionBaseModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                indexes = [
+                    Index(F('int_field1') + F('int_field2'),
+                          name='my_index'),
+                ]
+
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                indexes = [
+                    Index(F('int_field2') - F('int_field1'),
+                          name='my_index'),
+                ]
+
+        self.set_base_model(ChangeMetaIndexesExpressionBaseModel)
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta(
+                    'TestModel',
+                    'indexes',
+                    [
+                        {
+                            'expressions': (F('int_field2') -
+                                            F('int_field1'),),
+                            'name': 'my_index',
+                        },
+                    ])
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'indexes',"
+                " [{'expressions': (models.F('int_field2') -"
+                " models.F('int_field1'),),"
+                " 'name': 'my_index'}])"
+            ],
+            'replace_expressions')
+
+    @requires_index_feature('include')
+    def test_replace_include(self):
+        """Testing ChangeMeta(indexes) and replacing include"""
+        class ChangeMetaIndexesIncludeBaseModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                indexes = [
+                    Index(fields=['int_field1'],
+                          include=['int_field2', 'char_field1'],
+                          name='my_index'),
+                ]
+
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                indexes = [
+                    Index(fields=['int_field1'],
+                          include=['char_field2', 'char_field1'],
+                          name='my_index'),
+                ]
+
+        self.set_base_model(ChangeMetaIndexesIncludeBaseModel)
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta(
+                    'TestModel',
+                    'indexes',
+                    [
+                        {
+                            'fields': ['int_field1'],
+                            'include': ['char_field2', 'char_field1'],
+                            'name': 'my_index',
+                        },
+                    ])
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'indexes',"
+                " [{'fields': ['int_field1'],"
+                " 'include': ['char_field2', 'char_field1'],"
+                " 'name': 'my_index'}])"
+            ],
+            'replace_include')
+
+    @requires_index_feature('opclasses')
+    def test_replace_opclasses(self):
+        """Testing ChangeMeta(indexes) and replacing opclasses"""
+        class ChangeMetaIndexesOpclassesBaseModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                indexes = [
+                    Index(fields=['char_field1'],
+                          opclasses=['varchar_pattern_ops'],
+                          name='my_index'),
+                ]
+
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                indexes = [
+                    Index(fields=['char_field1'],
+                          opclasses=['text_pattern_ops'],
+                          name='my_index'),
+                ]
+
+        self.set_base_model(ChangeMetaIndexesOpclassesBaseModel)
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta(
+                    'TestModel',
+                    'indexes',
+                    [
+                        {
+                            'fields': ['char_field1'],
+                            'name': 'my_index',
+                            'opclasses': ['text_pattern_ops'],
+                        },
+                    ])
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'indexes',"
+                " [{'fields': ['char_field1'],"
+                " 'name': 'my_index',"
+                " 'opclasses': ['text_pattern_ops']}])"
+            ],
+            'replace_opclasses')
 
     def test_replace_list(self):
         """Testing ChangeMeta(indexes) and replacing list"""

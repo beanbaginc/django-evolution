@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import copy
 import logging
+from collections import defaultdict
 
 import django
 from django.db import connection as default_connection, models
@@ -20,9 +21,12 @@ from django_evolution.compat.db import (create_index_name,
                                         sql_indexes_for_fields,
                                         truncate_name)
 from django_evolution.compat.models import (get_remote_field,
-                                            get_remote_field_model)
+                                            get_remote_field_model,
+                                            get_remote_field_related_model)
 from django_evolution.db.sql_result import AlterTableSQLResult, SQLResult
 from django_evolution.errors import EvolutionNotImplementedError
+from django_evolution.support import supports_index_feature
+from django_evolution.utils.models import iter_non_m2m_reverse_relations
 
 
 class BaseEvolutionOperations(object):
@@ -64,6 +68,18 @@ class BaseEvolutionOperations(object):
     #:     unicode
     default_tablespace = None
 
+    #: Whether a column type change operation also sets new attributes.
+    #:
+    #: If ``False``, attributes will be set through the standard field change
+    #: operation.
+    #:
+    #: Version Added:
+    #:     2.2
+    #:
+    #: Type:
+    #:     bool
+    change_column_type_sets_attrs = True
+
     alter_table_sql_result_cls = AlterTableSQLResult
 
     def __init__(self, database_state, connection=default_connection):
@@ -78,6 +94,186 @@ class BaseEvolutionOperations(object):
         """
         self.database_state = database_state
         self.connection = connection
+
+    def can_add_index(self, index):
+        """Return whether an index can be added to this database.
+
+        This will determine if the database connection supports the state
+        represented in the index well enough to be written to the database.
+
+        Note that not all features of an index are required. At the moment,
+        to comply with Django's logic
+        (:py:meth:`BaseDatabaseSchemaEditor.add_index()
+        <django.db.backends.base.schema.BaseDatabaseSchemaEditor.add_index>`),
+        an index can be written so long as it either does not contain
+        expressions or the database backend supports expression indexes.
+
+        Args:
+            index (django.db.models.Index):
+                The index that would be written.
+
+        Returns:
+            bool:
+            ``True`` if the index can be written. ``False`` if it cannot.
+        """
+        if (supports_index_feature('expressions') and
+            index.contains_expressions and
+            not self.connection.features.supports_expression_indexes):
+            return False
+
+        return True
+
+    def get_deferrable_sql(self):
+        """Return the SQL for marking a reference as deferrable.
+
+        Version Added:
+            2.2
+
+        Returns:
+            unicode:
+            The SQL for marking a reference as deferrable.
+        """
+        return self.connection.ops.deferrable_sql()
+
+    def get_change_column_type_sql(self, model, old_field, new_field):
+        """Return SQL for changing a column type.
+
+        This should be limited to the ``ALTER TABLE`` or equivalent for
+        changing the column. It should not affect constraints or other
+        fields.
+
+        Subclasses must implement this, unless they override
+        :py:meth:`change_column_type`.
+
+        Version Added:
+            2.2
+
+        Args:
+            model (type):
+                The parent model of the column.
+
+            old_field (django.db.models.Field):
+                The old field being replaced.
+
+            new_field (django.db.models.Field):
+                The new replacement field.
+
+        Returns:
+            django_evolution.db.sql_result.SQLResult:
+            The SQL statements for changing the column type.
+        """
+        raise NotImplementedError
+
+    def build_column_schema(self, model, field, initial=None,
+                            skip_null_constraint=False,
+                            skip_primary_or_unique_constraint=False,
+                            skip_references=False):
+        """Return information on the schema for building a column.
+
+        This is used when creating or re-creating columns on a table.
+
+        Args:
+            model (type):
+                The parent model of the column.
+
+            field (django.db.models.Field):
+                The field to build the column schema from.
+
+            initial (object or callable):
+                The initial data for the column.
+
+            skip_null_constraint (bool, optional):
+                Whether to skip adding ``NULL``/``NOT NULL`` constraints.
+                This can be used to temporarily omit this part of the
+                schema while adding the column.
+
+            skip_references (bool, optional):
+                Whether to skip adding ``REFERENCES ...`` information.
+                This can be used to temporarily omit this part of the
+                schema while adding the column, handling that step separately.
+
+        Returns:
+            dict:
+            The schema information. This has the following keys:
+
+            ``db_type`` (:py:class:`unicode`):
+                The database-specific column type.
+
+            ``definition`` (list):
+                A list of parts of the column schema definition. Each of
+                these is a keyword (which may or may not have spaces) or
+                values used for constructing the column.
+
+            ``definition_sql_params`` (list):
+                The list of SQL parameters to pass to the executor. These
+                will be safely handled by the database backend.
+
+            ``name`` (:py:class:`unicode`):
+                The name of the column.
+        """
+        connection = self.connection
+        qn = connection.ops.quote_name
+        tablespace = field.db_tablespace or model._meta.db_tablespace
+
+        column_def = []
+        column_def_sql_params = []
+
+        if not skip_null_constraint:
+            if field.null:
+                column_def.append('NULL')
+            else:
+                column_def.append('NOT NULL')
+
+        if not skip_primary_or_unique_constraint:
+            if field.primary_key:
+                column_def.append('PRIMARY KEY')
+            elif field.unique:
+                column_def.append('UNIQUE')
+
+        # Add tablespace information.
+        if (tablespace and
+            connection.features.supports_tablespaces and
+            connection.features.autoindexes_primary_keys and
+            (field.unique or field.primary_key)):
+            # We must specify the index tablespace inline, because we
+            # won't be generating a CREATE INDEX statement for this field.
+            column_def.append(connection.ops.tablespace_sql(tablespace,
+                                                            inline=True))
+
+        remote_field = get_remote_field(field)
+
+        if remote_field:
+            # This is a ForeignKey, or similar. The exact syntax is up to the
+            # database backend, but this will generally be in the form of:
+            #
+            # ... REFERENCES <table> (<reffed_columns>) ...
+            #
+            # Followed by backend-specific deferrable syntax.
+            if not skip_references:
+                related_model = get_remote_field_model(remote_field)
+
+                column_def += [
+                    'REFERENCES',
+                    qn(related_model._meta.db_table),
+                    '(%s)' % qn(related_model._meta.pk.name),
+                    self.get_deferrable_sql(),
+                ]
+        else:
+            # This is a standard field.
+            #
+            # At this point, initial can only be None if null=True, otherwise
+            # it is a user callable or the default AddFieldInitialCallback
+            # which will shortly raise an exception.
+            if initial is not None and not callable(initial):
+                column_def += ['DEFAULT', '%s']
+                column_def_sql_params.append(initial)
+
+        return {
+            'name': field.column,
+            'db_type': field.db_type(connection=connection),
+            'definition': column_def,
+            'definition_sql_params': column_def_sql_params,
+        }
 
     def generate_table_ops_sql(self, mutator, ops):
         """Generates SQL for a sequence of mutation operations.
@@ -133,6 +329,12 @@ class BaseEvolutionOperations(object):
             sql_result.add(self.change_column_attrs(model, mutation,
                                                     op['field'].name,
                                                     op['new_attrs']))
+        elif op_type == 'change_column_type':
+            sql_result.add(self.change_column_type(
+                model=model,
+                old_field=op['old_field'],
+                new_field=op['new_field'],
+                new_attrs=op['new_attrs']))
         elif op_type == 'delete_column':
             sql_result.add(self.delete_column(model, op['field']))
         elif op_type == 'change_meta':
@@ -262,116 +464,80 @@ class BaseEvolutionOperations(object):
         """
         return sql_create_for_many_to_many_field(self.connection, model, field)
 
-    def add_column(self, model, f, initial):
+    def add_column(self, model, field, initial):
+        """Add a column to a table.
+
+        Args:
+            model (type):
+                The model representing the table the column will be added to.
+
+            field (django.db.models.Field):
+                The field representing the column being added.
+
+            initial (object or callable):
+                The initial data to set for the column in all rows. If this
+                is a callable, it will be called and the result will be used.
+
+        Returns:
+            django_evolution.db.sql_result.AlterTableSQLResult:
+            The SQL for adding the column.
+        """
         qn = self.connection.ops.quote_name
         sql_result = self.alter_table_sql_result_cls(self, model)
         table_name = model._meta.db_table
+        remote_field = get_remote_field(field)
+        can_set_initial = remote_field is None and initial is not None
 
-        remote_field = get_remote_field(f)
+        schema = self.build_column_schema(
+            model=model,
+            field=field,
+            initial=initial,
+            skip_null_constraint=can_set_initial and callable(initial))
+        column_name = schema['name']
 
-        if remote_field:
-            # it is a foreign key field
-            # NOT NULL REFERENCES "django_evolution_addbasemodel"
-            # ("id") DEFERRABLE INITIALLY DEFERRED
+        sql_result.add_alter_table([{
+            'op': 'ADD COLUMN',
+            'column': column_name,
+            'db_type': schema['db_type'],
+            'params': schema['definition'],
+            'sql_params': schema['definition_sql_params'],
+        }])
 
-            # ALTER TABLE <tablename> ADD COLUMN <column name> NULL
-            # REFERENCES <tablename1> ("<colname>") DEFERRABLE INITIALLY
-            # DEFERRED
-            related_model = get_remote_field_model(remote_field)
-            related_table = related_model._meta.db_table
-            related_pk_col = related_model._meta.pk.name
-            constraints = ['%sNULL' % (not f.null and 'NOT ' or '')]
-
-            if f.unique or f.primary_key:
-                constraints.append('UNIQUE')
-
-            sql_result.add_alter_table([
-                {
-                    'op': 'ADD COLUMN',
-                    'column': f.column,
-                    'db_type': f.db_type(connection=self.connection),
-                    'params': constraints + [
-                        'REFERENCES',
-                        qn(related_table),
-                        '(%s)' % qn(related_pk_col),
-                        self.connection.ops.deferrable_sql(),
-                    ]
-                }
-            ])
-        else:
-            null_constraints = '%sNULL' % (not f.null and 'NOT ' or '')
-
-            if f.unique or f.primary_key:
-                unique_constraints = 'UNIQUE'
-            else:
-                unique_constraints = ''
-
-            # At this point, initial can only be None if null=True,
-            # otherwise it is a user callable or the default
-            # AddFieldInitialCallback which will shortly raise an exception.
-            if initial is not None:
-                if callable(initial):
-                    sql_result.add_alter_table([
-                        {
-                            'op': 'ADD COLUMN',
-                            'column': f.column,
-                            'db_type': f.db_type(connection=self.connection),
-                            'params': [unique_constraints],
-                        }
-                    ])
-
-                    sql_result.add_sql([
-                        'UPDATE %s SET %s = %s WHERE %s IS NULL;'
-                        % (qn(table_name), qn(f.column),
-                           initial(), qn(f.column))
-                    ])
-
-                    if not f.null:
-                        # Only put this sql statement if the column cannot
-                        # be null.
-                        sql_result.add_sql(
-                            self.set_field_null(model, f, f.null))
-                else:
-                    sql_result.add_alter_table([
-                        {
-                            'op': 'ADD COLUMN',
-                            'column': f.column,
-                            'db_type': f.db_type(connection=self.connection),
-                            'params': [
-                                null_constraints,
-                                unique_constraints,
-                                'DEFAULT',
-                                '%s',
-                            ],
-                            'sql_params': [initial]
-                        }
-                    ])
-
-                    # Django doesn't generate default columns, so now that
-                    # we've added one to get default values for existing
-                    # tables, drop that default.
-                    sql_result.add_post_sql([
-                        'ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT;'
-                        % (qn(table_name), qn(f.column))
-                    ])
-            else:
-                sql_result.add_alter_table([
-                    {
-                        'op': 'ADD COLUMN',
-                        'column': f.column,
-                        'db_type': f.db_type(connection=self.connection),
-                        'params': [null_constraints, unique_constraints],
-                    }
+        if can_set_initial:
+            if callable(initial):
+                sql_result.add_sql([
+                    'UPDATE %s SET %s = %s WHERE %s IS NULL;'
+                    % (qn(table_name),
+                       qn(column_name),
+                       initial(),
+                       qn(column_name))
                 ])
 
-        if f.unique or f.primary_key:
+                if not field.null:
+                    # Now that we've set initial values, we can make this
+                    # `NOT NULL`.
+                    sql_result.add_sql(self.set_field_null(
+                        model=model,
+                        field=field,
+                        null=False))
+            else:
+                # Django doesn't generate default columns, so now that
+                # we've added one to get default values for existing
+                # tables, drop that default.
+                sql_result.add_post_sql([
+                    'ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT;'
+                    % (qn(table_name), qn(column_name))
+                ])
+
+        if field.unique or field.primary_key:
             self.database_state.add_index(
                 table_name=table_name,
-                index_name=self.get_new_constraint_name(table_name, f.column),
-                columns=[f.column],
+                index_name=self.get_new_constraint_name(table_name,
+                                                        column_name),
+                columns=[column_name],
                 unique=True)
 
-        sql_result.add(self.create_index(model, f))
+        sql_result.add(self.create_index(model, field))
 
         return sql_result
 
@@ -834,6 +1000,50 @@ class BaseEvolutionOperations(object):
         return self.get_change_unique_sql(model, field, new_value,
                                           constraint_name, mutation.initial)
 
+    def change_column_type(self, model, old_field, new_field, new_attrs):
+        """Return SQL to change the type of a column.
+
+        Version Added:
+            2.2
+
+        Args:
+            model (type):
+                The type of model owning the field.
+
+            old_field (django.db.models.Field):
+                The old field.
+
+            new_field (django.db.models.Field):
+                The new field.
+
+            new_attrs (dict):
+                New attributes set in the
+                :py:class:`~django_evolution.mutations.change_field.
+                ChangeField`.
+
+        Returns:
+            django_evolution.sql_result.AlterTableSQLResult:
+            The SQL statements for changing the column type.
+        """
+        sql_result = AlterTableSQLResult(self, model)
+
+        pre_sql, stash = self.stash_field_ref_constraints(
+            model=model,
+            replaced_fields={
+                old_field: new_field,
+            })
+
+        sql_result.add_pre_sql(pre_sql)
+
+        sql_result.add_sql(self.get_change_column_type_sql(
+            model=model,
+            old_field=old_field,
+            new_field=new_field))
+
+        sql_result.add_post_sql(self.restore_field_ref_constraints(stash))
+
+        return sql_result
+
     def get_change_unique_sql(self, model, field, new_unique_value,
                               constraint_name, initial):
         """Returns the database-specific SQL to change a column's unique flag.
@@ -1131,8 +1341,13 @@ class BaseEvolutionOperations(object):
 
             [
                 {
-                    'name': 'optional-index-name',
+                    'condition': {<deconstructured>},
+                    'db_tablespace': '...',
+                    'expressions': [{<deconstructured>}, ...],
                     'fields': ['field1', '-field2_sorted_desc'],
+                    'include': ['...', ...],
+                    'name': 'optional-index-name',
+                    'opclasses': ['...', ...],
                 },
                 ...
             ]
@@ -1158,82 +1373,90 @@ class BaseEvolutionOperations(object):
         if not old_indexes:
             old_indexes = []
 
-        # We're working with dictionaries and lists, which we can't just pass
-        # into set() like we would for the other methods. We need to calculate
-        # an explicit, ordered list of indexes, so to do this, we're going to
-        # build a set of tuples representing the old values and the new
-        # values, and then calculate an ordered list of indexes to remove and
-        # to add based on values found in those sets.
-        def _make_index_tuple(index_info):
-            return (index_info.get('name'), tuple(index_info['fields']))
-
-        old_indexes_set = set(
-            _make_index_tuple(index_info)
+        old_indexes_map = {
+            repr(index_info): index_info
             for index_info in old_indexes
-        )
+        }
 
-        new_indexes_set = set(
-            _make_index_tuple(index_info)
+        new_indexes_map = {
+            repr(index_info): index_info
             for index_info in new_indexes
-        )
+        }
 
         to_remove = [
             index_info
-            for index_info in old_indexes
-            if _make_index_tuple(index_info) not in new_indexes_set
+            for index_key, index_info in six.iteritems(old_indexes_map)
+            if index_key not in new_indexes_map
         ]
 
         to_add = [
             index_info
-            for index_info in new_indexes
-            if _make_index_tuple(index_info) not in old_indexes_set
+            for index_key, index_info in six.iteritems(new_indexes_map)
+            if index_key not in old_indexes_map
         ]
 
         sql_result = SQLResult()
         table_name = model._meta.db_table
+        db_state = self.database_state
 
         with self.connection.schema_editor(collect_sql=True) as schema_editor:
             for index_info in to_remove:
-                index_field_names = index_info['fields']
+                index_field_names = index_info.get('fields', ())
                 index_name = index_info.get('name')
 
                 if index_name:
-                    index_state = self.database_state.get_index(
-                        table_name=table_name,
-                        index_name=index_name)
-                else:
+                    index_state = db_state.get_index(table_name=table_name,
+                                                     index_name=index_name)
+                elif index_field_names:
                     # No explicit index name was given, so see if we can find
                     # one that matches in the database.
                     fields = self.get_fields_for_names(
                         model,
                         index_field_names,
                         allow_sort_prefixes=True)
-                    index_state = self.database_state.find_index(
+                    index_state = db_state.find_index(
                         table_name=table_name,
                         columns=self.get_column_names_for_fields(fields))
+                else:
+                    index_state = None
 
                 if index_state:
                     # We found a suitable index name, and a matching index
                     # entry in the database. Remove it.
-                    index = models.Index(fields=list(index_field_names),
-                                         name=index_state.name)
+                    index_name = index_state.name
+
+                    index = self._create_index_from_mutation_info(
+                        dict(index_info, **{
+                            'name': index_name,
+                            'fields': list(index_field_names),
+                        }))
                     sql_result.add('%s;' % index.remove_sql(model,
                                                             schema_editor))
 
+                    db_state.remove_index(table_name=table_name,
+                                          index_name=index_name)
+
             for index_info in to_add:
-                index_field_names = index_info['fields']
-                index_name = index_info.get('name')
-                fields = self.get_fields_for_names(model, index_field_names,
-                                                   allow_sort_prefixes=True)
+                index_attrs = index_info.copy()
+                index_field_names = index_attrs.pop('fields', None)
+                index_name = index_attrs.pop('name', None)
+
+                if index_field_names:
+                    fields = self.get_fields_for_names(
+                        model,
+                        index_field_names,
+                        allow_sort_prefixes=True)
+                else:
+                    fields = None
 
                 if index_name:
-                    index_state = self.database_state.get_index(
+                    index_state = db_state.get_index(
                         table_name=table_name,
                         index_name=index_name)
-                else:
+                elif fields:
                     # No explicit index name was given, so see if we can find
                     # one that matches in the database.
-                    index_state = self.database_state.find_index(
+                    index_state = db_state.find_index(
                         table_name=table_name,
                         columns=self.get_column_names_for_fields(fields))
 
@@ -1241,20 +1464,23 @@ class BaseEvolutionOperations(object):
                         index_name = index_state.name
 
                 if not index_name or not index_state:
-                    # This is a new index not found in the database. We can
-                    # record it and proceed.
-                    index = models.Index(fields=list(index_field_names),
-                                         name=index_name)
+                    # This is a new index not found in the database, or a
+                    # replacement for one that's being removed. We can record
+                    # it and proceed.
+                    index = self._create_index_from_mutation_info(index_info)
 
-                    if not index_name:
-                        index.set_name_with_model(model)
+                    if self.can_add_index(index):
+                        if not index_name:
+                            index.set_name_with_model(model)
 
-                    self.database_state.add_index(
-                        table_name=table_name,
-                        index_name=index.name,
-                        columns=self.get_column_names_for_fields(fields))
-                    sql_result.add('%s;' % index.create_sql(model,
-                                                            schema_editor))
+                        db_state.add_index(
+                            table_name=table_name,
+                            index_name=index.name,
+                            columns=self.get_column_names_for_fields(
+                                fields or []))
+
+                        sql_result.add(
+                            '%s;' % index.create_sql(model, schema_editor))
 
         return sql_result
 
@@ -1295,16 +1521,81 @@ class BaseEvolutionOperations(object):
     def get_column_names_for_fields(self, fields):
         return [field.column for field in fields]
 
+    def get_constraints_for_table(self, table_name):
+        """Return all known constraints/indexes on a table.
+
+        This will scan the table for any constraints or indexes. It generally
+        will wrap Django's database introspection support if available (on
+        Django >= 1.7), falling back on in-house implementations on earlier
+        releases.
+
+        Version Added:
+            2.2
+
+        Args:
+            table_name (unicode):
+                The name of the table.
+
+        Returns:
+            dict:
+            A dictionary mapping index names to a dictionary containing:
+
+            ``columns`` (:py:class:`list`):
+                The list of columns that the index covers.
+
+            ``unique`` (:py:class:`bool`):
+                Whether this is a unique index.
+        """
+        introspection = self.connection.introspection
+        results = {}
+
+        if hasattr(introspection, 'get_constraints'):
+            # Django >= 1.7
+            cursor = self.connection.cursor()
+
+            try:
+                constraints = introspection.get_constraints(cursor,
+                                                            table_name)
+            finally:
+                cursor.close()
+
+            for index_name, info in six.iteritems(constraints):
+                results[index_name] = {
+                    'unique': info.get('unique', False),
+                    'columns': info.get('columns', []),
+                }
+        else:
+            # Django == 1.6
+            indexes = self.get_indexes_for_table(table_name)
+
+            for index_name, info in six.iteritems(indexes):
+                results[index_name] = {
+                    'columns': info['columns'],
+                    'unique': info['unique'],
+                }
+
+        return results
+
     def get_indexes_for_table(self, table_name):
-        """Returns a dictionary of indexes from the database.
+        """Return all known indexes on a table.
 
-        This introspects the database to return a mapping of index names
-        to index information, with the following keys:
+        This is a fallback used only on Django 1.6, due to lack of proper
+        introspection on that release. It should only be called internally
+        by :py:meth:`get_constraints_for_table`.
 
-            * columns -> list of column names
-            * unique -> whether it's a unique index
+        Args:
+            table_name (unicode):
+                The name of the table.
 
-        This function must be implemented by subclasses.
+        Returns:
+            dict:
+            A dictionary mapping index names to a dictionary containing:
+
+            ``columns`` (:py:class:`list`):
+                The list of columns that the index covers.
+
+            ``unique`` (:py:class:`bool`):
+                Whether this is a unique index.
         """
         raise NotImplementedError
 
@@ -1346,10 +1637,13 @@ class BaseEvolutionOperations(object):
         """
         assert replaced_fields or renamed_db_tables
 
+        connection = self.connection
+
         renamed_columns = {}
         renamed_col_fields = {}
         renamed_fields = {}
         replaced_fields_by_name = {}
+        replaced_field_types = {}
 
         for old_field, new_field in list(six.iteritems(replaced_fields)):
             assert old_field.primary_key == new_field.primary_key
@@ -1367,13 +1661,25 @@ class BaseEvolutionOperations(object):
                     renamed_col_fields[old_field.name] = new_field
                     renamed_columns[old_field.column] = new_field.column
 
+                old_db_type = old_field.db_type(connection=connection)
+                new_db_type = new_field.db_type(connection=connection)
+
+                if old_db_type != new_db_type:
+                    replaced_field_types[old_field.name] = {
+                        'old_field': old_field,
+                        'new_field': new_field,
+                    }
+
         sql_result = SQLResult()
 
         if not replaced_fields_by_name and not renamed_db_tables:
             # There's nothing to do.
             return sql_result, None
 
-        refs = []
+        m2m_refs = []
+        replaced_field_refs = []
+        models_to_refs = defaultdict(list)
+        seen_m2m_models = set()
 
         # If there are any ManyToManyFields defined by this model, their
         # references will need to be stashed away and their constraints
@@ -1420,22 +1726,51 @@ class BaseEvolutionOperations(object):
                 if get_remote_field_model(through_remote_field) == model:
                     # Stash this reference away so we know to restore it
                     # later.
-                    refs.append((through, through_field))
+                    m2m_refs.append((through, through_field))
+                    models_to_refs[model].append((through, through_field))
+                    seen_m2m_models.add(through._meta.db_table)
 
-        if refs:
-            sql_result = SQLResult(sql_delete_constraints(
-                connection=self.connection,
-                model=model,
-                remove_refs={
-                    model: refs,
-                }))
+        for field_info in six.itervalues(replaced_field_types):
+            old_rels = iter_non_m2m_reverse_relations(field_info['old_field'])
+            new_rels = iter_non_m2m_reverse_relations(field_info['new_field'])
+
+            for old_rel, new_rel in zip(old_rels, new_rels):
+                rel_to_model = get_remote_field_model(old_rel)
+                rel_from_model = get_remote_field_related_model(old_rel)
+                old_rel_field = old_rel.field
+                new_rel_field = new_rel.field
+
+                assert old_rel_field.column == new_rel_field.column
+                assert rel_to_model == get_remote_field_model(new_rel)
+                assert (rel_from_model ==
+                        get_remote_field_related_model(new_rel))
+
+                replaced_field_refs.append((rel_from_model,
+                                            old_rel_field,
+                                            new_rel.field))
+
+                if rel_from_model._meta.db_table not in seen_m2m_models:
+                    models_to_refs[rel_to_model].append(
+                        (rel_from_model, old_rel_field))
+
+        if models_to_refs:
+            remove_refs = models_to_refs.copy()
+
+            for ref_to_model in six.iterkeys(models_to_refs):
+                sql_result.add_sql(sql_delete_constraints(
+                    connection=connection,
+                    model=ref_to_model,
+                    remove_refs=remove_refs))
 
         return sql_result, {
             'model': model,
-            'refs': refs,
+            'm2m_refs': m2m_refs,
+            'models_to_refs': models_to_refs,
             'renamed_db_tables': renamed_db_tables,
             'renamed_fields': renamed_fields,
             'replaced_fields': replaced_fields_by_name,
+            'replaced_field_refs': replaced_field_refs,
+            'replaced_field_types': replaced_field_types,
         }
 
     def restore_field_ref_constraints(self, stash):
@@ -1460,20 +1795,26 @@ class BaseEvolutionOperations(object):
             # There's nothing to do.
             return SQLResult()
 
-        refs = stash['refs']
+        connection = self.connection
+
+        m2m_refs = stash['m2m_refs']
         replaced_fields = stash['replaced_fields']
+        replaced_field_refs = stash['replaced_field_refs']
         renamed_db_tables = stash['renamed_db_tables']
         renamed_fields = stash['renamed_fields']
+        models_to_refs = stash['models_to_refs']
 
         model = stash['model']
         meta = model._meta
-        max_name_length = self.connection.ops.max_name_length()
+        max_name_length = connection.ops.max_name_length()
+
+        sql_result = SQLResult()
 
         # Loop through all model-to-relation references we stashed. We'll be
         # setting any new table names on intermediary/through tables that
         # are being renamed, and updating any fields on those tables that
         # are pointing to renamed/replaced fields.
-        for through, through_field in refs:
+        for through, through_field in m2m_refs:
             through_meta = through._meta
 
             # If any fields have been renamed, and those fields exist on this
@@ -1492,6 +1833,12 @@ class BaseEvolutionOperations(object):
                 through_meta.db_table = truncate_name(new_db_table,
                                                       max_name_length)
 
+        for ref_model, ref_field, new_field in replaced_field_refs:
+            sql_result.add_sql(self.get_change_column_type_sql(
+                model=ref_model,
+                old_field=ref_field,
+                new_field=new_field))
+
         # Replace any fields on the model with the new instances.
         model_fields = meta._fields
 
@@ -1499,12 +1846,16 @@ class BaseEvolutionOperations(object):
             del model_fields[old_field_name]
             model_fields[new_field.name] = new_field
 
-        return SQLResult(sql_add_constraints(
-            connection=self.connection,
-            model=model,
-            refs={
-                model: refs,
-            }))
+        if models_to_refs:
+            add_refs = models_to_refs.copy()
+
+            for ref_model in six.iterkeys(models_to_refs):
+                sql_result.add_sql(sql_add_constraints(
+                    connection=connection,
+                    model=ref_model,
+                    refs=add_refs))
+
+        return sql_result
 
     def normalize_value(self, value):
         if isinstance(value, bool):
@@ -1527,3 +1878,49 @@ class BaseEvolutionOperations(object):
         """
         return (op1['type'] in self.mergeable_ops and
                 op2['type'] in self.mergeable_ops)
+
+    def _create_index_from_mutation_info(self, index_info):
+        """Create and return a new index based on mutation information.
+
+        This will parse out attributes passed to a mutation class and
+        create a :py:class:`~django.db.models.Index` suitable for the
+        current version of Django.
+
+        Version Added:
+            2.2
+
+        Args:
+            index_info (dict):
+                Information passed to the mutation.
+
+        Returns:
+            django.db.models.Index:
+            The resulting Index.
+        """
+        condition = index_info.get('condition')
+        db_tablespace = index_info.get('db_tablespace')
+        expressions = index_info.get('expressions')
+        fields = index_info.get('fields')
+        include = index_info.get('include')
+        name = index_info.get('name')
+        opclasses = index_info.get('opclasses')
+
+        if expressions and supports_index_feature('expressions'):
+            index_args = expressions
+        else:
+            index_args = ()
+
+        index_kwargs = {
+            _attr_name: _value
+            for _attr_name, _value in (
+                ('fields', fields),
+                ('name', name),
+                ('condition', condition),
+                ('db_tablespace', db_tablespace),
+                ('include', include),
+                ('opclasses', opclasses),
+            )
+            if _value is not None and supports_index_feature(_attr_name)
+        }
+
+        return models.Index(*index_args, **index_kwargs)

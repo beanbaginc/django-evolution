@@ -31,18 +31,20 @@ TEST_DATABASES = {
     },
 }
 
+from default_test_db_settings import TEST_DATABASES as NEW_TEST_DATABASES
+TEST_DATABASES.update(NEW_TEST_DATABASES)
+
 try:
     from test_db_settings import TEST_DATABASES as NEW_TEST_DATABASES
-
     TEST_DATABASES.update(NEW_TEST_DATABASES)
 except ImportError:
-    sys.stderr.write('*** Missing test_db_settings.py This is needed for '
-                     'non-sqlite unit tests.\n')
+    # There are no custom settings.
+    pass
 
-db_choice = os.getenv('DJANGO_EVOLUTION_TEST_DB', 'sqlite3')
+TEST_DB_CHOICE = os.getenv('DJANGO_EVOLUTION_TEST_DB', 'sqlite3')
 
 try:
-    DATABASES['default'] = TEST_DATABASES[db_choice]
+    DATABASES['default'] = TEST_DATABASES[TEST_DB_CHOICE]
 except KeyError:
     raise ImproperlyConfigured(
         'Requested database type "%s" is not a valid choice.'

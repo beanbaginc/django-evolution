@@ -271,6 +271,21 @@ class GetEvolutionsSequenceTests(TestCase):
 
     def test_with_project(self):
         """Testing get_evolution_sequence with project-provided evolutions"""
+        new_settings = {
+            'CUSTOM_EVOLUTIONS': {
+                'django_evolution.tests.migrations_app':
+                    'django_evolution.tests.evolutions_app.evolutions',
+            },
+        }
+
+        with self.settings(DJANGO_EVOLUTION=new_settings):
+            self.assertEqual(get_evolution_sequence(get_app('migrations_app')),
+                             ['first_evolution', 'second_evolution'])
+
+    def test_with_project_deprecated_setting(self):
+        """Testing get_evolution_sequence with project-provided evolutions
+        and deprecated settings.CUSTOM_EVOLUTIONS
+        """
         custom_evolutions = {
             'django_evolution.tests.migrations_app':
                 'django_evolution.tests.evolutions_app.evolutions',
@@ -304,6 +319,22 @@ class GetEvolutionsModuleNameTests(TestCase):
     def test_with_project(self):
         """Testing get_evolutions_module_name with project-provided evolutions
         """
+        new_settings = {
+            'CUSTOM_EVOLUTIONS': {
+                'django_evolution':
+                    'django_evolution.tests.evolutions_app.evolutions',
+            },
+        }
+
+        with self.settings(DJANGO_EVOLUTION=new_settings):
+            self.assertEqual(
+                get_evolutions_module_name(get_app('django_evolution')),
+                'django_evolution.tests.evolutions_app.evolutions')
+
+    def test_with_project_deprecated_setting(self):
+        """Testing get_evolutions_module_name with project-provided evolutions
+        and deprecated settings.CUSTOM_EVOLUTIONS
+        """
         custom_evolutions = {
             'django_evolution':
                 'django_evolution.tests.evolutions_app.evolutions',
@@ -334,6 +365,23 @@ class GetEvolutionsModuleTests(TestCase):
 
     def test_with_project(self):
         """Testing get_evolutions_module with project-provided evolutions"""
+        from django_evolution.tests.evolutions_app import evolutions
+
+        new_settings = {
+            'CUSTOM_EVOLUTIONS': {
+                'django_evolution':
+                    'django_evolution.tests.evolutions_app.evolutions',
+            },
+        }
+
+        with self.settings(DJANGO_EVOLUTION=new_settings):
+            self.assertIs(get_evolutions_module(get_app('django_evolution')),
+                          evolutions)
+
+    def test_with_project_deprecated_setting(self):
+        """Testing get_evolutions_module with project-provided evolutions
+        and deprecated settings.CUSTOM_EVOLUTIONS
+        """
         from django_evolution.tests.evolutions_app import evolutions
 
         custom_evolutions = {

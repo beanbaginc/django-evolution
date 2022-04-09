@@ -90,6 +90,16 @@ Version 2:
                                     {
                                         'name': '<name>',
                                         'fields': ['<colname>', ...],
+                                        'expressions': [
+                                            {<deconstructed>},
+                                            ...
+                                        ],
+                                        'attrs': {
+                                            'condition': {<deconstucted>},
+                                            'db_tablespace': '<string>',
+                                            'include': ['<name>', ...],
+                                            'opclasses': ['<name>', ...],
+                                        },
                                     },
                                     ...
                                 ],
@@ -1923,6 +1933,16 @@ class IndexSignature(BaseSignature):
     These indexes were introduced in Django 1.11. They correspond to entries
     in the :py:attr:`model._meta.indexes <django.db.models.Options.indexes`
     attribute.
+
+    Version Changed:
+        2.2:
+        Added a new :py:attr:`attrs` attribute for storing:
+
+        * ``db_tablespace`` from Django 2.0+
+        * ``condition`` from Django 2.2+
+        * ``include`` and ``opclasses`` from Django 3.2+
+
+        Added a new :py:attr:`expressions` attribute for Django 3.2+.
     """
 
     @classmethod
@@ -1937,8 +1957,14 @@ class IndexSignature(BaseSignature):
             IndexSignature:
             The signature based on the index.
         """
-        return cls(name=index.name or None,
-                   fields=index.fields)
+        path, expressions, attrs = index.deconstruct()
+        attrs.pop('name', None)
+        attrs.pop('fields', None)
+
+        return cls(attrs=attrs,
+                   expressions=deepcopy(expressions or None),
+                   fields=deepcopy(index.fields or None),
+                   name=index.name or None)
 
     @classmethod
     def deserialize(cls, index_sig_dict, sig_version,
@@ -1965,10 +1991,18 @@ class IndexSignature(BaseSignature):
         """
         validate_sig_version(sig_version)
 
-        return cls(name=deserialize_from_signature(index_sig_dict.get('name')),
-                   fields=deserialize_from_signature(index_sig_dict['fields']))
+        name = deserialize_from_signature(index_sig_dict.get('name'))
+        fields = deserialize_from_signature(index_sig_dict.get('fields'))
+        expressions = deserialize_from_signature(
+            index_sig_dict.get('expressions', []))
+        attrs = deserialize_from_signature(index_sig_dict.get('attrs', {}))
 
-    def __init__(self, fields, name=None):
+        return cls(name=name,
+                   fields=fields,
+                   expressions=expressions or None,
+                   attrs=attrs or None)
+
+    def __init__(self, fields, name=None, expressions=None, attrs=None):
         """Initialize the signature.
 
         Args:
@@ -1978,9 +2012,26 @@ class IndexSignature(BaseSignature):
             name (unicode, optional):
                 The optional name of the index.
 
+            expressions (list, optional):
+                A list of expressions for the index.
+
+            attrs (dict, optional):
+                Additional attributes to pass when constructing the index.
         """
+        self.expressions = expressions
         self.fields = fields
         self.name = name
+
+        norm_attrs = {}
+
+        if attrs:
+            for key, value in six.iteritems(attrs):
+                if isinstance(value, tuple):
+                    value = list(value)
+
+                norm_attrs[key] = value
+
+        self.attrs = norm_attrs
 
     def clone(self):
         """Clone the signature.
@@ -1989,8 +2040,10 @@ class IndexSignature(BaseSignature):
             IndexSignature:
             The cloned signature.
         """
-        return IndexSignature(name=self.name,
-                              fields=list(self.fields))
+        return IndexSignature(attrs=deepcopy(self.attrs),
+                              expressions=deepcopy(self.expressions),
+                              fields=deepcopy(self.fields),
+                              name=self.name)
 
     def serialize(self, sig_version=LATEST_SIGNATURE_VERSION):
         """Serialize index data to a signature dictionary.
@@ -2010,12 +2063,21 @@ class IndexSignature(BaseSignature):
         """
         validate_sig_version(sig_version)
 
-        index_sig_dict = {
-            'fields': self.fields,
-        }
+        index_sig_dict = {}
+
+        if self.fields:
+            index_sig_dict['fields'] = serialize_to_signature(self.fields)
 
         if self.name:
             index_sig_dict['name'] = self.name
+
+        if sig_version == 2:
+            if self.attrs:
+                index_sig_dict['attrs'] = serialize_to_signature(self.attrs)
+
+            if self.expressions:
+                index_sig_dict['expressions'] = \
+                    serialize_to_signature(self.expressions)
 
         return index_sig_dict
 
@@ -2034,7 +2096,10 @@ class IndexSignature(BaseSignature):
         return (other is not None and
                 ((not self.name and not other.name) or
                  self.name == other.name) and
-                self.fields == other.fields)
+                ((not self.expressions and not other.expressions) or
+                 self.expressions == other.expressions) and
+                self.fields == other.fields and
+                dict.__eq__(self.attrs or {}, other.attrs or {}))
 
     def __hash__(self):
         """Return a hash of the signature.
@@ -2054,8 +2119,10 @@ class IndexSignature(BaseSignature):
             unicode:
             A string representation of the signature.
         """
-        return '<IndexSignature(name=%r, fields=%r)>' % (self.name,
-                                                         self.fields)
+        return (
+            '<IndexSignature(name=%r, fields=%r, expressions=%r, attrs=%r)>'
+            % (self.name, self.fields, self.expressions, self.attrs)
+        )
 
 
 class FieldSignature(BaseSignature):
@@ -2391,8 +2458,11 @@ class FieldSignature(BaseSignature):
 
         if old_field_type is not new_field_type:
             try:
-                field_type_changed = (old_field_type().get_internal_type() !=
-                                      new_field_type().get_internal_type())
+                old_field = old_field_type(**old_field_sig.field_attrs)
+                new_field = new_field_type(**self.field_attrs)
+
+                field_type_changed = (old_field.get_internal_type() !=
+                                      new_field.get_internal_type())
             except TypeError:
                 # We can't instantiate those, so assume the field
                 # type has indeed changed.

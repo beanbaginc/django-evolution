@@ -1,73 +1,39 @@
-# Fill these in with your MySQL server information
-mysql_host = ''
-mysql_username = ''
-mysql_password = ''
-
-# Fill these in with your PostgreSQL server information
-postgres_host = ''
-postgres_username = ''
-postgres_password = ''
-
+# This file is needed if you want to override or supplement the default,
+# Docker-based test databases. You will need to have an entry for each database
+# you want to test against.
+#
+# See test_db_settings.py for built-in database names.
 
 TEST_DATABASES = {
-    'mysql_myisam': {
+    'mysql...': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'test',
-        'HOST': mysql_host,
-        'USER': mysql_username,
-        'PASSWORD': mysql_password,
-        'OPTIONS': {
-            'init_command': 'SET storage_engine=MYISAM',
-        },
-    },
-    'mysql_innodb': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'test',
-        'HOST': mysql_host,
-        'USER': mysql_username,
-        'PASSWORD': mysql_password,
+        'HOST': '...',
+        'USER': '...',
+        'PASSWORD': '...',
         'OPTIONS': {
             'init_command': 'SET storage_engine=INNODB',
         },
-    },
-    'postgres': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'test',
-        'HOST': postgres_host,
-        'USER': postgres_username,
-        'PASSWORD': postgres_password,
     },
 
-    # You may also want to define some version-specific databases, if you
-    # have them available on your network (or in Docker) for testing:
-    'mysql_5_6': {
+	# MariaDB
+    'mariadb...': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'test',
-        'HOST': 'mysql5_6.lan',
+        'HOST': '...',
         'USER': '...',
-        'PASSWORD': '...'
+        'PASSWORD': '...',
         'OPTIONS': {
             'init_command': 'SET storage_engine=INNODB',
         },
     },
-    'mysql_5_7': {
-        'ENGINE': 'django.db.backends.mysql',
+
+	# Postgres
+    'postgres...': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'test',
-        'HOST': 'mysql5_7.lan',
+        'HOST': '...',
         'USER': '...',
-        'PASSWORD': '...'
-        'OPTIONS': {
-            'init_command': 'SET storage_engine=INNODB',
-        },
-    },
-    'mariadb': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'test',
-        'HOST': 'mariadb.lan',
-        'USER': '...',
-        'PASSWORD': '...'
-        'OPTIONS': {
-            'init_command': 'SET storage_engine=INNODB',
-        },
+        'PASSWORD': '...',
     },
 }
