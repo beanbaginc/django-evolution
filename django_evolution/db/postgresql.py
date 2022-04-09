@@ -7,12 +7,126 @@ import django
 from django_evolution.compat.db import truncate_name
 from django_evolution.db.common import BaseEvolutionOperations
 from django_evolution.db.sql_result import AlterTableSQLResult
+from django_evolution.utils.models import get_field_is_relation
 
 
 class EvolutionOperations(BaseEvolutionOperations):
     """Evolution operations for Postgres databases."""
 
     default_tablespace = 'pg_default'
+
+    change_column_type_sets_attrs = False
+
+    #: A mapping of field types for use when altering types.
+    #:
+    #: Version Added:
+    #:     2.2
+    alter_field_type_map = {
+        'bigserial': 'bigint',
+        'serial': 'integer',
+        'smallserial': 'smallint',
+    }
+
+    def get_change_column_type_sql(self, model, old_field, new_field):
+        """Return SQL to change the type of a column.
+
+        Version Added:
+            2.2
+
+        Args:
+            model (type):
+                The type of model owning the field.
+
+            old_field (django.db.models.Field):
+                The old field.
+
+            new_field (django.db.models.Field):
+                The new field.
+
+        Returns:
+            django_evolution.sql_result.AlterTableSQLResult:
+            The SQL statements for changing the column type.
+        """
+        connection = self.connection
+        qn = connection.ops.quote_name
+
+        schema = self.build_column_schema(
+            model=model,
+            field=new_field,
+            initial=new_field.default,
+            skip_null_constraint=True,
+            skip_primary_or_unique_constraint=True,
+            skip_references=True)
+        column_name = schema['name']
+        table_name = model._meta.db_table
+
+        sql_result = AlterTableSQLResult(self, model)
+
+        old_field_type = old_field.db_type(connection=connection).lower()
+        new_field_type = schema['db_type'].lower()
+
+        was_serial = old_field_type in self.alter_field_type_map
+        is_serial = new_field_type in self.alter_field_type_map
+
+        if is_serial:
+            # This is a serial field. We will need to change the type and
+            # update the sequence. We will also need to choose the actual
+            # type to set for the column definition.
+            new_field_type = self.alter_field_type_map.get(new_field_type,
+                                                           new_field_type)
+
+        alter_type_params = ['TYPE', new_field_type] + schema['definition']
+
+        if not self._are_column_types_compatible(old_field, new_field):
+            alter_type_params += [
+                'USING', '%s::%s' % (column_name, new_field_type),
+            ]
+
+        sql_result.add_alter_table([{
+            'op': 'ALTER COLUMN',
+            'column': column_name,
+            'params': alter_type_params,
+            'sql_params': schema['definition_sql_params'],
+        }])
+
+        if is_serial:
+            # Reset the sequence.
+            sequence_name = '%s_%s_seq' % (table_name, column_name)
+
+            sequence_sql_result = AlterTableSQLResult(self, model)
+            sequence_sql_result.add_pre_sql([
+                'DROP SEQUENCE IF EXISTS %s CASCADE;' % qn(sequence_name),
+                'CREATE SEQUENCE %s;' % qn(sequence_name),
+            ])
+            sequence_sql_result.add_alter_table([{
+                'op': 'ALTER COLUMN',
+                'column': column_name,
+                'params': [
+                    'SET',
+                    'DEFAULT',
+                    "nextval('%s')" % qn(sequence_name),
+                ],
+            }])
+            sequence_sql_result.add_post_sql([
+                "SELECT setval('%s', MAX(%s)) FROM %s;"
+                % (qn(sequence_name),
+                   qn(column_name),
+                   qn(table_name)),
+                'ALTER SEQUENCE %s OWNED BY %s.%s;'
+                % (qn(sequence_name),
+                   qn(table_name),
+                   qn(column_name)),
+            ])
+
+            sql_result.add_post_sql(sequence_sql_result)
+        elif was_serial:
+            # Drop the old sequence, since we no longer need it.
+            sequence_name = '%s_%s_seq' % (table_name, old_field.column)
+            sql_result.add_post_sql([
+                'DROP SEQUENCE IF EXISTS %s CASCADE;' % qn(sequence_name),
+            ])
+
+        return sql_result
 
     def rename_column(self, model, old_field, new_field):
         if old_field.column == new_field.column:
@@ -193,3 +307,88 @@ class EvolutionOperations(BaseEvolutionOperations):
                 'params': ['TYPE', field.db_type(connection=self.connection)],
             }]
         )
+
+    def _are_column_types_compatible(self, old_field, new_field):
+        """Return whether two column types are compatible.
+
+        This is used to determine if casting needs to occur.
+
+        If the internal types of two fields are the same, and is not an
+        :py:class:`~django.contrib.postgres.fields.array.ArrayField`, then
+        they are considered compatible.
+
+        Otherwise, the Postgres column types are directly compared, iterating
+        in the case of an
+        :py:class:`~django.contrib.postgres.fields.array.ArrayField`.
+
+        Version Added:
+            2.2
+
+        Args:
+            old_field (django.db.models.Field):
+                The old field.
+
+            new_field (django.db.models.Field):
+                The new field.
+
+        Returns:
+            bool:
+            ``True`` if the column types of both fields are compatible.
+            ``False`` if they are not.
+        """
+        old_internal_type = old_field.get_internal_type()
+        new_internal_type = new_field.get_internal_type()
+
+        if (old_internal_type == new_internal_type and
+            new_internal_type != 'ArrayField'):
+            return True
+
+        return (list(self._iter_field_types(old_field)) ==
+                list(self._iter_field_types(new_field)))
+
+    def _iter_field_types(self, field):
+        """Iterate through the types of fields.
+
+        If the field is an
+        :py:class:`~django.contrib.postgres.fields.array.ArrayField`, then
+        this will yield the field types within.
+
+        If this is a relation field, the relation type will be returned in
+        a 1-item list.
+
+        If this is any other kind of field, the data type will be returned
+        in a 1-item list. The result may differ between versions of Django.
+
+        Version Added:
+            2.2
+
+        Args:
+            field (django.db.models.Field):
+                The field to iterate through.
+
+        Yields:
+            unicode:
+            Each field type.
+        """
+        try:
+            base_field = field.base_field
+        except AttributeError:
+            base_field = field
+
+        internal_type = base_field.get_internal_type()
+
+        if internal_type == 'ArrayField':
+            for field_type in self._iter_field_types(base_field):
+                yield field_type
+        elif get_field_is_relation(base_field):
+            yield field.rel_db_type(self.connection)
+        else:
+            try:
+                try:
+                    # Django >= 1.8
+                    yield self.connection.data_types[internal_type]
+                except AttributeError:
+                    # Django < 1.8
+                    yield self.connection.creation.data_types[internal_type]
+            except KeyError:
+                yield field.db_type(self.connection)

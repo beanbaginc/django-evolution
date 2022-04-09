@@ -102,6 +102,12 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
 
                 if initial is not None:
                     new_initial[field.column] = initial
+            elif op == 'CHANGE COLUMN TYPE':
+                old_field = item['old_field']
+                new_field = item['new_field']
+                column = old_field.column
+
+                replaced_fields[column] = new_field
             elif op == 'ADD CONSTRAINTS':
                 added_constraints = item['constraints']
             elif op == 'REBUILD':
@@ -593,6 +599,41 @@ class EvolutionOperations(BaseEvolutionOperations):
                                       field=field,
                                       attr_name='max_length',
                                       new_attr_value=new_value)
+
+    def change_column_type(self, model, old_field, new_field, new_attrs):
+        """Return SQL to change the type of a column.
+
+        Version Added:
+            2.2
+
+        Args:
+            model (type):
+                The type of model owning the field.
+
+            old_field (django.db.models.Field):
+                The old field.
+
+            new_field (django.db.models.Field):
+                The new field.
+
+            new_attrs (dict):
+                New attributes set in the
+                :py:class:`~django_evolution.mutations.change_field.
+                ChangeField`.
+
+        Returns:
+            SQLiteAlterTableSQLResult:
+            The SQL statements for changing the column type.
+        """
+        return SQLiteAlterTableSQLResult(
+            evolver=self,
+            model=model,
+            alter_table=[{
+                'op': 'CHANGE COLUMN TYPE',
+                'old_field': old_field,
+                'new_field': new_field,
+            }]
+        )
 
     def get_change_unique_sql(self, model, field, new_unique_value,
                               constraint_name, initial):

@@ -13,6 +13,57 @@ from django_evolution.db.sql_result import AlterTableSQLResult, SQLResult
 
 
 class EvolutionOperations(BaseEvolutionOperations):
+    """Evolution operations for MySQL and MariaDB databases."""
+
+    def get_change_column_type_sql(self, model, old_field, new_field):
+        """Return SQL to change the type of a column.
+
+        Version Added:
+            2.2
+
+        Args:
+            model (type):
+                The type of model owning the field.
+
+            old_field (django.db.models.Field):
+                The old field.
+
+            new_field (django.db.models.Field):
+                The new field.
+
+        Returns:
+            django_evolution.sql_result.AlterTableSQLResult:
+            The SQL statements for changing the column type.
+        """
+        schema = self.build_column_schema(
+            model=model,
+            field=new_field,
+            initial=new_field.default,
+            skip_references=True)
+
+        alter_table_items = []
+
+        if old_field.primary_key:
+            alter_table_items.append({
+                'sql': 'DROP PRIMARY KEY',
+            })
+
+        params = [schema['db_type']]
+
+        if new_field.null:
+            params.append('NULL')
+        else:
+            params.append('NOT NULL')
+
+        alter_table_items.append({
+            'op': 'MODIFY',
+            'column': schema['name'],
+            'params': [schema['db_type']] + schema['definition'],
+            'sql_params': schema['definition_sql_params'],
+        })
+
+        return AlterTableSQLResult(self, model, alter_table_items)
+
     def delete_column(self, model, f):
         sql_result = AlterTableSQLResult(self, model)
 
