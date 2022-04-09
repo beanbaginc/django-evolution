@@ -32,6 +32,18 @@ Public API
    django_evolution.evolve.purge_app_task
    django_evolution.models
    django_evolution.mutations
+   django_evolution.mutations.add_field
+   django_evolution.mutations.base
+   django_evolution.mutations.change_field
+   django_evolution.mutations.change_meta
+   django_evolution.mutations.delete_application
+   django_evolution.mutations.delete_field
+   django_evolution.mutations.delete_model
+   django_evolution.mutations.move_to_django_migrations
+   django_evolution.mutations.rename_app_label
+   django_evolution.mutations.rename_field
+   django_evolution.mutations.rename_model
+   django_evolution.mutations.sql_mutation
    django_evolution.serialization
    django_evolution.signals
    django_evolution.signature
