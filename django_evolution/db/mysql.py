@@ -32,6 +32,31 @@ class EvolutionOperations(BaseEvolutionOperations):
         return sql_result
 
     def rename_column(self, model, old_field, new_field):
+        """Rename the specified column.
+
+        This will rename the column through ``ALTER TABLE .. CHANGE COLUMN``.
+
+        Any constraints on the column will be stashed away before the
+        ``ALTER TABLE`` and restored afterward.
+
+        If the column has not actually changed, or it's not a real column
+        (a many-to-many relation), then this will return empty statements.
+
+        Args:
+            model (type):
+                The model representing the table containing the column.
+
+            old_field (django.db.models.Field):
+                The old field definition.
+
+            new_field (django.db.models.Field):
+                The new field definition.
+
+        Returns:
+            django_evolution.db.sql_result.AlterTableSQLResult or list:
+            The statements for renaming the column. This may be an empty
+            list if the column won't be renamed.
+        """
         if old_field.column == new_field.column:
             # No Operation
             return []
@@ -43,6 +68,7 @@ class EvolutionOperations(BaseEvolutionOperations):
             # database columns in this table.
             return []
 
+        qn = self.connection.ops.quote_name
         sql_result = AlterTableSQLResult(self, model)
 
         pre_sql, stash = self.stash_field_ref_constraints(
@@ -52,66 +78,28 @@ class EvolutionOperations(BaseEvolutionOperations):
             })
         sql_result.add_pre_sql(pre_sql)
 
-        sql_result.add_alter_table(self._get_rename_column_sql(
-            opts=model._meta,
-            old_field=old_field,
-            new_field=new_field))
+        schema = self.build_column_schema(model=model,
+                                          field=new_field,
+                                          initial=new_field.default)
 
+        alter_table_items = []
+
+        if old_field.primary_key:
+            alter_table_items.append('DROP PRIMARY KEY')
+
+        alter_table_items.append(
+            'CHANGE COLUMN %s %s'
+            % (qn(old_field.column), ' '.join([
+                qn(schema['name']),
+                schema['db_type'],
+            ] + schema['definition'])))
+
+        sql_result.add_alter_table([{
+            'sql': ', '.join(alter_table_items),
+        }])
         sql_result.add_post_sql(self.restore_field_ref_constraints(stash))
 
         return sql_result
-
-    def _get_rename_column_sql(self, opts, old_field, new_field):
-        qn = self.connection.ops.quote_name
-        style = color.no_style()
-        col_type = new_field.db_type(connection=self.connection)
-        tablespace = new_field.db_tablespace or opts.db_tablespace
-        alter_table_item = ''
-
-        # Make the definition (e.g. 'foo VARCHAR(30)') for this field.
-        field_output = [
-            style.SQL_FIELD(qn(new_field.column)),
-            style.SQL_COLTYPE(col_type),
-            style.SQL_KEYWORD('%sNULL' %
-                              (not new_field.null and 'NOT ' or '')),
-        ]
-
-        if new_field.primary_key:
-            field_output.append(style.SQL_KEYWORD('PRIMARY KEY'))
-
-        if new_field.unique:
-            field_output.append(style.SQL_KEYWORD('UNIQUE'))
-
-        if (tablespace and
-            self.connection.features.supports_tablespaces and
-            self.connection.features.autoindexes_primary_keys and
-            (new_field.unique or new_field.primary_key)):
-            # We must specify the index tablespace inline, because we
-            # won't be generating a CREATE INDEX statement for this field.
-            field_output.append(self.connection.ops.tablespace_sql(
-                tablespace, inline=True))
-
-        new_remote_field = get_remote_field(new_field)
-
-        if new_remote_field:
-            new_remote_field_meta = \
-                get_remote_field_model(new_remote_field)._meta
-
-            field_output.append('%s %s (%s)%s' % (
-                style.SQL_KEYWORD('REFERENCES'),
-                style.SQL_TABLE(qn(new_remote_field_meta.db_table)),
-                style.SQL_FIELD(qn(new_remote_field_meta.get_field(
-                    new_remote_field.field_name).column)),
-                self.connection.ops.deferrable_sql(),
-            ))
-
-        if old_field.primary_key:
-            alter_table_item = 'DROP PRIMARY KEY, '
-
-        alter_table_item += ('CHANGE COLUMN %s %s'
-                             % (qn(old_field.column), ' '.join(field_output)))
-
-        return [{'sql': alter_table_item}]
 
     def set_field_null(self, model, field, null):
         if null:

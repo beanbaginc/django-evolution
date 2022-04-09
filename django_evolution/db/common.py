@@ -108,6 +108,122 @@ class BaseEvolutionOperations(object):
 
         return True
 
+    def get_deferrable_sql(self):
+        """Return the SQL for marking a reference as deferrable.
+
+        Version Added:
+            2.2
+
+        Returns:
+            unicode:
+            The SQL for marking a reference as deferrable.
+        """
+        return self.connection.ops.deferrable_sql()
+
+    def build_column_schema(self, model, field, initial=None,
+                            skip_null_constraint=False,
+                            skip_primary_or_unique_constraint=False):
+        """Return information on the schema for building a column.
+
+        This is used when creating or re-creating columns on a table.
+
+        Args:
+            model (type):
+                The parent model of the column.
+
+            field (django.db.models.Field):
+                The field to build the column schema from.
+
+            initial (object or callable):
+                The initial data for the column.
+
+            skip_null_constraint (bool, optional):
+                Whether to skip adding ``NULL``/``NOT NULL`` constraints.
+                This can be used to temporarily omit this part of the
+                schema while adding the column.
+
+        Returns:
+            dict:
+            The schema information. This has the following keys:
+
+            ``db_type`` (:py:class:`unicode`):
+                The database-specific column type.
+
+            ``definition`` (list):
+                A list of parts of the column schema definition. Each of
+                these is a keyword (which may or may not have spaces) or
+                values used for constructing the column.
+
+            ``definition_sql_params`` (list):
+                The list of SQL parameters to pass to the executor. These
+                will be safely handled by the database backend.
+
+            ``name`` (:py:class:`unicode`):
+                The name of the column.
+        """
+        connection = self.connection
+        qn = connection.ops.quote_name
+        tablespace = field.db_tablespace or model._meta.db_tablespace
+
+        column_def = []
+        column_def_sql_params = []
+
+        if not skip_null_constraint:
+            if field.null:
+                column_def.append('NULL')
+            else:
+                column_def.append('NOT NULL')
+
+        if not skip_primary_or_unique_constraint:
+            if field.primary_key:
+                column_def.append('PRIMARY KEY')
+            elif field.unique:
+                column_def.append('UNIQUE')
+
+        # Add tablespace information.
+        if (tablespace and
+            connection.features.supports_tablespaces and
+            connection.features.autoindexes_primary_keys and
+            (field.unique or field.primary_key)):
+            # We must specify the index tablespace inline, because we
+            # won't be generating a CREATE INDEX statement for this field.
+            column_def.append(connection.ops.tablespace_sql(tablespace,
+                                                            inline=True))
+
+        remote_field = get_remote_field(field)
+
+        if remote_field:
+            # This is a ForeignKey, or similar. The exact syntax is up to the
+            # database backend, but this will generally be in the form of:
+            #
+            # ... REFERENCES <table> (<reffed_columns>) ...
+            #
+            # Followed by backend-specific deferrable syntax.
+            related_model = get_remote_field_model(remote_field)
+
+            column_def += [
+                'REFERENCES',
+                qn(related_model._meta.db_table),
+                '(%s)' % qn(related_model._meta.pk.name),
+                self.get_deferrable_sql(),
+            ]
+        else:
+            # This is a standard field.
+            #
+            # At this point, initial can only be None if null=True, otherwise
+            # it is a user callable or the default AddFieldInitialCallback
+            # which will shortly raise an exception.
+            if initial is not None and not callable(initial):
+                column_def += ['DEFAULT', '%s']
+                column_def_sql_params.append(initial)
+
+        return {
+            'name': field.column,
+            'db_type': field.db_type(connection=connection),
+            'definition': column_def,
+            'definition_sql_params': column_def_sql_params,
+        }
+
     def generate_table_ops_sql(self, mutator, ops):
         """Generates SQL for a sequence of mutation operations.
 
@@ -291,116 +407,80 @@ class BaseEvolutionOperations(object):
         """
         return sql_create_for_many_to_many_field(self.connection, model, field)
 
-    def add_column(self, model, f, initial):
+    def add_column(self, model, field, initial):
+        """Add a column to a table.
+
+        Args:
+            model (type):
+                The model representing the table the column will be added to.
+
+            field (django.db.models.Field):
+                The field representing the column being added.
+
+            initial (object or callable):
+                The initial data to set for the column in all rows. If this
+                is a callable, it will be called and the result will be used.
+
+        Returns:
+            django_evolution.db.sql_result.AlterTableSQLResult:
+            The SQL for adding the column.
+        """
         qn = self.connection.ops.quote_name
         sql_result = self.alter_table_sql_result_cls(self, model)
         table_name = model._meta.db_table
+        remote_field = get_remote_field(field)
+        can_set_initial = remote_field is None and initial is not None
 
-        remote_field = get_remote_field(f)
+        schema = self.build_column_schema(
+            model=model,
+            field=field,
+            initial=initial,
+            skip_null_constraint=can_set_initial and callable(initial))
+        column_name = schema['name']
 
-        if remote_field:
-            # it is a foreign key field
-            # NOT NULL REFERENCES "django_evolution_addbasemodel"
-            # ("id") DEFERRABLE INITIALLY DEFERRED
+        sql_result.add_alter_table([{
+            'op': 'ADD COLUMN',
+            'column': column_name,
+            'db_type': schema['db_type'],
+            'params': schema['definition'],
+            'sql_params': schema['definition_sql_params'],
+        }])
 
-            # ALTER TABLE <tablename> ADD COLUMN <column name> NULL
-            # REFERENCES <tablename1> ("<colname>") DEFERRABLE INITIALLY
-            # DEFERRED
-            related_model = get_remote_field_model(remote_field)
-            related_table = related_model._meta.db_table
-            related_pk_col = related_model._meta.pk.name
-            constraints = ['%sNULL' % (not f.null and 'NOT ' or '')]
-
-            if f.unique or f.primary_key:
-                constraints.append('UNIQUE')
-
-            sql_result.add_alter_table([
-                {
-                    'op': 'ADD COLUMN',
-                    'column': f.column,
-                    'db_type': f.db_type(connection=self.connection),
-                    'params': constraints + [
-                        'REFERENCES',
-                        qn(related_table),
-                        '(%s)' % qn(related_pk_col),
-                        self.connection.ops.deferrable_sql(),
-                    ]
-                }
-            ])
-        else:
-            null_constraints = '%sNULL' % (not f.null and 'NOT ' or '')
-
-            if f.unique or f.primary_key:
-                unique_constraints = 'UNIQUE'
-            else:
-                unique_constraints = ''
-
-            # At this point, initial can only be None if null=True,
-            # otherwise it is a user callable or the default
-            # AddFieldInitialCallback which will shortly raise an exception.
-            if initial is not None:
-                if callable(initial):
-                    sql_result.add_alter_table([
-                        {
-                            'op': 'ADD COLUMN',
-                            'column': f.column,
-                            'db_type': f.db_type(connection=self.connection),
-                            'params': [unique_constraints],
-                        }
-                    ])
-
-                    sql_result.add_sql([
-                        'UPDATE %s SET %s = %s WHERE %s IS NULL;'
-                        % (qn(table_name), qn(f.column),
-                           initial(), qn(f.column))
-                    ])
-
-                    if not f.null:
-                        # Only put this sql statement if the column cannot
-                        # be null.
-                        sql_result.add_sql(
-                            self.set_field_null(model, f, f.null))
-                else:
-                    sql_result.add_alter_table([
-                        {
-                            'op': 'ADD COLUMN',
-                            'column': f.column,
-                            'db_type': f.db_type(connection=self.connection),
-                            'params': [
-                                null_constraints,
-                                unique_constraints,
-                                'DEFAULT',
-                                '%s',
-                            ],
-                            'sql_params': [initial]
-                        }
-                    ])
-
-                    # Django doesn't generate default columns, so now that
-                    # we've added one to get default values for existing
-                    # tables, drop that default.
-                    sql_result.add_post_sql([
-                        'ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT;'
-                        % (qn(table_name), qn(f.column))
-                    ])
-            else:
-                sql_result.add_alter_table([
-                    {
-                        'op': 'ADD COLUMN',
-                        'column': f.column,
-                        'db_type': f.db_type(connection=self.connection),
-                        'params': [null_constraints, unique_constraints],
-                    }
+        if can_set_initial:
+            if callable(initial):
+                sql_result.add_sql([
+                    'UPDATE %s SET %s = %s WHERE %s IS NULL;'
+                    % (qn(table_name),
+                       qn(column_name),
+                       initial(),
+                       qn(column_name))
                 ])
 
-        if f.unique or f.primary_key:
+                if not field.null:
+                    # Now that we've set initial values, we can make this
+                    # `NOT NULL`.
+                    sql_result.add_sql(self.set_field_null(
+                        model=model,
+                        field=field,
+                        null=False))
+            else:
+                # Django doesn't generate default columns, so now that
+                # we've added one to get default values for existing
+                # tables, drop that default.
+                sql_result.add_post_sql([
+                    'ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT;'
+                    % (qn(table_name), qn(column_name))
+                ])
+
+        if field.unique or field.primary_key:
             self.database_state.add_index(
                 table_name=table_name,
-                index_name=self.get_new_constraint_name(table_name, f.column),
-                columns=[f.column],
+                index_name=self.get_new_constraint_name(table_name,
+                                                        column_name),
+                columns=[column_name],
                 unique=True)
 
-        sql_result.add(self.create_index(model, f))
+        sql_result.add(self.create_index(model, field))
 
         return sql_result
 

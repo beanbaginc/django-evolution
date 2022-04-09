@@ -169,35 +169,19 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
         #         about any indexes yet. Later, this will become the new
         #         table.
         columns_sql = []
+        columns_sql_params = []
 
         for field in new_fields:
             if not isinstance(field, models.ManyToManyField):
-                column_name = qn(field.column)
-                column_type = field.db_type(connection=connection)
-                params = [column_name, column_type]
+                schema = evolver.build_column_schema(model=model,
+                                                     field=field)
 
-                if field.null:
-                    params.append('NULL')
-                else:
-                    params.append('NOT NULL')
-
-                if field.unique:
-                    params.append('UNIQUE')
-
-                if field.primary_key:
-                    params.append('PRIMARY KEY')
-
-                if isinstance(field, models.ForeignKey):
-                    remote_field = get_remote_field(field)
-                    remote_field_model = get_remote_field_model(remote_field)
-
-                    params.append(
-                        'REFERENCES %s (%s) DEFERRABLE INITIALLY DEFERRED'
-                        % (qn(remote_field_model._meta.db_table),
-                           qn(remote_field_model._meta.get_field(
-                               remote_field.field_name).column)))
-
-                columns_sql.append(' '.join(params))
+                columns_sql.append(
+                    '%s %s %s'
+                    % (qn(schema['name']),
+                       schema['db_type'],
+                       ' '.join(schema['definition'])))
+                columns_sql_params += schema['definition_sql_params']
 
         constraints_sql = []
 
@@ -211,9 +195,12 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
                     if constraint_sql:
                         constraints_sql.append(constraint_sql)
 
-        sql.append('CREATE TABLE %s (%s);'
-                   % (qn(TEMP_TABLE_NAME),
-                      ', '.join(columns_sql + constraints_sql)))
+        sql.append((
+            'CREATE TABLE %s (%s);'
+            % (qn(TEMP_TABLE_NAME),
+               ', '.join(columns_sql + constraints_sql)),
+            tuple(columns_sql_params),
+        ))
 
         # Step 2: Copy over any data from the old table into the new one.
         sql.append((
@@ -224,7 +211,10 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
                     qn(column)
                     for column in six.iterkeys(field_values)
                 ),
-                ', '.join(six.itervalues(field_values)),
+                ', '.join(
+                    six.text_type(_value)
+                    for _value in six.itervalues(field_values)
+                ),
                 qn(table_name),
             ),
             tuple(field_initials)
@@ -331,6 +321,26 @@ class EvolutionOperations(BaseEvolutionOperations):
     _can_rename_cols_min_version = (3, 26, 0)
     _can_rename_cols = (Database.sqlite_version_info >=
                         _can_rename_cols_min_version)
+
+    def get_deferrable_sql(self):
+        """Return the SQL for marking a reference as deferrable.
+
+        Despite SQLite3 supporting this, the Django SQLite3 backend does not
+        implement the standard function
+        (:py:meth:`BaseDatabaseOperations.deferrable_sql()
+        <django.db.backends.base.operations.BaseDatabaseOperations>`) for
+        this.
+
+        This provides a value used internally for building references.
+
+        Version Added:
+            2.2
+
+        Returns:
+            unicode:
+            The SQL for marking a reference as deferrable.
+        """
+        return 'DEFERRABLE INITIALLY DEFERRED'
 
     def rename_table(self, model, old_db_table, new_db_table):
         """Rename a table.

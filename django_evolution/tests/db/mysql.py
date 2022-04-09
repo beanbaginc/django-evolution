@@ -927,7 +927,7 @@ def rename_field(connection):
 
             'ALTER TABLE `tests_testmodel`'
             ' DROP PRIMARY KEY, CHANGE COLUMN `id` `my_pk_id`'
-            ' integer AUTO_INCREMENT NOT NULL PRIMARY KEY UNIQUE;',
+            ' integer AUTO_INCREMENT NOT NULL PRIMARY KEY;',
 
             'ALTER TABLE `tests_testmodel_m2m_field`'
             ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
