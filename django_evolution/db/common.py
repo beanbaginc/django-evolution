@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import copy
 import logging
+from collections import defaultdict
 
 import django
 from django.db import connection as default_connection, models
@@ -20,10 +21,12 @@ from django_evolution.compat.db import (create_index_name,
                                         sql_indexes_for_fields,
                                         truncate_name)
 from django_evolution.compat.models import (get_remote_field,
-                                            get_remote_field_model)
+                                            get_remote_field_model,
+                                            get_remote_field_related_model)
 from django_evolution.db.sql_result import AlterTableSQLResult, SQLResult
 from django_evolution.errors import EvolutionNotImplementedError
 from django_evolution.support import supports_index_feature
+from django_evolution.utils.models import iter_non_m2m_reverse_relations
 
 
 class BaseEvolutionOperations(object):
@@ -64,6 +67,18 @@ class BaseEvolutionOperations(object):
     #: Type:
     #:     unicode
     default_tablespace = None
+
+    #: Whether a column type change operation also sets new attributes.
+    #:
+    #: If ``False``, attributes will be set through the standard field change
+    #: operation.
+    #:
+    #: Version Added:
+    #:     2.2
+    #:
+    #: Type:
+    #:     bool
+    change_column_type_sets_attrs = True
 
     alter_table_sql_result_cls = AlterTableSQLResult
 
@@ -120,9 +135,39 @@ class BaseEvolutionOperations(object):
         """
         return self.connection.ops.deferrable_sql()
 
+    def get_change_column_type_sql(self, model, old_field, new_field):
+        """Return SQL for changing a column type.
+
+        This should be limited to the ``ALTER TABLE`` or equivalent for
+        changing the column. It should not affect constraints or other
+        fields.
+
+        Subclasses must implement this, unless they override
+        :py:meth:`change_column_type`.
+
+        Version Added:
+            2.2
+
+        Args:
+            model (type):
+                The parent model of the column.
+
+            old_field (django.db.models.Field):
+                The old field being replaced.
+
+            new_field (django.db.models.Field):
+                The new replacement field.
+
+        Returns:
+            django_evolution.db.sql_result.SQLResult:
+            The SQL statements for changing the column type.
+        """
+        raise NotImplementedError
+
     def build_column_schema(self, model, field, initial=None,
                             skip_null_constraint=False,
-                            skip_primary_or_unique_constraint=False):
+                            skip_primary_or_unique_constraint=False,
+                            skip_references=False):
         """Return information on the schema for building a column.
 
         This is used when creating or re-creating columns on a table.
@@ -141,6 +186,11 @@ class BaseEvolutionOperations(object):
                 Whether to skip adding ``NULL``/``NOT NULL`` constraints.
                 This can be used to temporarily omit this part of the
                 schema while adding the column.
+
+            skip_references (bool, optional):
+                Whether to skip adding ``REFERENCES ...`` information.
+                This can be used to temporarily omit this part of the
+                schema while adding the column, handling that step separately.
 
         Returns:
             dict:
@@ -199,14 +249,15 @@ class BaseEvolutionOperations(object):
             # ... REFERENCES <table> (<reffed_columns>) ...
             #
             # Followed by backend-specific deferrable syntax.
-            related_model = get_remote_field_model(remote_field)
+            if not skip_references:
+                related_model = get_remote_field_model(remote_field)
 
-            column_def += [
-                'REFERENCES',
-                qn(related_model._meta.db_table),
-                '(%s)' % qn(related_model._meta.pk.name),
-                self.get_deferrable_sql(),
-            ]
+                column_def += [
+                    'REFERENCES',
+                    qn(related_model._meta.db_table),
+                    '(%s)' % qn(related_model._meta.pk.name),
+                    self.get_deferrable_sql(),
+                ]
         else:
             # This is a standard field.
             #
@@ -278,6 +329,12 @@ class BaseEvolutionOperations(object):
             sql_result.add(self.change_column_attrs(model, mutation,
                                                     op['field'].name,
                                                     op['new_attrs']))
+        elif op_type == 'change_column_type':
+            sql_result.add(self.change_column_type(
+                model=model,
+                old_field=op['old_field'],
+                new_field=op['new_field'],
+                new_attrs=op['new_attrs']))
         elif op_type == 'delete_column':
             sql_result.add(self.delete_column(model, op['field']))
         elif op_type == 'change_meta':
@@ -943,6 +1000,50 @@ class BaseEvolutionOperations(object):
         return self.get_change_unique_sql(model, field, new_value,
                                           constraint_name, mutation.initial)
 
+    def change_column_type(self, model, old_field, new_field, new_attrs):
+        """Return SQL to change the type of a column.
+
+        Version Added:
+            2.2
+
+        Args:
+            model (type):
+                The type of model owning the field.
+
+            old_field (django.db.models.Field):
+                The old field.
+
+            new_field (django.db.models.Field):
+                The new field.
+
+            new_attrs (dict):
+                New attributes set in the
+                :py:class:`~django_evolution.mutations.change_field.
+                ChangeField`.
+
+        Returns:
+            django_evolution.sql_result.AlterTableSQLResult:
+            The SQL statements for changing the column type.
+        """
+        sql_result = AlterTableSQLResult(self, model)
+
+        pre_sql, stash = self.stash_field_ref_constraints(
+            model=model,
+            replaced_fields={
+                old_field: new_field,
+            })
+
+        sql_result.add_pre_sql(pre_sql)
+
+        sql_result.add_sql(self.get_change_column_type_sql(
+            model=model,
+            old_field=old_field,
+            new_field=new_field))
+
+        sql_result.add_post_sql(self.restore_field_ref_constraints(stash))
+
+        return sql_result
+
     def get_change_unique_sql(self, model, field, new_unique_value,
                               constraint_name, initial):
         """Returns the database-specific SQL to change a column's unique flag.
@@ -1536,10 +1637,13 @@ class BaseEvolutionOperations(object):
         """
         assert replaced_fields or renamed_db_tables
 
+        connection = self.connection
+
         renamed_columns = {}
         renamed_col_fields = {}
         renamed_fields = {}
         replaced_fields_by_name = {}
+        replaced_field_types = {}
 
         for old_field, new_field in list(six.iteritems(replaced_fields)):
             assert old_field.primary_key == new_field.primary_key
@@ -1557,13 +1661,25 @@ class BaseEvolutionOperations(object):
                     renamed_col_fields[old_field.name] = new_field
                     renamed_columns[old_field.column] = new_field.column
 
+                old_db_type = old_field.db_type(connection=connection)
+                new_db_type = new_field.db_type(connection=connection)
+
+                if old_db_type != new_db_type:
+                    replaced_field_types[old_field.name] = {
+                        'old_field': old_field,
+                        'new_field': new_field,
+                    }
+
         sql_result = SQLResult()
 
         if not replaced_fields_by_name and not renamed_db_tables:
             # There's nothing to do.
             return sql_result, None
 
-        refs = []
+        m2m_refs = []
+        replaced_field_refs = []
+        models_to_refs = defaultdict(list)
+        seen_m2m_models = set()
 
         # If there are any ManyToManyFields defined by this model, their
         # references will need to be stashed away and their constraints
@@ -1610,22 +1726,51 @@ class BaseEvolutionOperations(object):
                 if get_remote_field_model(through_remote_field) == model:
                     # Stash this reference away so we know to restore it
                     # later.
-                    refs.append((through, through_field))
+                    m2m_refs.append((through, through_field))
+                    models_to_refs[model].append((through, through_field))
+                    seen_m2m_models.add(through._meta.db_table)
 
-        if refs:
-            sql_result = SQLResult(sql_delete_constraints(
-                connection=self.connection,
-                model=model,
-                remove_refs={
-                    model: refs,
-                }))
+        for field_info in six.itervalues(replaced_field_types):
+            old_rels = iter_non_m2m_reverse_relations(field_info['old_field'])
+            new_rels = iter_non_m2m_reverse_relations(field_info['new_field'])
+
+            for old_rel, new_rel in zip(old_rels, new_rels):
+                rel_to_model = get_remote_field_model(old_rel)
+                rel_from_model = get_remote_field_related_model(old_rel)
+                old_rel_field = old_rel.field
+                new_rel_field = new_rel.field
+
+                assert old_rel_field.column == new_rel_field.column
+                assert rel_to_model == get_remote_field_model(new_rel)
+                assert (rel_from_model ==
+                        get_remote_field_related_model(new_rel))
+
+                replaced_field_refs.append((rel_from_model,
+                                            old_rel_field,
+                                            new_rel.field))
+
+                if rel_from_model._meta.db_table not in seen_m2m_models:
+                    models_to_refs[rel_to_model].append(
+                        (rel_from_model, old_rel_field))
+
+        if models_to_refs:
+            remove_refs = models_to_refs.copy()
+
+            for ref_to_model in six.iterkeys(models_to_refs):
+                sql_result.add_sql(sql_delete_constraints(
+                    connection=connection,
+                    model=ref_to_model,
+                    remove_refs=remove_refs))
 
         return sql_result, {
             'model': model,
-            'refs': refs,
+            'm2m_refs': m2m_refs,
+            'models_to_refs': models_to_refs,
             'renamed_db_tables': renamed_db_tables,
             'renamed_fields': renamed_fields,
             'replaced_fields': replaced_fields_by_name,
+            'replaced_field_refs': replaced_field_refs,
+            'replaced_field_types': replaced_field_types,
         }
 
     def restore_field_ref_constraints(self, stash):
@@ -1650,20 +1795,26 @@ class BaseEvolutionOperations(object):
             # There's nothing to do.
             return SQLResult()
 
-        refs = stash['refs']
+        connection = self.connection
+
+        m2m_refs = stash['m2m_refs']
         replaced_fields = stash['replaced_fields']
+        replaced_field_refs = stash['replaced_field_refs']
         renamed_db_tables = stash['renamed_db_tables']
         renamed_fields = stash['renamed_fields']
+        models_to_refs = stash['models_to_refs']
 
         model = stash['model']
         meta = model._meta
-        max_name_length = self.connection.ops.max_name_length()
+        max_name_length = connection.ops.max_name_length()
+
+        sql_result = SQLResult()
 
         # Loop through all model-to-relation references we stashed. We'll be
         # setting any new table names on intermediary/through tables that
         # are being renamed, and updating any fields on those tables that
         # are pointing to renamed/replaced fields.
-        for through, through_field in refs:
+        for through, through_field in m2m_refs:
             through_meta = through._meta
 
             # If any fields have been renamed, and those fields exist on this
@@ -1682,6 +1833,12 @@ class BaseEvolutionOperations(object):
                 through_meta.db_table = truncate_name(new_db_table,
                                                       max_name_length)
 
+        for ref_model, ref_field, new_field in replaced_field_refs:
+            sql_result.add_sql(self.get_change_column_type_sql(
+                model=ref_model,
+                old_field=ref_field,
+                new_field=new_field))
+
         # Replace any fields on the model with the new instances.
         model_fields = meta._fields
 
@@ -1689,12 +1846,16 @@ class BaseEvolutionOperations(object):
             del model_fields[old_field_name]
             model_fields[new_field.name] = new_field
 
-        return SQLResult(sql_add_constraints(
-            connection=self.connection,
-            model=model,
-            refs={
-                model: refs,
-            }))
+        if models_to_refs:
+            add_refs = models_to_refs.copy()
+
+            for ref_model in six.iterkeys(models_to_refs):
+                sql_result.add_sql(sql_add_constraints(
+                    connection=connection,
+                    model=ref_model,
+                    refs=add_refs))
+
+        return sql_result
 
     def normalize_value(self, value):
         if isinstance(value, bool):

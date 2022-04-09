@@ -241,6 +241,8 @@ class MockMeta(object):
         self.abstract = False
         self.managed = True
         self.proxy = False
+        self.parents = []
+        self.private_fields = []
         self._model_sig = model_sig
         self._project_sig = project_sig
 
@@ -255,6 +257,16 @@ class MockMeta(object):
     def local_many_to_many(self):
         """A list of all local Many-to-Many fields on the model."""
         return list(six.itervalues(self._many_to_many))
+
+    @property
+    def label(self):
+        """A label shown for this model.
+
+        Version Added:
+            2.2
+        """
+        # This implementation is consistent with that in Django 1.9+.
+        return '%s.%s' % (self.app_label, self.object_name)
 
     def setup_fields(self, model, stub=False):
         """Set up the fields listed in the model's signature.
