@@ -46,6 +46,22 @@ from django_evolution.utils.apps import get_app_name
 django_version = django.VERSION[:2]
 
 
+#: A list of all globally-registered custom migrations.
+#:
+#: These migrations may not exist on disk. This is primarily useful for
+#: unit testing.
+#:
+#: This list is managed by :py:func:`register_global_custom_migrations` and
+#: :py:func:`clear_global_custom_migrations`.
+#:
+#: Version Added:
+#:     2.2
+#:
+#: Type:
+#:     MigrationList
+_global_custom_migrations = None
+
+
 class MigrationList(object):
     """A list of applied or pending migrations.
 
@@ -545,6 +561,12 @@ class MigrationExecutor(DjangoMigrationExecutor):
     def __init__(self, connection, custom_migrations=None, signal_sender=None):
         """Initialize the executor.
 
+        Version Changed:
+            2.2:
+            ``custom_migrations`` now defaults to any globally-registered
+            custom migrations set in
+            :py:func:`register_global_custom_migrations`.
+
         Args:
             connection (django.db.backends.base.BaseDatabaseWrapper):
                 The connection to load applied migrations from.
@@ -554,10 +576,15 @@ class MigrationExecutor(DjangoMigrationExecutor):
                 of ``(app_label, migration_name)``, and each value is a
                 migration.
 
+                This defaults to any globally-registered custom migrations.
+
             signal_sender (object, optional):
                 A custom sender to pass when sending signals. This defaults
                 to this instance.
         """
+        if custom_migrations is None:
+            custom_migrations = _global_custom_migrations
+
         self._signal_sender = signal_sender or self
 
         super(MigrationExecutor, self).__init__(
@@ -625,6 +652,49 @@ class MigrationExecutor(DjangoMigrationExecutor):
         elif action == 'apply_success':
             applied_migration.send(sender=self._signal_sender,
                                    migration=migration)
+
+
+def register_global_custom_migrations(custom_migrations):
+    """Register a global list of custom migrations.
+
+    These will be used by default when constructing a
+    :py:class:`MigrationExecutor`.
+
+    Only one list of custom migrations can be added at a time.
+
+    This is primarily useful for unit testing.
+
+    Version Added:
+        2.2
+
+    Args:
+        custom_migrations (MigrationList):
+            The list of custom migrations.
+
+    Raises:
+        AssertionError:
+            Custom migrations were already registered.
+    """
+    global _global_custom_migrations
+
+    assert _global_custom_migrations is None, (
+        'register_global_custom_migrations() cannot be called until any '
+        'existing migrations are unregistered through '
+        'clear_global_custom_migrations()'
+    )
+
+    _global_custom_migrations = custom_migrations
+
+
+def clear_global_custom_migrations():
+    """Clear the list of custom migrations.
+
+    Version Added:
+        2.2
+    """
+    global _global_custom_migrations
+
+    _global_custom_migrations = None
 
 
 def has_migrations_module(app):

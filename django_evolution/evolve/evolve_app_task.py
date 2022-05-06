@@ -35,16 +35,19 @@ from django_evolution.utils.evolutions import (get_app_pending_mutations,
                                                get_evolution_sequence,
                                                get_unapplied_evolutions)
 from django_evolution.utils.graph import EvolutionGraph
-from django_evolution.utils.migrations import (MigrationExecutor,
-                                               MigrationList,
-                                               apply_migrations,
-                                               create_pre_migrate_state,
-                                               emit_post_migrate_or_sync,
-                                               emit_pre_migrate_or_sync,
-                                               filter_migration_targets,
-                                               finalize_migrations,
-                                               is_migration_initial,
-                                               record_applied_migrations)
+from django_evolution.utils.migrations import (
+    MigrationExecutor,
+    MigrationList,
+    apply_migrations,
+    clear_global_custom_migrations,
+    create_pre_migrate_state,
+    emit_post_migrate_or_sync,
+    emit_pre_migrate_or_sync,
+    filter_migration_targets,
+    finalize_migrations,
+    is_migration_initial,
+    record_applied_migrations,
+    register_global_custom_migrations)
 
 
 logger = logging.getLogger(__name__)
@@ -93,6 +96,18 @@ class EvolveAppTask(BaseEvolutionTask):
                 There was an error with the setup or validation of migrations.
                 A subclass containing additional details will be raised.
         """
+        # Register any custom migrations that we want globally available.
+        # This is of course not thread-safe, but nobody should be doing
+        # concurrent migrations, or they're in for a pretty bad time.
+        if supports_migrations:
+            custom_migrations = MigrationList()
+
+            for task in tasks:
+                for migration in task._migrations or []:
+                    custom_migrations.add_migration(migration)
+
+            register_global_custom_migrations(custom_migrations)
+
         # We're going to let Django determine a plan for all migrations, and
         # we'll determine a plan for evolutions. These will be combined into a
         # dependency graph, which will produce the order in which we'll need
@@ -141,6 +156,8 @@ class EvolveAppTask(BaseEvolutionTask):
             'pre_migration_plan': migrations_info.get('pre_plan'),
             'pre_migration_targets': migrations_info.get('pre_targets'),
         }
+
+        clear_global_custom_migrations()
 
     @classmethod
     def execute_tasks(cls, evolver, tasks, **kwargs):
@@ -296,16 +313,9 @@ class EvolveAppTask(BaseEvolutionTask):
         if not supports_migrations:
             return None
 
-        custom_migrations = MigrationList()
-
-        for task in tasks:
-            for migration in task._migrations or []:
-                custom_migrations.add_migration(migration)
-
         migration_executor = MigrationExecutor(
             connection=evolver.connection,
-            signal_sender=evolver,
-            custom_migrations=custom_migrations)
+            signal_sender=evolver)
         migration_executor.run_checks()
 
         return migration_executor
