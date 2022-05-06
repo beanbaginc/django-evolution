@@ -60,6 +60,9 @@ Private API
    django_evolution.diff
    django_evolution.mock_models
    django_evolution.mutators
+   django_evolution.mutators.app_mutator
+   django_evolution.mutators.model_mutator
+   django_evolution.mutators.sql_mutator
    django_evolution.placeholders
    django_evolution.support
    django_evolution.compat.apps
