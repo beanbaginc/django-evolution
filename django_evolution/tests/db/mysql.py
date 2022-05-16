@@ -92,6 +92,20 @@ def add_field(connection):
             ' ALTER COLUMN `added_field` DROP DEFAULT;',
         ],
 
+        'AddDateColumnWithCallableInitialModel': [
+            'ALTER TABLE `tests_testmodel`'
+            ' ADD COLUMN `added_field` %s;'
+            % datetime_type,
+
+            'UPDATE `tests_testmodel`'
+            ' SET `added_field` = 2007-12-13 16:42:00'
+            ' WHERE `added_field` IS NULL;',
+
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY COLUMN `added_field` %s NOT NULL;'
+            % datetime_type,
+        ],
+
         'AddDefaultColumnModel': [
             'ALTER TABLE `tests_testmodel`'
             ' ADD COLUMN `added_field` integer NOT NULL DEFAULT 42;',
@@ -664,6 +678,11 @@ def change_field(connection):
     generate_unique_constraint_name = \
         make_generate_unique_constraint_name(connection)
 
+    if hasattr(connection, 'data_types'):
+        datetime_type = connection.data_types['DateTimeField']
+    else:
+        datetime_type = 'datetime'
+
     return {
         'SetNotNullChangeModelWithConstant': [
             'UPDATE `tests_testmodel`'
@@ -680,6 +699,24 @@ def change_field(connection):
 
             'ALTER TABLE `tests_testmodel`'
             ' MODIFY COLUMN `char_field1` varchar(25) NOT NULL;',
+        ],
+
+        'SetDateTimeNotNullChangeModelWithCallable': [
+            'UPDATE `tests_testmodel`'
+            ' SET `datetime_field1` = 2022-05-13 12:13:14+00:00'
+            ' WHERE `datetime_field1` IS NULL;',
+
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY COLUMN `datetime_field1` %s NOT NULL;'
+            % datetime_type,
+        ],
+
+        'SetDateNotNullChangeModelWithCallable': [
+            'UPDATE `tests_testmodel`'
+            ' SET `date_field1` = 2022-05-13 WHERE `date_field1` IS NULL;',
+
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY COLUMN `date_field1` date NOT NULL;',
         ],
 
         'SetNullChangeModel': [

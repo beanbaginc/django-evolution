@@ -151,8 +151,10 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
                 # AddFieldInitialCallback, which will raise an exception in
                 # common code before we get too much further.
                 if initial is not None:
-                    if callable(initial):
-                        field_values[column] = initial()
+                    initial, embed_initial = evolver.normalize_initial(initial)
+
+                    if embed_initial:
+                        field_values[column] = initial
                     else:
                         field_initials.append(initial)
 

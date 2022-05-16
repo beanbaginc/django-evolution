@@ -90,6 +90,19 @@ def add_field(connection):
             ' ALTER COLUMN "added_field" DROP DEFAULT;',
         ],
 
+        'AddDateColumnWithCallableInitialModel': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD COLUMN "added_field" timestamp with'
+            ' time zone;',
+
+            'UPDATE "tests_testmodel"'
+            ' SET "added_field" = 2007-12-13 16:42:00'
+            ' WHERE "added_field" IS NULL;',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "added_field" SET NOT NULL;',
+        ],
+
         'AddDefaultColumnModel': [
             'ALTER TABLE "tests_testmodel"'
             ' ADD COLUMN "added_field" integer NOT NULL DEFAULT 42;',
@@ -792,6 +805,23 @@ def change_field(connection):
 
             'ALTER TABLE "tests_testmodel"'
             ' ALTER COLUMN "char_field1" SET NOT NULL;',
+        ],
+
+        'SetDateTimeNotNullChangeModelWithCallable': [
+            'UPDATE "tests_testmodel"'
+            ' SET "datetime_field1" = 2022-05-13 12:13:14+00:00'
+            ' WHERE "datetime_field1" IS NULL;',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "datetime_field1" SET NOT NULL;',
+        ],
+
+        'SetDateNotNullChangeModelWithCallable': [
+            'UPDATE "tests_testmodel"'
+            ' SET "date_field1" = 2022-05-13 WHERE "date_field1" IS NULL;',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "date_field1" SET NOT NULL;',
         ],
 
         'SetNullChangeModel': [

@@ -505,13 +505,23 @@ class BaseEvolutionOperations(object):
 
         if can_set_initial:
             if callable(initial):
-                sql_result.add_sql([
-                    'UPDATE %s SET %s = %s WHERE %s IS NULL;'
-                    % (qn(table_name),
-                       qn(column_name),
-                       initial(),
-                       qn(column_name))
-                ])
+                initial, embed_initial = self.normalize_initial(initial)
+
+                set_sql = (
+                    'UPDATE %(table_name)s SET %(column_name)s = %%s'
+                    ' WHERE %(column_name)s IS NULL;'
+                    % {
+                        'column_name': qn(column_name),
+                        'table_name': qn(table_name),
+                    }
+                )
+
+                if embed_initial:
+                    set_sql = set_sql % initial
+                else:
+                    set_sql = (set_sql, (initial,))
+
+                sql_result.add_sql([set_sql])
 
                 if not field.null:
                     # Now that we've set initial values, we can make this
@@ -854,8 +864,10 @@ class BaseEvolutionOperations(object):
                 }
             )
 
-            if callable(initial):
-                update_sql = sql_prefix % initial()
+            initial, embed_initial = self.normalize_initial(initial)
+
+            if embed_initial:
+                update_sql = sql_prefix % initial
             else:
                 update_sql = (sql_prefix, (initial,))
 
@@ -1856,6 +1868,38 @@ class BaseEvolutionOperations(object):
                     refs=add_refs))
 
         return sql_result
+
+    def normalize_initial(self, initial):
+        """Normalize an initial value.
+
+        If the value is callable, it will be called and the result will be
+        used. If that result is a string, it will be assumed to be something
+        safe for embedding directly into SQL.
+
+        Anything else is considered best used as a SQL parameter.
+
+        Version Added:
+            2.3
+
+        Args:
+            initial (object or callable):
+                The initial value to normalize.
+
+        Returns:
+            tuple:
+            A 2-tuple of:
+
+            1. The normalized initial value.
+            2. Whether it can be embedded directly into SQL. If ``False``, it
+               should be used in SQL query parameter list.
+        """
+        if callable(initial):
+            initial = initial()
+
+            if isinstance(initial, six.text_type):
+                return initial, True
+
+        return initial, False
 
     def normalize_value(self, value):
         if isinstance(value, bool):

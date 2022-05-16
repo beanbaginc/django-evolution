@@ -153,6 +153,23 @@ def add_field(connection):
             'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
         ],
 
+        'AddDateColumnWithCallableInitialModel': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("id" integer NOT NULL PRIMARY KEY,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "int_field" integer NOT NULL,'
+            ' "added_field" datetime NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field",'
+            ' "added_field")'
+            ' SELECT "id", "char_field", "int_field", 2007-12-13 16:42:00'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+        ],
+
         'AddDefaultColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
             '("id" integer NOT NULL PRIMARY KEY,'
@@ -835,6 +852,89 @@ def change_field(connection):
             ' "char_field", "char_field2", "dec_field", "dec_field1",'
             ' "dec_field2", "datetime_field1", "datetime_field2",'
             ' "date_field1", "date_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'SetDateTimeNotNullChangeModelWithCallable': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NOT NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", coalesce("datetime_field1",'
+            ' 2022-05-13 12:13:14+00:00), "datetime_field2", "date_field1",'
+            ' "date_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'SetDateNotNullChangeModelWithCallable': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NOT NULL,'
+            ' "date_field2" date NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' coalesce("date_field1", 2022-05-13), "date_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',

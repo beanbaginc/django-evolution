@@ -320,6 +320,26 @@ class AddFieldTests(EvolutionTestCase):
             ],
             'AddDateColumnModel')
 
+    def test_add_datetime_field_with_callable(self):
+        """Testing AddField with DateTimeField with callable"""
+        class DestModel(BaseTestModel):
+            char_field = models.CharField(max_length=20)
+            int_field = models.IntegerField()
+            added_field = models.DateTimeField()
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                AddField('TestModel', 'added_field', models.DateTimeField,
+                         initial=lambda: datetime(2007, 12, 13, 16, 42, 0)),
+            ],
+            self.DIFF_TEXT,
+            [
+                "AddField('TestModel', 'added_field', models.DateTimeField,"
+                " initial=<<USER VALUE REQUIRED>>)",
+            ],
+            'AddDateColumnWithCallableInitialModel')
+
     def test_add_with_default(self):
         """Testing AddField with default value"""
         class DestModel(BaseTestModel):

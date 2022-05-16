@@ -339,6 +339,99 @@ class ChangeFieldTests(EvolutionTestCase):
             ],
             'SetNotNullChangeModelWithCallable')
 
+    def test_set_null_datetime_false_and_initial_callable(self):
+        """Testing ChangeField with setting DateTimeField null=False and
+        initial callable
+        """
+        class DestModel(BaseTestModel):
+            my_id = models.AutoField(primary_key=True)
+            alt_pk = models.IntegerField()
+            int_field = models.IntegerField(db_column='custom_db_column')
+            int_field1 = models.IntegerField(db_index=True)
+            int_field2 = models.IntegerField(db_index=False)
+            int_field3 = models.IntegerField(unique=True)
+            int_field4 = models.IntegerField(unique=False)
+            char_field = models.CharField(max_length=20)
+            char_field1 = models.CharField(max_length=25, null=True)
+            char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
+            m2m_field1 = models.ManyToManyField(
+                ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=False)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeField(
+                    'TestModel', 'datetime_field1', null=False,
+                    initial=lambda: datetime(2022, 5, 13, 12, 13, 14,
+                                             tzinfo=timezone.utc)),
+            ],
+            ("In model tests.TestModel:\n"
+             "    In field 'datetime_field1':\n"
+             "        Property 'null' has changed"),
+            [
+                "ChangeField('TestModel', 'datetime_field1',"
+                " initial=<<USER VALUE REQUIRED>>, null=False)",
+            ],
+            'SetDateTimeNotNullChangeModelWithCallable')
+
+    def test_set_null_date_false_and_initial_callable(self):
+        """Testing ChangeField with setting DateTimeField null=False and
+        initial callable
+        """
+        class DestModel(BaseTestModel):
+            my_id = models.AutoField(primary_key=True)
+            alt_pk = models.IntegerField()
+            int_field = models.IntegerField(db_column='custom_db_column')
+            int_field1 = models.IntegerField(db_index=True)
+            int_field2 = models.IntegerField(db_index=False)
+            int_field3 = models.IntegerField(unique=True)
+            int_field4 = models.IntegerField(unique=False)
+            char_field = models.CharField(max_length=20)
+            char_field1 = models.CharField(max_length=25, null=True)
+            char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
+            m2m_field1 = models.ManyToManyField(
+                ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=False)
+            date_field2 = models.DateField(null=False)
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeField(
+                    'TestModel', 'date_field1', null=False,
+                    initial=lambda: date(2022, 5, 13)),
+            ],
+            ("In model tests.TestModel:\n"
+             "    In field 'date_field1':\n"
+             "        Property 'null' has changed"),
+            [
+                "ChangeField('TestModel', 'date_field1',"
+                " initial=<<USER VALUE REQUIRED>>, null=False)",
+            ],
+            'SetDateNotNullChangeModelWithCallable')
+
     def test_set_null_true(self):
         """Testing ChangeField with setting null=True"""
         class DestModel(BaseTestModel):
