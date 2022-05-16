@@ -46,6 +46,7 @@ class DatabaseStateTests(TestCase):
 
         self.assertEqual(database_state._tables['my_test_table'], {
             'indexes': {},
+            'unique_indexes': {},
         })
 
     def test_has_table(self):
@@ -81,15 +82,36 @@ class DatabaseStateTests(TestCase):
         database_state.add_table('my_test_table')
         database_state.add_index(table_name='my_test_table',
                                  index_name='my_index',
+                                 columns=['col1', 'col2'])
+
+        self.assertEqual(
+            database_state._tables['my_test_table'],
+            {
+                'indexes': {
+                    'my_index': IndexState(name='my_index',
+                                           columns=['col1', 'col2']),
+                },
+                'unique_indexes': {},
+            })
+
+    def test_add_index_with_unique_true(self):
+        """Testing DatabaseState.add_index with unique=True"""
+        database_state = DatabaseState(db_name='default', scan=False)
+        database_state.add_table('my_test_table')
+        database_state.add_index(table_name='my_test_table',
+                                 index_name='my_index',
                                  columns=['col1', 'col2'],
                                  unique=True)
 
         self.assertEqual(
-            database_state._tables['my_test_table']['indexes'],
+            database_state._tables['my_test_table'],
             {
-                'my_index': IndexState(name='my_index',
-                                       columns=['col1', 'col2'],
-                                       unique=True),
+                'indexes': {},
+                'unique_indexes': {
+                    'my_index': IndexState(name='my_index',
+                                           columns=['col1', 'col2'],
+                                           unique=True),
+                },
             })
 
     def test_add_index_with_untracked_table(self):
@@ -139,6 +161,24 @@ class DatabaseStateTests(TestCase):
         database_state.add_table('my_test_table')
         database_state.add_index(table_name='my_test_table',
                                  index_name='my_index',
+                                 columns=['col1', 'col2'])
+
+        database_state.remove_index(table_name='my_test_table',
+                                    index_name='my_index')
+
+        self.assertEqual(
+            database_state._tables['my_test_table'],
+            {
+                'indexes': {},
+                'unique_indexes': {},
+            })
+
+    def test_remove_index_with_unique(self):
+        """Testing DatabaseState.remove_index with unique=True"""
+        database_state = DatabaseState(db_name='default', scan=False)
+        database_state.add_table('my_test_table')
+        database_state.add_index(table_name='my_test_table',
+                                 index_name='my_index',
                                  columns=['col1', 'col2'],
                                  unique=True)
 
@@ -146,11 +186,30 @@ class DatabaseStateTests(TestCase):
                                     index_name='my_index',
                                     unique=True)
 
-        self.assertEqual(database_state._tables['my_test_table']['indexes'],
-                         {})
+        self.assertEqual(
+            database_state._tables['my_test_table'],
+            {
+                'indexes': {},
+                'unique_indexes': {},
+            })
 
     def test_remove_index_with_untracked_table(self):
         """Testing DatabaseState.remove_index with untracked table"""
+        database_state = DatabaseState(db_name='default', scan=False)
+
+        expected_message = (
+            'Unable to remove index "my_index" from table "my_test_table". '
+            'The table is not being tracked in the database state.'
+        )
+
+        with self.assertRaisesMessage(DatabaseStateError, expected_message):
+            database_state.remove_index(table_name='my_test_table',
+                                        index_name='my_index')
+
+    def test_remove_index_with_untracked_table_and_unique_true(self):
+        """Testing DatabaseState.remove_index with untracked table and
+        unique=True
+        """
         database_state = DatabaseState(db_name='default', scan=False)
 
         expected_message = (
@@ -189,8 +248,7 @@ class DatabaseStateTests(TestCase):
 
         expected_message = (
             'Unable to remove index "my_index" from table "my_test_table". '
-            'The specified index type (unique=False) does not match the '
-            'existing type (unique=True).'
+            'The index could not be found.'
         )
 
         with self.assertRaisesMessage(DatabaseStateError, expected_message):
@@ -204,12 +262,27 @@ class DatabaseStateTests(TestCase):
         database_state.add_table('my_test_table')
         database_state.add_index(table_name='my_test_table',
                                  index_name='my_index',
+                                 columns=['col1', 'col2'])
+
+        self.assertEqual(
+            database_state.get_index(table_name='my_test_table',
+                                     index_name='my_index'),
+            IndexState(name='my_index',
+                       columns=['col1', 'col2']))
+
+    def test_get_index_with_unique_true(self):
+        """Testing DatabaseState.get_index with unique=True"""
+        database_state = DatabaseState(db_name='default', scan=False)
+        database_state.add_table('my_test_table')
+        database_state.add_index(table_name='my_test_table',
+                                 index_name='my_index',
                                  columns=['col1', 'col2'],
                                  unique=True)
 
         self.assertEqual(
             database_state.get_index(table_name='my_test_table',
-                                     index_name='my_index'),
+                                     index_name='my_index',
+                                     unique=True),
             IndexState(name='my_index',
                        columns=['col1', 'col2'],
                        unique=True))
@@ -224,6 +297,20 @@ class DatabaseStateTests(TestCase):
 
     def test_find_index(self):
         """Testing DatabaseState.find_index"""
+        database_state = DatabaseState(db_name='default', scan=False)
+        database_state.add_table('my_test_table')
+        database_state.add_index(table_name='my_test_table',
+                                 index_name='my_index',
+                                 columns=['col1', 'col2'])
+
+        index = database_state.find_index(table_name='my_test_table',
+                                          columns=['col1', 'col2'])
+        self.assertEqual(index,
+                         IndexState(name='my_index',
+                                    columns=['col1', 'col2']))
+
+    def test_find_index_with_unique_true(self):
+        """Testing DatabaseState.find_index with unique=True"""
         database_state = DatabaseState(db_name='default', scan=False)
         database_state.add_table('my_test_table')
         database_state.add_index(table_name='my_test_table',
@@ -255,11 +342,30 @@ class DatabaseStateTests(TestCase):
         database_state.add_table('my_test_table')
         database_state.add_index(table_name='my_test_table',
                                  index_name='my_index',
+                                 columns=['col1', 'col2'])
+
+        self.assertEqual(
+            database_state._tables['my_test_table'],
+            {
+                'indexes': {},
+                'unique_indexes': {},
+            })
+
+    def clear_indexes_with_unique_true(self):
+        """Testing DatabaseState.clear_indexes with unique=True"""
+        database_state = DatabaseState(db_name='default', scan=False)
+        database_state.add_table('my_test_table')
+        database_state.add_index(table_name='my_test_table',
+                                 index_name='my_index',
                                  columns=['col1', 'col2'],
                                  unique=True)
 
-        self.assertEqual(database_state._tables['my_test_table']['indexes'],
-                         {})
+        self.assertEqual(
+            database_state._tables['my_test_table'],
+            {
+                'indexes': {},
+                'unique_indexes': {},
+            })
 
     def test_iter_indexes(self):
         """Testing DatabaseState.iter_indexes"""
@@ -277,14 +383,14 @@ class DatabaseStateTests(TestCase):
 
         self.assertEqual(
             indexes,
-            set([
+            {
                 IndexState(name='my_index1',
                            columns=['col1', 'col2'],
                            unique=True),
                 IndexState(name='my_index2',
                            columns=['col3'],
                            unique=False),
-            ]))
+            })
 
     def test_rescan_indexes(self):
         """Testing DatabaseState.rescan_indexes"""

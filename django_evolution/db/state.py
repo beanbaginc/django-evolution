@@ -121,6 +121,7 @@ class DatabaseState(object):
         """
         self._tables[self._norm_table_name(table_name)] = {
             'indexes': {},
+            'unique_indexes': {},
         }
 
     def has_table(self, table_name):
@@ -189,7 +190,8 @@ class DatabaseState(object):
         table_name = self._norm_table_name(table_name)
 
         try:
-            indexes = self._tables[table_name]['indexes']
+            indexes = self._get_indexes_dict(table_name=table_name,
+                                             unique=unique)
         except KeyError:
             raise DatabaseStateError(
                 'Unable to add index "%s" to table "%s". The table is not '
@@ -197,7 +199,8 @@ class DatabaseState(object):
                 % (index_name, table_name))
 
         existing_index = self.get_index(table_name=table_name,
-                                        index_name=index_name)
+                                        index_name=index_name,
+                                        unique=unique)
 
         if existing_index:
             raise DatabaseStateError(
@@ -236,7 +239,8 @@ class DatabaseState(object):
         table_name = self._norm_table_name(table_name)
 
         try:
-            indexes = self._tables[table_name]['indexes']
+            indexes = self._get_indexes_dict(table_name=table_name,
+                                             unique=unique)
         except KeyError:
             raise DatabaseStateError(
                 'Unable to remove index "%s" from table "%s". The table is '
@@ -251,16 +255,11 @@ class DatabaseState(object):
                 'could not be found.'
                 % (index_name, table_name))
 
-        if unique != existing_index.unique:
-            raise DatabaseStateError(
-                'Unable to remove index "%s" from table "%s". The specified '
-                'index type (unique=%r) does not match the existing type '
-                '(unique=%r).'
-                % (index_name, table_name, unique, existing_index.unique))
+        assert unique == existing_index.unique
 
         del indexes[index_name]
 
-    def get_index(self, table_name, index_name):
+    def get_index(self, table_name, index_name, unique=False):
         """Return the index state for a given name.
 
         Args:
@@ -270,6 +269,12 @@ class DatabaseState(object):
             index_name (unicode):
                 The name of the index.
 
+            unique (bool, optional):
+                Whether this is a unique index.
+
+                Version Added:
+                    2.2
+
         Returns:
             IndexState:
             The state for the index, if found. ``None`` if the index could not
@@ -278,7 +283,8 @@ class DatabaseState(object):
         table_name = self._norm_table_name(table_name)
 
         try:
-            return self._tables[table_name]['indexes'][index_name]
+            return self._get_indexes_dict(table_name=table_name,
+                                          unique=unique)[index_name]
         except KeyError:
             return None
 
@@ -318,10 +324,13 @@ class DatabaseState(object):
         """
         table_name = self._norm_table_name(table_name)
 
-        try:
-            self._tables[table_name]['indexes'].clear()
-        except KeyError:
-            pass
+        for unique in (False, True):
+            try:
+                indexes = self._get_indexes_dict(table_name=table_name,
+                                                 unique=unique)
+                indexes.clear()
+            except KeyError:
+                pass
 
     def iter_indexes(self, table_name):
         """Iterate through all indexes for a table.
@@ -336,13 +345,15 @@ class DatabaseState(object):
         """
         table_name = self._norm_table_name(table_name)
 
-        try:
-            indexes = self._tables[table_name]['indexes']
-        except KeyError:
-            return
+        for unique in (False, True):
+            try:
+                indexes = self._get_indexes_dict(table_name=table_name,
+                                                 unique=unique)
+            except KeyError:
+                continue
 
-        for index_state in six.itervalues(indexes):
-            yield index_state
+            for index_state in six.itervalues(indexes):
+                yield index_state
 
     def rescan_tables(self):
         """Rescan the list of tables from the database.
@@ -378,3 +389,27 @@ class DatabaseState(object):
                                index_name=constraint_name,
                                columns=constraint_info['columns'],
                                unique=constraint_info['unique'])
+
+    def _get_indexes_dict(self, table_name, unique):
+        """Return the indexes dictionary for the given criteria.
+
+        Version Added:
+            2.2
+
+        Args:
+            table_name (unicode):
+                The name of the table the indexes are associated with.
+
+            unique (bool):
+                Whether to return the unique or normal indexes.
+
+        Returns:
+            dict:
+            The indexes dictionary.
+        """
+        if unique:
+            key = 'unique_indexes'
+        else:
+            key = 'indexes'
+
+        return self._tables[table_name][key]
