@@ -434,6 +434,69 @@ class BaseMutation(object):
         return '<%s>' % self
 
 
+class BaseUpgradeMethodMutation(BaseMutation):
+    """Base class for a mutation that changes an app's upgrade method.
+
+    Version Added:
+        2.2
+    """
+
+    def is_mutable(self, *args, **kwargs):
+        """Return whether the mutation can be applied to the database.
+
+        Args:
+            *args (tuple, unused):
+                Unused positional arguments.
+
+            **kwargs (tuple, unused):
+                Unused positional arguments.
+
+        Returns:
+            bool:
+            ``True``, always.
+        """
+        return True
+
+    def generate_dependencies(self, app_label, **kwargs):
+        """Return automatic dependencies for the parent evolution.
+
+        This allows a mutation to affect the order in which the parent
+        evolution is applied, relative to other evolutions or migrations.
+
+        This must be implemented by subclasses.
+
+        Args:
+            app_label (unicode):
+                The label of the app containing this mutation.
+
+            **kwargs (dict):
+                Additional keyword arguments, for future use.
+
+        Returns:
+            dict:
+            A dictionary of dependencies. This may have zero or more of the
+            following keys:
+
+            * ``before_migrations``
+            * ``after_migrations``
+            * ``before_evolutions``
+            * ``after_evolutions``
+        """
+        raise NotImplementedError
+
+    def mutate(self, mutator):
+        """Schedule an app mutation on the mutator.
+
+        As this mutation just modifies state on the signature, no actual
+        database operations are performed. By default, this does nothing.
+
+        Args:
+            mutator (django_evolution.mutators.AppMutator, unused):
+                The mutator to perform an operation on.
+        """
+        pass
+
+
 class BaseModelMutation(BaseMutation):
     """Base class for a mutation affecting a single model.
 

@@ -7,10 +7,10 @@ Version Added:
 from __future__ import unicode_literals
 
 from django_evolution.consts import UpgradeMethod
-from django_evolution.mutations.base import BaseMutation
+from django_evolution.mutations.base import BaseUpgradeMethodMutation
 
 
-class MoveToDjangoMigrations(BaseMutation):
+class MoveToDjangoMigrations(BaseUpgradeMethodMutation):
     """A mutation that uses Django migrations for an app's future upgrades.
 
     This directs this app to evolve only up until this mutation, and to then
@@ -35,22 +35,6 @@ class MoveToDjangoMigrations(BaseMutation):
                 migration.
         """
         self.mark_applied = set(mark_applied)
-
-    def is_mutable(self, *args, **kwargs):
-        """Return whether the mutation can be applied to the database.
-
-        Args:
-            *args (tuple, unused):
-                Unused positional arguments.
-
-            **kwargs (tuple, unused):
-                Unused positional arguments.
-
-        Returns:
-            bool:
-            ``True``, always.
-        """
-        return True
 
     def generate_dependencies(self, app_label, **kwargs):
         """Return automatic dependencies for the parent evolution.
@@ -115,15 +99,3 @@ class MoveToDjangoMigrations(BaseMutation):
         app_sig = simulation.get_app_sig()
         app_sig.upgrade_method = UpgradeMethod.MIGRATIONS
         app_sig.applied_migrations = self.mark_applied
-
-    def mutate(self, mutator):
-        """Schedule an app mutation on the mutator.
-
-        As this mutation just modifies state on the signature, no actual
-        database operations are performed.
-
-        Args:
-            mutator (django_evolution.mutators.AppMutator, unused):
-                The mutator to perform an operation on.
-        """
-        pass

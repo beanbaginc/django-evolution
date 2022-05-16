@@ -12,6 +12,7 @@ import logging
 from django_evolution.errors import CannotSimulate
 from django_evolution.mutations import (AddField,
                                         BaseModelMutation,
+                                        BaseUpgradeMethodMutation,
                                         ChangeField,
                                         ChangeMeta,
                                         DeleteField,
@@ -22,6 +23,8 @@ from django_evolution.mutations import (AddField,
 from django_evolution.mutators.base import BaseMutator
 from django_evolution.mutators.model_mutator import ModelMutator
 from django_evolution.mutators.sql_mutator import SQLMutator
+from django_evolution.mutators.upgrade_method_mutator import \
+    UpgradeMethodMutator
 
 
 class AppMutator(BaseMutator):
@@ -121,35 +124,46 @@ class AppMutator(BaseMutator):
         operated on the same model, then the previously created ModelMutator
         will be used. Otherwise, a new one will be created.
         """
+        mutator = None
+
         if isinstance(mutation, BaseModelMutation):
             if (self._last_model_mutator and
                 mutation.model_name == self._last_model_mutator.model_name):
                 # We can continue to apply operations to the previous
                 # ModelMutator.
-                model_mutator = self._last_model_mutator
+                mutator = self._last_model_mutator
             else:
                 # This is a new model. Begin a new ModelMutator for it.
                 self._finalize_model_mutator()
 
-                model_mutator = ModelMutator(
-                    app_mutator=self,
-                    model_name=mutation.model_name)
-                self._last_model_mutator = model_mutator
-
-            model_mutator.run_mutation(mutation)
+                mutator = ModelMutator(app_mutator=self,
+                                       model_name=mutation.model_name)
+                self._last_model_mutator = mutator
         else:
+            # This is something other than a model mutation, so finalize any
+            # mutations we may have been batching together on a ModelMutator.
             self._finalize_model_mutator()
 
+            if isinstance(mutation, BaseUpgradeMethodMutation):
+                mutator = UpgradeMethodMutator(app_mutator=self,
+                                               mutation=mutation)
+                self._mutators.append(mutator)
+
+        # We'll now want to perform a mutate + simulate on this mutation.
+        if mutator is None:
             mutation.mutate(self)
 
             try:
-                mutation.run_simulation(app_label=self.app_label,
-                                        legacy_app_label=self.legacy_app_label,
-                                        project_sig=self.project_sig,
-                                        database_state=self.database_state,
-                                        database=self.database)
+                mutation.run_simulation(
+                    app_label=self.app_label,
+                    legacy_app_label=self.legacy_app_label,
+                    project_sig=self.project_sig,
+                    database_state=self.database_state,
+                    database=self.database)
             except CannotSimulate:
                 self.can_simulate = False
+        else:
+            mutator.run_mutation(mutation)
 
     def run_mutations(self, mutations):
         """Runs a list of mutations."""
