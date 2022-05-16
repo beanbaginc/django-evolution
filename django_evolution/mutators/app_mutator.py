@@ -19,11 +19,12 @@ from django_evolution.mutations import (AddField,
                                         RenameAppLabel,
                                         RenameField,
                                         RenameModel)
+from django_evolution.mutators.base import BaseMutator
 from django_evolution.mutators.model_mutator import ModelMutator
 from django_evolution.mutators.sql_mutator import SQLMutator
 
 
-class AppMutator(object):
+class AppMutator(BaseMutator):
     """Tracks and runs mutations for an app.
 
     An AppMutator is bound to a particular app name, and handles operations
@@ -100,15 +101,15 @@ class AppMutator(object):
             database (unicode, optional):
                 The name of the database being evolved.
         """
+        super(AppMutator, self).__init__()
+
         self.app_label = app_label
         self.legacy_app_label = legacy_app_label or app_label
         self.project_sig = project_sig
         self.database_state = database_state
         self.database = database
-        self.can_simulate = True
         self._last_model_mutator = None
         self._mutators = []
-        self._finalized = False
         self._orig_project_sig = copy.deepcopy(self.project_sig)
         self._orig_database_state = self.database_state.clone()
 
@@ -132,12 +133,7 @@ class AppMutator(object):
 
                 model_mutator = ModelMutator(
                     app_mutator=self,
-                    model_name=mutation.model_name,
-                    app_label=self.app_label,
-                    legacy_app_label=self.legacy_app_label,
-                    project_sig=self.project_sig,
-                    database_state=self.database_state,
-                    database=self.database)
+                    model_name=mutation.model_name)
                 self._last_model_mutator = model_mutator
 
             model_mutator.run_mutation(mutation)
@@ -169,12 +165,23 @@ class AppMutator(object):
         self._mutators.append(SQLMutator(mutation, sql))
 
     def to_sql(self):
-        """Returns SQL for the operations added to this mutator.
+        """Return SQL for the operations added to this mutator.
 
         The SQL will represent all the operations made by the mutator.
         Once called, no new operations can be added.
+
+        Returns:
+            list:
+            The list of SQL statements.
+
+            Each item may be one of the following:
+
+            1. A Unicode string representing an SQL statement
+            2. A tuple in the form of ``(sql_statement, sql_params)``
+            3. An instance of :py:class:`django_evolution.db.sql_result.
+               SQLResult`.
         """
-        assert not self._finalized
+        assert not self.finalized
 
         # Finalize one last time.
         self._finalize_model_mutator()
@@ -187,7 +194,7 @@ class AppMutator(object):
         for mutator in self._mutators:
             sql.extend(mutator.to_sql())
 
-        self._finalized = True
+        self.finalize()
 
         return sql
 

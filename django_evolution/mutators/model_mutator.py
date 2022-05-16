@@ -10,11 +10,12 @@ from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.errors import (CannotSimulate,
                                      EvolutionBaselineMissingError)
 from django_evolution.mock_models import MockModel
-from django_evolution.utils.models import get_database_for_model_name
 from django_evolution.mutations import BaseModelMutation
+from django_evolution.mutators.base import BaseAppStateMutator
+from django_evolution.utils.models import get_database_for_model_name
 
 
-class ModelMutator(object):
+class ModelMutator(BaseAppStateMutator):
     """Tracks and runs mutations for a model.
 
     A ModelMutator is bound to a particular model (by type, not instance) and
@@ -40,8 +41,7 @@ class ModelMutator(object):
         module.
     """
 
-    def __init__(self, app_mutator, model_name, app_label, legacy_app_label,
-                 project_sig, database_state, database=None):
+    def __init__(self, app_mutator, model_name):
         """Initialize the mutator.
 
         Args:
@@ -68,28 +68,19 @@ class ModelMutator(object):
             database (unicode, optional):
                 The name of the database being evolved.
         """
-        self.app_mutator = app_mutator
-        self.model_name = model_name
-        self.app_label = app_label
-        self.legacy_app_label = legacy_app_label
-        self.database = (database or
-                         get_database_for_model_name(app_label, model_name))
-        self.can_simulate = True
-        self._ops = []
-        self._finalized = False
+        super(ModelMutator, self).__init__(app_mutator=app_mutator)
 
-        assert self.database
+        if not self.database:
+            self.database = get_database_for_model_name(self.app_label,
+                                                        model_name)
+            assert self.database
+
+        self.model_name = model_name
+        self._ops = []
+
         evolution_ops = EvolutionOperationsMulti(self.database,
                                                  self.database_state)
         self.evolver = evolution_ops.get_evolver()
-
-    @property
-    def project_sig(self):
-        return self.app_mutator.project_sig
-
-    @property
-    def database_state(self):
-        return self.app_mutator.database_state
 
     @property
     def model_sig(self):
@@ -152,7 +143,7 @@ class ModelMutator(object):
         This will cause to_sql() to include SQL for adding the column
         with the given information to the model.
         """
-        assert not self._finalized
+        assert not self.finalized
 
         self._ops.append({
             'type': 'add_column',
@@ -182,7 +173,7 @@ class ModelMutator(object):
                 :py:class:`~django_evolution.mutations.change_field.
                 ChangeField`.
         """
-        assert not self._finalized
+        assert not self.finalized
 
         self._ops.append({
             'type': 'change_column_type',
@@ -198,7 +189,7 @@ class ModelMutator(object):
         This will cause to_sql() to include SQL for changing one or more
         attributes for the given column.
         """
-        assert not self._finalized
+        assert not self.finalized
 
         self._ops.append({
             'type': 'change_column',
@@ -213,7 +204,7 @@ class ModelMutator(object):
         This will cause to_sql() to include SQL for deleting the given
         column.
         """
-        assert not self._finalized
+        assert not self.finalized
 
         self._ops.append({
             'type': 'delete_column',
@@ -226,7 +217,7 @@ class ModelMutator(object):
 
         This will cause to_sql() to include SQL for deleting the model.
         """
-        assert not self._finalized
+        assert not self.finalized
 
         self._ops.append({
             'type': 'delete_model',
@@ -239,7 +230,7 @@ class ModelMutator(object):
         This will cause to_sql() to include SQL for changing a supported
         attribute in the model's Meta class.
         """
-        assert not self._finalized
+        assert not self.finalized
 
         if prop_name in ('index_together', 'unique_together'):
             old_value = getattr(self.model_sig, prop_name)
@@ -286,7 +277,7 @@ class ModelMutator(object):
         This will cause to_sql() to include the provided SQL statements.
         The SQL should be a list of a statements.
         """
-        assert not self._finalized
+        assert not self.finalized
 
         self._ops.append({
             'type': 'sql',
@@ -302,6 +293,9 @@ class ModelMutator(object):
 
         The mutator must be finalized before this can be called.
 
+        Once the mutation has been run, it will call :py:meth:`run_simulation`,
+        applying changes to the database project signature.
+
         Args:
             mutation (django_evolution.mutations.BaseModelMutation):
                 The mutation to run.
@@ -311,20 +305,12 @@ class ModelMutator(object):
                 The model signature or parent app signature could not be found.
         """
         assert isinstance(mutation, BaseModelMutation)
-        assert not self._finalized
 
-        mutation.mutate(self, self.create_model())
-        self.run_simulation(mutation)
-
-    def run_simulation(self, mutation):
-        try:
-            mutation.run_simulation(app_label=self.app_label,
-                                    legacy_app_label=self.legacy_app_label,
-                                    project_sig=self.project_sig,
-                                    database_state=self.database_state,
-                                    database=self.database)
-        except CannotSimulate:
-            self.can_simulate = False
+        super(ModelMutator, self).run_mutation(
+            mutation=mutation,
+            mutate_kwargs={
+                'model': self.create_model(),
+            })
 
     def to_sql(self):
         """Returns SQL for the operations added to this mutator.
@@ -334,9 +320,9 @@ class ModelMutator(object):
 
         Once called, no new operations can be added to the mutator.
         """
-        assert not self._finalized
+        assert not self.finalized
 
-        self._finalized = True
+        self.finalize()
 
         return self.evolver.generate_table_ops_sql(self, self._ops)
 
@@ -349,14 +335,9 @@ class ModelMutator(object):
         Simulations for the operation's associated mutation will be applied,
         in order to update the signatures for the changes made by the
         mutation.
-        """
-        mutation = op['mutation']
 
-        try:
-            mutation.run_simulation(app_label=self.app_label,
-                                    legacy_app_label=self.legacy_app_label,
-                                    project_sig=self.project_sig,
-                                    database_state=self.database_state,
-                                    database=self.database)
-        except CannotSimulate:
-            self.can_simulate = False
+        Args:
+            op (dict):
+                The operation that has finished.
+        """
+        self.run_simulation(op['mutation'])

@@ -25,15 +25,12 @@ class ModelMutatorTests(EvolutionTestCase):
         database_state = self.database_state
         project_sig = self.start_sig
         app_mutator = AppMutator(app_label='tests',
+                                 legacy_app_label='old_tests',
                                  project_sig=project_sig,
                                  database_state=database_state,
                                  database=self.default_database_name)
         self.model_mutator = ModelMutator(app_mutator=app_mutator,
-                                          model_name=self.default_model_name,
-                                          app_label='tests',
-                                          legacy_app_label='old_tests',
-                                          project_sig=project_sig,
-                                          database_state=database_state)
+                                          model_name=self.default_model_name)
 
         self.app_sig = self.start_sig.get_app_sig('tests')
         self.model_sig = self.app_sig.get_model_sig(self.default_model_name)
