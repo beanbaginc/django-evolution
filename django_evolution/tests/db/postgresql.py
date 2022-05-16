@@ -119,6 +119,23 @@ def add_field(connection):
             ' ALTER COLUMN "added_field" DROP DEFAULT;',
         ],
 
+        'AddTextFieldWithInitialColumnModel': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD COLUMN "added_field" text NOT NULL DEFAULT \'test\';',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "added_field" DROP DEFAULT;',
+        ],
+
+        'AddBinaryFieldWithInitialColumnModel': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD COLUMN "added_field" bytea NOT NULL DEFAULT %r;'
+            % b'test',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "added_field" DROP DEFAULT;',
+        ],
+
         'AddEmptyStringDefaultColumnModel': [
             'ALTER TABLE "tests_testmodel"'
             ' ADD COLUMN "added_field" varchar(20) NOT NULL DEFAULT \'\';',

@@ -122,6 +122,16 @@ def add_field(connection):
             ' ALTER COLUMN `added_field` DROP DEFAULT;',
         ],
 
+        'AddTextFieldWithInitialColumnModel': [
+            'ALTER TABLE `tests_testmodel`'
+            ' ADD COLUMN `added_field` longtext NOT NULL;',
+        ],
+
+        'AddBinaryFieldWithInitialColumnModel': [
+            'ALTER TABLE `tests_testmodel`'
+            ' ADD COLUMN `added_field` longblob NOT NULL;',
+        ],
+
         'AddEmptyStringDefaultColumnModel': [
             'ALTER TABLE `tests_testmodel`'
             ' ADD COLUMN `added_field` varchar(20) NOT NULL DEFAULT \'\';',

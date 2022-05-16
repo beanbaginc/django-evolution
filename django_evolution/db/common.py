@@ -123,6 +123,25 @@ class BaseEvolutionOperations(object):
 
         return True
 
+    def get_field_type_allows_default(self, field):
+        """Return whether default values are allowed for a field.
+
+        By default, default values are always allowed. Subclasses should
+        override this if some types do not allow for defaults.
+
+        Version Added:
+            2.2
+
+        Args:
+            field (django.db.models.Field):
+                The field to check.
+
+        Returns:
+            bool:
+            ``True`` if default values are allowed. ``False`` if they're not.
+        """
+        return True
+
     def get_deferrable_sql(self):
         """Return the SQL for marking a reference as deferrable.
 
@@ -264,7 +283,9 @@ class BaseEvolutionOperations(object):
             # At this point, initial can only be None if null=True, otherwise
             # it is a user callable or the default AddFieldInitialCallback
             # which will shortly raise an exception.
-            if initial is not None and not callable(initial):
+            if (initial is not None and
+                not callable(initial) and
+                self.get_field_type_allows_default(field)):
                 column_def += ['DEFAULT', '%s']
                 column_def_sql_params.append(initial)
 
@@ -486,7 +507,9 @@ class BaseEvolutionOperations(object):
         sql_result = self.alter_table_sql_result_cls(self, model)
         table_name = model._meta.db_table
         remote_field = get_remote_field(field)
-        can_set_initial = remote_field is None and initial is not None
+        can_set_initial = (remote_field is None and
+                           initial is not None and
+                           self.get_field_type_allows_default(field))
 
         schema = self.build_column_schema(
             model=model,

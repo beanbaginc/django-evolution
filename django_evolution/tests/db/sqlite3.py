@@ -204,6 +204,41 @@ def add_field(connection):
             'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
         ],
 
+        'AddTextFieldWithInitialColumnModel': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("id" integer NOT NULL PRIMARY KEY,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "int_field" integer NOT NULL,'
+            ' "added_field" text NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field",'
+            ' "added_field")'
+            ' SELECT "id", "char_field", "int_field", \'test\''
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+        ],
+
+        'AddBinaryFieldWithInitialColumnModel': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("id" integer NOT NULL PRIMARY KEY,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "int_field" integer NOT NULL,'
+            ' "added_field" BLOB NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field",'
+            ' "added_field")'
+            ' SELECT "id", "char_field", "int_field", %r'
+            ' FROM "tests_testmodel";'
+            % b'test',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+        ],
+
         'AddEmptyStringDefaultColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
             '("id" integer NOT NULL PRIMARY KEY,'
@@ -223,13 +258,13 @@ def add_field(connection):
 
         'AddNullColumnModel': [
             'CREATE TABLE "TEMP_TABLE" '
-            '("int_field" integer NOT NULL,'
-            ' "id" integer NOT NULL PRIMARY KEY,'
+            '("id" integer NOT NULL PRIMARY KEY,'
             ' "char_field" varchar(20) NOT NULL,'
-            ' "added_field" integer NOT NULL);',
+            ' "int_field" integer NOT NULL,'
+            ' "added_field" integer NULL);',
 
-            'INSERT INTO "TEMP_TABLE" ("int_field", "id", "char_field")'
-            ' SELECT "int_field", "id", "char_field"'
+            'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
+            ' SELECT "id", "char_field", "int_field"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
