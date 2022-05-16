@@ -644,6 +644,7 @@ class EvolveAppTask(BaseEvolutionTask):
                         app=task.app,
                         evolutions=new_evolutions,
                         new_models=new_models,
+                        custom_evolutions=task._evolutions,
                         extra_state={
                             'task': task,
                         })
