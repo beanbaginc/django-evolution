@@ -861,6 +861,38 @@ def change_field(connection):
                generate_index_name('tests_testmodel', 'int_field1')),
         ],
 
+        'RemoveDBIndexAddUniqueChangeModel': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD CONSTRAINT "%s" UNIQUE("int_field1");'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field1']),
+
+            '%s "%s";'
+            % (drop_index_sql,
+               generate_index_name('tests_testmodel', 'int_field1')),
+        ],
+
+        'RemoveDBIndexAddNullChangeModel': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "int_field1" DROP NOT NULL;',
+
+            '%s "%s";'
+            % (drop_index_sql,
+               generate_index_name('tests_testmodel', 'int_field1')),
+        ],
+
+        'AddDBIndexRemoveUniqueChangeModel': [
+            'ALTER TABLE "tests_testmodel"'
+            ' DROP CONSTRAINT "tests_testmodel_int_field3_key";',
+        ],
+
+        'AddDBIndexAddUniqueChangeModel': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD CONSTRAINT "%s" UNIQUE("int_field4");'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field4']),
+        ],
+
         'RemoveDBIndexNoOpChangeModel': [],
 
         'AddUniqueChangeModel': [

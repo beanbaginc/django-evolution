@@ -813,6 +813,29 @@ class BaseEvolutionOperations(object):
                 },
             })
 
+        # If db_index and/or unique has changed, process them together so
+        # that index SQL generation can account for both changing states.
+        if 'db_index' in new_attrs or 'unique' in new_attrs:
+            db_index_attr = new_attrs.pop('db_index', {})
+            old_db_index = db_index_attr.get('old_value', field.db_index)
+            new_db_index = db_index_attr.get('new_value', field.db_index)
+
+            unique_attr = new_attrs.pop('unique', {})
+            old_unique = unique_attr.get('old_value', field.unique)
+            new_unique = unique_attr.get('new_value', field.unique)
+
+            if old_db_index != new_db_index or old_unique != new_unique:
+                change_calls.append({
+                    'func': self.change_column_attrs_db_index_unique,
+                    'kwargs': {
+                        'old_db_index': old_db_index,
+                        'new_db_index': new_db_index,
+                        'old_unique': old_unique,
+                        'new_unique': new_unique,
+                    },
+                })
+
+        # Process any remaining supported attributes.
         change_calls += [
             {
                 'func': getattr(self, 'change_column_attr_%s' % attr_name),
@@ -962,9 +985,138 @@ class BaseEvolutionOperations(object):
         """Returns the SQL for changing the table for a ManyToManyField."""
         return self.rename_table(model, old_value, new_value)
 
+    def change_column_attrs_db_index_unique(self, model, mutation, field,
+                                            old_db_index, new_db_index,
+                                            old_unique, new_unique):
+        """Return SQL for changing indexes due to db_index or unique.
+
+        This determines whether standard or unique indexes need to be dropped
+        or added, and returns the resulting SQL.
+
+        Unique indexes are dropped if a field went from ``unique=True`` to
+        ``unique=False``.
+
+        If not dropping a unique index, but the field was set to
+        ``db_index=True, unique=False``, and either ``db_index=False`` or
+        ``unique=True`` is being set, a stnadard index will be dropped.
+
+        Unique indexes are added if a field went from ``unique=False`` to
+        ``unique=True``.
+
+        If not adding a unique index, but the field was set to
+        ``db_index=False`` or ``unique=True`` and is being set to
+        ``db_index=True, unique=False``, then a standard index will be added.
+
+        Version Added:
+            2.3
+
+        Args:
+            model (django.db.models.Model):
+                The model being changed.
+
+            mutation (django_evolution.mutations.BaseModelMutation):
+                The mutation applying this change.
+
+            field (django.db.models.DecimalField):
+                The field being modified.
+
+            old_db_index (bool):
+                The old ``db_index`` value.
+
+            new_db_index (bool):
+                The new ``db_index`` value.
+
+            old_unique (bool):
+                The old ``unique`` value.
+
+            new_unique (bool):
+                The new ``unique`` value.
+
+        Returns:
+            django_evolution.db.sql_result.AlterTableSQLResult:
+            The SQL for dropping and/or adding indexes.
+        """
+        result = self.alter_table_sql_result_cls(
+            evolver=self,
+            model=model)
+
+        # Check if any indexes need to be dropped.
+        if old_unique and not new_unique:
+            # Remove the unique index.
+            result.add(self.change_column_attr_unique(
+                model=model,
+                mutation=mutation,
+                field=field,
+                old_value=old_unique,
+                new_value=new_unique))
+        elif (old_db_index and not old_unique and
+              (not new_db_index or new_unique)):
+            # Remove the standard index.
+            result.add(self.change_column_attr_db_index(
+                model=model,
+                mutation=mutation,
+                field=field,
+                old_value=old_db_index,
+                new_value=new_db_index))
+
+        # Check if any indexes need to be added.
+        if not old_unique and new_unique:
+            # Add the unique index.
+            result.add(self.change_column_attr_unique(
+                model=model,
+                mutation=mutation,
+                field=field,
+                old_value=old_unique,
+                new_value=new_unique))
+        elif ((not old_db_index or old_unique) and
+              new_db_index and not new_unique):
+            # Add the standard index.
+            result.add(self.change_column_attr_db_index(
+                model=model,
+                mutation=mutation,
+                field=field,
+                old_value=old_db_index,
+                new_value=new_db_index))
+
+        return result
+
     def change_column_attr_db_index(self, model, mutation, field, old_value,
                                     new_value):
-        """Returns the SQL for creating/dropping indexes for a column."""
+        """Return the SQL for creating/dropping indexes for a column.
+
+        If setting ``db_index=True``, SQL for generating the index will be
+        returned.
+
+        If setting ``db_index=False``, SQL for dropping the index will be
+        returned.
+
+        Creating or dropping the SQL will also modify the cached/queued
+        database index state, used by other operations that work with indexes.
+
+        Subclasses should override this if they're sensitive to the order in
+        which SQL is generated or cached/queued database index state is
+        modified.
+
+        Args:
+            model (django.db.models.Model):
+                The model being changed.
+
+            mutation (django_evolution.mutations.BaseModelMutation):
+                The mutation applying this change.
+
+            field (django.db.models.DecimalField):
+                The field being modified.
+
+            old_value (bool):
+                The old value for ``db_index``.
+
+            new_value (bool):
+                The new value for ``db_index``.
+
+        Returns:
+            django_evolution.db.sql_result.SQLResult:
+            The resulting SQL for creating the index or scheduling a drop.
+        """
         field.db_index = new_value
 
         if new_value:

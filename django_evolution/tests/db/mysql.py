@@ -780,6 +780,33 @@ def change_field(connection):
             % generate_index_name('tests_testmodel', 'int_field1'),
         ],
 
+        'RemoveDBIndexAddUniqueChangeModel': [
+            'DROP INDEX `%s` ON `tests_testmodel`;'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+
+            'CREATE UNIQUE INDEX %s ON `tests_testmodel`(`int_field1`);'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field1']),
+        ],
+
+        'RemoveDBIndexAddNullChangeModel': [
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY COLUMN `int_field1` integer DEFAULT NULL;',
+
+            'DROP INDEX `%s` ON `tests_testmodel`;'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'AddDBIndexRemoveUniqueChangeModel': [
+            'DROP INDEX int_field3 ON `tests_testmodel`;'
+        ],
+
+        'AddDBIndexAddUniqueChangeModel': [
+            'CREATE UNIQUE INDEX %s ON `tests_testmodel`(`int_field4`);'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field4']),
+        ],
+
         'RemoveDBIndexNoOpChangeModel': [],
 
         'AddUniqueChangeModel': [

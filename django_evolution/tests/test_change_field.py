@@ -899,62 +899,6 @@ class ChangeFieldTests(EvolutionTestCase):
             table_name='tests_testmodel',
             columns=['int_field1']))
 
-    def test_set_db_index_false_and_no_existing_index(self):
-        """Testing ChangeField with setting db_index=False without an
-        existing index in the database
-        """
-        class DestModel(BaseTestModel):
-            my_id = models.AutoField(primary_key=True)
-            alt_pk = models.IntegerField()
-            int_field = models.IntegerField(db_column='custom_db_column')
-            int_field1 = models.IntegerField(db_index=False)
-            int_field2 = models.IntegerField(db_index=False)
-            int_field3 = models.IntegerField(unique=True)
-            int_field4 = models.IntegerField(unique=False)
-            char_field = models.CharField(max_length=20)
-            char_field1 = models.CharField(max_length=25, null=True)
-            char_field2 = models.CharField(max_length=30, null=False)
-            dec_field = models.DecimalField(max_digits=5,
-                                            decimal_places=2)
-            dec_field1 = models.DecimalField(max_digits=6,
-                                             decimal_places=3,
-                                             null=True)
-            dec_field2 = models.DecimalField(max_digits=7,
-                                             decimal_places=4,
-                                             null=False)
-            m2m_field1 = models.ManyToManyField(
-                ChangeAnchor1, db_table='change_field_non-default_m2m_table')
-            datetime_field1 = models.DateTimeField(null=True)
-            datetime_field2 = models.DateTimeField(null=False)
-            date_field1 = models.DateField(null=True)
-            date_field2 = models.DateField(null=False)
-
-        self.database_state.clear_indexes('tests_testmodel')
-
-        self.assertIsNone(self.database_state.find_index(
-            table_name='tests_testmodel',
-            columns=['int_field1']))
-
-        self.perform_evolution_tests(
-            DestModel,
-            [
-                ChangeField('TestModel', 'int_field1', initial=None,
-                            db_index=False),
-            ],
-            ("In model tests.TestModel:\n"
-             "    In field 'int_field1':\n"
-             "        Property 'db_index' has changed"),
-            [
-                "ChangeField('TestModel', 'int_field1', db_index=False,"
-                " initial=None)",
-            ],
-            'RemoveDBIndexNoOpChangeModel',
-            rescan_indexes=False)
-
-        self.assertIsNone(self.test_database_state.find_index(
-            table_name='tests_testmodel',
-            columns=['int_field1']))
-
     def test_set_unique_true(self):
         """Testing ChangeField with setting unique=True"""
         class DestModel(BaseTestModel):
@@ -1059,6 +1003,304 @@ class ChangeFieldTests(EvolutionTestCase):
         self.assertIsNone(self.test_database_state.find_index(
             table_name='tests_testmodel',
             columns=['int_field3'],
+            unique=True))
+
+    def test_set_db_index_false_and_no_existing_index(self):
+        """Testing ChangeField with setting db_index=False without an
+        existing index in the database
+        """
+        class DestModel(BaseTestModel):
+            my_id = models.AutoField(primary_key=True)
+            alt_pk = models.IntegerField()
+            int_field = models.IntegerField(db_column='custom_db_column')
+            int_field1 = models.IntegerField(db_index=False)
+            int_field2 = models.IntegerField(db_index=False)
+            int_field3 = models.IntegerField(unique=True)
+            int_field4 = models.IntegerField(unique=False)
+            char_field = models.CharField(max_length=20)
+            char_field1 = models.CharField(max_length=25, null=True)
+            char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
+            m2m_field1 = models.ManyToManyField(
+                ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
+
+        self.database_state.clear_indexes('tests_testmodel')
+
+        self.assertIsNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field1']))
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeField('TestModel', 'int_field1', initial=None,
+                            db_index=False),
+            ],
+            ("In model tests.TestModel:\n"
+             "    In field 'int_field1':\n"
+             "        Property 'db_index' has changed"),
+            [
+                "ChangeField('TestModel', 'int_field1', db_index=False,"
+                " initial=None)",
+            ],
+            'RemoveDBIndexNoOpChangeModel',
+            rescan_indexes=False)
+
+        self.assertIsNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field1']))
+
+    def test_set_db_index_false_unique_true(self):
+        """Testing ChangeField with setting db_index=False unique=True"""
+        class DestModel(BaseTestModel):
+            my_id = models.AutoField(primary_key=True)
+            alt_pk = models.IntegerField()
+            int_field = models.IntegerField(db_column='custom_db_column')
+            int_field1 = models.IntegerField(db_index=False, unique=True)
+            int_field2 = models.IntegerField(db_index=False)
+            int_field3 = models.IntegerField(unique=True)
+            int_field4 = models.IntegerField(unique=False)
+            char_field = models.CharField(max_length=20)
+            char_field1 = models.CharField(max_length=25, null=True)
+            char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
+            m2m_field1 = models.ManyToManyField(
+                ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
+
+        self.assertIsNotNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field1']))
+        self.assertIsNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field1'],
+            unique=True))
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeField('TestModel', 'int_field1', initial=None,
+                            db_index=False, unique=True),
+            ],
+            ("In model tests.TestModel:\n"
+             "    In field 'int_field1':\n"
+             "        Property 'db_index' has changed\n"
+             "        Property 'unique' has changed"),
+            [
+                "ChangeField('TestModel', 'int_field1', db_index=False,"
+                " initial=None, unique=True)",
+            ],
+            'RemoveDBIndexAddUniqueChangeModel')
+
+        self.assertIsNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field1']))
+        self.assertIsNotNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field1'],
+            unique=True))
+
+    def test_set_db_index_true_unique_false(self):
+        """Testing ChangeField with setting db_index=True unique=False"""
+        class DestModel(BaseTestModel):
+            my_id = models.AutoField(primary_key=True)
+            alt_pk = models.IntegerField()
+            int_field = models.IntegerField(db_column='custom_db_column')
+            int_field1 = models.IntegerField(db_index=True)
+            int_field2 = models.IntegerField(db_index=False)
+            int_field3 = models.IntegerField(db_index=True, unique=False)
+            int_field4 = models.IntegerField(unique=False)
+            char_field = models.CharField(max_length=20)
+            char_field1 = models.CharField(max_length=25, null=True)
+            char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
+            m2m_field1 = models.ManyToManyField(
+                ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
+
+        self.assertIsNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field3']))
+        self.assertIsNotNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field3'],
+            unique=True))
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeField('TestModel', 'int_field3', initial=None,
+                            db_index=True, unique=False),
+            ],
+            ("In model tests.TestModel:\n"
+             "    In field 'int_field3':\n"
+             "        Property 'db_index' has changed\n"
+             "        Property 'unique' has changed"),
+            [
+                "ChangeField('TestModel', 'int_field3', db_index=True,"
+                " initial=None, unique=False)",
+            ],
+            'AddDBIndexRemoveUniqueChangeModel')
+
+        self.assertIsNotNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field3']))
+        self.assertIsNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field3'],
+            unique=True))
+
+    def test_set_db_index_true_unique_true(self):
+        """Testing ChangeField with setting db_index=True unique=True"""
+        class DestModel(BaseTestModel):
+            my_id = models.AutoField(primary_key=True)
+            alt_pk = models.IntegerField()
+            int_field = models.IntegerField(db_column='custom_db_column')
+            int_field1 = models.IntegerField(db_index=True)
+            int_field2 = models.IntegerField(db_index=False)
+            int_field3 = models.IntegerField(unique=True)
+            int_field4 = models.IntegerField(db_index=True, unique=True)
+            char_field = models.CharField(max_length=20)
+            char_field1 = models.CharField(max_length=25, null=True)
+            char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
+            m2m_field1 = models.ManyToManyField(
+                ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
+
+        self.assertIsNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field4']))
+        self.assertIsNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field4'],
+            unique=True))
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeField('TestModel', 'int_field4', initial=None,
+                            db_index=True, unique=True),
+            ],
+            ("In model tests.TestModel:\n"
+             "    In field 'int_field4':\n"
+             "        Property 'db_index' has changed\n"
+             "        Property 'unique' has changed"),
+            [
+                "ChangeField('TestModel', 'int_field4', db_index=True,"
+                " initial=None, unique=True)",
+            ],
+            'AddDBIndexAddUniqueChangeModel')
+
+        self.assertIsNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field4']))
+        self.assertIsNotNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field4'],
+            unique=True))
+
+    def test_set_db_index_false_and_other_changes(self):
+        """Testing ChangeField with setting db_index=False with other field
+        changes
+        """
+        class DestModel(BaseTestModel):
+            my_id = models.AutoField(primary_key=True)
+            alt_pk = models.IntegerField()
+            int_field = models.IntegerField(db_column='custom_db_column')
+            int_field1 = models.IntegerField(db_index=False, null=True)
+            int_field2 = models.IntegerField(db_index=False)
+            int_field3 = models.IntegerField(unique=True)
+            int_field4 = models.IntegerField(unique=False)
+            char_field = models.CharField(max_length=20)
+            char_field1 = models.CharField(max_length=25, null=True)
+            char_field2 = models.CharField(max_length=30, null=False)
+            dec_field = models.DecimalField(max_digits=5,
+                                            decimal_places=2)
+            dec_field1 = models.DecimalField(max_digits=6,
+                                             decimal_places=3,
+                                             null=True)
+            dec_field2 = models.DecimalField(max_digits=7,
+                                             decimal_places=4,
+                                             null=False)
+            m2m_field1 = models.ManyToManyField(
+                ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
+
+        self.assertIsNotNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field1']))
+        self.assertIsNone(self.database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field1'],
+            unique=True))
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeField('TestModel', 'int_field1', initial=None,
+                            db_index=False, null=True),
+            ],
+            ("In model tests.TestModel:\n"
+             "    In field 'int_field1':\n"
+             "        Property 'db_index' has changed\n"
+             "        Property 'null' has changed"),
+            [
+                "ChangeField('TestModel', 'int_field1', db_index=False,"
+                " initial=None, null=True)",
+            ],
+            'RemoveDBIndexAddNullChangeModel')
+
+        self.assertIsNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field1']))
+        self.assertIsNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field1'],
             unique=True))
 
     def test_with_decimal_field_set_decimal_places(self):

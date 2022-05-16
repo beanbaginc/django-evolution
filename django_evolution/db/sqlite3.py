@@ -47,11 +47,6 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
             list of unicode:
             The list of SQL statements to run for the rebuild.
         """
-        if not self.alter_table:
-            # There aren't any operations to perform, so just return whatever
-            # explicit SQL might be set.
-            return super(SQLiteAlterTableSQLResult, self).to_sql()
-
         evolver = self.evolver
         model = self.model
         connection = evolver.connection
@@ -67,11 +62,16 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
         added_constraints = []
         new_initial = {}
         reffed_renamed_cols = []
+        added_field_db_indexes = []
+        dropped_field_db_indexes = []
+        needs_rebuild = False
+        sql = []
 
         for item in self.alter_table:
             op = item['op']
 
             if op == 'ADD COLUMN':
+                needs_rebuild = True
                 field = item['field']
 
                 if field.db_type(connection=connection) is not None:
@@ -82,8 +82,10 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
                     if initial is not None:
                         new_initial[field.column] = initial
             elif op == 'DELETE COLUMN':
+                needs_rebuild = True
                 deleted_columns.add(item['column'])
             elif op == 'RENAME COLUMN':
+                needs_rebuild = True
                 old_field = item['old_field']
                 new_field = item['new_field']
                 old_column = old_field.column
@@ -95,6 +97,7 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
                 if evolver.is_column_referenced(table_name, old_column):
                     reffed_renamed_cols.append((old_column, new_column))
             elif op == 'MODIFY COLUMN':
+                needs_rebuild = True
                 field = item['field']
                 initial = item['initial']
 
@@ -103,20 +106,38 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
                 if initial is not None:
                     new_initial[field.column] = initial
             elif op == 'CHANGE COLUMN TYPE':
+                needs_rebuild = True
                 old_field = item['old_field']
                 new_field = item['new_field']
                 column = old_field.column
 
                 replaced_fields[column] = new_field
             elif op == 'ADD CONSTRAINTS':
+                needs_rebuild = True
                 added_constraints = item['constraints']
             elif op == 'REBUILD':
                 # We're just rebuilding, not changing anything about it.
                 # This is used to get rid of auto-indexes from SQLite.
-                pass
+                needs_rebuild = True
+            elif op == 'ADD DB INDEX':
+                added_field_db_indexes.append(item['field'])
+            elif op == 'DROP DB INDEX':
+                dropped_field_db_indexes.append(item['field'])
             else:
                 raise ValueError('%s is not a valid Alter Table op for SQLite'
                                  % op)
+
+        for field in dropped_field_db_indexes:
+            sql += self.normalize_sql(evolver.drop_index(model, field))
+
+        if not needs_rebuild:
+            # We don't have any operations requiring a full table rebuild.
+            # We may have indexes to add (which would normally be added
+            # along with the rebuild).
+            for field in added_field_db_indexes:
+                sql += self.normalize_sql(evolver.create_index(model, field))
+
+            return self.pre_sql + self.sql + sql + self.post_sql
 
         # Remove any Generic Fields.
         old_fields = [
@@ -163,8 +184,6 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
                                 'coalesce(%s, %%s)' % qn(column)
                         else:
                             field_values[column] = '%s'
-
-        sql = []
 
         # The SQLite documentation defines the steps that should be taken to
         # safely alter the schema for a table. Unlike most types of databases,
@@ -250,6 +269,17 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
                 indexes = []
 
         sql += sql_indexes_for_model(connection, _Model)
+
+        # We've added all the indexes above. Any that were already there
+        # will be in the database state. However, if we've *specifically*
+        # had requests to add indexes, those ones won't be. We'll need to
+        # add them now.
+        #
+        # The easiest way is to use the same SQL generation functions we'd
+        # normally use to generate per-field indexes, since those track
+        # database state. We won't actually use the SQL.
+        for field in added_field_db_indexes:
+            evolver.create_index(model, field)
 
         if reffed_renamed_cols:
             # One or more tables referenced one or more renamed columns on
@@ -718,6 +748,58 @@ class EvolutionOperations(BaseEvolutionOperations):
             evolver=self,
             model=model,
             alter_table=alter_table_items)
+
+    def change_column_attr_db_index(self, model, mutation, field, old_value,
+                                    new_value):
+        """Return the SQL for creating/dropping indexes for a column.
+
+        If setting ``db_index=True``, SQL for generating the index will be
+        returned immediately.
+
+        If setting ``db_index=False``, the dropping of the index will be
+        scheduled as an Alter Table operation, ensuring it's dropped
+        immediately (and cached/queued database index state updated) before the
+        table is rebuilt, never later.
+
+        Version Added:
+            2.3
+
+        Args:
+            model (django.db.models.Model):
+                The model being changed.
+
+            mutation (django_evolution.mutations.BaseModelMutation):
+                The mutation applying this change.
+
+            field (django.db.models.DecimalField):
+                The field being modified.
+
+            old_value (bool):
+                The old value for ``db_index``.
+
+            new_value (bool):
+                The new value for ``db_index``.
+
+        Returns:
+            django_evolution.db.sql_result.SQLResult:
+            The resulting SQL for creating the index or scheduling a drop.
+        """
+        field.db_index = new_value
+
+        if new_value:
+            op = 'ADD DB INDEX'
+        else:
+            op = 'DROP DB INDEX'
+
+        return SQLiteAlterTableSQLResult(
+            evolver=self,
+            model=model,
+            alter_table=[
+                {
+                    'op': op,
+                    'field': field,
+                },
+            ])
 
     def get_drop_unique_constraint_sql(self, model, index_name):
         """Return SQL for dropping unique constraints.
