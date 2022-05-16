@@ -215,6 +215,8 @@ class EvolveAppTask(BaseEvolutionTask):
         if migrating and migrate_state:
             migrate_state = migrate_state.clone()
 
+        deferred_sql = []
+
         for batch_info in batches:
             batch_type = batch_info['type']
 
@@ -225,6 +227,7 @@ class EvolveAppTask(BaseEvolutionTask):
                     new_models_sql = batch_info.get('new_models_sql')
 
                     if new_models_sql:
+                        deferred_sql += batch_info['new_models_deferred_sql']
                         cls._create_models(
                             sql_executor=sql_executor,
                             evolver=evolver,
@@ -280,6 +283,14 @@ class EvolveAppTask(BaseEvolutionTask):
                                   created_models=new_models,
                                   post_migrate_state=migrate_state,
                                   plan=full_migration_plan)
+
+        # Apply any deferred new model SQL.
+        if deferred_sql:
+            with evolver.sql_executor() as sql_executor:
+                EvolveAppTask._apply_deferred_sql(
+                    sql_executor=sql_executor,
+                    evolver=evolver,
+                    sql=deferred_sql)
 
     @classmethod
     def _build_migration_executor(cls, evolver, tasks):
@@ -866,10 +877,14 @@ class EvolveAppTask(BaseEvolutionTask):
                     new_models_nodes = batch_info.pop('new_models_nodes')
                     assert new_models_nodes
 
+                    new_models_sql, new_models_deferred_sql = \
+                        sql_create_models(new_models,
+                                          db_name=database_name,
+                                          return_deferred=True)
+
                     batch_info.update({
-                        'new_models_sql': sql_create_models(
-                            new_models,
-                            db_name=database_name),
+                        'new_models_sql': new_models_sql,
+                        'new_models_deferred_sql': new_models_deferred_sql,
                         'new_models_tasks': filter_dup_list_items(
                             node.state['task']
                             for node in new_models_nodes
@@ -1014,6 +1029,43 @@ class EvolveAppTask(BaseEvolutionTask):
 
         return result
 
+    @classmethod
+    def _apply_deferred_sql(cls, sql_executor, evolver, sql):
+        """Create tables for models in the database.
+
+        Args:
+            sql_executor (django_evolution.utils.sql.SQLExecutor):
+                The SQL executor used to run any SQL on the database.
+
+            evolver (Evolver):
+                The evolver executing the tasks.
+
+            sql (list):
+                The list of SQL statements to execute.
+
+        Returns:
+            list:
+            The list of SQL statements used to create the model. This is
+            used primarily for unit tests.
+
+        Raises:
+            django_evolution.errors.EvolutionExecutionError:
+                There was an unexpected error creating database models.
+        """
+        assert sql_executor
+        assert sql
+
+        try:
+            return sql_executor.run_sql(sql=sql,
+                                        execute=True,
+                                        capture=True)
+        except Exception as e:
+            raise EvolutionExecutionError(
+                _('Error applying deferred SQL for new database models: %s')
+                % e,
+                detailed_error=six.text_type(e),
+                last_sql_statement=getattr(e, 'last_sql_statement', None))
+
     def __init__(self, evolver, app, evolutions=None, migrations=None):
         """Initialize the task.
 
@@ -1053,6 +1105,7 @@ class EvolveAppTask(BaseEvolutionTask):
         self.hinted_evolution = None
 
         self._new_models_sql = []
+        self._new_models_deferred_sql = []
         self._evolutions = evolutions
         self._migrations = migrations
         self._mutations = None
@@ -1288,8 +1341,10 @@ class EvolveAppTask(BaseEvolutionTask):
                 # execute(create_models_now=True) is called. Normally,
                 # EvolveAppTask._new_models_sql will be used instead. We
                 # don't know which way this will be called, so we need both.
-                self._new_models_sql = sql_create_models(new_models,
-                                                         db_name=database_name)
+                self._new_models_sql, self._new_models_deferred_sql = \
+                    sql_create_models(new_models,
+                                      db_name=database_name,
+                                      return_deferred=True)
 
         self.upgrade_method = upgrade_method or orig_upgrade_method
 
@@ -1350,10 +1405,17 @@ class EvolveAppTask(BaseEvolutionTask):
         evolver = self.evolver
 
         if create_models_now and self._new_models_sql:
-            EvolveAppTask._create_models(sql_executor=sql_executor,
-                                         evolver=evolver,
-                                         sql=self._new_models_sql,
-                                         tasks=[self])
+            EvolveAppTask._create_models(
+                sql_executor=sql_executor,
+                evolver=evolver,
+                sql=self._new_models_sql,
+                tasks=[self])
+
+            if self._new_models_deferred_sql:
+                EvolveAppTask._apply_deferred_sql(
+                    sql_executor=sql_executor,
+                    evolver=evolver,
+                    sql=self._new_models_deferred_sql)
 
         if evolutions is None:
             evolutions = self.new_evolutions

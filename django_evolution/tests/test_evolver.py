@@ -1594,6 +1594,10 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                         evolver=evolver,
                         sql=batch['new_models_sql'],
                         tasks=[task1, task2])
+                    sql += EvolveAppTask._apply_deferred_sql(
+                        sql_executor=sql_executor,
+                        evolver=evolver,
+                        sql=batch['new_models_deferred_sql'])
 
         self.assertSQLMappingEqual(sql, 'create_tables_with_deferred_refs')
 
@@ -1992,11 +1996,13 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
 
         if expected_new_models_sql is None:
             self.assertNotIn('new_models_sql', batch)
+            self.assertNotIn('new_models_deferred_sql', batch)
         else:
             self.assertIn('new_models_sql', batch)
-            self.assertSQLMappingEqual(batch['new_models_sql'],
-                                       expected_new_models_sql,
-                                       sql_mappings_key='evolver')
+            self.assertSQLMappingEqual(
+                batch['new_models_sql'] + batch['new_models_deferred_sql'],
+                expected_new_models_sql,
+                sql_mappings_key='evolver')
 
         if expected_new_models_tasks is None:
             self.assertNotIn('new_models_tasks', batch)

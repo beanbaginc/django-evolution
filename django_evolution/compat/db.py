@@ -148,13 +148,18 @@ def convert_table_name(connection, name):
         return introspection.table_name_converter(name)
 
 
-def sql_create_models(models, tables=None, db_name=None):
+def sql_create_models(models, tables=None, db_name=None,
+                      return_deferred=False):
     """Return SQL statements for creating a list of models.
 
     This provides compatibility with all supported versions of Django.
 
     It's recommended that callers include auto-created models in the list,
     to ensure all references are correct.
+
+    Version Changed:
+        2.2:
+        Added the ``return_deferred` argument.
 
     Args:
         models (list of type):
@@ -168,9 +173,17 @@ def sql_create_models(models, tables=None, db_name=None):
             The database connection name. Defaults to the default database
             connection.
 
+        return_deferred (bool, optional):
+            Whether to return any deferred SQL separately from the model
+            creation SQL. If ``True``, the return type will change to a tuple.
+
     Returns:
-        list:
-        The list of SQL statements used to create the models for the app.
+        list or tuple:
+        If ``return_deferred=False`` (the default), this will be a list of
+        SQL statements used to create the models for the app.
+
+        If ``return_deferred=True``, this will be a 2-tuple in the form of
+        ``(list_of_sql, list_of_deferred_sql)``.
     """
     connection = connections[db_name or DEFAULT_DB_ALIAS]
 
@@ -179,6 +192,15 @@ def sql_create_models(models, tables=None, db_name=None):
         with connection.schema_editor(collect_sql=True) as schema_editor:
             for model in models:
                 schema_editor.create_model(model)
+
+            if return_deferred:
+                collected_sql = list(schema_editor.collected_sql)
+                deferred_sql = [
+                    '%s;' % _statement
+                    for _statement in schema_editor.deferred_sql
+                ]
+
+                return collected_sql, deferred_sql
 
         return schema_editor.collected_sql
     else:
@@ -192,6 +214,7 @@ def sql_create_models(models, tables=None, db_name=None):
 
         seen_models = connection.introspection.installed_models(tables)
         sql = []
+        deferred_sql = []
 
         for model in models:
             model_sql, references = creation.sql_create_model(
@@ -204,16 +227,19 @@ def sql_create_models(models, tables=None, db_name=None):
                 pending_references.setdefault(ref_to, []).extend(refs)
 
                 if ref_to in seen_models:
-                    sql += creation.sql_for_pending_references(
+                    deferred_sql += creation.sql_for_pending_references(
                         ref_to, style, pending_references)
 
-            sql += creation.sql_for_pending_references(
+            deferred_sql += creation.sql_for_pending_references(
                 model, style, pending_references)
 
         for model in models:
-            sql += creation.sql_indexes_for_model(model, style)
+            deferred_sql += creation.sql_indexes_for_model(model, style)
 
-        return sql
+        if return_deferred:
+            return sql, deferred_sql
+        else:
+            return sql + deferred_sql
 
 
 def sql_create_app(app, db_name=None):

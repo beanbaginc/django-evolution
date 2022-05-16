@@ -2006,6 +2006,13 @@ def evolver(connection):
                 ')',
                 ';',
 
+                'CREATE TABLE `evolutions_app_evolutionsapptestmodel` (',
+                '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
+                '    `char_field` varchar(10),',
+                '    `char_field2` varchar(20)',
+                ')',
+                ';',
+
                 'ALTER TABLE `evolutions_app2_evolutionsapp2testmodel2`'
                 ' ADD CONSTRAINT `%s` FOREIGN KEY (`fkey_id`)'
                 ' REFERENCES `evolutions_app2_evolutionsapp2testmodel` (`id`);'
@@ -2014,13 +2021,6 @@ def evolver(connection):
                     'id',
                     'evolutions_app2_evolutionsapp2testmodel2',
                     'evolutions_app2_evolutionsapp2testmodel'),
-
-                'CREATE TABLE `evolutions_app_evolutionsapptestmodel` (',
-                '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
-                '    `char_field` varchar(10),',
-                '    `char_field2` varchar(20)',
-                ')',
-                ';',
 
                 'ALTER TABLE `evolutions_app2_evolutionsapp2testmodel`'
                 ' ADD CONSTRAINT `%s` FOREIGN KEY (`fkey_id`)'
