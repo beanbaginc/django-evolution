@@ -777,18 +777,23 @@ def change_field(connection):
             ' "char_field2" varchar(30) NOT NULL,'
             ' "dec_field" decimal NOT NULL,'
             ' "dec_field1" decimal NULL,'
-            ' "dec_field2" decimal NOT NULL);',
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2")'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' coalesce("char_field1", \'abc\\\'s xyz\'), "char_field2",'
-            ' "dec_field", "dec_field1",'
-            ' "dec_field2"'
+            ' "dec_field", "dec_field1", "dec_field2", "datetime_field1",'
+            ' "datetime_field2", "date_field1", "date_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -813,17 +818,23 @@ def change_field(connection):
             ' "char_field2" varchar(30) NOT NULL,'
             ' "dec_field" decimal NOT NULL,'
             ' "dec_field1" decimal NULL,'
-            ' "dec_field2" decimal NOT NULL);',
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2")'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2"'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -848,17 +859,23 @@ def change_field(connection):
             ' "char_field2" varchar(30) NULL,'
             ' "dec_field" decimal NOT NULL,'
             ' "dec_field1" decimal NULL,'
-            ' "dec_field2" decimal NOT NULL);',
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2")'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2"'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -885,17 +902,23 @@ def change_field(connection):
             ' "char_field2" varchar(30) NOT NULL,'
             ' "dec_field" decimal NOT NULL,'
             ' "dec_field1" decimal NULL,'
-            ' "dec_field2" decimal NOT NULL);',
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2")'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2"'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -920,17 +943,23 @@ def change_field(connection):
             ' "char_field2" varchar(30) NOT NULL,'
             ' "dec_field" decimal NOT NULL,'
             ' "dec_field1" decimal NULL,'
-            ' "dec_field2" decimal NOT NULL);',
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2")'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2"'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -976,17 +1005,23 @@ def change_field(connection):
             ' "char_field2" varchar(30) NOT NULL,'
             ' "dec_field" decimal NOT NULL,'
             ' "dec_field1" decimal NULL,'
-            ' "dec_field2" decimal NOT NULL);',
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2")'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2"'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -1011,17 +1046,23 @@ def change_field(connection):
             ' "char_field2" varchar(30) NOT NULL,'
             ' "dec_field" decimal NOT NULL,'
             ' "dec_field1" decimal NULL,'
-            ' "dec_field2" decimal NOT NULL);',
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2")'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2"'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -1046,17 +1087,23 @@ def change_field(connection):
             ' "char_field2" varchar(35) NULL,'
             ' "dec_field" decimal NOT NULL,'
             ' "dec_field1" decimal NULL,'
-            ' "dec_field2" decimal NOT NULL);',
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2")'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2"'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -1081,17 +1128,23 @@ def change_field(connection):
             ' "char_field2" varchar(30) NOT NULL,'
             ' "dec_field" decimal NOT NULL,'
             ' "dec_field1" decimal NULL,'
-            ' "dec_field2" decimal NOT NULL);',
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2")'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2"'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -1116,17 +1169,23 @@ def change_field(connection):
             ' "char_field2" varchar(30) NOT NULL,'
             ' "dec_field" decimal NOT NULL,'
             ' "dec_field1" decimal NULL,'
-            ' "dec_field2" decimal NOT NULL);',
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2")'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2"'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -1151,17 +1210,23 @@ def change_field(connection):
             ' "char_field2" varchar(30) NOT NULL,'
             ' "dec_field" decimal NOT NULL,'
             ' "dec_field1" decimal NULL,'
-            ' "dec_field2" decimal NOT NULL);',
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2")'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2"'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -1186,17 +1251,23 @@ def change_field(connection):
             ' "char_field2" varchar(30) NOT NULL,'
             ' "dec_field" decimal NOT NULL,'
             ' "dec_field1" decimal NULL,'
-            ' "dec_field2" decimal NOT NULL);',
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2")'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2"'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -1221,17 +1292,23 @@ def change_field(connection):
             ' "char_field2" varchar(30) NOT NULL,'
             ' "dec_field" decimal NOT NULL,'
             ' "dec_field1" decimal NULL,'
-            ' "dec_field2" decimal NOT NULL);',
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2")'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2"'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -1260,17 +1337,23 @@ def change_field(connection):
             ' "char_field2" varchar(30) NOT NULL,'
             ' "dec_field" decimal NOT NULL,'
             ' "dec_field1" decimal NULL,'
-            ' "dec_field2" decimal NOT NULL);',
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2")'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
             ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
             ' "int_field2", "int_field3", "int_field4", "char_field",'
             ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-            ' "dec_field2"'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
             ' FROM "tests_testmodel";',
 
             'DROP TABLE "tests_testmodel";',
@@ -1303,17 +1386,23 @@ def change_field(connection):
                 ' "char_field2" varchar(30) NULL,'
                 ' "dec_field" decimal NOT NULL,'
                 ' "dec_field1" decimal NULL,'
-                ' "dec_field2" decimal NOT NULL);',
+                ' "dec_field2" decimal NOT NULL,'
+                ' "datetime_field1" datetime NULL,'
+                ' "datetime_field2" datetime NOT NULL,'
+                ' "date_field1" date NULL,'
+                ' "date_field2" date NOT NULL);',
 
                 'INSERT INTO "TEMP_TABLE"'
                 ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
                 ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-                ' "dec_field2")'
+                ' "dec_field2", "datetime_field1", "datetime_field2",'
+                ' "date_field1", "date_field2")'
                 ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
                 ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-                ' "dec_field2"'
+                ' "dec_field2", "datetime_field1", "datetime_field2",'
+                ' "date_field1", "date_field2"'
                 ' FROM "tests_testmodel";',
 
                 'DROP TABLE "tests_testmodel";',
@@ -1341,17 +1430,23 @@ def change_field(connection):
                 ' "char_field2" varchar(30) NULL,'
                 ' "dec_field" decimal NOT NULL,'
                 ' "dec_field1" decimal NULL,'
-                ' "dec_field2" decimal NOT NULL);',
+                ' "dec_field2" decimal NOT NULL,'
+                ' "datetime_field1" datetime NULL,'
+                ' "datetime_field2" datetime NOT NULL,'
+                ' "date_field1" date NULL,'
+                ' "date_field2" date NOT NULL);',
 
                 'INSERT INTO "TEMP_TABLE"'
                 ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
                 ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-                ' "dec_field2")'
+                ' "dec_field2", "datetime_field1", "datetime_field2",'
+                ' "date_field1", "date_field2")'
                 ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
                 ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-                ' "dec_field2"'
+                ' "dec_field2", "datetime_field1", "datetime_field2",'
+                ' "date_field1", "date_field2"'
                 ' FROM "tests_testmodel";',
 
                 'DROP TABLE "tests_testmodel";',
@@ -1381,17 +1476,23 @@ def change_field(connection):
                 ' "char_field2" varchar(30) NOT NULL,'
                 ' "dec_field" decimal NOT NULL,'
                 ' "dec_field1" decimal NULL,'
-                ' "dec_field2" decimal NOT NULL);',
+                ' "dec_field2" decimal NOT NULL,'
+                ' "datetime_field1" datetime NULL,'
+                ' "datetime_field2" datetime NOT NULL,'
+                ' "date_field1" date NULL,'
+                ' "date_field2" date NOT NULL);',
 
                 'INSERT INTO "TEMP_TABLE"'
                 ' ("my_id", "alt_pk", "customised_db_column", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
                 ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-                ' "dec_field2")'
+                ' "dec_field2", "datetime_field1", "datetime_field2",'
+                ' "date_field1", "date_field2")'
                 ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
                 ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-                ' "dec_field2"'
+                ' "dec_field2", "datetime_field1", "datetime_field2",'
+                ' "date_field1", "date_field2"'
                 ' FROM "tests_testmodel";',
 
                 'DROP TABLE "tests_testmodel";',
@@ -1416,17 +1517,23 @@ def change_field(connection):
                 ' "char_field2" varchar(30) NULL,'
                 ' "dec_field" decimal NOT NULL,'
                 ' "dec_field1" decimal NULL,'
-                ' "dec_field2" decimal NOT NULL);',
+                ' "dec_field2" decimal NOT NULL,'
+                ' "datetime_field1" datetime NULL,'
+                ' "datetime_field2" datetime NOT NULL,'
+                ' "date_field1" date NULL,'
+                ' "date_field2" date NOT NULL);',
 
                 'INSERT INTO "TEMP_TABLE"'
                 ' ("my_id", "alt_pk", "custom_db_column2", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
                 ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-                ' "dec_field2")'
+                ' "dec_field2", "datetime_field1", "datetime_field2",'
+                ' "date_field1", "date_field2")'
                 ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
                 ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-                ' "dec_field2"'
+                ' "dec_field2", "datetime_field1", "datetime_field2",'
+                ' "date_field1", "date_field2"'
                 ' FROM "tests_testmodel";',
 
                 'DROP TABLE "tests_testmodel";',
@@ -1451,17 +1558,23 @@ def change_field(connection):
                 ' "char_field2" varchar(30) NULL,'
                 ' "dec_field" decimal NOT NULL,'
                 ' "dec_field1" decimal NULL,'
-                ' "dec_field2" decimal NOT NULL);',
+                ' "dec_field2" decimal NOT NULL,'
+                ' "datetime_field1" datetime NULL,'
+                ' "datetime_field2" datetime NOT NULL,'
+                ' "date_field1" date NULL,'
+                ' "date_field2" date NOT NULL);',
 
                 'INSERT INTO "TEMP_TABLE"'
                 ' ("my_id", "alt_pk", "custom_db_column3", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
                 ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-                ' "dec_field2")'
+                ' "dec_field2", "datetime_field1", "datetime_field2",'
+                ' "date_field1", "date_field2")'
                 ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
                 ' "int_field2", "int_field3", "int_field4", "char_field",'
                 ' "char_field1", "char_field2", "dec_field", "dec_field1",'
-                ' "dec_field2"'
+                ' "dec_field2", "datetime_field1", "datetime_field2",'
+                ' "date_field1", "date_field2"'
                 ' FROM "tests_testmodel";',
 
                 'DROP TABLE "tests_testmodel";',

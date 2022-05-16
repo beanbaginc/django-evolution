@@ -1,6 +1,9 @@
 from __future__ import unicode_literals
 
+from datetime import datetime, date
+
 from django.db import connection, models
+from django.utils import timezone
 
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.diff import Diff
@@ -48,6 +51,10 @@ class ChangeBaseModel(BaseTestModel):
                                      null=False)
     m2m_field1 = models.ManyToManyField(
         ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+    datetime_field1 = models.DateTimeField(null=True)
+    datetime_field2 = models.DateTimeField(null=False)
+    date_field1 = models.DateField(null=True)
+    date_field2 = models.DateField(null=False)
 
 
 class ChangeFieldTests(EvolutionTestCase):
@@ -77,7 +84,13 @@ class ChangeFieldTests(EvolutionTestCase):
             char_field2='test3',
             dec_field=100.25,
             dec_field1=200.50,
-            dec_field2=300.75)
+            dec_field2=300.75,
+            datetime_field1=datetime(2022, 5, 13, 1, 2, 3,
+                                     tzinfo=timezone.utc),
+            datetime_field2=datetime(2022, 5, 13, 4, 5, 6,
+                                     tzinfo=timezone.utc),
+            date_field1=date(2020, 5, 12),
+            date_field2=date(2020, 5, 13))
 
         anchor = ChangeAnchor1.objects.using(db_name).create(value=42)
         model.m2m_field1.add(anchor)
@@ -162,6 +175,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         message = (
             'Cannot change the field "char_field1" on model '
@@ -208,6 +225,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         message = (
             'Cannot change the field "char_field1" on model '
@@ -253,6 +274,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -292,6 +317,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -333,6 +362,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -374,6 +407,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -410,6 +447,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -449,6 +490,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -488,6 +533,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -527,6 +576,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='custom_m2m_db_table_name')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -568,6 +621,10 @@ class ChangeFieldTests(EvolutionTestCase):
                 ChangeAnchor1,
                 db_table='change_field_non-default_m2m_table',
                 null=True)
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -606,6 +663,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.assertIsNone(self.database_state.find_index(
             table_name='tests_testmodel',
@@ -655,6 +716,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         evolver = EvolutionOperationsMulti('default',
                                            self.database_state).get_evolver()
@@ -713,6 +778,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.assertIsNotNone(self.database_state.find_index(
             table_name='tests_testmodel',
@@ -762,6 +831,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.database_state.clear_indexes('tests_testmodel')
 
@@ -812,6 +885,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.assertIsNone(self.database_state.find_index(
             table_name='tests_testmodel',
@@ -861,6 +938,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.assertIsNotNone(self.database_state.find_index(
             table_name='tests_testmodel',
@@ -911,6 +992,10 @@ class ChangeFieldTests(EvolutionTestCase):
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1,
                 db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -950,6 +1035,10 @@ class ChangeFieldTests(EvolutionTestCase):
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1,
                 db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -991,6 +1080,10 @@ class ChangeFieldTests(EvolutionTestCase):
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1,
                 db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -1031,6 +1124,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -1084,6 +1181,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -1124,6 +1225,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -1178,6 +1283,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -1218,6 +1327,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -1263,6 +1376,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         # NOTE: This test won't result in any SQL changes on SQLite3, due
         #       to AutoField and BigAutoField mapping to "integer". That's
@@ -1310,6 +1427,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -1356,6 +1477,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -1387,6 +1512,10 @@ class ChangeFieldTests(EvolutionTestCase):
                                              null=False)
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.perform_evolution_tests(
             DestModel,
@@ -1438,6 +1567,10 @@ class ChangeFieldTests(EvolutionTestCase):
             m2m_field1 = models.ManyToManyField(
                 ChangeAnchor1, db_table='change_field_non-default_m2m_table')
             test_field = models.CharField(max_length=32, null=False)
+            datetime_field1 = models.DateTimeField(null=True)
+            datetime_field2 = models.DateTimeField(null=False)
+            date_field1 = models.DateField(null=True)
+            date_field2 = models.DateField(null=False)
 
         self.set_base_model(
             self.default_base_model,
