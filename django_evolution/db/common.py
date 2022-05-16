@@ -1825,6 +1825,7 @@ class BaseEvolutionOperations(object):
         assert replaced_fields or renamed_db_tables
 
         connection = self.connection
+        db_state = self.database_state
 
         renamed_columns = {}
         renamed_col_fields = {}
@@ -1879,6 +1880,9 @@ class BaseEvolutionOperations(object):
 
             through = remote_field.through
             assert through is not None
+
+            if not db_state.has_model(through):
+                continue
 
             through_meta = through._meta
 
@@ -1935,10 +1939,10 @@ class BaseEvolutionOperations(object):
                 replaced_field_refs.append((rel_from_model,
                                             old_rel_field,
                                             new_rel.field))
-
-                if rel_from_model._meta.db_table not in seen_m2m_models:
-                    models_to_refs[rel_to_model].append(
-                        (rel_from_model, old_rel_field))
+                if (rel_from_model._meta.db_table not in seen_m2m_models and
+                    db_state.has_model(rel_from_model)):
+                        models_to_refs[rel_to_model].append(
+                            (rel_from_model, old_rel_field))
 
         if models_to_refs:
             remove_refs = models_to_refs.copy()
