@@ -6,6 +6,10 @@ import os
 import sqlite3
 import sys
 
+top_dir = os.path.dirname(__file__)
+sys.path.insert(0, top_dir)
+sys.path.insert(0, os.path.join(top_dir, 'tests'))
+
 import django
 import pytest
 
@@ -18,11 +22,6 @@ try:
     import psycopg2
 except ImportError:
     psycopg2 = None
-
-
-top_dir = os.path.dirname(__file__)
-sys.path.insert(0, top_dir)
-sys.path.insert(0, os.path.join(top_dir, 'tests'))
 
 
 def pytest_addoption(parser):

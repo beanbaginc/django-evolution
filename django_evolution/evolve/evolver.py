@@ -133,6 +133,7 @@ class Evolver(object):
         self.initial_diff = None
         self.project_sig = None
         self.version = None
+        self.installed_new_database = False
 
         self.connection = connections[database_name]
 
@@ -161,6 +162,8 @@ class Evolver(object):
         if latest_version is None:
             # Either the models aren't yet synced to the database, or we
             # don't have a saved project signature, so let's set these up.
+            self.installed_new_database = True
+
             self.project_sig = ProjectSignature()
             app = get_app('django_evolution')
 

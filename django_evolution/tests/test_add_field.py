@@ -220,7 +220,7 @@ class AddFieldTests(EvolutionTestCase):
             ],
             'AddNonNullCallableColumnModel')
 
-    def tst_add_null_column(self):
+    def test_add_null_column(self):
         """Testing AddField with NULL column"""
         class DestModel(BaseTestModel):
             char_field = models.CharField(max_length=20)
@@ -230,12 +230,12 @@ class AddFieldTests(EvolutionTestCase):
         self.perform_evolution_tests(
             DestModel,
             [
-                AddField('TestModel', 'added_field', models.CharField,
+                AddField('TestModel', 'added_field', models.IntegerField,
                          null=True),
             ],
             self.DIFF_TEXT,
             [
-                "AddField('TestModel', 'added_field', models.CharField,"
+                "AddField('TestModel', 'added_field', models.IntegerField,"
                 " null=True)",
             ],
             'AddNullColumnModel')
@@ -320,6 +320,26 @@ class AddFieldTests(EvolutionTestCase):
             ],
             'AddDateColumnModel')
 
+    def test_add_datetime_field_with_callable(self):
+        """Testing AddField with DateTimeField with callable"""
+        class DestModel(BaseTestModel):
+            char_field = models.CharField(max_length=20)
+            int_field = models.IntegerField()
+            added_field = models.DateTimeField()
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                AddField('TestModel', 'added_field', models.DateTimeField,
+                         initial=lambda: datetime(2007, 12, 13, 16, 42, 0)),
+            ],
+            self.DIFF_TEXT,
+            [
+                "AddField('TestModel', 'added_field', models.DateTimeField,"
+                " initial=<<USER VALUE REQUIRED>>)",
+            ],
+            'AddDateColumnWithCallableInitialModel')
+
     def test_add_with_default(self):
         """Testing AddField with default value"""
         class DestModel(BaseTestModel):
@@ -361,6 +381,48 @@ class AddFieldTests(EvolutionTestCase):
                 " initial=True)",
             ],
             'AddMismatchInitialBoolColumnModel')
+
+    def test_add_textfield_with_initial(self):
+        """Testing AddField with TextField and initial value"""
+        class DestModel(BaseTestModel):
+            char_field = models.CharField(max_length=20)
+            int_field = models.IntegerField()
+            added_field = models.TextField(null=False,
+                                           default='test')
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                AddField('TestModel', 'added_field', models.TextField,
+                         initial='test', null=False),
+            ],
+            self.DIFF_TEXT,
+            [
+                "AddField('TestModel', 'added_field', models.TextField,"
+                " initial='test')"
+            ],
+            'AddTextFieldWithInitialColumnModel')
+
+    def test_add_binaryfield_with_initial(self):
+        """Testing AddField with BinaryField and initial value"""
+        class DestModel(BaseTestModel):
+            char_field = models.CharField(max_length=20)
+            int_field = models.IntegerField()
+            added_field = models.BinaryField(null=False,
+                                             default=b'test')
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                AddField('TestModel', 'added_field', models.BinaryField,
+                         initial=b'test', null=False),
+            ],
+            self.DIFF_TEXT,
+            [
+                "AddField('TestModel', 'added_field', models.BinaryField,"
+                " initial='test')"
+            ],
+            'AddBinaryFieldWithInitialColumnModel')
 
     def test_add_with_empty_string_default(self):
         """Testing AddField with empty string as default value"""

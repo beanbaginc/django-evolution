@@ -123,6 +123,25 @@ class BaseEvolutionOperations(object):
 
         return True
 
+    def get_field_type_allows_default(self, field):
+        """Return whether default values are allowed for a field.
+
+        By default, default values are always allowed. Subclasses should
+        override this if some types do not allow for defaults.
+
+        Version Added:
+            2.2
+
+        Args:
+            field (django.db.models.Field):
+                The field to check.
+
+        Returns:
+            bool:
+            ``True`` if default values are allowed. ``False`` if they're not.
+        """
+        return True
+
     def get_deferrable_sql(self):
         """Return the SQL for marking a reference as deferrable.
 
@@ -264,7 +283,9 @@ class BaseEvolutionOperations(object):
             # At this point, initial can only be None if null=True, otherwise
             # it is a user callable or the default AddFieldInitialCallback
             # which will shortly raise an exception.
-            if initial is not None and not callable(initial):
+            if (initial is not None and
+                not callable(initial) and
+                self.get_field_type_allows_default(field)):
                 column_def += ['DEFAULT', '%s']
                 column_def_sql_params.append(initial)
 
@@ -486,7 +507,9 @@ class BaseEvolutionOperations(object):
         sql_result = self.alter_table_sql_result_cls(self, model)
         table_name = model._meta.db_table
         remote_field = get_remote_field(field)
-        can_set_initial = remote_field is None and initial is not None
+        can_set_initial = (remote_field is None and
+                           initial is not None and
+                           self.get_field_type_allows_default(field))
 
         schema = self.build_column_schema(
             model=model,
@@ -505,13 +528,23 @@ class BaseEvolutionOperations(object):
 
         if can_set_initial:
             if callable(initial):
-                sql_result.add_sql([
-                    'UPDATE %s SET %s = %s WHERE %s IS NULL;'
-                    % (qn(table_name),
-                       qn(column_name),
-                       initial(),
-                       qn(column_name))
-                ])
+                initial, embed_initial = self.normalize_initial(initial)
+
+                set_sql = (
+                    'UPDATE %(table_name)s SET %(column_name)s = %%s'
+                    ' WHERE %(column_name)s IS NULL;'
+                    % {
+                        'column_name': qn(column_name),
+                        'table_name': qn(table_name),
+                    }
+                )
+
+                if embed_initial:
+                    set_sql = set_sql % initial
+                else:
+                    set_sql = (set_sql, (initial,))
+
+                sql_result.add_sql([set_sql])
 
                 if not field.null:
                     # Now that we've set initial values, we can make this
@@ -803,6 +836,29 @@ class BaseEvolutionOperations(object):
                 },
             })
 
+        # If db_index and/or unique has changed, process them together so
+        # that index SQL generation can account for both changing states.
+        if 'db_index' in new_attrs or 'unique' in new_attrs:
+            db_index_attr = new_attrs.pop('db_index', {})
+            old_db_index = db_index_attr.get('old_value', field.db_index)
+            new_db_index = db_index_attr.get('new_value', field.db_index)
+
+            unique_attr = new_attrs.pop('unique', {})
+            old_unique = unique_attr.get('old_value', field.unique)
+            new_unique = unique_attr.get('new_value', field.unique)
+
+            if old_db_index != new_db_index or old_unique != new_unique:
+                change_calls.append({
+                    'func': self.change_column_attrs_db_index_unique,
+                    'kwargs': {
+                        'old_db_index': old_db_index,
+                        'new_db_index': new_db_index,
+                        'old_unique': old_unique,
+                        'new_unique': new_unique,
+                    },
+                })
+
+        # Process any remaining supported attributes.
         change_calls += [
             {
                 'func': getattr(self, 'change_column_attr_%s' % attr_name),
@@ -854,8 +910,10 @@ class BaseEvolutionOperations(object):
                 }
             )
 
-            if callable(initial):
-                update_sql = sql_prefix % initial()
+            initial, embed_initial = self.normalize_initial(initial)
+
+            if embed_initial:
+                update_sql = sql_prefix % initial
             else:
                 update_sql = (sql_prefix, (initial,))
 
@@ -950,9 +1008,138 @@ class BaseEvolutionOperations(object):
         """Returns the SQL for changing the table for a ManyToManyField."""
         return self.rename_table(model, old_value, new_value)
 
+    def change_column_attrs_db_index_unique(self, model, mutation, field,
+                                            old_db_index, new_db_index,
+                                            old_unique, new_unique):
+        """Return SQL for changing indexes due to db_index or unique.
+
+        This determines whether standard or unique indexes need to be dropped
+        or added, and returns the resulting SQL.
+
+        Unique indexes are dropped if a field went from ``unique=True`` to
+        ``unique=False``.
+
+        If not dropping a unique index, but the field was set to
+        ``db_index=True, unique=False``, and either ``db_index=False`` or
+        ``unique=True`` is being set, a stnadard index will be dropped.
+
+        Unique indexes are added if a field went from ``unique=False`` to
+        ``unique=True``.
+
+        If not adding a unique index, but the field was set to
+        ``db_index=False`` or ``unique=True`` and is being set to
+        ``db_index=True, unique=False``, then a standard index will be added.
+
+        Version Added:
+            2.3
+
+        Args:
+            model (django.db.models.Model):
+                The model being changed.
+
+            mutation (django_evolution.mutations.BaseModelMutation):
+                The mutation applying this change.
+
+            field (django.db.models.DecimalField):
+                The field being modified.
+
+            old_db_index (bool):
+                The old ``db_index`` value.
+
+            new_db_index (bool):
+                The new ``db_index`` value.
+
+            old_unique (bool):
+                The old ``unique`` value.
+
+            new_unique (bool):
+                The new ``unique`` value.
+
+        Returns:
+            django_evolution.db.sql_result.AlterTableSQLResult:
+            The SQL for dropping and/or adding indexes.
+        """
+        result = self.alter_table_sql_result_cls(
+            evolver=self,
+            model=model)
+
+        # Check if any indexes need to be dropped.
+        if old_unique and not new_unique:
+            # Remove the unique index.
+            result.add(self.change_column_attr_unique(
+                model=model,
+                mutation=mutation,
+                field=field,
+                old_value=old_unique,
+                new_value=new_unique))
+        elif (old_db_index and not old_unique and
+              (not new_db_index or new_unique)):
+            # Remove the standard index.
+            result.add(self.change_column_attr_db_index(
+                model=model,
+                mutation=mutation,
+                field=field,
+                old_value=old_db_index,
+                new_value=new_db_index))
+
+        # Check if any indexes need to be added.
+        if not old_unique and new_unique:
+            # Add the unique index.
+            result.add(self.change_column_attr_unique(
+                model=model,
+                mutation=mutation,
+                field=field,
+                old_value=old_unique,
+                new_value=new_unique))
+        elif ((not old_db_index or old_unique) and
+              new_db_index and not new_unique):
+            # Add the standard index.
+            result.add(self.change_column_attr_db_index(
+                model=model,
+                mutation=mutation,
+                field=field,
+                old_value=old_db_index,
+                new_value=new_db_index))
+
+        return result
+
     def change_column_attr_db_index(self, model, mutation, field, old_value,
                                     new_value):
-        """Returns the SQL for creating/dropping indexes for a column."""
+        """Return the SQL for creating/dropping indexes for a column.
+
+        If setting ``db_index=True``, SQL for generating the index will be
+        returned.
+
+        If setting ``db_index=False``, SQL for dropping the index will be
+        returned.
+
+        Creating or dropping the SQL will also modify the cached/queued
+        database index state, used by other operations that work with indexes.
+
+        Subclasses should override this if they're sensitive to the order in
+        which SQL is generated or cached/queued database index state is
+        modified.
+
+        Args:
+            model (django.db.models.Model):
+                The model being changed.
+
+            mutation (django_evolution.mutations.BaseModelMutation):
+                The mutation applying this change.
+
+            field (django.db.models.DecimalField):
+                The field being modified.
+
+            old_value (bool):
+                The old value for ``db_index``.
+
+            new_value (bool):
+                The new value for ``db_index``.
+
+        Returns:
+            django_evolution.db.sql_result.SQLResult:
+            The resulting SQL for creating the index or scheduling a drop.
+        """
         field.db_index = new_value
 
         if new_value:
@@ -1638,6 +1825,7 @@ class BaseEvolutionOperations(object):
         assert replaced_fields or renamed_db_tables
 
         connection = self.connection
+        db_state = self.database_state
 
         renamed_columns = {}
         renamed_col_fields = {}
@@ -1692,6 +1880,9 @@ class BaseEvolutionOperations(object):
 
             through = remote_field.through
             assert through is not None
+
+            if not db_state.has_model(through):
+                continue
 
             through_meta = through._meta
 
@@ -1748,10 +1939,10 @@ class BaseEvolutionOperations(object):
                 replaced_field_refs.append((rel_from_model,
                                             old_rel_field,
                                             new_rel.field))
-
-                if rel_from_model._meta.db_table not in seen_m2m_models:
-                    models_to_refs[rel_to_model].append(
-                        (rel_from_model, old_rel_field))
+                if (rel_from_model._meta.db_table not in seen_m2m_models and
+                    db_state.has_model(rel_from_model)):
+                        models_to_refs[rel_to_model].append(
+                            (rel_from_model, old_rel_field))
 
         if models_to_refs:
             remove_refs = models_to_refs.copy()
@@ -1856,6 +2047,38 @@ class BaseEvolutionOperations(object):
                     refs=add_refs))
 
         return sql_result
+
+    def normalize_initial(self, initial):
+        """Normalize an initial value.
+
+        If the value is callable, it will be called and the result will be
+        used. If that result is a string, it will be assumed to be something
+        safe for embedding directly into SQL.
+
+        Anything else is considered best used as a SQL parameter.
+
+        Version Added:
+            2.3
+
+        Args:
+            initial (object or callable):
+                The initial value to normalize.
+
+        Returns:
+            tuple:
+            A 2-tuple of:
+
+            1. The normalized initial value.
+            2. Whether it can be embedded directly into SQL. If ``False``, it
+               should be used in SQL query parameter list.
+        """
+        if callable(initial):
+            initial = initial()
+
+            if isinstance(initial, six.text_type):
+                return initial, True
+
+        return initial, False
 
     def normalize_value(self, value):
         if isinstance(value, bool):

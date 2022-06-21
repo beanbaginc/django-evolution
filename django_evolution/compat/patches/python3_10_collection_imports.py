@@ -27,8 +27,8 @@ def needs_patch():
         bool:
         ``True`` if the module needs to be patched. ``False`` if it does not.
     """
-    return (not hasattr(collections, 'Callable') and
-            django.VERSION[:2] <= (2, 0))
+    return (django.VERSION[:2] <= (2, 0) and
+            not hasattr(collections, 'Callable'))
 
 
 def apply_patch():

@@ -494,7 +494,10 @@ class Command(BaseCommand):
             raise CommandError(six.text_type(e))
 
         if verbosity > 0:
-            self.stdout.write(_('The database upgrade was successful!\n'))
+            if evolver.installed_new_database:
+                self.stdout.write(_('The database creation was successful!\n'))
+            else:
+                self.stdout.write(_('The database upgrade was successful!\n'))
 
     def _display_compiled_sql(self):
         """Display the compiled SQL for the evolution run.

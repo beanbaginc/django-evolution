@@ -15,6 +15,42 @@ from django_evolution.db.sql_result import AlterTableSQLResult, SQLResult
 class EvolutionOperations(BaseEvolutionOperations):
     """Evolution operations for MySQL and MariaDB databases."""
 
+    _NO_DEFAULT_FIELD_TYPES = {
+        # Blob types
+        'blob',
+        'tinyblob',
+        'mediumblob',
+        'longblob',
+
+        # Text types
+        'text',
+        'tinytext',
+        'mediumtext',
+        'longtext',
+
+        # Misc.
+        'json',
+    }
+
+    def get_field_type_allows_default(self, field):
+        """Return whether default values are allowed for a field.
+
+        Version Added:
+            2.2
+
+        Args:
+            field (django.db.models.Field):
+                The field to check.
+
+        Returns:
+            bool:
+            ``True`` if default values are allowed. ``False`` if they're not.
+        """
+        field_type = field.db_type(connection=self.connection)
+
+        return (field_type is not None and
+                field_type.lower() not in self._NO_DEFAULT_FIELD_TYPES)
+
     def get_change_column_type_sql(self, model, old_field, new_field):
         """Return SQL to change the type of a column.
 

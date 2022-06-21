@@ -12,6 +12,7 @@ Version Changed:
    ~django_evolution.mutations.add_field.AddField
    ~django_evolution.mutations.base.BaseModelFieldMutation
    ~django_evolution.mutations.base.BaseModelMutation
+   ~django_evolution.mutations.base.BaseUpgradeMethodMutation
    ~django_evolution.mutations.base.BaseMutation
    ~django_evolution.mutations.base.Simulation
    ~django_evolution.mutations.change_field.ChangeField
@@ -31,6 +32,7 @@ from __future__ import unicode_literals
 from django_evolution.mutations.add_field import AddField
 from django_evolution.mutations.base import (BaseModelFieldMutation,
                                              BaseModelMutation,
+                                             BaseUpgradeMethodMutation,
                                              BaseMutation,
                                              Simulation)
 from django_evolution.mutations.change_field import ChangeField
@@ -51,6 +53,7 @@ __all__ = (
     'BaseModelFieldMutation',
     'BaseModelMutation',
     'BaseMutation',
+    'BaseUpgradeMethodMutation',
     'ChangeField',
     'ChangeMeta',
     'DeleteApplication',

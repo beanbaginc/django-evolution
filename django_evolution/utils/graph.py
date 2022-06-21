@@ -370,7 +370,7 @@ class EvolutionGraph(DependencyGraph):
         self._app_evolution_nodes = {}
 
     def add_evolutions(self, app, evolutions=[], new_models=[],
-                       extra_state={}):
+                       extra_state={}, custom_evolutions=[]):
         """Add a list of evolutions for a given app.
 
         Each evolution will gets its own node, and pending dependencies will
@@ -380,6 +380,11 @@ class EvolutionGraph(DependencyGraph):
         of evolutions, and a ``__last__`` node will be added after. This allows
         evolutions to easily reference another app's list of evolutions
         relative to the start or end of a list. It's used only internally.
+
+        Version Changed:
+            2.2:
+            A ``custom_evolutions`` argument can now be provided, for
+            dependency resolution purposes.
 
         Args:
             app (module):
@@ -395,6 +400,13 @@ class EvolutionGraph(DependencyGraph):
 
             extra_state (dict, optional):
                 Extra state to set in each evolution node.
+
+            custom_evolutions (list of dict, optional):
+                An optional list of custom evolutions for the app, for
+                dependency resolution.
+
+                Version Added:
+                    2.2
         """
         app_label = get_app_label(app)
         app_deps = get_evolution_app_dependencies(app)
@@ -428,7 +440,8 @@ class EvolutionGraph(DependencyGraph):
         for evolution in evolutions:
             node = self._add_evolution(app=app,
                                        evolution=evolution,
-                                       extra_state=extra_state)
+                                       extra_state=extra_state,
+                                       custom_evolutions=custom_evolutions)
             self.add_dependency(node_key=node.key,
                                 dep_node_key=prev_node.key)
 
@@ -593,7 +606,8 @@ class EvolutionGraph(DependencyGraph):
 
         return node
 
-    def _add_evolution(self, app, evolution, extra_state={}):
+    def _add_evolution(self, app, evolution, extra_state={},
+                       custom_evolutions=[]):
         """Add a node for an evolution.
 
         Node dependencies will be registered based on any evolution/migration
@@ -608,6 +622,13 @@ class EvolutionGraph(DependencyGraph):
 
             extra_state (dict, optional):
                 Extra state to set in the evolution node.
+
+            custom_evolutions (list of dict, optional):
+                An optional list of custom evolutions for the app, for
+                dependency resolution.
+
+                Version Added:
+                    2.2
 
         Returns:
             Node:
@@ -625,7 +646,8 @@ class EvolutionGraph(DependencyGraph):
         # Begin adding any dependencies between this evolution and any other
         # evolution or migration.
         deps = get_evolution_dependencies(app=app,
-                                          evolution_label=evolution.label)
+                                          evolution_label=evolution.label,
+                                          custom_evolutions=custom_evolutions)
 
         if deps:
             self._add_evolution_node_before_deps(node, deps)

@@ -172,7 +172,7 @@ def get_evolution_sequence(app):
     return []
 
 
-def get_evolution_dependencies(app, evolution_label):
+def get_evolution_dependencies(app, evolution_label, custom_evolutions=[]):
     """Return dependencies for an evolution.
 
     Evolutions can depend on other evolutions or migrations, and can be
@@ -186,6 +186,10 @@ def get_evolution_dependencies(app, evolution_label):
     containing an app label, which will reference the sequence of evolutions
     as a whole for that app.
 
+    Version Changed:
+        2.2:
+        Added the ``custom_evolutions`` argument.
+
     Version Added:
         2.1
 
@@ -195,6 +199,47 @@ def get_evolution_dependencies(app, evolution_label):
 
         evolution_label (unicode):
             The label identifying the evolution for the app.
+
+        custom_evolutions (list of dict, optional):
+            An optional list of custom evolutions pertaining to the app, which
+            will be searched if a module for ``evolution_label`` could not
+            be found.
+
+            Each item is a dictionary containing:
+
+            Keys:
+                label (unicode):
+                    The evolution label (which ``evolution_label`` will be
+                    compared against).
+
+                after_evolutions (list, optional):
+                    A list of evolutions that this would apply after. Each
+                    item can be a string (indicating an evolution label within
+                    this app) or a tuple in the form of:
+
+                        ('app_label', 'evolution_label')
+
+                after_migrations (list of tuple, optional):
+                    A list of migrations that this would apply after. Each
+                    item must be a tuple in the form of:
+
+                        ('app_label', 'migration_name')
+
+                after_evolutions (list, optional):
+                    A list of evolutions that this would apply before. Each
+                    item can be a string (indicating an evolution label within
+                    this app) or a tuple in the form of:
+
+                        ('app_label', 'evolution_label')
+
+                after_migrations (list of tuple, optional):
+                    A list of migrations that this would apply before. Each
+                    item must be a tuple in the form of:
+
+                        ('app_label', 'migration_name')
+
+            Version Added:
+                2.2
 
     Returns:
         dict:
@@ -213,19 +258,39 @@ def get_evolution_dependencies(app, evolution_label):
                                   evolution_label=evolution_label)
 
     if not module:
-        return None
+        found = False
 
-    deps = {
-        'after_evolutions': set(getattr(module, 'AFTER_EVOLUTIONS', [])),
-        'after_migrations': set(getattr(module, 'AFTER_MIGRATIONS', [])),
-        'before_evolutions': set(getattr(module, 'BEFORE_EVOLUTIONS', [])),
-        'before_migrations': set(getattr(module, 'BEFORE_MIGRATIONS', [])),
-    }
+        if custom_evolutions:
+            for custom_evolution in custom_evolutions:
+                if custom_evolution['label'] == evolution_label:
+                    found = True
+                    break
+
+        if not found:
+            return None
+
+    if module:
+        deps = {
+            'after_evolutions': set(getattr(module, 'AFTER_EVOLUTIONS', [])),
+            'after_migrations': set(getattr(module, 'AFTER_MIGRATIONS', [])),
+            'before_evolutions': set(getattr(module, 'BEFORE_EVOLUTIONS', [])),
+            'before_migrations': set(getattr(module, 'BEFORE_MIGRATIONS', [])),
+        }
+        mutations = getattr(module, 'MUTATIONS', [])
+    else:
+        deps = {
+            _key: set(custom_evolution.get(_key, []))
+            for _key in ('after_evolutions',
+                         'after_migrations',
+                         'before_evolutions',
+                         'before_migrations')
+        }
+        mutations = custom_evolution['mutations']
 
     app_label = get_app_label(app)
 
     # Check if any mutations have dependencies to inject.
-    for mutation in getattr(module, 'MUTATIONS', []):
+    for mutation in mutations:
         mutation_deps = mutation.generate_dependencies(app_label=app_label)
 
         if mutation_deps:

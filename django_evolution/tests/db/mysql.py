@@ -92,6 +92,20 @@ def add_field(connection):
             ' ALTER COLUMN `added_field` DROP DEFAULT;',
         ],
 
+        'AddDateColumnWithCallableInitialModel': [
+            'ALTER TABLE `tests_testmodel`'
+            ' ADD COLUMN `added_field` %s;'
+            % datetime_type,
+
+            'UPDATE `tests_testmodel`'
+            ' SET `added_field` = 2007-12-13 16:42:00'
+            ' WHERE `added_field` IS NULL;',
+
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY COLUMN `added_field` %s NOT NULL;'
+            % datetime_type,
+        ],
+
         'AddDefaultColumnModel': [
             'ALTER TABLE `tests_testmodel`'
             ' ADD COLUMN `added_field` integer NOT NULL DEFAULT 42;',
@@ -106,6 +120,16 @@ def add_field(connection):
 
             'ALTER TABLE `tests_testmodel`'
             ' ALTER COLUMN `added_field` DROP DEFAULT;',
+        ],
+
+        'AddTextFieldWithInitialColumnModel': [
+            'ALTER TABLE `tests_testmodel`'
+            ' ADD COLUMN `added_field` longtext NOT NULL;',
+        ],
+
+        'AddBinaryFieldWithInitialColumnModel': [
+            'ALTER TABLE `tests_testmodel`'
+            ' ADD COLUMN `added_field` longblob NOT NULL;',
         ],
 
         'AddEmptyStringDefaultColumnModel': [
@@ -664,6 +688,11 @@ def change_field(connection):
     generate_unique_constraint_name = \
         make_generate_unique_constraint_name(connection)
 
+    if hasattr(connection, 'data_types'):
+        datetime_type = connection.data_types['DateTimeField']
+    else:
+        datetime_type = 'datetime'
+
     return {
         'SetNotNullChangeModelWithConstant': [
             'UPDATE `tests_testmodel`'
@@ -680,6 +709,24 @@ def change_field(connection):
 
             'ALTER TABLE `tests_testmodel`'
             ' MODIFY COLUMN `char_field1` varchar(25) NOT NULL;',
+        ],
+
+        'SetDateTimeNotNullChangeModelWithCallable': [
+            'UPDATE `tests_testmodel`'
+            ' SET `datetime_field1` = 2022-05-13 12:13:14+00:00'
+            ' WHERE `datetime_field1` IS NULL;',
+
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY COLUMN `datetime_field1` %s NOT NULL;'
+            % datetime_type,
+        ],
+
+        'SetDateNotNullChangeModelWithCallable': [
+            'UPDATE `tests_testmodel`'
+            ' SET `date_field1` = 2022-05-13 WHERE `date_field1` IS NULL;',
+
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY COLUMN `date_field1` date NOT NULL;',
         ],
 
         'SetNullChangeModel': [
@@ -741,6 +788,33 @@ def change_field(connection):
         'RemoveDBIndexChangeModel': [
             'DROP INDEX `%s` ON `tests_testmodel`;'
             % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'RemoveDBIndexAddUniqueChangeModel': [
+            'DROP INDEX `%s` ON `tests_testmodel`;'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+
+            'CREATE UNIQUE INDEX %s ON `tests_testmodel`(`int_field1`);'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field1']),
+        ],
+
+        'RemoveDBIndexAddNullChangeModel': [
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY COLUMN `int_field1` integer DEFAULT NULL;',
+
+            'DROP INDEX `%s` ON `tests_testmodel`;'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'AddDBIndexRemoveUniqueChangeModel': [
+            'DROP INDEX int_field3 ON `tests_testmodel`;'
+        ],
+
+        'AddDBIndexAddUniqueChangeModel': [
+            'CREATE UNIQUE INDEX %s ON `tests_testmodel`(`int_field4`);'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field4']),
         ],
 
         'RemoveDBIndexNoOpChangeModel': [],
@@ -1942,6 +2016,13 @@ def evolver(connection):
                 ')',
                 ';',
 
+                'CREATE TABLE `evolutions_app_evolutionsapptestmodel` (',
+                '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
+                '    `char_field` varchar(10),',
+                '    `char_field2` varchar(20)',
+                ')',
+                ';',
+
                 'ALTER TABLE `evolutions_app2_evolutionsapp2testmodel2`'
                 ' ADD CONSTRAINT `%s` FOREIGN KEY (`fkey_id`)'
                 ' REFERENCES `evolutions_app2_evolutionsapp2testmodel` (`id`);'
@@ -1950,13 +2031,6 @@ def evolver(connection):
                     'id',
                     'evolutions_app2_evolutionsapp2testmodel2',
                     'evolutions_app2_evolutionsapp2testmodel'),
-
-                'CREATE TABLE `evolutions_app_evolutionsapptestmodel` (',
-                '    `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,',
-                '    `char_field` varchar(10),',
-                '    `char_field2` varchar(20)',
-                ')',
-                ';',
 
                 'ALTER TABLE `evolutions_app2_evolutionsapp2testmodel`'
                 ' ADD CONSTRAINT `%s` FOREIGN KEY (`fkey_id`)'

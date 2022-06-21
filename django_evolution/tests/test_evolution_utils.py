@@ -211,7 +211,81 @@ class GetEvolutionDependenciesTests(TestCase):
                 },
             })
 
+    def test_with_dependencies_and_custom_evolutions(self):
+        """Testing get_evolution_dependencies with dependencies and custom
+        evolutions
+        """
+        self.assertEqual(
+            get_evolution_dependencies(
+                app=get_app('evolution_deps_app'),
+                evolution_label='test_custom_evolution',
+                custom_evolutions=[
+                    {
+                        'label': 'test_custom_evolution',
+                        'after_evolutions': [
+                            ('other_app1', 'other_evolution1'),
+                            ('other_app1', 'other_evolution2'),
+                        ],
+                        'after_migrations': [
+                            ('other_app2', '0001_migration'),
+                            ('other_app2', '0002_migration'),
+                        ],
+                        'before_evolutions': [
+                            ('other_app3', 'other_evolution3'),
+                            ('other_app3', 'other_evolution4'),
+                        ],
+                        'before_migrations': [
+                            ('other_app4', '0003_migration'),
+                            ('other_app4', '0004_migration'),
+                        ],
+                        'mutations': [
+                            AddField('MyModel', 'new_field',
+                                     models.BooleanField),
+                        ],
+                    },
+                ]),
+            {
+                'after_evolutions': {
+                    ('other_app1', 'other_evolution1'),
+                    ('other_app1', 'other_evolution2'),
+                },
+                'after_migrations': {
+                    ('other_app2', '0001_migration'),
+                    ('other_app2', '0002_migration'),
+                },
+                'before_evolutions': {
+                    ('other_app3', 'other_evolution3'),
+                    ('other_app3', 'other_evolution4'),
+                },
+                'before_migrations': {
+                    ('other_app4', '0003_migration'),
+                    ('other_app4', '0004_migration'),
+                },
+            })
+
     def test_without_dependencies(self):
+        """Testing get_evolution_dependencies without dependencies"""
+        self.assertEqual(
+            get_evolution_dependencies(
+                app=get_app('app_deps_app'),
+                evolution_label='test_evolution',
+                custom_evolutions=[
+                    {
+                        'label': 'test_custom_evolution',
+                        'mutations': [
+                            AddField('MyModel', 'new_field',
+                                     models.BooleanField),
+                        ],
+                    },
+                ]),
+            {
+                'after_evolutions': set(),
+                'after_migrations': set(),
+                'before_evolutions': set(),
+                'before_migrations': set(),
+            })
+
+    def test_without_dependencies_and_custom_evolutions(self):
         """Testing get_evolution_dependencies without dependencies"""
         self.assertEqual(
             get_evolution_dependencies(get_app('app_deps_app'),

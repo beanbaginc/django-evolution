@@ -90,6 +90,19 @@ def add_field(connection):
             ' ALTER COLUMN "added_field" DROP DEFAULT;',
         ],
 
+        'AddDateColumnWithCallableInitialModel': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD COLUMN "added_field" timestamp with'
+            ' time zone;',
+
+            'UPDATE "tests_testmodel"'
+            ' SET "added_field" = 2007-12-13 16:42:00'
+            ' WHERE "added_field" IS NULL;',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "added_field" SET NOT NULL;',
+        ],
+
         'AddDefaultColumnModel': [
             'ALTER TABLE "tests_testmodel"'
             ' ADD COLUMN "added_field" integer NOT NULL DEFAULT 42;',
@@ -101,6 +114,23 @@ def add_field(connection):
         'AddMismatchInitialBoolColumnModel': [
             'ALTER TABLE "tests_testmodel"'
             ' ADD COLUMN "added_field" boolean NOT NULL DEFAULT False;',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "added_field" DROP DEFAULT;',
+        ],
+
+        'AddTextFieldWithInitialColumnModel': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD COLUMN "added_field" text NOT NULL DEFAULT \'test\';',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "added_field" DROP DEFAULT;',
+        ],
+
+        'AddBinaryFieldWithInitialColumnModel': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD COLUMN "added_field" bytea NOT NULL DEFAULT %r;'
+            % b'test',
 
             'ALTER TABLE "tests_testmodel"'
             ' ALTER COLUMN "added_field" DROP DEFAULT;',
@@ -794,6 +824,23 @@ def change_field(connection):
             ' ALTER COLUMN "char_field1" SET NOT NULL;',
         ],
 
+        'SetDateTimeNotNullChangeModelWithCallable': [
+            'UPDATE "tests_testmodel"'
+            ' SET "datetime_field1" = 2022-05-13 12:13:14+00:00'
+            ' WHERE "datetime_field1" IS NULL;',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "datetime_field1" SET NOT NULL;',
+        ],
+
+        'SetDateNotNullChangeModelWithCallable': [
+            'UPDATE "tests_testmodel"'
+            ' SET "date_field1" = 2022-05-13 WHERE "date_field1" IS NULL;',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "date_field1" SET NOT NULL;',
+        ],
+
         'SetNullChangeModel': [
             'ALTER TABLE "tests_testmodel"'
             ' ALTER COLUMN "char_field2" DROP NOT NULL;',
@@ -829,6 +876,38 @@ def change_field(connection):
             '%s "%s";'
             % (drop_index_sql,
                generate_index_name('tests_testmodel', 'int_field1')),
+        ],
+
+        'RemoveDBIndexAddUniqueChangeModel': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD CONSTRAINT "%s" UNIQUE("int_field1");'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field1']),
+
+            '%s "%s";'
+            % (drop_index_sql,
+               generate_index_name('tests_testmodel', 'int_field1')),
+        ],
+
+        'RemoveDBIndexAddNullChangeModel': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "int_field1" DROP NOT NULL;',
+
+            '%s "%s";'
+            % (drop_index_sql,
+               generate_index_name('tests_testmodel', 'int_field1')),
+        ],
+
+        'AddDBIndexRemoveUniqueChangeModel': [
+            'ALTER TABLE "tests_testmodel"'
+            ' DROP CONSTRAINT "tests_testmodel_int_field3_key";',
+        ],
+
+        'AddDBIndexAddUniqueChangeModel': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD CONSTRAINT "%s" UNIQUE("int_field4");'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field4']),
         ],
 
         'RemoveDBIndexNoOpChangeModel': [],
