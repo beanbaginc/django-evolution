@@ -1,0 +1,82 @@
+====================
+Django Evolution 2.2
+====================
+
+**Release date:** TBD
+
+
+New Features
+============
+
+* Added support for Django 3.2 and 4.0.
+
+  This includes full support for :py:class:`django.db.models.Index`, and
+  compatibility with database backend changes made in these versions.
+
+* Added support for changing a field's type in :ref:`mutation-change-field`.
+
+  This can be done by passing in the new field class to ``field_type=...``.
+
+* Added a new ``settings.DJANGO_EVOLUTION`` setting.
+
+  This is in the form of:
+
+  .. code-block:: python
+
+     DJANGO_EVOLUTION = {
+         'CUSTOM_EVOLUTIONS': {
+             '<app_label>': ['<evolution_module>', ...],
+         },
+         'ENABLED': <bool>,
+     }
+
+  This replaces ``settings.CUSTOM_EVOLUTIONS`` and
+  ``settings.DJANGO_EVOLUTION_ENABLED``, both of which are now deprecated
+  and will emit deprecation warnings.
+
+
+Bug Fixes
+=========
+
+Indexes/Constraints
+-------------------
+
+* Fixed ordering issues when dropping and re-creating indexes when changing
+  ``db_index`` and ``unique`` states.
+
+* Fixed deferring constraints and indexes when injecting new models into the
+  database.
+
+  The constraints and indexes were being added too soon, which could cause
+  problems when applying more complicated batches of evolution.
+
+* Fixed issues with setting non-string initial data from a callable.
+
+* Fixed attempting to temporarily remove indexes and constraints that
+  reference models not yet injected into the database.
+
+* Fixed edge cases with the tracking of standard vs. unique indexes in
+  database state on Django 1.6.
+
+
+MySQL
+-----
+
+* Fixed bad attempts at applying defaults to certain field types.
+
+  Django Evolution will no longer apply a default on ``text``, ``blob``,
+  ``json``, and all ``short``/``medium``/``long`` variations of those.
+
+
+Python Compatibiltiy
+--------------------
+
+* Fixed an unintended deprecation warning with the :py:mod:`collections`
+  module when running on Python 3.10.
+
+
+Contributors
+============
+
+* Christian Hammond
+* David Trowbridge
