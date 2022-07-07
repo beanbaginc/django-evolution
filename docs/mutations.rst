@@ -78,6 +78,16 @@ It takes the following parameters:
    :param str field_name:
        The name of the field to change.
 
+   :param field_type:
+       The new type of field. This must be a subclass of
+       :py:class:`~django.db.models.Field`.
+
+       This will do its best to change one field type to another, but not
+       all field types can be changed to another type. Some types may be
+       database-specific.
+
+       .. versionadded:: 2.2
+
    :param initial:
        The new initial value to set for the field. If the field previously
        allowed null values, but ``null=False`` is being passed, then this will

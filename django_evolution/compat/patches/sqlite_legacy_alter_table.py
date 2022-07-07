@@ -5,7 +5,6 @@ from __future__ import unicode_literals
 import sqlite3
 
 import django
-from django.db.backends.sqlite3.base import DatabaseWrapper
 
 
 def needs_patch():
@@ -29,6 +28,8 @@ def apply_patch():
     the schema, which is needed in order to successfully allow Django to make
     table modifications.
     """
+    from django.db.backends.sqlite3.base import DatabaseWrapper
+
     class DatabaseSchemaEditor(DatabaseWrapper.SchemaEditorClass):
         def __enter__(self):
             with self.connection.cursor() as c:
