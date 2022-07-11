@@ -86,6 +86,54 @@ def atomic(using=None):
             raise
 
 
+@contextmanager
+def collect_sql_schema_editor(connection):
+    """Create a schema editor for the purpose of collecting SQL.
+
+    This carefully constructs a database backend's schema editor in
+    SQL-collection mode without triggering side effects that could cause
+    failure when in a transaction.
+
+    This failure mode is present on Django 2.0 and higher with SQLite.
+    Essentially, it tried to disable foreign key checks and then checked if
+    it succeeded in disabling those. If it did not, it would fail. This makes
+    sense for execution, but not for collection.
+
+    We work around that in this method by initializing the editor ourselves,
+    setting up state, and processing the results, without invoking the
+    schema editor's context management methods.
+
+    Version Added:
+        2.2
+
+    Args:
+        connection (django.db.backends.base.BaseDatabaseWrapper):
+            The database connection object.
+
+    Context:
+        django.db.backends.base.schema.BaseDatabaseSchemaEditor:
+        The schema editor, set up for SQL collection.
+
+    Raises:
+        Exception:
+            An exception raised within the context, unmodified.
+    """
+    assert hasattr(connection, 'schema_editor')
+
+    connection.disable_constraint_checking()
+    schema_editor = connection.schema_editor(collect_sql=True)
+
+    # This is normally set in DatabaseSchemaEditor.__enter__().
+    schema_editor.deferred_sql = []
+
+    # Allow exceptions to bubble up.
+    yield schema_editor
+
+    # This is normally invoked in DatabaseSchemaEditor.__exit__().
+    for sql in schema_editor.deferred_sql:
+        schema_editor.execute(sql)
+
+
 def digest(connection, *args):
     """Return a digest hash for a set of arguments.
 
@@ -189,7 +237,7 @@ def sql_create_models(models, tables=None, db_name=None,
 
     if BaseDatabaseSchemaEditor:
         # Django >= 1.7
-        with connection.schema_editor(collect_sql=True) as schema_editor:
+        with collect_sql_schema_editor(connection) as schema_editor:
             for model in models:
                 schema_editor.create_model(model)
 
@@ -296,7 +344,7 @@ def sql_delete(app, db_name=None):
 
         introspection = connection.introspection
 
-        with connection.schema_editor(collect_sql=True) as schema_editor:
+        with collect_sql_schema_editor(connection) as schema_editor:
             for model in get_models(app):
                 table_name = convert_table_name(connection,
                                                 model._meta.db_table)
@@ -337,7 +385,7 @@ def sql_create_for_many_to_many_field(connection, model, field):
 
     if BaseDatabaseSchemaEditor:
         # Django >= 1.7
-        with connection.schema_editor(collect_sql=True) as schema_editor:
+        with collect_sql_schema_editor(connection) as schema_editor:
             schema_editor.create_model(through)
 
         return schema_editor.collected_sql
@@ -397,7 +445,7 @@ def sql_indexes_for_field(connection, model, field):
         if not field.db_index or field.unique:
             return []
 
-        with connection.schema_editor() as schema_editor:
+        with collect_sql_schema_editor(connection) as schema_editor:
             return ['%s;' % schema_editor._create_index_sql(model,
                                                             fields=[field])]
     else:
@@ -435,7 +483,7 @@ def sql_indexes_for_fields(connection, model, fields, index_together=False):
         else:
             suffix = ''
 
-        with connection.schema_editor() as schema_editor:
+        with collect_sql_schema_editor(connection) as schema_editor:
             return ['%s;' % schema_editor._create_index_sql(model,
                                                             fields=fields,
                                                             suffix=suffix)]
@@ -463,7 +511,7 @@ def sql_indexes_for_model(connection, model):
     """
     if BaseDatabaseSchemaEditor:
         # Django >= 1.7
-        with connection.schema_editor() as schema_editor:
+        with collect_sql_schema_editor(connection) as schema_editor:
             return [
                 '%s;' % s
                 for s in schema_editor._model_indexes_sql(model)
@@ -495,7 +543,7 @@ def sql_delete_index(connection, model, index_name):
     """
     if BaseDatabaseSchemaEditor:
         # Django >= 1.7
-        with connection.schema_editor() as schema_editor:
+        with collect_sql_schema_editor(connection) as schema_editor:
             return [
                 '%s;' % schema_editor._delete_constraint_sql(
                     template=schema_editor.sql_delete_index,
@@ -546,7 +594,7 @@ def sql_delete_constraints(connection, model, remove_refs):
 
         sql = []
 
-        with connection.schema_editor() as schema_editor:
+        with collect_sql_schema_editor(connection) as schema_editor:
             for rel_class, f in remove_refs[model]:
                 fk_names = schema_editor._constraint_names(
                     rel_class, [f.column], foreign_key=True)
@@ -600,7 +648,7 @@ def sql_add_constraints(connection, model, refs):
         sql = []
 
         if model in refs:
-            with connection.schema_editor() as schema_editor:
+            with collect_sql_schema_editor(connection) as schema_editor:
                 assert schema_editor.sql_create_fk, (
                     'sql_add_constraints() cannot be called for this type '
                     'of database.'
@@ -691,7 +739,7 @@ def create_index_name(connection, table_name, field_names=[], col_names=[],
             assert not suffix
             suffix = '_uniq'
 
-        with connection.schema_editor() as schema_editor:
+        with collect_sql_schema_editor(connection) as schema_editor:
             if django.VERSION[0] >= 2:
                 # Django >= 2.0
                 table = table_name
