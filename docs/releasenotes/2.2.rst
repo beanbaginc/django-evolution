@@ -38,6 +38,12 @@ New Features
 Bug Fixes
 =========
 
+General
+-------
+
+* Fixed generating SQL to execute while in a transaction on Django 2.0+.
+
+
 Indexes/Constraints
 -------------------
 
