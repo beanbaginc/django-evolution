@@ -26,6 +26,8 @@ from django_evolution.serialization import (CombinedExpression,
                                             serialize_to_python,
                                             serialize_to_signature)
 from django_evolution.tests.base_test_case import TestCase
+from django_evolution.tests.utils import (F_EXPRESSIONS_TYPE,
+                                          VALUE_EXPRESSIONS_TYPE)
 
 
 can_test_combined_expressions = (CombinedExpression is not None and
@@ -55,8 +57,10 @@ class DeserializeFromSignatureTests(TestCase):
         """Testing deserialize_from_signature with bool"""
         self.assertIs(deserialize_from_signature(True), True)
 
-    def test_with_combined_expression(self):
-        """Testing serialize_to_python with CombinedExpression"""
+    def test_with_combined_expression_and_django_lte_4(self):
+        """Testing deserialize_from_signature with CombinedExpression using
+        Django <= 4.0 signature
+        """
         if not can_test_combined_expressions:
             raise SkipTest('Not supported on this version of Django')
 
@@ -76,6 +80,36 @@ class DeserializeFromSignatureTests(TestCase):
                         'args': (1,),
                         'kwargs': {},
                         'type': 'django.db.models.expressions.Value',
+                    },
+                ),
+                'kwargs': {},
+                'type': 'django.db.models.expressions.CombinedExpression',
+            }),
+            F('a') + 1)
+
+    def test_with_combined_expression_and_django_gte_4_1(self):
+        """Testing deserialize_from_signature with CombinedExpression using
+        Django >= 4.1 signature
+        """
+        if not can_test_combined_expressions:
+            raise SkipTest('Not supported on this version of Django')
+
+        self.assertEqual(
+            deserialize_from_signature({
+                '_deconstructed': True,
+                'args': (
+                    {
+                        '_deconstructed': True,
+                        'args': ('a',),
+                        'kwargs': {},
+                        'type': 'django.db.models.F',
+                    },
+                    '+',
+                    {
+                        '_deconstructed': True,
+                        'args': (1,),
+                        'kwargs': {},
+                        'type': 'django.db.models.Value',
                     },
                 ),
                 'kwargs': {},
@@ -415,14 +449,14 @@ class SerializeToSignatureTests(TestCase):
                         '_deconstructed': True,
                         'args': ('a',),
                         'kwargs': {},
-                        'type': 'django.db.models.expressions.F',
+                        'type': F_EXPRESSIONS_TYPE,
                     },
                     '+',
                     {
                         '_deconstructed': True,
                         'args': (1,),
                         'kwargs': {},
-                        'type': 'django.db.models.expressions.Value',
+                        'type': VALUE_EXPRESSIONS_TYPE,
                     },
                 ),
                 'kwargs': {},

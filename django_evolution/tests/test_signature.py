@@ -50,6 +50,8 @@ from django_evolution.tests.decorators import (requires_index_feature,
                                                requires_meta_constraints,
                                                requires_meta_indexes)
 from django_evolution.tests.models import BaseTestModel
+from django_evolution.tests.utils import (F_EXPRESSIONS_TYPE,
+                                          VALUE_EXPRESSIONS_TYPE)
 
 
 class SignatureAnchor1(BaseTestModel):
@@ -2426,8 +2428,10 @@ class IndexSignatureTests(BaseSignatureTestCase):
         self.assertEqual(index_sig.name, 'index1')
         self.assertEqual(index_sig.fields, ['field1', 'field2'])
 
-    def test_deserialize_v2(self):
-        """Testing IndexSignature.deserialize (signature v2)"""
+    def test_deserialize_v2_with_django_lte_4_0_signature(self):
+        """Testing IndexSignature.deserialize (signature v2) with
+        Django <= 4.0 signature
+        """
         # Ideally we'd just test condition and expressions anyway, since we're
         # just testing signatures, but the "F" expressions can't be compared
         # on all versions of Django.
@@ -2457,8 +2461,86 @@ class IndexSignatureTests(BaseSignatureTestCase):
                         },
                     ),
                     'kwargs': {},
-                    'type': ('django.db.models.expressions.'
-                             'CombinedExpression'),
+                    'type': 'django.db.models.expressions.CombinedExpression',
+                }
+            ]
+        else:
+            expressions = []
+
+        index_sig = IndexSignature.deserialize(
+            {
+                'attrs': {
+                    'condition': {
+                        '_deconstructed': True,
+                        'args': [],
+                        'kwargs': {
+                            'i__gt': 42,
+                        },
+                        'type': 'django.db.models.Q',
+                    },
+                    'db_tablespace': 'test_space',
+                    'include': ['test1', 'test2'],
+                    'opclasses': ['op1', 'op2'],
+                },
+                'expressions': expressions,
+                'fields': ['field1', 'field2'],
+                'name': 'index1',
+            },
+            sig_version=2)
+
+        self.assertEqual(
+            set(index_sig.attrs.keys()),
+            {'condition', 'db_tablespace', 'include', 'opclasses'})
+        self.assertEqual(index_sig.attrs['condition'], Q(i__gt=42))
+        self.assertEqual(index_sig.attrs['db_tablespace'], 'test_space')
+        self.assertEqual(index_sig.attrs['include'], ['test1', 'test2'])
+        self.assertEqual(index_sig.attrs['opclasses'], ['op1', 'op2'])
+
+        self.assertEqual(index_sig.fields, ['field1', 'field2'])
+        self.assertEqual(index_sig.name, 'index1')
+
+        if expressions:
+            self.assertEqual(index_sig.expressions,
+                             [F('test1'), F('test2') + 1])
+        else:
+            self.assertIsNone(index_sig.expressions)
+
+    def test_deserialize_v2_with_django_gte_4_1_signature(self):
+        """Testing IndexSignature.deserialize (signature v2) with
+        Django >= 4.1 signature
+        """
+        # Ideally we'd just test condition and expressions anyway, since we're
+        # just testing signatures, but the "F" expressions can't be compared
+        # on all versions of Django.
+        if supports_index_feature('expressions'):
+            expressions = [
+                {
+                    '_deconstructed': True,
+                    'args': ('test1',),
+                    'kwargs': {},
+                    'type': 'django.db.models.F',
+                },
+                {
+                    '_deconstructed': True,
+                    'args': (
+                        {
+                            '_deconstructed': True,
+                            'args': ('test2',),
+                            'kwargs': {},
+                            'type': 'django.db.models.F',
+                        },
+                        '+',
+                        {
+                            '_deconstructed': True,
+                            'args': (1,),
+                            'kwargs': {},
+                            'type': 'django.db.models.Value',
+                        },
+                    ),
+                    'kwargs': {},
+
+                    # This one still uses the legacy path on Django 4.1.
+                    'type': 'django.db.models.expressions.CombinedExpression',
                 }
             ]
         else:
@@ -2619,7 +2701,7 @@ class IndexSignatureTests(BaseSignatureTestCase):
                         '_deconstructed': True,
                         'args': ('test1',),
                         'kwargs': {},
-                        'type': 'django.db.models.expressions.F',
+                        'type': F_EXPRESSIONS_TYPE,
                     },
                     {
                         '_deconstructed': True,
@@ -2628,14 +2710,14 @@ class IndexSignatureTests(BaseSignatureTestCase):
                                 '_deconstructed': True,
                                 'args': ('test2',),
                                 'kwargs': {},
-                                'type': 'django.db.models.expressions.F',
+                                'type': F_EXPRESSIONS_TYPE,
                             },
                             '+',
                             {
                                 '_deconstructed': True,
                                 'args': (1,),
                                 'kwargs': {},
-                                'type': 'django.db.models.expressions.Value',
+                                'type': VALUE_EXPRESSIONS_TYPE,
                             },
                         ),
                         'kwargs': {},
