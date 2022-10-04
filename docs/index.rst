@@ -56,7 +56,7 @@ you might find Django Evolution a worthwhile addition to your project:
    table changes as possible. This can take days, hours or even *seconds* off
    the upgrade time.
 
-Django Evolution officially supports Django 1.6 through 4.0.
+Django Evolution officially supports Django 1.6 through 4.1.
 
 
 Questions So Far?

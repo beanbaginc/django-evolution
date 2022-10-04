@@ -47,7 +47,8 @@ There are cases where you might want an alternative to migrations:
 What versions of Django are supported?
 --------------------------------------
 
-Django Evolution 2.0 supports Django 1.6 through 3.1.
+Django Evolution 2.x supports Django 1.6 through 4.1, and Python 2.7 through
+3.11.
 
 For older versions of Django, see Django Evolution 0.7.
 

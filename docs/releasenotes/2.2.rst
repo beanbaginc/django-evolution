@@ -2,13 +2,13 @@
 Django Evolution 2.2
 ====================
 
-**Release date:** TBD
+**Release date:** October 3, 2022
 
 
 New Features
 ============
 
-* Added support for Django 3.2 and 4.0.
+* Added support for Django 3.2 through 4.1.
 
   This includes full support for :py:class:`django.db.models.Index`, and
   compatibility with database backend changes made in these versions.

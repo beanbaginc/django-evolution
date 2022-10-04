@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from functools import partial
 
 import django
+from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.db import connections
 from django.db.utils import ConnectionHandler, DEFAULT_DB_ALIAS
@@ -40,6 +41,14 @@ test_connections = ConnectionHandler(settings.TEST_DATABASES)
 
 _sql_mapping_cache = {}
 _registered_test_models = []
+
+
+if DJANGO_VERSION >= (4, 1):
+    F_EXPRESSIONS_TYPE = 'django.db.models.F'
+    VALUE_EXPRESSIONS_TYPE = 'django.db.models.Value'
+else:
+    F_EXPRESSIONS_TYPE = 'django.db.models.expressions.F'
+    VALUE_EXPRESSIONS_TYPE = 'django.db.models.expressions.Value'
 
 
 def register_models(database_state, models, register_indexes=False,
