@@ -194,6 +194,8 @@ class EvolveAppTask(BaseEvolutionTask):
             for task in tasks
         ))
 
+        logger.debug('New models: %r', new_models)
+
         if migrating:
             # If we have any applied migration names we wanted to record, do it
             # before we begin any migrations.
@@ -1167,6 +1169,8 @@ class EvolveAppTask(BaseEvolutionTask):
         app_label = self.app_label
         legacy_app_label = self.legacy_app_label
 
+        logger.debug('Mutations for %s: %r', app_label, mutations)
+
         app_mutator = AppMutator.from_evolver(
             evolver=self.evolver,
             app_label=app_label,
@@ -1221,6 +1225,8 @@ class EvolveAppTask(BaseEvolutionTask):
         new_models = db_get_installable_models_for_app(
             app=app,
             db_state=evolver.database_state)
+
+        logger.debug('New models for %s: %r', app_label, new_models)
 
         self.new_models = new_models
         self.new_model_names = [
