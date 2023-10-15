@@ -2,7 +2,7 @@
 Django Evolution 2.3
 ====================
 
-**Release date:** TBD
+**Release date:** October 15, 2023
 
 
 Installation
@@ -31,6 +31,10 @@ New Features
 ============
 
 * Added support for Python 3.12 and Django 4.2.
+
+* Added support for evolving table comments on Django 4.2.
+
+  This is done through :ref:`mutation-change-meta`.
 
 * Added advanced management commands for working with project signatures and
   marking evolutions as applied.
