@@ -224,6 +224,14 @@ the indexes or unique-together constraints. It takes the following parameters:
 The properties that can be changed depend on the version of Django. They
 include:
 
+``db_table_comment``:
+    A comment to apply to the table's schema.
+
+    This requires Django 4.2 or higher.
+
+    Version Added:
+        2.3
+
 ``index_together``:
     Groups of fields that should be indexed together in the database.
 
