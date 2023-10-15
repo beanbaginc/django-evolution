@@ -11,9 +11,11 @@ from functools import wraps
 from unittest import SkipTest
 
 import django
-from django.db import models
+from django.db import DEFAULT_DB_ALIAS, models
 
+from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.support import (supports_constraints,
+                                      supports_db_table_comments,
                                       supports_index_feature,
                                       supports_index_together,
                                       supports_indexes,
@@ -76,7 +78,7 @@ requires_meta_constraints = _build_requires_support_decorator(
 #:         The current version of Django doesn't support
 #:         ``Meta.index_together``.
 requires_meta_index_together = _build_requires_support_decorator(
-    flag=supports_index_together,
+    flag=supports_db_table_comments,
     skip_message=("Meta.index_together isn't supported on Django "
                   "%(django_version)s"))
 
@@ -184,6 +186,41 @@ def requires_model_field(field_name):
         flag=hasattr(models, field_name),
         skip_message=("models.%s isn't supported on Django %%(django_version)s"
                       % field_name))
+
+
+def requires_change_meta_field(meta_field_name, db_name=DEFAULT_DB_ALIAS):
+    """Require that the database supports changing a meta field.
+
+    This will skip the test if the database backend does not support changing
+    this field on this version of Django.
+
+    Version Added:
+        2.3
+
+    Args:
+        meta_field_name (unicode):
+            The name of the meta field that the database backend must support.
+
+        db_name (unicode, optional):
+            The name of the database to test against.
+
+    Returns:
+        callable:
+        The decorator to apply to the unit test.
+
+    Raises:
+        unittest.SkipTest:
+            The attribute is missing. The test will be skipped with a suitable
+            message.
+    """
+    evolver = EvolutionOperationsMulti(db_name).get_evolver()
+
+    return _build_requires_support_decorator(
+        flag=evolver.supported_change_meta.get(meta_field_name, False),
+        skip_message=(
+            "ChangeMeta(%s) isn't supported on Django %%(django_version)s"
+            "for %s databases"
+            % (meta_field_name, evolver.name)))
 
 
 def requires_index_feature(feature_name):

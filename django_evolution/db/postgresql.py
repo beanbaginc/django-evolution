@@ -13,6 +13,8 @@ from django_evolution.utils.models import get_field_is_relation
 class EvolutionOperations(BaseEvolutionOperations):
     """Evolution operations for Postgres databases."""
 
+    name = 'Postgres'
+
     default_tablespace = 'pg_default'
 
     change_column_type_sets_attrs = False

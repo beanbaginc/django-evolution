@@ -216,6 +216,7 @@ class MockMeta(object):
             'concrete_model': None,
             'constraints': [],
             'db_table': model_sig.table_name,
+            'db_table_comment': model_sig.db_table_comment,
             'db_tablespace': model_sig.db_tablespace,
             'has_auto_field': None,
             'index_together': model_sig.index_together,

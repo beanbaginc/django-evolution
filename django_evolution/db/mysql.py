@@ -15,6 +15,8 @@ from django_evolution.db.sql_result import AlterTableSQLResult, SQLResult
 class EvolutionOperations(BaseEvolutionOperations):
     """Evolution operations for MySQL and MariaDB databases."""
 
+    name = 'MySQL / MariaDB'
+
     _NO_DEFAULT_FIELD_TYPES = {
         # Blob types
         'blob',

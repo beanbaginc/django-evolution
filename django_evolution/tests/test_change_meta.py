@@ -24,7 +24,8 @@ from django_evolution.mutations import ChangeMeta
 from django_evolution.support import (supports_constraints,
                                       supports_indexes)
 from django_evolution.tests.base_test_case import EvolutionTestCase
-from django_evolution.tests.decorators import (requires_index_feature,
+from django_evolution.tests.decorators import (requires_change_meta_field,
+                                               requires_index_feature,
                                                requires_meta_constraints,
                                                requires_meta_index_together,
                                                requires_meta_indexes)
@@ -65,6 +66,16 @@ class ChangeMetaConstraintsBaseModel(BaseTestModel):
                 UniqueConstraint(name='base_unique_constraint_plain',
                                  fields=['int_field1', 'char_field1']),
             ]
+
+
+class ChangeMetaDbTableCommentBaseModel(BaseTestModel):
+    int_field1 = models.IntegerField()
+    int_field2 = models.IntegerField()
+    char_field1 = models.CharField(max_length=20)
+    char_field2 = models.CharField(max_length=40)
+
+    class Meta(BaseTestModel.Meta):
+        db_table_comment = 'Old comment.'
 
 
 class ChangeMetaIndexesBaseModel(BaseTestModel):
@@ -376,6 +387,101 @@ class ChangeMetaConstraintsTests(BaseChangeMetaTestCase):
                 "ChangeMeta('TestModel', 'constraints', [])"
             ],
             sql_name='removing')
+
+
+class ChangeMetaDbTableCommentTests(BaseChangeMetaTestCase):
+    """Unit tests for ChangeMeta with db_table_comment.
+
+    Version Added:
+        2.3
+    """
+
+    sql_mapping_key = 'change_meta_db_table_comment'
+
+    DIFF_TEXT = (
+        "In model tests.TestModel:\n"
+        "    Meta property 'db_table_comment' has changed"
+    )
+
+    @classmethod
+    @requires_change_meta_field('db_table_comment')
+    def setUpClass(cls):
+        super(ChangeMetaDbTableCommentTests, cls).setUpClass()
+
+    def test_setting_from_none(self):
+        """Testing ChangeMeta(db_table_comment) and setting from None"""
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                db_table_comment = 'New comment!'
+
+        self.set_base_model(ChangeMetaPlainBaseModel)
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta('TestModel',
+                           'db_table_comment',
+                           'New comment!')
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'db_table_comment', 'New comment!')",
+            ],
+            'setting_from_none')
+
+    def test_replace(self):
+        """Testing ChangeMeta(db_table_comment) and replacing a comment"""
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                db_table_comment = 'New comment!'
+
+        self.set_base_model(ChangeMetaDbTableCommentBaseModel)
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta('TestModel',
+                           'db_table_comment',
+                           'New comment!')
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'db_table_comment', 'New comment!')",
+            ],
+            'replace')
+
+    def test_unsetting(self):
+        """Testing ChangeMeta(db_table_comment) and unsetting a comment"""
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                db_table_comment = None
+
+        self.set_base_model(ChangeMetaDbTableCommentBaseModel)
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta('TestModel',
+                           'db_table_comment',
+                           None),
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'db_table_comment', None)",
+            ],
+            'unset')
 
 
 class ChangeMetaIndexesTests(BaseChangeMetaTestCase):

@@ -248,6 +248,9 @@ class ModelMutator(BaseAppStateMutator):
                 }, **constraint_sig.attrs)
                 for constraint_sig in self.model_sig.constraint_sigs
             ]
+        elif prop_name == 'db_table_comment':
+            # Django >= 4.2
+            old_value = self.model_sig.db_table_comment
         elif prop_name == 'indexes':
             # Django >= 1.11
             old_value = []

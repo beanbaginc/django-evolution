@@ -621,6 +621,35 @@ def add_field(connection):
     return mappings
 
 
+def change_meta_db_table_comment(connection):
+    """SQL test statements for the ChangeMetaDbTableCommentTests suite.
+
+    Version Added:
+        2.3
+
+    Args:
+        connection (django.db.backends.base.BaseDatabaseWrapper):
+            The connection being tested.
+
+    Returns:
+        dict:
+        The dictionary of SQL mappings.
+    """
+    return {
+        'replace': [
+            "ALTER TABLE `tests_testmodel` COMMENT = 'New comment!';",
+        ],
+
+        'setting_from_none': [
+            "ALTER TABLE `tests_testmodel` COMMENT = 'New comment!';",
+        ],
+
+        'unset': [
+            "ALTER TABLE `tests_testmodel` COMMENT = '';",
+        ],
+    }
+
+
 def delete_field(connection):
     """SQL test statements for the DeleteFieldTests suite.
 

@@ -63,6 +63,21 @@ supports_f_comparison = hasattr(F, '__eq__')
 supports_constraints = hasattr(_options, 'constraints')
 
 
+#: Whether database table comments are available.
+#:
+#: Django 4.2 introduced formal support for setting comments attached to
+#: tables.
+#:
+#: Support may vary by database backend.
+#:
+#: Version Added:
+#:     2.3
+#:
+#: Type:
+#:     bool
+supports_db_table_comments = hasattr(_options, 'db_table_comment')
+
+
 #: Whether built-in support for Django Migrations is present.
 #:
 #: This is available in Django 1.7+.

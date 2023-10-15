@@ -39,6 +39,7 @@ class Diff(object):
                         },
                         'meta_changed': {
                             'constraints': new value
+                            'db_table_comment': new value
                             'indexes': new value
                             'index_together': new value
                             'unique_together': new value
@@ -282,6 +283,14 @@ class Diff(object):
                             }, **constraint_sig.attrs)
                             for constraint_sig in model_sig.constraint_sigs
                         ]))
+
+                # Check if the Meta.db_table_comment property has any changes.
+                # This will be assembled into a ChangeMeta.
+                if 'db_table_comment' in meta_changed:
+                    app_mutations.append(ChangeMeta(
+                        model_name=model_name,
+                        prop_name='db_table_comment',
+                        new_value=model_sig.db_table_comment))
 
                 # Check if the Meta.indexes property has any changes.
                 # They'll all be assembled into a single ChangeMeta.
