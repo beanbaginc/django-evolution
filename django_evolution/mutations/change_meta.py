@@ -56,18 +56,23 @@ class ChangeMeta(BaseModelMutation):
             A list of parameter strings to pass to the mutation's constructor
             in a hinted evolution.
         """
-        if self.prop_name in ('index_together', 'unique_together'):
+        prop_name = self.prop_name
+
+        if prop_name in ('index_together', 'unique_together'):
             # Make sure these always appear as lists and not tuples, for
             # compatibility.
             norm_value = list(self.new_value)
-        elif self.prop_name == 'constraints':
+        elif prop_name == 'constraints':
             # Django >= 2.2
             norm_value = [
                 OrderedDict(sorted(six.iteritems(constraint_data),
                                    key=lambda pair: pair[0]))
                 for constraint_data in self.new_value
             ]
-        elif self.prop_name == 'indexes':
+        elif prop_name == 'db_table_comment':
+            # Django >= 4.2
+            norm_value = self.new_value
+        elif prop_name == 'indexes':
             # Django >= 1.11
             norm_value = [
                 OrderedDict(sorted(six.iteritems(index_data),
@@ -126,6 +131,9 @@ class ChangeMeta(BaseModelMutation):
                         attrs=constraint_attrs))
 
             model_sig.constraint_sigs = constraint_sigs
+        elif prop_name == 'db_table_comment':
+            # Django >= 4.2
+            model_sig.db_table_comment = self.new_value
         elif prop_name == 'indexes':
             # Django >= 1.11
             index_sigs = []

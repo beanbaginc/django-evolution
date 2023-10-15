@@ -222,7 +222,7 @@ autodoc_excludes = {
 }
 
 extlinks = {
-    'pypi': ('https://pypi.org/project/%s/', ''),
+    'pypi': ('https://pypi.org/project/%s/', '%s'),
 }
 
 

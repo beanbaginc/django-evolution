@@ -1,0 +1,59 @@
+====================
+Django Evolution 2.3
+====================
+
+**Release date:** TBD
+
+
+Installation
+============
+
+Django Evolution 2.3 is compatible with Django_ 1.6-4.2, and Python 2.7 and
+3.6-3.12.
+
+To install Django Evolution 2.3, run:
+
+.. code-block:: console
+
+   $ pip3 install django_evolution==2.3
+
+To learn more, see:
+
+* `Documentation <https://django-evolution.readthedocs.io/en/latest/>`_
+* `Django Evolution on PyPI <https://pypi.org/project/django-evolution/>`_
+* `Django Evolution on GitHub <https://github.com/beanbaginc/django-evolution/>`_
+
+
+.. _Django: https://www.djangoproject.com/
+
+
+New Features
+============
+
+* Added support for Python 3.12 and Django 4.2.
+
+* Added advanced management commands for working with project signatures and
+  marking evolutions as applied.
+
+  :ref:`command-mark-evolution-applied` will mark one or more evolutions as
+  applied to your database, without modifying any schema.
+
+  :ref:`command-evolution-project-sig` will let you list project signatures,
+  show a stored project signature, or delete project signatures.
+
+  These are advanced and dangerous commands. They should only be run if you
+  know what you're doing, as part of diagnosing and fixing a failed database
+  upgrade.
+
+* Added debug logging for the evolution process.
+
+  If Python's logging is set up to enable debug output, then the evolution
+  process will provide information on the new models generation, mutations,
+  and evolutions begin run. This can aid in debugging efforts.
+
+
+Contributors
+============
+
+* Christian Hammond
+* David Trowbridge

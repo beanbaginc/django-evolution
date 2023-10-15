@@ -6,6 +6,8 @@ Version Added:
 
 from __future__ import unicode_literals
 
+import logging
+
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.errors import (CannotSimulate,
                                      EvolutionBaselineMissingError)
@@ -13,6 +15,9 @@ from django_evolution.mock_models import MockModel
 from django_evolution.mutations import BaseModelMutation
 from django_evolution.mutators.base import BaseAppStateMutator
 from django_evolution.utils.models import get_database_for_model_name
+
+
+logger = logging.getLogger(__name__)
 
 
 class ModelMutator(BaseAppStateMutator):
@@ -243,6 +248,9 @@ class ModelMutator(BaseAppStateMutator):
                 }, **constraint_sig.attrs)
                 for constraint_sig in self.model_sig.constraint_sigs
             ]
+        elif prop_name == 'db_table_comment':
+            # Django >= 4.2
+            old_value = self.model_sig.db_table_comment
         elif prop_name == 'indexes':
             # Django >= 1.11
             old_value = []
@@ -305,6 +313,9 @@ class ModelMutator(BaseAppStateMutator):
                 The model signature or parent app signature could not be found.
         """
         assert isinstance(mutation, BaseModelMutation)
+
+        logger.debug('Running mutation for %s.%s: %r',
+                     self.app_label, self.model_name, mutation)
 
         super(ModelMutator, self).run_mutation(
             mutation=mutation,

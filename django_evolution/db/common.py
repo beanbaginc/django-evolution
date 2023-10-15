@@ -11,7 +11,8 @@ from django.db import connection as default_connection, models
 
 from django_evolution import support
 from django_evolution.compat import six
-from django_evolution.compat.db import (create_index_name,
+from django_evolution.compat.db import (collect_sql_schema_editor,
+                                        create_index_name,
                                         create_index_together_name,
                                         sql_add_constraints,
                                         sql_create_for_many_to_many_field,
@@ -30,6 +31,14 @@ from django_evolution.utils.models import iter_non_m2m_reverse_relations
 
 
 class BaseEvolutionOperations(object):
+    """Base class for evolution operations for a database backend."""
+
+    #: The name of the database type.
+    #:
+    #: Version Added:
+    #:     2.3
+    name = None
+
     #: A set of attributes that can be changed in the database.
     supported_change_attrs = {
         'db_column',
@@ -46,13 +55,17 @@ class BaseEvolutionOperations(object):
     # default.
     supported_change_meta = {
         'constraints': support.supports_constraints,
+        'db_table_comment': support.supports_db_table_comments,
         'indexes': support.supports_indexes,
         'index_together': support.supports_index_together,
         'unique_together': True,
     }
 
     mergeable_ops = (
-        'add_column', 'change_column', 'delete_column', 'change_meta'
+        'add_column',
+        'change_column',
+        'change_meta'
+        'delete_column',
     )
 
     ignored_m2m_attrs = {
@@ -1364,6 +1377,42 @@ class BaseEvolutionOperations(object):
                                               columns=columns)
                 sql_result.add(sql_indexes_for_fields(
                     self.connection, model, fields, index_together=True))
+
+        return sql_result
+
+    def change_meta_db_table_comment(self, model, old_comment, new_comment):
+        """Change the comment for a table.
+
+        Table comments are supported for some database backends in Django 4.2
+        and higher. This generates the SQL for setting a comment for a given
+        table.
+
+        Version Added:
+            2.3
+
+        Args:
+            model (django.db.models.Model):
+                The model being changed.
+
+            old_comment (unicode):
+                The old comment.
+
+            new_comment (unicode):
+                The new comment.
+
+        Returns:
+            django_evolution.sql_result.SQLResult:
+            The SQL statements for changing ``Meta.db_table_comment``.
+        """
+        sql_result = SQLResult()
+
+        with collect_sql_schema_editor(self.connection) as schema_editor:
+            schema_editor.alter_db_table_comment(
+                model=model,
+                old_db_table_comment=old_comment,
+                new_db_table_comment=new_comment)
+
+            sql_result.add(schema_editor.collected_sql)
 
         return sql_result
 

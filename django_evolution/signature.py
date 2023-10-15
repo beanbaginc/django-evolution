@@ -1088,6 +1088,10 @@ class ModelSignature(BaseSignature):
                         unique_together=meta.unique_together,
                         unique_together_applied=True)
 
+        if getattr(meta, 'db_table_comment', None):
+            # Django >= 4.2
+            model_sig.db_table_comment = meta.db_table_comment
+
         if getattr(meta, 'constraints', None):
             # Django >= 2.2
             for constraint in meta.original_attrs['constraints']:
@@ -1137,6 +1141,7 @@ class ModelSignature(BaseSignature):
         fields_sig_dict = model_sig_dict['fields']
 
         model_sig = cls(
+            db_table_comment=meta_sig_dict.get('db_table_comment'),
             db_tablespace=meta_sig_dict.get('db_tablespace'),
             index_together=meta_sig_dict.get('index_together', []),
             model_name=model_name,
@@ -1172,7 +1177,7 @@ class ModelSignature(BaseSignature):
 
     def __init__(self, model_name, table_name, db_tablespace=None,
                  index_together=[], pk_column=None, unique_together=[],
-                 unique_together_applied=False):
+                 unique_together_applied=False, db_table_comment=None):
         """Initialize the signature.
 
         Args:
@@ -1200,8 +1205,15 @@ class ModelSignature(BaseSignature):
 
                 Version Added:
                     2.1.3
+
+            db_table_comment (str, optional):
+                The table comment applied to the database.
+
+                Version Added:
+                    2.3
         """
         self.model_name = model_name
+        self.db_table_comment = db_table_comment
         self.db_tablespace = db_tablespace
         self.table_name = table_name
         self.pk_column = pk_column
@@ -1526,6 +1538,9 @@ class ModelSignature(BaseSignature):
         if list(self.constraint_sigs) != list(old_model_sig.constraint_sigs):
             meta_changed.append('constraints')
 
+        if self.db_table_comment != old_model_sig.db_table_comment:
+            meta_changed.append('db_table_comment')
+
         return OrderedDict(
             (key, value)
             for key, value in (('added', added_fields),
@@ -1546,6 +1561,7 @@ class ModelSignature(BaseSignature):
             model_name=self.model_name,
             table_name=self.table_name,
             db_tablespace=self.db_tablespace,
+            db_table_comment=self.db_table_comment,
             index_together=self.index_together,
             pk_column=self.pk_column,
             unique_together=self.unique_together)
@@ -1587,6 +1603,7 @@ class ModelSignature(BaseSignature):
                     for constraint_sig in self.constraint_sigs
                 ],
                 'db_table': self.table_name,
+                'db_table_comment': self.db_table_comment,
                 'db_tablespace': self.db_tablespace,
                 'index_together': deepcopy(self.index_together),
                 'indexes': [
@@ -1617,6 +1634,7 @@ class ModelSignature(BaseSignature):
         """
         return (other is not None and
                 self.table_name == other.table_name and
+                self.db_table_comment == other.db_table_comment and
                 self.db_tablespace == other.db_tablespace and
                 set(self.constraint_sigs) == set(other.constraint_sigs) and
                 set(self.index_sigs) == set(other.index_sigs) and
@@ -2141,7 +2159,7 @@ class FieldSignature(BaseSignature):
             'null': False,
             'db_index': False,
             'db_column': None,
-            'db_tablespace': global_settings.DEFAULT_TABLESPACE,
+            'db_table_comment': global_settings.DEFAULT_TABLESPACE,
         },
         models.DecimalField: {
             'max_digits': None,

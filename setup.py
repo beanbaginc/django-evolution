@@ -37,7 +37,7 @@ setup(
     packages=find_packages(exclude=['tests']),
     include_package_data=True,
     install_requires=[
-        'Django>=1.6,<4.1.999',
+        'Django>=1.6,<4.2.999',
         'python2-secrets; python_version == "3.5"',
     ],
     python_requires=','.join([
@@ -46,6 +46,8 @@ setup(
         '!=3.1.*',
         '!=3.2.*',
         '!=3.3.*',
+        '!=3.4.*',
+        '!=3.5.*',
     ]),
     classifiers=[
         'Development Status :: 5 - Production/Stable',
@@ -68,6 +70,7 @@ setup(
         'Framework :: Django :: 4',
         'Framework :: Django :: 4.0',
         'Framework :: Django :: 4.1',
+        'Framework :: Django :: 4.2',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Natural Language :: English',
@@ -82,6 +85,7 @@ setup(
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
         'Topic :: Database',
         'Topic :: Software Development',
         'Topic :: Software Development :: Libraries :: Python Modules',

@@ -354,6 +354,14 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
 class EvolutionOperations(BaseEvolutionOperations):
     """Evolution operations backend for SQLite."""
 
+    name = 'SQLite'
+
+    supported_change_meta = dict(
+        BaseEvolutionOperations.supported_change_meta,
+        **{
+            'db_table_comment': False,
+        })
+
     alter_table_sql_result_cls = SQLiteAlterTableSQLResult
 
     _can_rename_cols_min_version = (3, 26, 0)

@@ -1086,6 +1086,9 @@ def serialize_to_python(value):
     serialization_cls = _get_serializer_for_value(value, serializing=True)
 
     if serialization_cls is None:
+        if callable(value):
+            return repr(value)
+
         raise TypeError(
             'Unsupported type %s passed to serialize_to_python(). '
             'Value: %r'
