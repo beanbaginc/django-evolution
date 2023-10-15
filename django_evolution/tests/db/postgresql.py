@@ -685,13 +685,11 @@ def add_field(connection):
         mappings.update({
             'AddManyToManyDatabaseTableModel': [
                 'CREATE TABLE "tests_testmodel_added_field" (',
-                '    "id" %s,'
+                '    "id" %s,' % pk_field_def,
                 '    "testmodel_id" integer NOT NULL,',
                 '    "addanchor1_id" integer NOT NULL,',
                 '    UNIQUE ("testmodel_id", "addanchor1_id")',
-                ')'
-                % pk_field_def,
-
+                ')',
                 ';',
 
                 'ALTER TABLE "tests_testmodel_added_field"'
@@ -713,13 +711,11 @@ def add_field(connection):
 
             'AddManyToManyNonDefaultDatabaseTableModel': [
                 'CREATE TABLE "tests_testmodel_added_field" (',
-                '    "id" %s,'
+                '    "id" %s,' % pk_field_def,
                 '    "testmodel_id" integer NOT NULL,',
                 '    "addanchor2_id" integer NOT NULL,',
                 '    UNIQUE ("testmodel_id", "addanchor2_id")',
-                ')'
-                % pk_field_def,
-
+                ')',
                 ';',
 
                 'ALTER TABLE "tests_testmodel_added_field"'
@@ -741,13 +737,11 @@ def add_field(connection):
 
             'AddManyToManySelf': [
                 'CREATE TABLE "tests_testmodel_added_field" (',
-                '    "id" %s,'
+                '    "id" %s,' % pk_field_def,
                 '    "from_testmodel_id" integer NOT NULL,',
                 '    "to_testmodel_id" integer NOT NULL,',
                 '    UNIQUE ("from_testmodel_id", "to_testmodel_id")',
-                ')'
-                % pk_field_def,
-
+                ')',
                 ';',
 
                 'ALTER TABLE "tests_testmodel_added_field"'
@@ -2388,32 +2382,26 @@ def evolver(connection):
         mappings.update({
             'complex_deps_new_db_new_models': [
                 'CREATE TABLE "evolutions_app2_evolutionsapp2testmodel" (',
-                '    "id" %s,'
+                '    "id" %s,' % pk_field_def,
                 '    "char_field" varchar(10) NOT NULL,',
                 '    "fkey_id" integer',
-                ')'
-                % pk_field_def,
-
+                ')',
                 ';',
 
                 'CREATE TABLE "evolutions_app2_evolutionsapp2testmodel2" (',
-                '    "id" %s,'
+                '    "id" %s,' % pk_field_def,
                 '    "fkey_id" integer REFERENCES'
                 ' "evolutions_app2_evolutionsapp2testmodel" ("id")'
                 ' DEFERRABLE INITIALLY DEFERRED,',
                 '    "int_field" integer NOT NULL',
-                ')'
-                % pk_field_def,
-
+                ')',
                 ';',
 
                 'CREATE TABLE "evolutions_app_evolutionsapptestmodel" (',
-                '    "id" %s,'
+                '    "id" %s,' % pk_field_def,
                 '    "char_field" varchar(10),',
                 '    "char_field2" varchar(20)',
-                ')'
-                % pk_field_def,
-
+                ')',
                 ';',
 
                 'ALTER TABLE "evolutions_app2_evolutionsapp2testmodel"'
@@ -2443,30 +2431,24 @@ def evolver(connection):
 
             'create_table': [
                 'CREATE TABLE "tests_testmodel" (',
-                '    "id" %s,'
+                '    "id" %s,' % pk_field_def,
                 '    "value" varchar(100) NOT NULL',
-                ')'
-                % pk_field_def,
-
+                ')',
                 ';',
             ],
 
             'create_tables_with_deferred_refs': [
                 'CREATE TABLE "tests_testmodel" (',
-                '    "id" %s,'
+                '    "id" %s,' % pk_field_def,
                 '    "value" varchar(100) NOT NULL,',
                 '    "ref_id" integer NOT NULL',
-                ')'
-                % pk_field_def,
-
+                ')',
                 ';',
 
                 'CREATE TABLE "evolutions_app_reffedevolvertestmodel" (',
-                '    "id" %s,'
+                '    "id" %s,' % pk_field_def,
                 '    "value" varchar(100) NOT NULL',
-                ')'
-                % pk_field_def,
-
+                ')',
                 ';',
 
                 'ALTER TABLE "tests_testmodel"'
