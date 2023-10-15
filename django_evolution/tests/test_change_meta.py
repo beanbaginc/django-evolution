@@ -22,6 +22,7 @@ except ImportError:
 
 from django_evolution.mutations import ChangeMeta
 from django_evolution.support import (supports_constraints,
+                                      supports_db_table_comments,
                                       supports_indexes)
 from django_evolution.tests.base_test_case import EvolutionTestCase
 from django_evolution.tests.decorators import (requires_change_meta_field,
@@ -75,7 +76,8 @@ class ChangeMetaDbTableCommentBaseModel(BaseTestModel):
     char_field2 = models.CharField(max_length=40)
 
     class Meta(BaseTestModel.Meta):
-        db_table_comment = 'Old comment.'
+        if supports_db_table_comments:
+            db_table_comment = 'Old comment.'
 
 
 class ChangeMetaIndexesBaseModel(BaseTestModel):
