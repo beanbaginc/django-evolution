@@ -145,6 +145,7 @@ from django_evolution.compat.models import (GenericRelation,
                                             get_remote_field,
                                             get_remote_field_model)
 from django_evolution.compat.translation import gettext as _
+from django_evolution.conf import django_evolution_settings
 from django_evolution.consts import UpgradeMethod
 from django_evolution.errors import (InvalidSignatureVersion,
                                      MissingSignatureError)
@@ -2267,9 +2268,14 @@ class FieldSignature(BaseSignature):
         if sig_version == 2:
             field_sig_attrs = field_sig_dict.get('attrs', {})
 
+            field_type = field_sig_dict['type']
+            renamed_types = django_evolution_settings.RENAMED_FIELD_TYPES
+
+            if field_type in renamed_types:
+                field_type = renamed_types[field_type]
+
             # Load the class for the referenced field type.
-            field_type_module, field_type_name = \
-                field_sig_dict['type'].rsplit('.', 1)
+            field_type_module, field_type_name = field_type.rsplit('.', 1)
 
             # If we have a field path in the signature that lives in
             # django.db.models.fields, update it to look in django.db.models

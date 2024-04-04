@@ -1154,6 +1154,39 @@ class FieldSignatureTests(BaseSignatureTestCase):
                 'db_column': 'test_column',
             })
 
+    def test_deserialize_v2_with_renamed_field_types(self):
+        """Testing FieldSignature.deserialize (signature v2) with renamed
+        fields configured in django_evolution_settings.RENAMED_FIELD_TYPES
+        """
+        new_settings = {
+            'RENAMED_FIELD_TYPES': {
+                'legacy.CustomForeignKey': 'django.db.models.ForeignKey',
+            },
+        }
+
+        with self.settings(DJANGO_EVOLUTION=new_settings):
+            field_sig = FieldSignature.deserialize(
+                'myfield',
+                {
+                    'type': 'legacy.CustomForeignKey',
+                    'related_model': 'tests.Anchor2',
+                    'attrs': {
+                        'null': False,
+                        'db_column': 'test_column',
+                    },
+                },
+                sig_version=2)
+
+        self.assertEqual(field_sig.field_name, 'myfield')
+        self.assertIs(field_sig.field_type, models.ForeignKey)
+        self.assertEqual(field_sig.related_model, 'tests.Anchor2')
+        self.assertEqual(
+            field_sig.field_attrs,
+            {
+                'null': False,
+                'db_column': 'test_column',
+            })
+
     def test_get_attr_value(self):
         """Testing FieldSignature.get_attr_value"""
         field_sig = FieldSignature.from_field(

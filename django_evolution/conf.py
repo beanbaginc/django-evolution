@@ -55,12 +55,24 @@ class DjangoEvolutionSettings(object):
 
             Type:
                 bool
+
+        RENAMED_FIELD_TYPES:
+            A mapping for fields that have been moved or renamed. This will map
+            the old path to the new one, for purposes of loading and validating
+            field signatures.
+
+            Type:
+                dict
+
+            Version Added:
+                2.4
     """
 
     #: Default settings for all keys.
     _DEFAULTS = {
         'CUSTOM_EVOLUTIONS': {},
         'ENABLED': True,
+        'RENAMED_FIELD_TYPES': {},
     }
 
     #: All valid settings in settings.DJANGO_EVOLUTION.
