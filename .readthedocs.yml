@@ -1,6 +1,11 @@
 version: 2
 formats: all
 
+build:
+  os: ubuntu-lts-latest
+  tools:
+    python: "3.11"
+
 sphinx:
   configuration: docs/conf.py
 
