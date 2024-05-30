@@ -1,0 +1,59 @@
+====================
+Django Evolution 2.4
+====================
+
+**Release date:** TBD
+
+
+Installation
+============
+
+Django Evolution 2.4 is compatible with Django_ 1.6-4.2, and Python 2.7 and
+3.6-3.12.
+
+To install Django Evolution 2.4, run:
+
+.. code-block:: console
+
+   $ pip3 install django_evolution==2.4
+
+To learn more, see:
+
+* `Documentation <https://django-evolution.readthedocs.io/en/latest/>`_
+* `Django Evolution on PyPI <https://pypi.org/project/django-evolution/>`_
+* `Django Evolution on GitHub
+  <https://github.com/beanbaginc/django-evolution/>`_
+
+
+.. _Django: https://www.djangoproject.com/
+
+
+New Features
+============
+
+* Added a setting for renaming module paths to field classes.
+
+  The new ``DJANGO_EVOLUTION['RENAMED_FIELD_TYPES']`` setting allows projects
+  to specify a new Python module path for a field, helping projects
+  transition from old module paths to new equivalent ones or from old field
+  types to new ones.
+
+  Any time the old path is referenced in any evolution or stored signature
+  data, the new path will be used instead.
+
+  For example:
+
+  .. code-block:: python
+
+     DJANGO_EVOLUTION = {
+         'RENAMED_FIELD_TYPES': {
+             'myproject.MyField': 'myproject.fields.MyField',
+         },
+     }
+
+
+Contributors
+============
+
+* Christian Hammond
+* David Trowbridge
