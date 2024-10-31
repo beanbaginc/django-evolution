@@ -10,6 +10,7 @@ except ImportError:
     from pickle import Unpickler
 
 from django_evolution.compat.datastructures import OrderedDict
+from django_evolution.conf import django_evolution_settings
 
 
 class SortedDict(dict):
@@ -71,5 +72,11 @@ class DjangoCompatUnpickler(Unpickler):
             return SortedDict
         elif module == 'django.db.models.fields':
             module = 'django.db.models'
+        else:
+            renamed_types = django_evolution_settings.RENAMED_FIELD_TYPES
+            field_type = '%s.%s' % (module, name)
+
+            if field_type in renamed_types:
+                module, name = renamed_types[field_type].rsplit('.', 1)
 
         return Unpickler.find_class(self, module, name)
