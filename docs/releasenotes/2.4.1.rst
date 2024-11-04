@@ -1,0 +1,46 @@
+======================
+Django Evolution 2.4.1
+======================
+
+**Release date:** November 3, 2024
+
+
+Installation
+============
+
+Django Evolution 2.4.1 is compatible with Django_ 1.6 - 4.2, and Python 2.7
+and 3.6 - 3.12.
+
+To install Django Evolution 2.4.1, run:
+
+.. code-block:: console
+
+   $ pip3 install django_evolution==2.4.1
+
+To learn more, see:
+
+* `Documentation <https://django-evolution.readthedocs.io/en/latest/>`_
+* `Django Evolution on PyPI <https://pypi.org/project/django-evolution/>`_
+* `Django Evolution on GitHub
+  <https://github.com/beanbaginc/django-evolution/>`_
+
+
+.. _Django: https://www.djangoproject.com/
+
+
+Bug Fixes
+=========
+
+* Fixed a bug where newly added migration-aware apps could fail to be
+  considered for migration.
+
+* Fixed usage of new ``DJANGO_EVOLUTION['RENAMED_FIELD_TYPES']`` setting when
+  loading legacy Python Pickle-based project signatures.
+
+
+Contributors
+============
+
+* Christian Hammond
+* David Trowbridge
+* Michelle Aubin

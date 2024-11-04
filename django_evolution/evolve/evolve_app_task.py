@@ -440,11 +440,10 @@ class EvolveAppTask(BaseEvolutionTask):
         # Run through the new applied migrations marked in any app
         # signatures and find any that we're planning to record.
         for task in tasks:
-            if (task.app_sig is not None and
-                task.upgrade_method == UpgradeMethod.MIGRATIONS):
+            if task.upgrade_method == UpgradeMethod.MIGRATIONS:
                 migration_app_labels.add(task.app_label)
 
-                if task.applied_migrations:
+                if task.app_sig is not None and task.applied_migrations:
                     # Figure out which applied migrations the mutator or
                     # signature listed that we don't have in the database.
                     new_applied_migrations = (task.applied_migrations -
