@@ -2,7 +2,7 @@
 Django Evolution 2.4.1
 ======================
 
-**Release date:** TBD
+**Release date:** November 3, 2024
 
 
 Installation
