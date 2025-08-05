@@ -142,10 +142,8 @@ class ConstraintSignatureTests(BaseSignatureTestCase):
     def setUpClass(cls):
         super(ConstraintSignatureTests, cls).setUpClass()
 
-    def test_from_constraint(self):
-        """Testing ConstraintSignature.from_constraint"""
-        # We'll test against the built-in Django constraints, making sure we
-        # handle all uses cases.
+    def test_from_constraint_with_fields_lists(self):
+        """Testing ConstraintSignature.from_constraint with fields as lists"""
         constraint_sig = ConstraintSignature.from_constraint(
             UniqueConstraint(name='my_constraint',
                              fields=['field1', 'field2'],
@@ -154,10 +152,26 @@ class ConstraintSignatureTests(BaseSignatureTestCase):
         self.assertIs(constraint_sig.type, UniqueConstraint)
         self.assertEqual(constraint_sig.name, 'my_constraint')
         self.assertEqual(constraint_sig.attrs, {
-            'fields': ('field1', 'field2'),
+            'fields': ['field1', 'field2'],
             'condition': Q(field1__gte=100),
         })
 
+    def test_from_constraint_with_fields_tuples(self):
+        """Testing ConstraintSignature.from_constraint with fields as tuples"""
+        constraint_sig = ConstraintSignature.from_constraint(
+            UniqueConstraint(name='my_constraint',
+                             fields=('field1', 'field2'),
+                             condition=Q(field1__gte=100)))
+
+        self.assertIs(constraint_sig.type, UniqueConstraint)
+        self.assertEqual(constraint_sig.name, 'my_constraint')
+        self.assertEqual(constraint_sig.attrs, {
+            'fields': ['field1', 'field2'],
+            'condition': Q(field1__gte=100),
+        })
+
+    def test_from_constraint_with_no_fields(self):
+        """Testing ConstraintSignature.from_constraint with no fields"""
         constraint_sig = ConstraintSignature.from_constraint(
             CheckConstraint(name='my_constraint',
                             check=Q(field2__startswith='ABC')))
@@ -168,8 +182,10 @@ class ConstraintSignatureTests(BaseSignatureTestCase):
             'check': Q(field2__startswith='ABC'),
         })
 
-    def test_deserialize_v2(self):
-        """Testing ConstraintSignature.deserialize (signature v2)"""
+    def test_deserialize_v2_with_fields_list(self):
+        """Testing ConstraintSignature.deserialize (signature v2) with
+        fields as lists
+        """
         constraint_sig = ConstraintSignature.deserialize(
             {
                 'name': 'my_constraint',
@@ -190,6 +206,58 @@ class ConstraintSignatureTests(BaseSignatureTestCase):
         self.assertEqual(constraint_sig.type, UniqueConstraint)
         self.assertEqual(constraint_sig.attrs, {
             'fields': ['field1', 'field2'],
+            'condition': Q(field1__gte=100),
+        })
+
+    def test_deserialize_v2_with_fields_tuples(self):
+        """Testing ConstraintSignature.deserialize (signature v2) with
+        fields as tuples
+        """
+        constraint_sig = ConstraintSignature.deserialize(
+            {
+                'name': 'my_constraint',
+                'type': 'django.db.models.UniqueConstraint',
+                'attrs': {
+                    'condition': {
+                        '_deconstructed': True,
+                        'args': [('field1__gte', 100)],
+                        'kwargs': {},
+                        'type': 'django.db.models.Q',
+                    },
+                    'fields': ('field1', 'field2'),
+                },
+            },
+            sig_version=2)
+
+        self.assertEqual(constraint_sig.name, 'my_constraint')
+        self.assertEqual(constraint_sig.type, UniqueConstraint)
+        self.assertEqual(constraint_sig.attrs, {
+            'fields': ['field1', 'field2'],
+            'condition': Q(field1__gte=100),
+        })
+
+    def test_deserialize_v2_with_no_fields(self):
+        """Testing ConstraintSignature.deserialize (signature v2) with
+        no fields
+        """
+        constraint_sig = ConstraintSignature.deserialize(
+            {
+                'name': 'my_constraint',
+                'type': 'django.db.models.UniqueConstraint',
+                'attrs': {
+                    'condition': {
+                        '_deconstructed': True,
+                        'args': [('field1__gte', 100)],
+                        'kwargs': {},
+                        'type': 'django.db.models.Q',
+                    },
+                },
+            },
+            sig_version=2)
+
+        self.assertEqual(constraint_sig.name, 'my_constraint')
+        self.assertEqual(constraint_sig.type, UniqueConstraint)
+        self.assertEqual(constraint_sig.attrs, {
             'condition': Q(field1__gte=100),
         })
 
@@ -1543,7 +1611,7 @@ class ModelSignatureTests(BaseSignatureTestCase):
             self.assertIs(constraint_sig.type, UniqueConstraint)
             self.assertEqual(constraint_sig.name, 'my_unique_constraint')
             self.assertEqual(constraint_sig.attrs, {
-                'fields': ('field1', 'field3'),
+                'fields': ['field1', 'field3'],
                 'condition': Q(field3=True),
             })
 
@@ -1776,7 +1844,7 @@ class ModelSignatureTests(BaseSignatureTestCase):
         self.assertIs(constraint_sig.type, UniqueConstraint)
         self.assertEqual(constraint_sig.name, 'my_constraint')
         self.assertEqual(constraint_sig.attrs, {
-            'fields': ('field1', 'field2'),
+            'fields': ['field1', 'field2'],
             'condition': Q(field1__gte=100),
         })
 
