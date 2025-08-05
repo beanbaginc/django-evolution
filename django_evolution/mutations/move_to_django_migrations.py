@@ -40,8 +40,13 @@ class MoveToDjangoMigrations(BaseUpgradeMethodMutation):
         """Return automatic dependencies for the parent evolution.
 
         This will generate a dependency forcing this evolution to apply
-        before the migrations that are marked as applied, ensuring that
-        subsequent migrations are applied in the correct order.
+        after or instead of the migrations that are marked as applied
+        (depending on the database state), ensuring that subsequent migrations
+        are applied in the correct order.
+
+        Version Added:
+            2.4.2:
+            * This now returns a ``replace_migrations`` dependency key.
 
         Version Added:
             2.1
@@ -55,16 +60,18 @@ class MoveToDjangoMigrations(BaseUpgradeMethodMutation):
 
         Returns:
             dict:
-            A dictionary of dependencies. This may have zero or more of the
-            following keys:
+            A dictionary containing the following dependencies key:
 
-            * ``before_migrations``
-            * ``after_migrations``
-            * ``before_evolutions``
-            * ``after_evolutions``
+            * ``replace_migrations``
         """
-        # We set this to execute after the migrations to handle the following
-        # conditions:
+        # We set this to execute as a replacement. This works like a normal
+        # dependency, but allows the dependent migration to be optional,
+        # so it doesn't have to be there for this move to be a success (in
+        # the event that the mutation and evolution are installed at the
+        # same time).
+        #
+        # As this still depends on the migration, it will run after the
+        # migration (if found) runs, ensuring the following conditions:
         #
         # 1. If this app is being installed into the database for the first
         #    time, we want the migrations to handle it, and therefore want
@@ -80,7 +87,7 @@ class MoveToDjangoMigrations(BaseUpgradeMethodMutation):
         #    migrations *after* the ones we're marking as applied. Otherwise,
         #    the order of dependencies and evolutions can end up being wrong.
         return {
-            'after_migrations': set(
+            'replace_migrations': set(
                 (app_label, migration_name)
                 for migration_name in self.mark_applied
             )

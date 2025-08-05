@@ -209,6 +209,7 @@ class GetEvolutionDependenciesTests(TestCase):
                 'before_migrations': {
                     ('migrations_app2', '0002_add_field'),
                 },
+                'replace_migrations': set(),
             })
 
     def test_with_dependencies_and_custom_evolutions(self):
@@ -261,6 +262,7 @@ class GetEvolutionDependenciesTests(TestCase):
                     ('other_app4', '0003_migration'),
                     ('other_app4', '0004_migration'),
                 },
+                'replace_migrations': set(),
             })
 
     def test_without_dependencies(self):
@@ -283,6 +285,7 @@ class GetEvolutionDependenciesTests(TestCase):
                 'after_migrations': set(),
                 'before_evolutions': set(),
                 'before_migrations': set(),
+                'replace_migrations': set(),
             })
 
     def test_without_dependencies_and_custom_evolutions(self):
@@ -295,6 +298,7 @@ class GetEvolutionDependenciesTests(TestCase):
                 'after_migrations': set(),
                 'before_evolutions': set(),
                 'before_migrations': set(),
+                'replace_migrations': set(),
             })
 
     def test_with_move_to_django_migrations(self):
@@ -306,11 +310,12 @@ class GetEvolutionDependenciesTests(TestCase):
                                        'admin_move_to_migrations'),
             {
                 'after_evolutions': set(),
-                'after_migrations': {
-                    ('admin', '0001_initial'),
-                },
+                'after_migrations': set(),
                 'before_evolutions': set(),
                 'before_migrations': set(),
+                'replace_migrations': {
+                    ('admin', '0001_initial'),
+                },
             })
 
     def test_with_invalid_app(self):

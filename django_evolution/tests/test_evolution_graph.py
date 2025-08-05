@@ -152,6 +152,42 @@ class EvolutionGraphTests(MigrationsTestsMixin, TestCase):
                 'app': app,
             })
 
+    def test_add_evolutions_with_move_to_migrations(self):
+        """Testing EvolutionGraph.add_evolutions with MoveToDjangoMigrations"""
+        app = get_app('move_to_migrations_app')
+
+        graph = EvolutionGraph()
+        graph.add_evolutions(app=app)
+
+        graph.finalize()
+
+        nodes = graph.get_ordered()
+        self.assertEqual(len(nodes), 2)
+
+        self._check_node(
+            nodes[0],
+            insert_index=0,
+            key='evolution:move_to_migrations_app:__first__',
+            required_by={
+                'evolution:move_to_migrations_app:__last__',
+            },
+            state={
+                'anchor': True,
+                'app': app,
+            })
+
+        self._check_node(
+            nodes[1],
+            insert_index=1,
+            key='evolution:move_to_migrations_app:__last__',
+            dependencies={
+                'evolution:move_to_migrations_app:__first__',
+            },
+            state={
+                'anchor': True,
+                'app': app,
+            })
+
     @requires_migrations
     def test_add_migration_plan(self):
         """Testing EvolutionGraph.add_migration_plan"""

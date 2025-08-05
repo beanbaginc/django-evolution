@@ -203,12 +203,12 @@ class ChangeMetaConstraintsTests(BaseChangeMetaTestCase):
                             'type': UniqueConstraint,
                             'name': 'new_unique_constraint_condition',
                             'condition': Q(int_field2=100),
-                            'fields': ('int_field2',),
+                            'fields': ['int_field2'],
                         },
                         {
                             'type': UniqueConstraint,
                             'name': 'new_unique_constraint_plain',
-                            'fields': ('int_field1', 'int_field2'),
+                            'fields': ['int_field1', 'int_field2'],
                         },
                     ])
             ],
@@ -219,10 +219,10 @@ class ChangeMetaConstraintsTests(BaseChangeMetaTestCase):
                 " 'name': 'new_check_constraint',"
                 " 'type': models.CheckConstraint},"
                 " {'condition': models.Q(int_field2=100),"
-                " 'fields': ('int_field2',),"
+                " 'fields': ['int_field2'],"
                 " 'name': 'new_unique_constraint_condition',"
                 " 'type': models.UniqueConstraint},"
-                " {'fields': ('int_field1', 'int_field2'),"
+                " {'fields': ['int_field1', 'int_field2'],"
                 " 'name': 'new_unique_constraint_plain',"
                 " 'type': models.UniqueConstraint}])"
             ],
@@ -264,12 +264,12 @@ class ChangeMetaConstraintsTests(BaseChangeMetaTestCase):
                             'type': UniqueConstraint,
                             'name': 'new_unique_constraint_condition',
                             'condition': Q(char_field2='bar'),
-                            'fields': ('int_field2',),
+                            'fields': ['int_field2'],
                         },
                         {
                             'type': UniqueConstraint,
                             'name': 'new_unique_constraint_plain',
-                            'fields': ('int_field1', 'char_field1'),
+                            'fields': ['int_field1', 'char_field1'],
                         },
                     ])
             ],
@@ -280,10 +280,10 @@ class ChangeMetaConstraintsTests(BaseChangeMetaTestCase):
                 " 'name': 'new_check_constraint',"
                 " 'type': models.CheckConstraint},"
                 " {'condition': models.Q(char_field2='bar'),"
-                " 'fields': ('int_field2',),"
+                " 'fields': ['int_field2'],"
                 " 'name': 'new_unique_constraint_condition',"
                 " 'type': models.UniqueConstraint},"
-                " {'fields': ('int_field1', 'char_field1'),"
+                " {'fields': ['int_field1', 'char_field1'],"
                 " 'name': 'new_unique_constraint_plain',"
                 " 'type': models.UniqueConstraint}])"
             ],
@@ -328,18 +328,18 @@ class ChangeMetaConstraintsTests(BaseChangeMetaTestCase):
                         {
                             'type': UniqueConstraint,
                             'name': 'base_unique_constraint_condition',
-                            'fields': ('int_field1', 'char_field1'),
+                            'fields': ['int_field1', 'char_field1'],
                             'condition': Q(int_field1__gte=10),
                         },
                         {
                             'type': UniqueConstraint,
                             'name': 'base_unique_constraint_plain',
-                            'fields': ('int_field1', 'char_field1'),
+                            'fields': ['int_field1', 'char_field1'],
                         },
                         {
                             'type': UniqueConstraint,
                             'name': 'new_unique_constraint',
-                            'fields': ('int_field2', 'int_field1'),
+                            'fields': ['int_field2', 'int_field1'],
                         },
                         {
                             'type': CheckConstraint,
@@ -355,13 +355,13 @@ class ChangeMetaConstraintsTests(BaseChangeMetaTestCase):
                 " 'name': 'base_check_constraint',"
                 " 'type': models.CheckConstraint},"
                 " {'condition': models.Q(int_field1__gte=10),"
-                " 'fields': ('int_field1', 'char_field1'),"
+                " 'fields': ['int_field1', 'char_field1'],"
                 " 'name': 'base_unique_constraint_condition',"
                 " 'type': models.UniqueConstraint},"
-                " {'fields': ('int_field1', 'char_field1'),"
+                " {'fields': ['int_field1', 'char_field1'],"
                 " 'name': 'base_unique_constraint_plain',"
                 " 'type': models.UniqueConstraint},"
-                " {'fields': ('int_field2', 'int_field1'),"
+                " {'fields': ['int_field2', 'int_field1'],"
                 " 'name': 'new_unique_constraint',"
                 " 'type': models.UniqueConstraint},"
                 " {'check': models.Q(int_field1__gte=100),"

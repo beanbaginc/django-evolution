@@ -54,6 +54,7 @@ class TestCase(DjangoTestCase):
         'evolutions_app2',
         'migrations_app',
         'migrations_app2',
+        'move_to_migrations_app',
         'tests',
     ]
 
@@ -405,9 +406,13 @@ class TestCase(DjangoTestCase):
 
             generated_sql = '\n'.join(sql).splitlines()
 
-        expected_sql = self.get_sql_mapping(name=sql_mapping_name,
-                                            sql_mappings_key=sql_mappings_key,
-                                            db_name=database)
+        if sql_mapping_name is None:
+            expected_sql = []
+        else:
+            expected_sql = self.get_sql_mapping(
+                name=sql_mapping_name,
+                sql_mappings_key=sql_mappings_key,
+                db_name=database)
 
         # Output the statements one-by-one, to help with diagnosing
         # differences.
@@ -618,7 +623,10 @@ class MigrationsTestsMixin(object):
         if supports_migrations:
             connection = connections[DEFAULT_DB_ALIAS]
 
-            for app_label in ('tests', 'migrations_app', 'migrations_app2'):
+            for app_label in ('tests',
+                              'migrations_app',
+                              'migrations_app2',
+                              'move_to_migrations_app'):
                 unrecord_applied_migrations(connection=connection,
                                             app_label=app_label)
 

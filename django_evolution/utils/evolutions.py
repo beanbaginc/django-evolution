@@ -289,6 +289,8 @@ def get_evolution_dependencies(app, evolution_label, custom_evolutions=[]):
 
     app_label = get_app_label(app)
 
+    deps.setdefault('replace_migrations', set())
+
     # Check if any mutations have dependencies to inject.
     for mutation in mutations:
         mutation_deps = mutation.generate_dependencies(app_label=app_label)

@@ -238,6 +238,10 @@ class BaseMutation(object):
         This allows a mutation to affect the order in which the parent
         evolution is applied, relative to other evolutions or migrations.
 
+        Version Changed:
+            2.4.2:
+            * Added support for ``replace_migrations`` as a result key.
+
         Version Added:
             2.1
 
@@ -255,6 +259,7 @@ class BaseMutation(object):
 
             * ``before_migrations``
             * ``after_migrations``
+            * ``replace_migrations``
             * ``before_evolutions``
             * ``after_evolutions``
         """

@@ -1813,9 +1813,23 @@ class ConstraintSignature(BaseSignature):
             attrs (dict, optional):
                 Attributes to pass when constructing the constraint.
         """
+        norm_attrs = {}
+
+        if attrs:
+            # For comparison purposes, we need to ensure that we're consistent
+            # with tuples and lists. Django may cast to tuples for some
+            # attribute values while deserialization from JSON would result in
+            # lists. We can store any way we need in this class, so we're
+            # standardizing on lists.
+            for key, value in six.iteritems(attrs):
+                if isinstance(value, tuple):
+                    value = list(value)
+
+                norm_attrs[key] = value
+
         self.name = name
         self.type = constraint_type
-        self.attrs = attrs
+        self.attrs = norm_attrs
 
     def clone(self):
         """Clone the signature.
@@ -2044,6 +2058,11 @@ class IndexSignature(BaseSignature):
         norm_attrs = {}
 
         if attrs:
+            # For comparison purposes, we need to ensure that we're consistent
+            # with tuples and lists. Django may cast to tuples for some
+            # attribute values while deserialization from JSON would result in
+            # lists. We can store any way we need in this class, so we're
+            # standardizing on lists.
             for key, value in six.iteritems(attrs):
                 if isinstance(value, tuple):
                     value = list(value)

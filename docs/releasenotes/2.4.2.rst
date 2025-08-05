@@ -1,0 +1,52 @@
+======================
+Django Evolution 2.4.2
+======================
+
+**Release date:** TBD
+
+
+Installation
+============
+
+Django Evolution 2.4.2 is compatible with Django_ 1.6 - 4.2, and Python 2.7
+and 3.6 - 3.12.
+
+To install Django Evolution 2.4.2, run:
+
+.. code-block:: console
+
+   $ pip3 install django_evolution==2.4.2
+
+To learn more, see:
+
+* `Documentation <https://django-evolution.readthedocs.io/en/latest/>`_
+* `Django Evolution on PyPI <https://pypi.org/project/django-evolution/>`_
+* `Django Evolution on GitHub
+  <https://github.com/beanbaginc/django-evolution/>`_
+
+
+.. _Django: https://www.djangoproject.com/
+
+
+Bug Fixes
+=========
+
+* Fixed using
+  :py:class:`~django_evolution.mutations.move_to_django_migrations.
+  MoveToDjangoMigrations` when the app isn't yet in the database.
+
+* Fixed incorrectly showing pending database changes when comparing a
+  :py:class:`~django.db.models.UniqueConstraint` to the version of the
+  constraint stored in the database signature.
+
+  Due to subtle differences between the way the constraint is created
+  and the way it's stored, Django Evolution could show that the constraint
+  had changed and prevent an upgrade.
+
+
+Contributors
+============
+
+* Christian Hammond
+* David Trowbridge
+* Michelle Aubin
