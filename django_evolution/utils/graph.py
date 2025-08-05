@@ -153,7 +153,12 @@ class DependencyGraph(object):
 
         return node
 
-    def add_dependency(self, node_key, dep_node_key):
+    def add_dependency(
+        self,
+        node_key,       # type: str
+        dep_node_key,   # type: str
+        optional=False  # type: bool
+    ):  # type: (...) -> None
         """Add a dependency between two nodes.
 
         This will be recorded as a pending dependency and later applied to
@@ -170,7 +175,7 @@ class DependencyGraph(object):
         assert isinstance(node_key, six.text_type)
         assert isinstance(dep_node_key, six.text_type)
 
-        self._pending_deps.add((node_key, dep_node_key))
+        self._pending_deps.add((node_key, dep_node_key, optional))
 
     def remove_dependencies(self, node_keys):
         """Remove any pending dependencies referencing one or more keys.
@@ -200,16 +205,23 @@ class DependencyGraph(object):
         """
         assert not self._finalized
 
-        for node_key, dep_node_key in self._pending_deps:
-            assert node_key in self._nodes, (
-                '"%s" was not found (requires dependency "%s")'
-                % (node_key, dep_node_key))
-            assert dep_node_key in self._nodes, (
-                '"%s" was not found (required by "%s")'
-                % (dep_node_key, node_key))
+        for node_key, dep_node_key, optional in self._pending_deps:
+            try:
+                node = self._nodes[node_key]
+            except KeyError:
+                raise AssertionError(
+                    '"%s" was not found (requires dependency "%s")'
+                    % (node_key, dep_node_key))
 
-            node = self._nodes[node_key]
-            dep_node = self._nodes[dep_node_key]
+            try:
+                dep_node = self._nodes[dep_node_key]
+            except KeyError:
+                if optional:
+                    continue
+
+                raise AssertionError(
+                    '"%s" was not found (required by "%s")'
+                    % (dep_node_key, node_key))
 
             node.dependencies.add(dep_node)
             dep_node.required_by.add(node)
@@ -693,8 +705,8 @@ class EvolutionGraph(DependencyGraph):
     def _add_evolution_node_after_deps(self, node, deps):
         """Add dependencies on evolutions/migrations to process after a node.
 
-        Any dependencies in ``after_evolutions`` or ``after_migrations``
-        will be registered in the graph.
+        Any dependencies in ``after_evolutions``, ``after_migrations``, and
+        ``replace_migrations`` will be registered in the graph.
 
         Args:
             node (Node):
@@ -723,6 +735,12 @@ class EvolutionGraph(DependencyGraph):
                 self.add_dependency(
                     node_key=key,
                     dep_node_key=self._make_migration_key(migration_target))
+
+            for migration_target in deps.get('replace_migrations', []):
+                self.add_dependency(
+                    node_key=key,
+                    dep_node_key=self._make_migration_key(migration_target),
+                    optional=True)
 
     def _add_migration_plan_item(self, plan_item):
         """Add an item from a migration plan.

@@ -48,6 +48,8 @@ from django_evolution.tests.migrations_app.models import MigrationsAppTestModel
 from django_evolution.tests.migrations_app2.models import \
     MigrationsApp2TestModel
 from django_evolution.tests.models import BaseTestModel
+from django_evolution.tests.move_to_migrations_app.models import \
+    MoveToMigrationsAppTestModel
 from django_evolution.tests.utils import (ensure_test_db,
                                           execute_test_sql,
                                           register_models,
@@ -853,6 +855,11 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
 
         state = evolver._evolve_app_task_state
 
+        if supports_migrations:
+            self.assertEqual(len(tasks), 6)
+        else:
+            self.assertEqual(len(tasks), 3)
+
         # Make sure we've collected the evolutions we expect. See
         # _get_test_apps() for the order.
         self.assertEvolutionsEqual(
@@ -875,6 +882,9 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         if supports_migrations:
             self.assertEqual(tasks[3].new_evolutions, [])
             self.assertEqual(tasks[4].new_evolutions, [])
+            self.assertEvolutionsEqual(tasks[5].new_evolutions, [
+                ('move_to_migrations_app', 'move_to_migrations'),
+            ])
             self.assertIsNotNone(state['migration_executor'])
         else:
             self.assertIsNone(state['migration_executor'])
@@ -886,23 +896,27 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                     ('migrations_app', '0001_initial', False),
                     ('migrations_app', '0002_add_field', False),
                     ('migrations_app2', '0001_initial', False),
+                    ('move_to_migrations_app', '0001_initial', False),
                 ])
             self.assertEqual(
                 state['pre_migration_targets'],
                 [
                     ('migrations_app', '0001_initial'),
                     ('migrations_app2', '0001_initial'),
+                    ('move_to_migrations_app', '0001_initial'),
                 ])
             self._check_migration_plan(
                 state['post_migration_plan'],
                 [
                     ('migrations_app2', '0002_add_field', False),
+                    ('move_to_migrations_app', '0002_add_field2', False),
                 ])
             self.assertEqual(
                 state['post_migration_targets'],
                 [
                     ('migrations_app', '0002_add_field'),
                     ('migrations_app2', '0002_add_field'),
+                    ('move_to_migrations_app', '0002_add_field2'),
                 ])
         else:
             self.assertIsNone(state['pre_migration_plan'])
@@ -914,7 +928,7 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         batches = state['batches']
 
         if supports_migrations:
-            self.assertEqual(len(batches), 3)
+            self.assertEqual(len(batches), 5)
         else:
             self.assertEqual(len(batches), 1)
 
@@ -945,20 +959,60 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                 }),
             ]))
 
-        # Batch 3.
         if supports_migrations:
+            # Batch 3.
+            self._check_migration_batch(
+                next(batches),
+                expected_migration_plan=[
+                    ('move_to_migrations_app', '0001_initial', False),
+                ],
+                expected_migration_targets=[
+                    ('move_to_migrations_app', '0001_initial'),
+                ])
+
+            # Batch 4.
+            self._check_evolution_batch(
+                next(batches),
+                expected_task_evolutions=OrderedDict([
+                    (tasks[5], {
+                        'evolutions': ['move_to_migrations'],
+                        'mutations': [
+                            MoveToDjangoMigrations(),
+                        ],
+                        'sql': None,
+                    }),
+                ]))
+
+            # Batch 5.
             self._check_migration_batch(
                 next(batches),
                 expected_migration_plan=[
                     ('migrations_app', '0002_add_field', False),
                     ('migrations_app2', '0001_initial', False),
                     ('migrations_app2', '0002_add_field', False),
+                    ('move_to_migrations_app', '0002_add_field2', False),
                 ],
                 expected_migration_targets=[
                     ('migrations_app', '0002_add_field'),
                     ('migrations_app2', '0001_initial'),
                     ('migrations_app2', '0002_add_field'),
+                    ('move_to_migrations_app', '0002_add_field2'),
                 ])
+
+        with self.assertRaises(StopIteration):
+            next(batches)
+
+        if supports_migrations:
+            project_sig = evolver.project_sig
+            assert project_sig is not None
+
+            app_sig = project_sig.get_app_sig('move_to_migrations_app')
+            assert app_sig is not None
+
+            # Check the app signature for the new state.
+            self.assertEqual(app_sig.upgrade_method, UpgradeMethod.MIGRATIONS)
+            self.assertEqual(app_sig.applied_migrations,
+                             {'0001_initial'})
 
     def test_prepare_tasks_with_dependencies_and_upgrade_db(self):
         """Testing EvolveAppTask.prepare_tasks with complex dependencies and
@@ -1013,12 +1067,14 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                 state['post_migration_plan'],
                 [
                     ('migrations_app2', '0002_add_field', False),
+                    ('move_to_migrations_app', '0002_add_field2', False),
                 ])
             self.assertEqual(
                 state['post_migration_targets'],
                 [
                     ('migrations_app', '0002_add_field'),
                     ('migrations_app2', '0002_add_field'),
+                    ('move_to_migrations_app', '0002_add_field2'),
                 ])
         else:
             self.assertIsNone(state['pre_migration_plan'])
@@ -1074,12 +1130,17 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                     ('migrations_app', '0002_add_field', False),
                     ('migrations_app2', '0001_initial', False),
                     ('migrations_app2', '0002_add_field', False),
+                    ('move_to_migrations_app', '0002_add_field2', False),
                 ],
                 expected_migration_targets=[
                     ('migrations_app', '0002_add_field'),
                     ('migrations_app2', '0001_initial'),
                     ('migrations_app2', '0002_add_field'),
+                    ('move_to_migrations_app', '0002_add_field2'),
                 ])
+
+        with self.assertRaises(StopIteration):
+            next(batches)
 
     @requires_migrations
     def test_execute_tasks_with_migrations(self):
@@ -1333,6 +1394,21 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         """Testing EvolveAppTask.execute_tasks with complex dependencies and
         new database
         """
+        # In this test:
+        #
+        # 1. All tables should be manually created (for evolutions) or via
+        #    migrations (if migrations are enabled)
+        #
+        # 2: All evolutions should be marked as applied (without executing
+        #    any SQL)
+        #
+        # 3. All migrations should be applied (and executed one-by-one).
+        #
+        # 4. Evolutions with DjangoMoveToMigrations (move_to_migrations_app)
+        #    should defer entirely to migrations, since that's the end result
+        #    of the signature. That means migration-prepared tables and
+        #    changes only.
+
         self.ensure_deleted_apps()
 
         evolver = Evolver()
@@ -1387,6 +1463,14 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         if supports_migrations:
             expected_signals += [
                 ('applying_migration', {
+                    'migration': ('move_to_migrations_app', '0001_initial'),
+                    'sender': evolver,
+                }),
+                ('applied_migration', {
+                    'migration': ('move_to_migrations_app', '0001_initial'),
+                    'sender': evolver,
+                }),
+                ('applying_migration', {
                     'migration': ('migrations_app', '0002_add_field'),
                     'sender': evolver,
                 }),
@@ -1408,6 +1492,14 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                 }),
                 ('applied_migration', {
                     'migration': ('migrations_app2', '0002_add_field'),
+                    'sender': evolver,
+                }),
+                ('applying_migration', {
+                    'migration': ('move_to_migrations_app', '0002_add_field2'),
+                    'sender': evolver,
+                }),
+                ('applied_migration', {
+                    'migration': ('move_to_migrations_app', '0002_add_field2'),
                     'sender': evolver,
                 }),
             ]
@@ -1421,6 +1513,8 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                 ('migrations_app', '0002_add_field'),
                 ('migrations_app2', '0001_initial'),
                 ('migrations_app2', '0002_add_field'),
+                ('move_to_migrations_app', '0001_initial'),
+                ('move_to_migrations_app', '0002_add_field2'),
             ])
 
         # Make sure we can now use the models.
@@ -1436,11 +1530,18 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
             MigrationsApp2TestModel.objects.create(char_field='def456',
                                                    added_field=True)
 
+            from django_evolution.tests.move_to_migrations_app.models import \
+                MoveToMigrationsAppTestModel
+
+            MoveToMigrationsAppTestModel.objects.create(
+                char_field='test',
+                added_field=True,
+                added_field2=123)
+
     def test_execute_tasks_with_dependencies_and_upgrade_db(self):
         """Testing EvolveAppTask.execute_tasks with complex dependencies and
         upgrading database
         """
-        return
         self._setup_pre_upgrade()
 
         evolver = Evolver()
@@ -1506,17 +1607,26 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                     'migration': ('migrations_app2', '0002_add_field'),
                     'sender': evolver,
                 }),
+                ('applying_migration', {
+                    'migration': ('move_to_migrations_app', '0002_add_field2'),
+                    'sender': evolver,
+                }),
+                ('applied_migration', {
+                    'migration': ('move_to_migrations_app', '0002_add_field2'),
+                    'sender': evolver,
+                }),
             ]
 
         self.assertEqual(self.saw_signals, expected_signals)
 
         # Make sure all evolutions and migrations are applied.
-        self.assertAppliedMigrations([
-            ('migrations_app', '0001_initial'),
-            ('migrations_app', '0002_add_field'),
-            ('migrations_app2', '0001_initial'),
-            ('migrations_app2', '0002_add_field'),
-        ])
+        if supports_migrations:
+            self.assertAppliedMigrations([
+                ('migrations_app', '0001_initial'),
+                ('migrations_app', '0002_add_field'),
+                ('migrations_app2', '0001_initial'),
+                ('migrations_app2', '0002_add_field'),
+            ])
 
         # Make sure we can now use the models.
         model1 = EvolutionsAppTestModel.objects.create(char_field='abc123')
@@ -1849,6 +1959,7 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
             apps += [
                 get_app('migrations_app'),
                 get_app('migrations_app2'),
+                get_app('move_to_migrations_app'),
             ]
 
         return apps
@@ -1890,6 +2001,22 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
             class Meta:
                 db_table = EvolutionsApp2TestModel._meta.db_table
 
+        class InitialMigrationsAppTestModel(models.Model):
+            char_field = models.CharField(max_length=10)
+
+            class Meta:
+                db_table = MigrationsAppTestModel._meta.db_table
+
+        # This version does not match the 0001_initial migration, immitating
+        # packages that provide a 0001_initial, make changes, and later
+        # re-release as a new 0001_initial with no migration history,
+        # breaking databases.
+        class InitialMoveToMigrationsAppTestModel(models.Model):
+            char_field = models.CharField(max_length=10)
+
+            class Meta:
+                db_table = MoveToMigrationsAppTestModel._meta.db_table
+
         apps_to_models = {
             'evolutions_app': [
                 ('EvolutionsAppTestModel', InitialEvolutionsAppTestModel),
@@ -1898,6 +2025,18 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
                 ('EvolutionsApp2TestModel', InitialEvolutionsApp2TestModel),
                 ('EvolutionsApp2TestModel2', EvolutionsApp2TestModel2),
             ],
+            'migrations_app': [
+                ('MigrationsAppTestModel', InitialMigrationsAppTestModel),
+            ],
+            'move_to_migrations_app': [
+                ('MoveToMigrationsAppTestModel',
+                 InitialMoveToMigrationsAppTestModel),
+            ],
+        }
+
+        # Apps we want to let the upgrade populate for the first time.
+        ignored_apps = {
+            'migrations_app2',
         }
 
         version = Version.objects.current_version()
@@ -1909,12 +2048,13 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         with replace_models(database_state=self.database_state,
                             apps_to_models=apps_to_models):
             for app in self._get_test_apps():
-                project_sig.add_app_sig(AppSignature.from_app(
-                    app,
-                    database=database))
+                if get_app_label(app) not in ignored_apps:
+                    project_sig.add_app_sig(AppSignature.from_app(
+                        app,
+                        database=database))
 
-                sql += sql_create_app(app=app,
-                                      db_name=database)
+                    sql += sql_create_app(app=app,
+                                          db_name=database)
 
         execute_test_sql(sql,
                          database=database)
@@ -1929,6 +2069,7 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         if supports_migrations:
             self.record_applied_migrations([
                 ('migrations_app', '0001_initial'),
+                ('move_to_migrations_app', '0001_initial'),
             ])
 
     def _check_migration_plan(self, migration_plan, expected_items):

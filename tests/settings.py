@@ -118,4 +118,5 @@ INSTALLED_APPS = [
     'django_evolution.tests.no_models_app',
     'django_evolution.tests.migrations_app',
     'django_evolution.tests.migrations_app2',
+    'django_evolution.tests.move_to_migrations_app',
 ]

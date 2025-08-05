@@ -61,13 +61,14 @@ class DependencyGraphTests(TestCase):
         graph.add_dependency(node_key='parent',
                              dep_node_key='child')
         graph.add_dependency(node_key='grandparent',
-                             dep_node_key='parent')
+                             dep_node_key='parent',
+                             optional=True)
 
         self.assertEqual(
             graph._pending_deps,
             {
-                ('parent', 'child'),
-                ('grandparent', 'parent'),
+                ('parent', 'child', False),
+                ('grandparent', 'parent', True),
             })
 
     def test_remove_dependencies(self):
@@ -86,7 +87,7 @@ class DependencyGraphTests(TestCase):
         self.assertEqual(
             graph._pending_deps,
             {
-                ('child', 'parent'),
+                ('child', 'parent', False),
             })
 
     def test_finalize(self):
@@ -146,6 +147,38 @@ class DependencyGraphTests(TestCase):
 
         with self.assertRaisesMessage(AssertionError, message):
             graph.finalize()
+
+    def test_finalize_with_bad_required_by_optional(self):
+        """Testing DependencyGraph.finalize with missing optional required_by
+        node
+        """
+        graph = DependencyGraph()
+        foo = graph.add_node('foo')
+        bar = graph.add_node('bar')
+        baz = graph.add_node('baz')
+        graph.add_dependency(node_key='foo',
+                             dep_node_key='bar',
+                             optional=True)
+        graph.add_dependency(node_key='bar',
+                             dep_node_key='baz',
+                             optional=True)
+        graph.add_dependency(node_key='bar',
+                             dep_node_key='xxx',
+                             optional=True)
+
+        graph.finalize()
+
+        self.assertEqual(graph._pending_deps, [])
+        self.assertTrue(graph._finalized)
+
+        self.assertEqual(foo.dependencies, {bar})
+        self.assertEqual(foo.required_by, set())
+
+        self.assertEqual(bar.dependencies, {baz})
+        self.assertEqual(bar.required_by, {foo})
+
+        self.assertEqual(baz.dependencies, set())
+        self.assertEqual(baz.required_by, {bar})
 
     def test_get_leaf_nodes(self):
         """Testing DependencyGraph.get_leaf_nodes"""
