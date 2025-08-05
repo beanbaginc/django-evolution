@@ -2,6 +2,8 @@
 Django Evolution
 ================
 
+|release-badge| |license-badge| |reviewed-with-badge| |python-badge|
+
 Django Evolution is an add-on to the Django_ web framework that helps manage
 changes to the database schema.
 
@@ -42,6 +44,22 @@ There are cases where you might want an alternative to migrations:
 
 
 .. _Django: https://www.djangoproject.com/
+
+.. |release-badge| image:: https://img.shields.io/pypi/v/django-evolution
+   :target: https://pypi.org/project/django-evolution
+   :alt: Latest release
+
+.. |license-badge| image:: https://img.shields.io/badge/license-MIT-green.svg
+   :target: https://opensource.org/licenses/MIT
+   :alt: MIT License
+
+.. |reviewed-with-badge| image:: https://img.shields.io/badge/Review%20Board-d0e6ff?label=reviewed%20with
+   :target: https://www.reviewboard.org
+   :alt: Reviewed with Review Board
+
+.. |python-badge| image:: https://img.shields.io/pypi/pyversions/django-evolution
+   :target: https://pypi.org/project/django-evolution
+   :alt: Compatible python versions
 
 
 What versions of Django are supported?
