@@ -10,7 +10,7 @@ mysql_init_command = 'SET default_storage_engine=%s' % mysql_db_storage_engine
 
 TEST_DATABASES = {
     # MySQL
-    'mysql56': {
+    'mysql57': {
         'ENGINE': 'django.db.backends.mysql',
         'HOST': '127.0.0.1',
         'PORT': 8700,
@@ -21,7 +21,7 @@ TEST_DATABASES = {
             'init_command': mysql_init_command,
         },
     },
-    'mysql57': {
+    'mysql8': {
         'ENGINE': 'django.db.backends.mysql',
         'HOST': '127.0.0.1',
         'PORT': 8701,
@@ -32,7 +32,7 @@ TEST_DATABASES = {
             'init_command': mysql_init_command,
         },
     },
-    'mysql8': {
+    'mysql9': {
         'ENGINE': 'django.db.backends.mysql',
         'HOST': '127.0.0.1',
         'PORT': 8702,
@@ -45,10 +45,32 @@ TEST_DATABASES = {
     },
 
     # MariaDB
-    'mariadb': {
+    'mariadb10': {
         'ENGINE': 'django.db.backends.mysql',
         'HOST': '127.0.0.1',
         'PORT': 8720,
+        'NAME': 'test',
+        'USER': 'root',
+        'PASSWORD': '8jAHSDAIUyo278jkaSF871',
+        'OPTIONS': {
+            'init_command': mysql_init_command,
+        },
+    },
+    'mariadb11': {
+        'ENGINE': 'django.db.backends.mysql',
+        'HOST': '127.0.0.1',
+        'PORT': 8721,
+        'NAME': 'test',
+        'USER': 'root',
+        'PASSWORD': '8jAHSDAIUyo278jkaSF871',
+        'OPTIONS': {
+            'init_command': mysql_init_command,
+        },
+    },
+    'mariadb12': {
+        'ENGINE': 'django.db.backends.mysql',
+        'HOST': '127.0.0.1',
+        'PORT': 8722,
         'NAME': 'test',
         'USER': 'root',
         'PASSWORD': '8jAHSDAIUyo278jkaSF871',
@@ -94,6 +116,30 @@ TEST_DATABASES = {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'HOST': '127.0.0.1',
         'PORT': 8734,
+        'NAME': 'test',
+        'USER': 'postgres',
+        'PASSWORD': '8jAHSDAIUyo278jkaSF871',
+    },
+    'postgres16': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'HOST': '127.0.0.1',
+        'PORT': 8735,
+        'NAME': 'test',
+        'USER': 'postgres',
+        'PASSWORD': '8jAHSDAIUyo278jkaSF871',
+    },
+    'postgres17': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'HOST': '127.0.0.1',
+        'PORT': 8736,
+        'NAME': 'test',
+        'USER': 'postgres',
+        'PASSWORD': '8jAHSDAIUyo278jkaSF871',
+    },
+    'postgres18': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'HOST': '127.0.0.1',
+        'PORT': 8737,
         'NAME': 'test',
         'USER': 'postgres',
         'PASSWORD': '8jAHSDAIUyo278jkaSF871',

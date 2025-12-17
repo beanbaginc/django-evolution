@@ -3,6 +3,7 @@
 
 .coverage
 .swp
+.tox/
 build/
 dist/
 docs/_build

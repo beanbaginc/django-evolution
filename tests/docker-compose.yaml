@@ -2,18 +2,6 @@ version: '3.7'
 
 
 services:
-  mysql-5.6:
-    image: mysql:5.6
-    restart: always
-    platform: linux/amd64
-    command: mysqld --skip-name-resolve
-    environment:
-      MYSQL_ROOT_PASSWORD: 8jAHSDAIUyo278jkaSF871
-      MYSQL_ROOT_HOST: '%'
-      MYSQL_DATABASE: test
-    ports:
-      - 8700:3306
-
   mysql-5.7:
     image: mysql:5.7
     restart: always
@@ -24,7 +12,7 @@ services:
       MYSQL_ROOT_HOST: '%'
       MYSQL_DATABASE: test
     ports:
-      - 8701:3306
+      - 8700:3306
 
   mysql-8:
     image: mysql:8
@@ -36,18 +24,49 @@ services:
       MYSQL_ROOT_HOST: '%'
       MYSQL_DATABASE: test
     ports:
-      - 8702:3306
+      - 8701:3306
 
-  mariadb:
-    image: mariadb
+  mysql-9:
+    image: mysql:9
     restart: always
+    platform: linux/amd64
     command: mysqld --skip-name-resolve
     environment:
       MYSQL_ROOT_PASSWORD: 8jAHSDAIUyo278jkaSF871
       MYSQL_ROOT_HOST: '%'
       MYSQL_DATABASE: test
     ports:
+      - 8702:3306
+
+  mariadb-10:
+    image: mariadb:10
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 8jAHSDAIUyo278jkaSF871
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_DATABASE: test
+    ports:
       - 8720:3306
+
+  mariadb-11:
+    image: mariadb:11
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 8jAHSDAIUyo278jkaSF871
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_DATABASE: test
+    ports:
+      - 8721:3306
+
+  mariadb-12:
+    image: mariadb:12
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 8jAHSDAIUyo278jkaSF871
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_DATABASE: test
+    ports:
+      - 8722:3306
 
   postgres-11.8:
     image: postgres:11.8
@@ -68,7 +87,7 @@ services:
       - 8731:5432
 
   postgres-13:
-    image: postgres:12
+    image: postgres:13
     restart: always
     environment:
       POSTGRES_PASSWORD: 8jAHSDAIUyo278jkaSF871
@@ -77,10 +96,46 @@ services:
       - 8732:5432
 
   postgres-14:
-    image: postgres:12
+    image: postgres:14
     restart: always
     environment:
       POSTGRES_PASSWORD: 8jAHSDAIUyo278jkaSF871
       POSTGRES_DB: test
     ports:
       - 8733:5432
+
+  postgres-15:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: 8jAHSDAIUyo278jkaSF871
+      POSTGRES_DB: test
+    ports:
+      - 8734:5432
+
+  postgres-16:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: 8jAHSDAIUyo278jkaSF871
+      POSTGRES_DB: test
+    ports:
+      - 8735:5432
+
+  postgres-17:
+    image: postgres:17
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: 8jAHSDAIUyo278jkaSF871
+      POSTGRES_DB: test
+    ports:
+      - 8736:5432
+
+  postgres-18:
+    image: postgres:18
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: 8jAHSDAIUyo278jkaSF871
+      POSTGRES_DB: test
+    ports:
+      - 8737:5432
