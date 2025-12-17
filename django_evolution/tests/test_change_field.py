@@ -1,9 +1,8 @@
 from __future__ import unicode_literals
 
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 
 from django.db import connection, models
-from django.utils import timezone
 
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.diff import Diff
