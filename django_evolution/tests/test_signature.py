@@ -44,7 +44,8 @@ from django_evolution.signature import (AppSignature,
                                         ProjectSignature)
 from django_evolution.support import (supports_constraints,
                                       supports_index_feature,
-                                      supports_indexes)
+                                      supports_indexes,
+                                      supports_index_together)
 from django_evolution.tests.base_test_case import EvolutionTestCase
 from django_evolution.tests.decorators import (requires_index_feature,
                                                requires_meta_constraints,
@@ -1568,8 +1569,10 @@ class ModelSignatureTests(BaseSignatureTestCase):
             class Meta(BaseTestModel.Meta):
                 db_table = 'my_table'
                 db_tablespace = 'my_tablespace'
-                index_together = (('field1', 'field2'),)
                 unique_together = (('field2', 'field3'),)
+
+                if supports_index_together:
+                    index_together = (('field1', 'field2'),)
 
                 if supports_constraints:
                     constraints = [
@@ -1589,7 +1592,6 @@ class ModelSignatureTests(BaseSignatureTestCase):
         model_sig = ModelSignature.from_model(ModelSignatureFromModelTestModel)
 
         self.assertEqual(model_sig.db_tablespace, 'my_tablespace')
-        self.assertEqual(model_sig.index_together, [('field1', 'field2')])
         self.assertEqual(model_sig.model_name,
                          'ModelSignatureFromModelTestModel')
         self.assertEqual(model_sig.pk_column, 'id')
@@ -1633,6 +1635,9 @@ class ModelSignatureTests(BaseSignatureTestCase):
             index_sig = index_sigs[1]
             self.assertEqual(index_sig.name, 'index2')
             self.assertEqual(index_sig.fields, ['field3'])
+
+        if supports_index_together:
+            self.assertEqual(model_sig.index_together, [('field1', 'field2')])
 
     def test_deserialize_v1(self):
         """Testing ModelSignature.deserialize (signature v1)"""

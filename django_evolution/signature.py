@@ -1082,12 +1082,15 @@ class ModelSignature(BaseSignature):
         """
         meta = model._meta
         model_sig = cls(db_tablespace=meta.db_tablespace,
-                        index_together=meta.index_together,
                         model_name=meta.object_name,
                         pk_column=six.text_type(meta.pk.column),
                         table_name=meta.db_table,
                         unique_together=meta.unique_together,
                         unique_together_applied=True)
+
+        if (index_together := getattr(meta, 'index_together', None)):
+            # Django <= 5.1
+            model_sig.index_together = index_together
 
         if getattr(meta, 'db_table_comment', None):
             # Django >= 4.2

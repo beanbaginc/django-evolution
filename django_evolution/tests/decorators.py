@@ -15,7 +15,6 @@ from django.db import DEFAULT_DB_ALIAS, models
 
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.support import (supports_constraints,
-                                      supports_db_table_comments,
                                       supports_index_feature,
                                       supports_index_together,
                                       supports_indexes,
@@ -78,7 +77,7 @@ requires_meta_constraints = _build_requires_support_decorator(
 #:         The current version of Django doesn't support
 #:         ``Meta.index_together``.
 requires_meta_index_together = _build_requires_support_decorator(
-    flag=supports_db_table_comments,
+    flag=supports_index_together,
     skip_message=("Meta.index_together isn't supported on Django "
                   "%(django_version)s"))
 

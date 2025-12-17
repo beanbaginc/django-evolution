@@ -25,6 +25,8 @@ _options = Options({})
 
 
 #: Index names changed in Django 1.5, with the introduction of index_together.
+#:
+#: This field was deprecated in Django 4.2 and removed in 5.1.
 supports_index_together = hasattr(_options, 'index_together')
 
 
