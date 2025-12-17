@@ -55,7 +55,7 @@ GitHub = 'https://github.com/beanbaginc/django-evolution/'
 [tool.pytest]
 python_files = ['tests.py', 'test_*.py', '*_tests.py']
 testpaths = ['django_evolution']
-addopts = ['-rs', '-p', 'no:django']
+addopts = ['-r', 'sfE', '-p', 'no:django']
 pythonpath = ['.']
 required_plugins = ['pytest-env']
 
