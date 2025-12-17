@@ -1,0 +1,64 @@
+[build-system]
+requires = [
+    'setuptools',
+]
+build-backend = 'setuptools.build_meta'
+
+[project]
+name = 'django_evolution'
+description = 'A database schema evolution tool for the Django web framework'
+authors = [
+    { name = 'Beanbag, Inc.', email = 'questions@beanbaginc.com' },
+]
+license = 'BSD-3-Clause-Clear'
+readme = 'README.rst'
+dynamic = ['version']
+requires-python = '>=3.10'
+
+dependencies = [
+    'Django>=4.0,<6.0.999',
+]
+
+classifiers = [
+    'Development Status :: 5 - Production/Stable',
+    'Framework :: Django',
+    'Framework :: Django :: 4',
+    'Framework :: Django :: 4.0',
+    'Framework :: Django :: 4.1',
+    'Framework :: Django :: 4.2',
+    'Framework :: Django :: 5',
+    'Framework :: Django :: 5.0',
+    'Framework :: Django :: 5.1',
+    'Framework :: Django :: 5.2',
+    'Framework :: Django :: 6',
+    'Framework :: Django :: 6.0',
+    'Intended Audience :: Developers',
+    'Natural Language :: English',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
+    'Topic :: Database',
+    'Topic :: Software Development',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+]
+
+[project.urls]
+Documentation = 'https://django-evolution.readthedocs.io/en/latest/'
+Repository = 'https://github.com/beanbaginc/django-evolution.git'
+GitHub = 'https://github.com/beanbaginc/django-evolution/'
+
+
+[tool.pytest]
+python_files = ['tests.py', 'test_*.py', '*_tests.py']
+testpaths = ['django_evolution']
+addopts = ['-rs', '-p', 'no:django']
+pythonpath = ['.']
+required_plugins = ['pytest-env']
+
+
+[tool.setuptools.dynamic]
+version = { attr = 'django_evolution.__version__' }
