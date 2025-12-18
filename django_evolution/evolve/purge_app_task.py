@@ -7,7 +7,8 @@ Version Added:
 
 from __future__ import annotations
 
-from django_evolution.compat.translation import gettext as _
+from django.utils.translation import gettext as _
+
 from django_evolution.errors import EvolutionExecutionError
 from django_evolution.evolve.base import BaseEvolutionTask
 from django_evolution.mutations import DeleteApplication

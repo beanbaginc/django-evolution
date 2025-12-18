@@ -10,10 +10,10 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import CommandError
 from django.db.utils import DEFAULT_DB_ALIAS
 from django.dispatch import receiver
+from django.utils.translation import ngettext, gettext as _
 
 from django_evolution.compat.apps import get_app
 from django_evolution.compat.commands import BaseCommand
-from django_evolution.compat.translation import ngettext, gettext as _
 from django_evolution.conf import django_evolution_settings
 from django_evolution.errors import EvolutionException
 from django_evolution.evolve import EvolveAppTask, Evolver, PurgeAppTask

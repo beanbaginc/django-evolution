@@ -10,9 +10,9 @@ import json
 import textwrap
 
 from django.core.management.base import CommandError
+from django.utils.translation import gettext as _
 
 from django_evolution.compat.commands import BaseCommand
-from django_evolution.compat.translation import gettext as _
 from django_evolution.models import Evolution, Version
 
 

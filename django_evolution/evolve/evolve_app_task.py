@@ -11,9 +11,10 @@ import itertools
 import logging
 from collections import OrderedDict
 
+from django.utils.translation import gettext as _
+
 from django_evolution.compat.db import (db_get_installable_models_for_app,
                                         sql_create_models)
-from django_evolution.compat.translation import gettext as _
 from django_evolution.consts import UpgradeMethod
 from django_evolution.errors import EvolutionExecutionError
 from django_evolution.evolve.base import BaseEvolutionTask

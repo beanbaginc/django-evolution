@@ -136,6 +136,7 @@ from django.conf import global_settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db import DEFAULT_DB_ALIAS, models
 from django.db.models import CheckConstraint
+from django.utils.translation import gettext as _
 
 from django_evolution.compat.apps import get_apps, get_app
 from django_evolution.compat.datastructures import OrderedDict
@@ -144,7 +145,6 @@ from django_evolution.compat.models import (GenericRelation,
                                             get_models,
                                             get_remote_field,
                                             get_remote_field_model)
-from django_evolution.compat.translation import gettext as _
 from django_evolution.conf import django_evolution_settings
 from django_evolution.consts import UpgradeMethod
 from django_evolution.errors import (InvalidSignatureVersion,

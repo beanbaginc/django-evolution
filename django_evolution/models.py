@@ -8,10 +8,10 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import post_init
 from django.utils.timezone import now
+from django.utils.translation import gettext_lazy as _
 
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.py23 import pickle_dumps, pickle_loads
-from django_evolution.compat.translation import gettext_lazy as _
 from django_evolution.signature import ProjectSignature
 
 

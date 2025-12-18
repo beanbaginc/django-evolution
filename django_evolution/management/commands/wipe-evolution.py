@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from django.core.management.base import CommandError
 from django.db.models import Q
+from django.utils.translation import gettext as _
 
 from django_evolution.compat.commands import BaseCommand
-from django_evolution.compat.translation import gettext as _
 from django_evolution.models import Evolution
 
 
