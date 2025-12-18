@@ -1,6 +1,6 @@
 """Compatibility module for management commands."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from optparse import OptionParser
 

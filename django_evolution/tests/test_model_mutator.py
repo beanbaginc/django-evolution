@@ -1,6 +1,6 @@
 """Unit tests for django_evolution.mutators.ModelMutator."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from django.db import models
 

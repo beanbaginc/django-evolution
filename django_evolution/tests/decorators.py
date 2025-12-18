@@ -4,7 +4,7 @@ Version Added:
     2.1
 """
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 import inspect
 from functools import wraps

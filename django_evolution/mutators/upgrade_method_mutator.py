@@ -1,6 +1,6 @@
 """Mutator that changes the upgrade method of an app."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from django_evolution.mutations.base import BaseUpgradeMethodMutation
 from django_evolution.mutators.base import BaseAppStateMutator

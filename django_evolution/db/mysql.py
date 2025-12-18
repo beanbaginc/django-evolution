@@ -1,6 +1,6 @@
 """Evolution operations backend for MySQL/MariaDB."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from django.core.management import color
 

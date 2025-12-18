@@ -5,7 +5,7 @@ Version Added:
     This was previously located in :py:mod:`django_evolution.evolve`.
 """
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from collections import OrderedDict
 from contextlib import contextmanager

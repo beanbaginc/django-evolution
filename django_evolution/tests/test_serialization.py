@@ -1,11 +1,10 @@
-# coding: utf-8
 """Unit tests for the serialization-related functionality.
 
 Version Added:
     2.2
 """
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from collections import OrderedDict
 from unittest import SkipTest

@@ -1,6 +1,6 @@
 """Configures pytest and Django environment setup for Django Evolution."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 import os
 import sqlite3

@@ -1,6 +1,6 @@
 """Signals for monitoring the evolution process."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from django.dispatch import Signal
 

@@ -14,7 +14,7 @@ Version Changed:
    ~django_evolution.evolve.purge_app_task.PurgeAppTask
 """
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 import logging
 

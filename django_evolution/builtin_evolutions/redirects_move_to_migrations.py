@@ -1,6 +1,6 @@
 """Marks django.contrib.redirects as managed by Django migrations."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from django_evolution.mutations import MoveToDjangoMigrations
 

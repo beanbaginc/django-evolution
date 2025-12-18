@@ -1,6 +1,6 @@
 """Constants indicating available Django features."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from inspect import signature
 

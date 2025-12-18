@@ -1,6 +1,6 @@
 """Compatibility patchess for Python and Django versions."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 import logging
 from importlib import import_module

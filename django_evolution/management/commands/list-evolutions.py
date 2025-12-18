@@ -1,4 +1,4 @@
-from __future__ import print_function, unicode_literals
+from __future__ import annotations
 
 from django_evolution.compat.apps import get_apps
 from django_evolution.compat.commands import BaseCommand

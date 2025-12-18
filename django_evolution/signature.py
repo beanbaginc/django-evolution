@@ -127,7 +127,7 @@ Version 2:
         }
 """
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from copy import deepcopy
 from importlib import import_module

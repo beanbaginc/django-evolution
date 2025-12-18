@@ -4,7 +4,7 @@ This provides functions for app registration and lookup. These functions
 translate to the various versions of Django that are supported.
 """
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured

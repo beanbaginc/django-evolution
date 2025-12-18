@@ -1,6 +1,6 @@
 """Unit tests for the MoveToDjangoMigrations mutation."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from django.db import models
 

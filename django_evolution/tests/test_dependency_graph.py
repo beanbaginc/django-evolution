@@ -1,6 +1,6 @@
 """Unit tests for django_evolution.utils.graph.DependencyGraph."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from django_evolution.tests.base_test_case import TestCase
 from django_evolution.utils.graph import DependencyGraph, NodeNotFoundError

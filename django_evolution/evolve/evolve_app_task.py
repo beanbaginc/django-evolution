@@ -5,7 +5,7 @@ Version Added:
     This was previously located in :py:mod:`django_evolution.evolve`.
 """
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 import itertools
 import logging
@@ -1496,10 +1496,7 @@ class EvolveAppTask(BaseEvolutionTask):
         imports.add('from django_evolution.mutations import %s'
                     % ', '.join(sorted(mutation_types)))
 
-        lines = [
-            'from __future__ import unicode_literals',
-            '',
-        ] + sorted(imports)
+        lines = sorted(imports)
 
         lines.append('')
 

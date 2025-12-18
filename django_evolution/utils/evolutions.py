@@ -1,6 +1,6 @@
 """Utilities for working with evolutions and mutations."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 import os
 from importlib import import_module

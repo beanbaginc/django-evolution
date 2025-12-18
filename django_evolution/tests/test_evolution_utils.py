@@ -1,6 +1,6 @@
 """Unit tests for django_evolution.utils.evolutions."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 import os
 

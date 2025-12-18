@@ -1,6 +1,6 @@
 """Evolution operations backend for Postgres."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 import django
 

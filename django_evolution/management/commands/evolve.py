@@ -1,6 +1,6 @@
 """Management command for applying, inspecting, and hinting evolutions."""
 
-from __future__ import print_function, unicode_literals
+from __future__ import annotations
 
 import textwrap
 import os

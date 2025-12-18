@@ -1,6 +1,6 @@
 """Unit tests for django_evolution.conf."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 import pytest
 from django.test.utils import override_settings

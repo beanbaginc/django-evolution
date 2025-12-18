@@ -4,7 +4,7 @@ Version Added:
     2.2
 """
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from django_evolution.mutations.base import BaseMutation
 from django_evolution.mutations.delete_model import DeleteModel

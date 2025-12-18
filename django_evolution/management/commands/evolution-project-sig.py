@@ -4,7 +4,7 @@ Version Added:
     2.3
 """
 
-from __future__ import print_function, unicode_literals
+from __future__ import annotations
 
 import json
 import textwrap

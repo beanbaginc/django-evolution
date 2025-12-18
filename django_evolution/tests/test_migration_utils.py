@@ -1,6 +1,6 @@
 """Unit tests for django_evolution.utils.migrations."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from django.db import DEFAULT_DB_ALIAS, connections, models
 

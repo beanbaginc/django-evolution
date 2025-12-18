@@ -27,7 +27,7 @@ Version Changed:
    ~django_evolution.mutations.sql_mutation.SQLMutation
 """
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from django_evolution.mutations.add_field import AddField
 from django_evolution.mutations.base import (BaseModelFieldMutation,

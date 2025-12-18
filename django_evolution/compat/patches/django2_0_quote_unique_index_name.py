@@ -1,6 +1,6 @@
 """Patch to add missing unique index name quoting on Django 2.0.x."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 try:
     # Django >= 2.0

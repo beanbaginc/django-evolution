@@ -1,6 +1,6 @@
 """Unit tests for the signature-related functionality."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from unittest import skipUnless
 

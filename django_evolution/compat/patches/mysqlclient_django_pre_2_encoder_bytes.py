@@ -17,7 +17,7 @@ Version Added:
     2.1.3
 """
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 
 def needs_patch():

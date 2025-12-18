@@ -1,6 +1,6 @@
 """Unit tests for django_evolution.evolve.Evolver and related classes."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from collections import OrderedDict
 
@@ -296,8 +296,6 @@ class EvolverTests(BaseEvolverTestCase):
         self.assertIsInstance(content[0][0], EvolveAppTask)
         self.assertEqual(
             content[0][1],
-            "from __future__ import unicode_literals\n"
-            "\n"
             "from django_evolution.mutations import ChangeField\n"
             "\n"
             "\n"
@@ -1932,8 +1930,6 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
         content = task.get_evolution_content()
         self.assertEqual(
             content,
-            "from __future__ import unicode_literals\n"
-            "\n"
             "from django_evolution.mutations import ChangeField\n"
             "\n"
             "\n"

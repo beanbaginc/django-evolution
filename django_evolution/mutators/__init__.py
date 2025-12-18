@@ -14,8 +14,7 @@ Version Changed:
    ~django_evolution.mutators.sql_mutator.SQLMutator
 """
 
-from __future__ import unicode_literals
-
+from __future__ import annotations
 
 from django_evolution.mutators.app_mutator import AppMutator
 from django_evolution.mutators.model_mutator import ModelMutator

@@ -1,6 +1,6 @@
 """Utility functions for working with Django Migrations."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from importlib import import_module
 

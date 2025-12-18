@@ -1,6 +1,6 @@
 """Unit tests for django_evolution.compat.apps."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 import django
 from django.core.exceptions import ImproperlyConfigured

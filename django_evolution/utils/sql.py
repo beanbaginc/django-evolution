@@ -1,6 +1,6 @@
 """Utilities for working with SQL statements."""
 
-from __future__ import print_function, unicode_literals
+from __future__ import annotations
 
 import logging
 

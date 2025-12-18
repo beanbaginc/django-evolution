@@ -1,6 +1,6 @@
 """Classes for storing SQL statements and Alter Table operations."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 try:
     # Django >= 2.0

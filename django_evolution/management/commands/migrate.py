@@ -1,6 +1,6 @@
 """Replacement for Django's migrate command."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from django.conf import settings
 from django.core.management import call_command

@@ -4,7 +4,7 @@ Version Added:
     2.2
 """
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from django_evolution.consts import UpgradeMethod
 from django_evolution.mutations.base import BaseUpgradeMethodMutation

@@ -4,7 +4,7 @@ This provides imports for data structures that are needed internally, to
 provide compatibility with different versions of Django.
 """
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 try:
     from collections import OrderedDict

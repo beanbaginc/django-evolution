@@ -1,6 +1,6 @@
 """Picklers for working with serialized data."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 try:
     # Python 3.x

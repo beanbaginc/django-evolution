@@ -4,7 +4,7 @@ These variables and functions can be used to identify the version of
 Review Board. They're largely used for packaging purposes.
 """
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 
 # The version of Django Evolution

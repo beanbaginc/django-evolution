@@ -4,7 +4,7 @@ Version Added:
     2.1
 """
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from django_evolution.compat import six
 from django_evolution.compat.models import get_model_name

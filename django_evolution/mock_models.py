@@ -1,6 +1,6 @@
 """Utilities for building mock database models and fields."""
 
-from __future__ import unicode_literals
+from __future__ import annotations
 
 from functools import partial
 
