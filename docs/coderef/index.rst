@@ -71,7 +71,6 @@ Private API
    django_evolution.compat.db
    django_evolution.compat.models
    django_evolution.compat.picklers
-   django_evolution.compat.py23
    django_evolution.db.common
    django_evolution.db.mysql
    django_evolution.db.postgresql

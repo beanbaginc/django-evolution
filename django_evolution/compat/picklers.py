@@ -1,13 +1,9 @@
-"""Picklers for working with serialized data."""
+"""Compatibility methods for pickle operations."""
 
 from __future__ import annotations
 
-try:
-    # Python 3.x
-    from pickle import _Unpickler as Unpickler
-except ImportError:
-    # Python 2.x
-    from pickle import Unpickler
+import io
+import pickle
 
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.conf import django_evolution_settings
@@ -38,7 +34,7 @@ class SortedDict(dict):
         return OrderedDict.__new__(cls, *args, **kwargs)
 
 
-class DjangoCompatUnpickler(Unpickler):
+class DjangoCompatUnpickler(pickle._Unpickler):
     """Unpickler compatible with changes to Django class/module paths.
 
     This provides compatibility across Django versions for various field types,
@@ -79,4 +75,53 @@ class DjangoCompatUnpickler(Unpickler):
             if field_type in renamed_types:
                 module, name = renamed_types[field_type].rsplit('.', 1)
 
-        return Unpickler.find_class(self, module, name)
+        return pickle._Unpickler.find_class(self, module, name)
+
+
+def pickle_dumps(obj):
+    """Return a pickled representation of an object.
+
+    This will always use Pickle protocol 0, which is the default on Python 2,
+    for compatibility across Python 2 and 3.
+
+    Version Changed:
+        3.0:
+        Moved from :py:mod:`django_evolution.compat.py23`.
+
+    Args:
+        obj (object):
+            The object to dump.
+
+    Returns:
+        unicode:
+        The Unicode pickled representation of the object, safe for storing
+        in the database.
+    """
+    return pickle.dumps(obj, protocol=0).decode('latin1')
+
+
+def pickle_loads(pickled_str):
+    """Return the unpickled data from a pickle payload.
+
+    Version Changed:
+        3.0:
+        Moved from :py:mod:`django_evolution.compat.py23`.
+
+    Args:
+        pickled_str (bytes):
+            The pickled data.
+
+    Returns:
+        object:
+        The unpickled data.
+    """
+    if isinstance(pickled_str, str):
+        pickled_str = pickled_str.encode('latin1')
+
+    try:
+        return pickle.loads(pickled_str)
+    except AttributeError:
+        # We failed to load something from the pickled data. We have to try
+        # again with our own unpickler, which unfortunately won't benefit from
+        # cPickle, but it at least lets us remap things.
+        return DjangoCompatUnpickler(io.BytesIO(pickled_str)).load()
