@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from django.db import connections, models
 
-from django_evolution.compat import six
 from django_evolution.errors import EvolutionNotImplementedError
 from django_evolution.mock_models import create_field
 from django_evolution.mutations.base import BaseModelFieldMutation
@@ -75,7 +74,7 @@ class ChangeField(BaseModelFieldMutation):
 
         params += [
             self.serialize_attr(attr_name, attr_value)
-            for attr_name, attr_value in six.iteritems(self.field_attrs)
+            for attr_name, attr_value in self.field_attrs.items()
         ] + [
             self.serialize_attr('initial', self.initial),
         ]
@@ -141,7 +140,7 @@ class ChangeField(BaseModelFieldMutation):
         field = model._meta.get_field(field_name)
 
         if self.field_type is None:
-            for attr_name in six.iterkeys(self.field_attrs):
+            for attr_name in self.field_attrs.keys():
                 if attr_name not in mutator.evolver.supported_change_attrs:
                     raise EvolutionNotImplementedError(
                         "ChangeField does not support modifying the '%s' "
@@ -193,7 +192,7 @@ class ChangeField(BaseModelFieldMutation):
         """
         changed_field_attrs = {}
 
-        for attr_name, attr_value in six.iteritems(self.field_attrs):
+        for attr_name, attr_value in self.field_attrs.items():
             old_attr_value = old_field_sig.get_attr_value(attr_name)
 
             # Avoid useless SQL commands if nothing has changed.

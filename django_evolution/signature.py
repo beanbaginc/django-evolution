@@ -137,7 +137,6 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db import DEFAULT_DB_ALIAS, models
 from django.db.models import CheckConstraint
 
-from django_evolution.compat import six
 from django_evolution.compat.apps import get_apps, get_app
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.db import db_router_allows_schema_upgrade
@@ -331,11 +330,11 @@ class ProjectSignature(BaseSignature):
         elif sig_version == 1:
             app_sigs_dict = OrderedDict(
                 (app_id, app_sig_dict)
-                for app_id, app_sig_dict in six.iteritems(project_sig_dict)
+                for app_id, app_sig_dict in project_sig_dict.items()
                 if app_id != '__version__'
             )
 
-        for app_id, app_sig_dict in six.iteritems(app_sigs_dict):
+        for app_id, app_sig_dict in app_sigs_dict.items():
             project_sig.add_app_sig(AppSignature.deserialize(
                 app_id=app_id,
                 app_sig_dict=app_sig_dict,
@@ -351,7 +350,7 @@ class ProjectSignature(BaseSignature):
     @property
     def app_sigs(self):
         """The application signatures in the project signature."""
-        return six.itervalues(self._app_sigs)
+        return self._app_sigs.values()
 
     def add_app(self, app, database):
         """Add an application to the project signature.
@@ -421,7 +420,7 @@ class ProjectSignature(BaseSignature):
         app_sig = self._app_sigs.get(app_id)
 
         if app_sig is None:
-            for temp_app_sig in six.itervalues(self._app_sigs):
+            for temp_app_sig in self._app_sigs.values():
                 if temp_app_sig.legacy_app_label == app_id:
                     app_sig = temp_app_sig
                     break
@@ -542,7 +541,7 @@ class ProjectSignature(BaseSignature):
         elif sig_version == 1:
             app_sigs_dict = project_sig_dict
 
-        for app_id, app_sig in six.iteritems(self._app_sigs):
+        for app_id, app_sig in self._app_sigs.items():
             app_sigs_dict[app_id] = app_sig.serialize(sig_version)
 
         return project_sig_dict
@@ -570,7 +569,7 @@ class ProjectSignature(BaseSignature):
             A string representation of the signature.
         """
         return ('<ProjectSignature(apps=%r)>'
-                % list(six.iterkeys(self._app_sigs)))
+                % list(self._app_sigs.keys()))
 
 
 class AppSignature(BaseSignature):
@@ -682,7 +681,7 @@ class AppSignature(BaseSignature):
                       applied_migrations=applied_migrations)
         app_sig._loaded_sig_version = sig_version
 
-        for model_name, model_sig_dict in six.iteritems(model_sigs_dict):
+        for model_name, model_sig_dict in model_sigs_dict.items():
             app_sig.add_model_sig(
                 ModelSignature.deserialize(model_name=model_name,
                                            model_sig_dict=model_sig_dict,
@@ -725,7 +724,7 @@ class AppSignature(BaseSignature):
     @property
     def model_sigs(self):
         """The model signatures stored on the application signature."""
-        return six.itervalues(self._model_sigs)
+        return self._model_sigs.values()
 
     @property
     def applied_migrations(self):
@@ -1023,7 +1022,7 @@ class AppSignature(BaseSignature):
         elif sig_version == 1:
             model_sigs_dict = app_sig_dict
 
-        for model_name, model_sig in six.iteritems(self._model_sigs):
+        for model_name, model_sig in self._model_sigs.items():
             model_sigs_dict[model_name] = model_sig.serialize(sig_version)
 
         return app_sig_dict
@@ -1057,7 +1056,7 @@ class AppSignature(BaseSignature):
         return ('<AppSignature(app_id=%r, legacy_app_label=%r,'
                 ' upgrade_method=%r, models=%r)>'
                 % (self.app_id, self.legacy_app_label, self.upgrade_method,
-                   list(six.iterkeys(self._model_sigs))))
+                   list(self._model_sigs.keys())))
 
 
 class ModelSignature(BaseSignature):
@@ -1085,7 +1084,7 @@ class ModelSignature(BaseSignature):
         meta = model._meta
         model_sig = cls(db_tablespace=meta.db_tablespace,
                         model_name=meta.object_name,
-                        pk_column=six.text_type(meta.pk.column),
+                        pk_column=str(meta.pk.column),
                         table_name=meta.db_table,
                         unique_together=meta.unique_together,
                         unique_together_applied=True)
@@ -1172,7 +1171,7 @@ class ModelSignature(BaseSignature):
                                            sig_version=sig_version,
                                            database=database))
 
-        for field_name, field_sig_dict in six.iteritems(fields_sig_dict):
+        for field_name, field_sig_dict in fields_sig_dict.items():
             model_sig.add_field_sig(
                 FieldSignature.deserialize(field_name=field_name,
                                            field_sig_dict=field_sig_dict,
@@ -1282,7 +1281,7 @@ class ModelSignature(BaseSignature):
     @property
     def field_sigs(self):
         """The field signatures on the model signature."""
-        return six.itervalues(self._field_sigs)
+        return self._field_sigs.values()
 
     def add_field(self, field):
         """Add a field to the model signature.
@@ -1622,7 +1621,7 @@ class ModelSignature(BaseSignature):
             },
             'fields': OrderedDict(
                 (field_name, field_sig.serialize(sig_version))
-                for field_name, field_sig in six.iteritems(self._field_sigs)
+                for field_name, field_sig in self._field_sigs.items()
             ),
         }
 
@@ -1682,10 +1681,10 @@ class ModelSignature(BaseSignature):
 
         return [
             tuple(
-                six.text_type(_value)
-                for _value in _item
+                str(value)
+                for value in item
             )
-            for _item in together
+            for item in together
         ]
 
 
@@ -1794,7 +1793,7 @@ class ConstraintSignature(BaseSignature):
 
             kwargs = {
                 key: cls._deserialize_attr_value(arg_value)
-                for key, arg_value in six.iteritems(sig_value['kwargs'])
+                for key, arg_value in sig_value['kwargs'].items()
             }
 
             # Let any exception bubble up.
@@ -1821,7 +1820,7 @@ class ConstraintSignature(BaseSignature):
         norm_attrs = {}
 
         if attrs:
-            for key, value in six.iteritems(attrs):
+            for key, value in attrs.items():
                 # For comparison purposes, we need to ensure that we're
                 # consistent with tuples and lists. Django may cast to tuples
                 # for some attribute values while deserialization from JSON
@@ -1881,7 +1880,7 @@ class ConstraintSignature(BaseSignature):
 
         attrs = {}
 
-        for key, value in six.iteritems(self.attrs):
+        for key, value in self.attrs.items():
             if hasattr(value, 'deconstruct'):
                 attr_type_path, attr_args, attr_kwargs = value.deconstruct()
 
@@ -2077,7 +2076,7 @@ class IndexSignature(BaseSignature):
             # attribute values while deserialization from JSON would result in
             # lists. We can store any way we need in this class, so we're
             # standardizing on lists.
-            for key, value in six.iteritems(attrs):
+            for key, value in attrs.items():
                 if isinstance(value, tuple):
                     value = list(value)
 
@@ -2240,7 +2239,7 @@ class FieldSignature(BaseSignature):
 
         defaults = cls._get_defaults_for_field_type(field_type)
 
-        for attr, default in six.iteritems(defaults):
+        for attr, default in defaults.items():
             alias = cls._ATTRIBUTE_ALIASES.get(attr)
 
             if alias and hasattr(field, alias):
@@ -2368,7 +2367,7 @@ class FieldSignature(BaseSignature):
             unicode:
             An attribute for a field type.
         """
-        return six.iterkeys(cls._get_defaults_for_field_type(field_type))
+        return cls._get_defaults_for_field_type(field_type).keys()
 
     @classmethod
     def _get_defaults_for_field_type(cls, field_type):

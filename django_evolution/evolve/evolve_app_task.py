@@ -11,7 +11,6 @@ import itertools
 import logging
 from collections import OrderedDict
 
-from django_evolution.compat import six
 from django_evolution.compat.db import (db_get_installable_models_for_app,
                                         sql_create_models)
 from django_evolution.compat.translation import gettext as _
@@ -244,7 +243,7 @@ class EvolveAppTask(BaseEvolutionTask):
                     # Process any evolutions for the apps.
                     task_evolutions = batch_info.get('task_evolutions', {})
 
-                    for task, task_info in six.iteritems(task_evolutions):
+                    for task, task_info in task_evolutions.items():
                         task_sql = task_info.get('sql')
 
                         if task_sql:
@@ -913,7 +912,7 @@ class EvolveAppTask(BaseEvolutionTask):
                 task_evolutions = batch_info.get('task_evolutions', {})
 
                 for (batch_task,
-                     batch_task_info) in six.iteritems(task_evolutions):
+                     batch_task_info) in task_evolutions.items():
                     # This is going to look pretty similar to what's already
                     # been done in the prepare() stage, and it is. The
                     # difference is that we're now running operations on the
@@ -1017,7 +1016,7 @@ class EvolveAppTask(BaseEvolutionTask):
                                           capture=True)
         except Exception as e:
             last_sql_statement = getattr(e, 'last_sql_statement', None)
-            detailed_error = six.text_type(e)
+            detailed_error = str(e)
 
             if len(tasks) == 1:
                 app_label = tasks[0].app_label
@@ -1075,7 +1074,7 @@ class EvolveAppTask(BaseEvolutionTask):
             raise EvolutionExecutionError(
                 _('Error applying deferred SQL for new database models: %s')
                 % e,
-                detailed_error=six.text_type(e),
+                detailed_error=str(e),
                 last_sql_statement=getattr(e, 'last_sql_statement', None))
 
     def __init__(self, evolver, app, evolutions=None, migrations=None):
@@ -1451,7 +1450,7 @@ class EvolveAppTask(BaseEvolutionTask):
                     _('Error applying evolution for %s: %s')
                     % (self.app_label, e),
                     app_label=self.app_label,
-                    detailed_error=six.text_type(e),
+                    detailed_error=str(e),
                     last_sql_statement=getattr(e, 'last_sql_statement'))
 
             applied_evolution.send(sender=evolver,

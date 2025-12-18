@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from collections import OrderedDict
 
-from django_evolution.compat import six
-
 
 def filter_dup_list_items(items):
     """Return list items with duplicates filtered out.
@@ -28,10 +26,12 @@ def filter_dup_list_items(items):
         list:
         The resulting de-duplicated list of items.
     """
-    return list(six.iterkeys(OrderedDict(
+    d = OrderedDict(
         (item, True)
         for item in items
-    )))
+    )
+
+    return list(d.keys())
 
 
 def merge_dicts(dest, source):
@@ -66,7 +66,7 @@ def merge_dicts(dest, source):
             A key was present in both dictionaries with a type that could not
             be merged.
     """
-    for key, value in six.iteritems(source):
+    for key, value in source.items():
         if key in dest:
             if isinstance(value, list):
                 if not isinstance(dest[key], list):

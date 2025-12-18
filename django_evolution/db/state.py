@@ -6,7 +6,6 @@ from copy import deepcopy
 
 from django.db import connections
 
-from django_evolution.compat import six
 from django_evolution.compat.db import convert_table_name
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.errors import DatabaseStateError
@@ -352,8 +351,7 @@ class DatabaseState(object):
             except KeyError:
                 continue
 
-            for index_state in six.itervalues(indexes):
-                yield index_state
+            yield from indexes.values()
 
     def rescan_tables(self):
         """Rescan the list of tables from the database.
@@ -384,7 +382,7 @@ class DatabaseState(object):
 
             constraints = evolver.get_constraints_for_table(table_name)
 
-            for constraint_name, constraint_info in six.iteritems(constraints):
+            for constraint_name, constraint_info in constraints.items():
                 self.add_index(table_name=table_name,
                                index_name=constraint_name,
                                columns=constraint_info['columns'],

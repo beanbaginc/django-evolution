@@ -9,10 +9,8 @@ from django.db import models
 from django.db.models.signals import post_init
 from django.utils.timezone import now
 
-from django_evolution.compat import six
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.py23 import pickle_dumps, pickle_loads
-from django_evolution.compat.six import python_2_unicode_compatible
 from django_evolution.compat.translation import gettext_lazy as _
 from django_evolution.signature import ProjectSignature
 
@@ -112,7 +110,7 @@ class SignatureField(models.TextField):
         """
         if not value:
             return ProjectSignature()
-        elif isinstance(value, six.string_types):
+        elif isinstance(value, str):
             if value.startswith('json!'):
                 loaded_value = json.loads(value[len('json!'):],
                                           object_pairs_hook=OrderedDict)
@@ -211,7 +209,7 @@ class SignatureField(models.TextField):
             TypeError:
                 The data provided was not of a supported type.
         """
-        if isinstance(data, six.string_types):
+        if isinstance(data, str):
             return data
         elif isinstance(data, ProjectSignature):
             serialized_data = data.serialize()
@@ -225,7 +223,6 @@ class SignatureField(models.TextField):
             raise TypeError('Unsupported signature type %s' % type(data))
 
 
-@python_2_unicode_compatible
 class Version(models.Model):
     signature = SignatureField()
     when = models.DateTimeField(default=now)
@@ -255,7 +252,6 @@ class Version(models.Model):
         db_table = 'django_project_version'
 
 
-@python_2_unicode_compatible
 class Evolution(models.Model):
     version = models.ForeignKey(Version,
                                 related_name='evolutions',

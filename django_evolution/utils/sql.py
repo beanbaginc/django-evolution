@@ -7,7 +7,6 @@ import logging
 from django.db import connections
 from django.db.transaction import TransactionManagementError
 
-from django_evolution.compat import six
 from django_evolution.compat.db import atomic
 from django_evolution.db import EvolutionOperationsMulti
 
@@ -309,7 +308,7 @@ class SQLExecutor(object):
                     else:
                         params = None
 
-                    assert isinstance(statement, six.text_type)
+                    assert isinstance(statement, str)
 
                     statement = statement.strip()
 

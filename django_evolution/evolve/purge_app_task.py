@@ -7,7 +7,6 @@ Version Added:
 
 from __future__ import annotations
 
-from django_evolution.compat import six
 from django_evolution.compat.translation import gettext as _
 from django_evolution.errors import EvolutionExecutionError
 from django_evolution.evolve.base import BaseEvolutionTask
@@ -89,7 +88,7 @@ class PurgeAppTask(BaseEvolutionTask):
                     _('Error purging app "%s": %s')
                     % (self.app_label, e),
                     app_label=self.app_label,
-                    detailed_error=six.text_type(e),
+                    detailed_error=str(e),
                     last_sql_statement=getattr(e, 'last_sql_statement'))
 
     def __str__(self):

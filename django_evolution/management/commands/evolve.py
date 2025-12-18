@@ -11,10 +11,8 @@ from django.core.management.base import CommandError
 from django.db.utils import DEFAULT_DB_ALIAS
 from django.dispatch import receiver
 
-from django_evolution.compat import six
 from django_evolution.compat.apps import get_app
 from django_evolution.compat.commands import BaseCommand
-from django_evolution.compat.six.moves import input
 from django_evolution.compat.translation import ngettext, gettext as _
 from django_evolution.conf import django_evolution_settings
 from django_evolution.errors import EvolutionException
@@ -198,7 +196,7 @@ class Command(BaseCommand):
                             'Run `./manage.py evolve --execute` to apply '
                             'the evolution.\n'))
         except EvolutionException as e:
-            raise CommandError(six.text_type(e))
+            raise CommandError(str(e))
 
     def _add_tasks(self, app_labels):
         """Add tasks to the evolver, based on the command options.
@@ -491,7 +489,7 @@ class Command(BaseCommand):
                     _('The SQL statement that failed was: %s\n')
                     % (e.last_sql_statement,))
 
-            raise CommandError(six.text_type(e))
+            raise CommandError(str(e))
 
         if verbosity > 0:
             if evolver.installed_new_database:

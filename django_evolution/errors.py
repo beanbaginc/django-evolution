@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from django_evolution.compat import six
-
 
 class EvolutionException(Exception):
     """Base class for a Django Evolution exception."""
@@ -135,7 +133,7 @@ class MigrationConflictsError(BaseMigrationError):
             "--merge'"
             % '; '.join(
                 '%s in %s' % (', '.join(sorted(conflict_names)), app_label)
-                for app_label, conflict_names in six.iteritems(conflicts)
+                for app_label, conflict_names in conflicts.items()
             ))
 
 

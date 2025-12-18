@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import io
+import pickle
 
-from django_evolution.compat import six
 from django_evolution.compat.picklers import DjangoCompatUnpickler
-from django_evolution.compat.six.moves import cPickle as pickle
 
 
 def pickle_dumps(obj):
@@ -38,7 +37,7 @@ def pickle_loads(pickled_str):
         object:
         The unpickled data.
     """
-    if isinstance(pickled_str, six.text_type):
+    if isinstance(pickled_str, str):
         pickled_str = pickled_str.encode('latin1')
 
     try:

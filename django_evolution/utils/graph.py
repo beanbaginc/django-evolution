@@ -6,7 +6,6 @@ Version Added:
 
 from __future__ import annotations
 
-from django_evolution.compat import six
 from django_evolution.compat.models import get_model_name
 from django_evolution.models import Evolution
 from django_evolution.support import supports_migrations
@@ -172,8 +171,8 @@ class DependencyGraph(object):
                 The key of the node that ``node_key`` depends on.
         """
         assert not self._finalized
-        assert isinstance(node_key, six.text_type)
-        assert isinstance(dep_node_key, six.text_type)
+        assert isinstance(node_key, str)
+        assert isinstance(dep_node_key, str)
 
         self._pending_deps.add((node_key, dep_node_key, optional))
 
@@ -264,7 +263,7 @@ class DependencyGraph(object):
         return sorted(
             [
                 node
-                for node in six.itervalues(self._nodes)
+                for node in self._nodes.values()
                 if not node.required_by
             ],
             key=lambda node: node.insert_index)
@@ -686,7 +685,7 @@ class EvolutionGraph(DependencyGraph):
 
         if self.process_evolution_deps:
             for evolution_target in deps['before_evolutions']:
-                if isinstance(evolution_target, six.text_type):
+                if isinstance(evolution_target, str):
                     # If only an app name is specified, then the special
                     # __first__ anchor node for the app will depend on this
                     # node.
@@ -721,7 +720,7 @@ class EvolutionGraph(DependencyGraph):
 
         if self.process_evolution_deps:
             for evolution_target in deps.get('after_evolutions', []):
-                if isinstance(evolution_target, six.text_type):
+                if isinstance(evolution_target, str):
                     # If only an app name is specified, then depend on the
                     # special __first__ anchor node for the app.
                     evolution_target = (evolution_target, '__last__')

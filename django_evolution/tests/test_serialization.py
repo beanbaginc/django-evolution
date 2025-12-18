@@ -18,7 +18,6 @@ except ImportError:
     # Django <= 3.0
     Deferrable = None
 
-from django_evolution.compat import six
 from django_evolution.placeholders import NullFieldInitialCallback
 from django_evolution.serialization import (CombinedExpression,
                                             deserialize_from_signature,
@@ -176,13 +175,6 @@ class DeserializeFromSignatureTests(TestCase):
         """Testing deserialize_from_signature with list"""
         self.assertEqual(deserialize_from_signature([1, 2, 'foo']),
                          [1, 2, 'foo'])
-
-    def test_with_long(self):
-        """Testing deserialize_from_signature with long"""
-        if not six.PY2:
-            raise SkipTest('Applicable on Python 2 only.')
-
-        self.assertEqual(deserialize_from_signature(long(123)), long(123))
 
     def test_with_none(self):
         """Testing deserialize_from_signature with None"""
@@ -354,13 +346,6 @@ class SerializeToPythonTests(TestCase):
         self.assertEqual(serialize_to_python([1, 2, 'foo']),
                          "[1, 2, 'foo']")
 
-    def test_with_long(self):
-        """Testing serialize_to_python with long"""
-        if not six.PY2:
-            raise SkipTest('Applicable on Python 2 only.')
-
-        self.assertEqual(serialize_to_python(long(123)), '123L')
-
     def test_with_none(self):
         """Testing serialize_to_python with None"""
         self.assertEqual(serialize_to_python(None), 'None')
@@ -522,13 +507,6 @@ class SerializeToSignatureTests(TestCase):
         """Testing serialize_to_signature with list"""
         self.assertEqual(serialize_to_signature([1, 2, 'foo']),
                          [1, 2, 'foo'])
-
-    def test_with_long(self):
-        """Testing serialize_to_signature with long"""
-        if not six.PY2:
-            raise SkipTest('Applicable on Python 2 only.')
-
-        self.assertEqual(serialize_to_signature(long(123)), long(123))
 
     def test_with_none(self):
         """Testing serialize_to_signature with None"""

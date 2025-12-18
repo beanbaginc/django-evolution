@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from django.db.utils import DEFAULT_DB_ALIAS
 
-from django_evolution.compat import six
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.db.state import DatabaseState
 from django_evolution.errors import SimulationFailure
@@ -187,7 +186,7 @@ class Simulation(object):
         }
         error_dict.update(
             (key, getattr(self.mutation, value))
-            for key, value in six.iteritems(self.mutation.error_vars)
+            for key, value in self.mutation.error_vars.items()
         )
         error_dict.update(error_vars)
 

@@ -10,7 +10,6 @@ from copy import deepcopy
 
 from django.db.models import CheckConstraint
 
-from django_evolution.compat import six
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.mutations.base import BaseModelMutation
 from django_evolution.signature import (ConstraintSignature,
@@ -77,7 +76,7 @@ class ChangeMeta(BaseModelMutation):
         elif prop_name == 'constraints':
             # Django >= 2.2
             norm_value = [
-                OrderedDict(sorted(six.iteritems(constraint_data),
+                OrderedDict(sorted(constraint_data.items(),
                                    key=lambda pair: pair[0]))
                 for constraint_data in self.new_value
             ]
@@ -87,7 +86,7 @@ class ChangeMeta(BaseModelMutation):
         elif prop_name == 'indexes':
             # Django >= 1.11
             norm_value = [
-                OrderedDict(sorted(six.iteritems(index_data),
+                OrderedDict(sorted(index_data.items(),
                                    key=lambda pair: pair[0]))
                 for index_data in self.new_value
             ]

@@ -13,7 +13,6 @@ except ImportError:
     # Django < 1.7
     migrations = None
 
-from django_evolution.compat import six
 from django_evolution.compat.apps import (get_app,
                                           get_apps,
                                           register_app_models)
@@ -2155,10 +2154,10 @@ class EvolveAppTaskTests(MigrationsTestsMixin, BaseEvolverTestCase):
             batch_task_evolutions = batch['task_evolutions']
 
             # Order will matter here.
-            self.assertEqual(list(six.iterkeys(batch_task_evolutions)),
-                             list(six.iterkeys(expected_task_evolutions)))
+            self.assertEqual(list(batch_task_evolutions.keys()),
+                             list(expected_task_evolutions.keys()))
 
-            for task, info in six.iteritems(expected_task_evolutions):
+            for task, info in expected_task_evolutions.items():
                 batch_task_info = batch_task_evolutions[task]
 
                 if 'evolutions' in info:

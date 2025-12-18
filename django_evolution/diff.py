@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from django.db import models
 
-from django_evolution.compat import six
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.models import get_model
 from django_evolution.mutations import (AddField,
@@ -114,7 +113,7 @@ class Diff(object):
             for app_label in self.deleted
         ]
 
-        for app_label, app_changes in six.iteritems(self.changed):
+        for app_label, app_changes in self.changed.items():
             lines += [
                 'The model %s.%s has been deleted' % (app_label, model_name)
                 for model_name in app_changes.get('deleted', {})
@@ -134,7 +133,7 @@ class Diff(object):
 
             app_changed = app_changes.get('changed', {})
 
-            for model_name, change in six.iteritems(app_changed):
+            for model_name, change in app_changed.items():
                 lines.append('In model %s.%s:' % (app_label, model_name))
                 lines += [
                     "    Field '%s' has been added" % field_name
@@ -146,7 +145,7 @@ class Diff(object):
 
                 changed = change.get('changed', {})
 
-                for field_name, field_change in six.iteritems(changed):
+                for field_name, field_change in changed.items():
                     lines.append("    In field '%s':" % field_name)
 
                     if 'field_type' in field_change:
@@ -183,12 +182,12 @@ class Diff(object):
 
         mutations = OrderedDict()
 
-        for app_label, app_changes in six.iteritems(self.changed):
+        for app_label, app_changes in self.changed.items():
             app_sig = self.target_project_sig.get_app_sig(app_label)
             model_changes = app_changes.get('changed', {})
             app_mutations = []
 
-            for model_name, model_change in six.iteritems(model_changes):
+            for model_name, model_change in model_changes.items():
                 model_sig = app_sig.get_model_sig(model_name)
 
                 # Process the list of added fields for the model.
@@ -227,7 +226,7 @@ class Diff(object):
                 # Process the list of changed fields for the model.
                 field_changes = model_change.get('changed', {})
 
-                for field_name, field_change in six.iteritems(field_changes):
+                for field_name, field_change in field_changes.items():
                     field_sig = model_sig.get_field_sig(field_name)
                     changed_attrs = OrderedDict()
 

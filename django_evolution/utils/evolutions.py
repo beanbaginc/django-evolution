@@ -9,7 +9,6 @@ from django.db import connections
 from django.db.utils import DEFAULT_DB_ALIAS
 
 from django_evolution.builtin_evolutions import BUILTIN_SEQUENCES
-from django_evolution.compat import six
 from django_evolution.conf import django_evolution_settings
 from django_evolution.consts import EvolutionsSource, UpgradeMethod
 from django_evolution.errors import EvolutionException
@@ -296,7 +295,7 @@ def get_evolution_dependencies(app, evolution_label, custom_evolutions=[]):
         mutation_deps = mutation.generate_dependencies(app_label=app_label)
 
         if mutation_deps:
-            for key, value in six.iteritems(mutation_deps):
+            for key, value in mutation_deps.items():
                 assert key in deps, (
                     '"%s" is not a valid dependency key from mutation %r'
                     % (key, mutation))

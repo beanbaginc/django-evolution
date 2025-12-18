@@ -18,7 +18,6 @@ except ImportError:
     # Django < 1.8
     from django.test.signals import setting_changed
 
-from django_evolution.compat import six
 from django_evolution.deprecation import RemovedInDjangoEvolution30Warning
 
 
@@ -110,7 +109,7 @@ class DjangoEvolutionSettings(object):
             self.replace_settings({})
 
             # Look for deprecated settings.
-            for key in six.iterkeys(self._DEPRECATED_SETTINGS):
+            for key in self._DEPRECATED_SETTINGS:
                 if hasattr(settings_module, key):
                     self._set_deprecated_setting(
                         key,

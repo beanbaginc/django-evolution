@@ -10,7 +10,6 @@ from django.db.models import F, Q
 from django.test.testcases import TestCase as DjangoTestCase
 from django.test.utils import override_settings
 
-from django_evolution.compat import six
 from django_evolution.compat.apps import get_app, unregister_app
 from django_evolution.compat.db import sql_delete
 from django_evolution.db.state import DatabaseState
@@ -267,7 +266,7 @@ class TestCase(DjangoTestCase):
             raise ValueError('"%s" is not a valid SQL mapping name.'
                              % name)
 
-        if isinstance(sql, six.text_type):
+        if isinstance(sql, str):
             sql = sql.splitlines()
 
         return sql
@@ -456,7 +455,7 @@ class TestCase(DjangoTestCase):
             if match:
                 for gen_line, expected_line in zip(norm_generated_sql,
                                                    norm_expected_sql):
-                    if ((isinstance(expected_line, six.text_type) and
+                    if ((isinstance(expected_line, str) and
                          gen_line != expected_line) or
                         (hasattr(line, 'pattern') and
                          not line.match(gen_line))):
@@ -500,7 +499,7 @@ class TestCase(DjangoTestCase):
             # names, and not Unicode strings).
             self.assertIsInstance(f1, F)
             self.assertIsInstance(f2, F)
-            self.assertEqual(six.text_type(f1), six.text_type(f2))
+            self.assertEqual(str(f1), str(f2))
 
     def assertQEqual(self, q1, q2, msg=None):
         """Assert that two Q objects are identical.
@@ -536,7 +535,7 @@ class TestCase(DjangoTestCase):
             # names, and not Unicode strings).
             self.assertIsInstance(q1, Q, msg=msg)
             self.assertIsInstance(q2, Q, msg=msg)
-            self.assertEqual(six.text_type(q1), six.text_type(q2), msg=msg)
+            self.assertEqual(str(q1), str(q2), msg=msg)
 
     def _normalize_sql_for_compare(self, generated_sql, expected_sql):
         """Normalize the generated and expected SQL for comparison.
@@ -571,7 +570,7 @@ class TestCase(DjangoTestCase):
         norm_expected_sql = []
 
         for outer_expected in expected_sql:
-            if (isinstance(outer_expected, six.text_type) or
+            if (isinstance(outer_expected, str) or
                 hasattr(outer_expected, 'pattern')):
                 norm_expected_sql.append(outer_expected)
 
@@ -1055,8 +1054,8 @@ class EvolutionTestCase(TestCase):
         self.test_database_state = self.database_state.clone()
         test_sig = self.start_sig.clone()
 
-        with ensure_test_db(model_entries=six.iteritems(self.start),
-                            end_model_entries=six.iteritems(end),
+        with ensure_test_db(model_entries=self.start.items(),
+                            end_model_entries=end.items(),
                             app_label=app_label,
                             database=db_name):
             if create_test_data_func:

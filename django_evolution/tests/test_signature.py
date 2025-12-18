@@ -31,7 +31,6 @@ except ImportError:
     # Django <= 1.10
     Index = None
 
-from django_evolution.compat import six
 from django_evolution.compat.apps import get_app
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.models import (
@@ -935,7 +934,7 @@ class AppSignatureTests(BaseSignatureTestCase):
             app_sig = AppSignature.from_app(get_app('django_evolution'),
                                             database=DEFAULT_DB_ALIAS)
 
-        model_names = set(six.iterkeys(app_sig.serialize(sig_version=1)))
+        model_names = set(app_sig.serialize(sig_version=1).keys())
         self.assertIn('Evolution', model_names)
         self.assertNotIn('Version', model_names)
 

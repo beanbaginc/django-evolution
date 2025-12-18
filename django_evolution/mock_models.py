@@ -8,7 +8,6 @@ from django.db import models
 from django.db.models.base import ModelState
 from django.db.models.fields.related import RECURSIVE_RELATIONSHIP_CONSTANT
 
-from django_evolution.compat import six
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.models import (
     FieldDoesNotExist,
@@ -255,14 +254,14 @@ class MockMeta(object):
     @property
     def local_fields(self):
         """A list of all local fields on the model."""
-        return list(six.itervalues(self._fields))
+        return list(self._fields.values())
 
     fields = local_fields
 
     @property
     def local_many_to_many(self):
         """A list of all local Many-to-Many fields on the model."""
-        return list(six.itervalues(self._many_to_many))
+        return list(self._many_to_many.values())
 
     @property
     def label(self):

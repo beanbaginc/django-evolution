@@ -11,7 +11,6 @@ from django.core.management.base import CommandError
 
 from django_evolution.compat.apps import get_app
 from django_evolution.compat.commands import BaseCommand
-from django_evolution.compat.six.moves import input
 from django_evolution.compat.translation import gettext as _
 from django_evolution.models import Evolution, Version
 from django_evolution.utils.evolutions import get_evolution_sequence

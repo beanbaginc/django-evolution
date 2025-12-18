@@ -6,7 +6,6 @@ from collections import defaultdict
 
 from django.db import router
 
-from django_evolution.compat import six
 from django_evolution.compat.models import (get_field_is_hidden,
                                             get_field_is_many_to_many,
                                             get_field_is_relation,
@@ -114,7 +113,7 @@ def get_model_rel_tree():
                 remote_field_model = get_remote_field_model(remote_field)
 
                 # Make sure this isn't a "self" relation or similar.
-                if not isinstance(remote_field_model, six.string_types):
+                if not isinstance(remote_field_model, str):
                     db_table = \
                         remote_field_model._meta.concrete_model._meta.db_table
                     rel_tree[db_table].append(field)

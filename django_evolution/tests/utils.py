@@ -11,7 +11,6 @@ from django.conf import settings
 from django.db import connections
 from django.db.utils import ConnectionHandler, DEFAULT_DB_ALIAS
 
-from django_evolution.compat import six
 from django_evolution.compat.apps import (get_app,
                                           is_app_registered,
                                           register_app,
@@ -306,7 +305,7 @@ def replace_models(database_state, apps_to_models):
     """
     old_models_info = []
 
-    for app_label, app_models in six.iteritems(apps_to_models):
+    for app_label, app_models in apps_to_models.items():
         app = get_app(app_label)
         old_models_info.append((app_label, get_models(app)))
 
@@ -316,7 +315,7 @@ def replace_models(database_state, apps_to_models):
             app_model.__module__ = app.__name__
 
     try:
-        for app_label, app_models in six.iteritems(apps_to_models):
+        for app_label, app_models in apps_to_models.items():
             register_models(database_state=database_state,
                             models=app_models,
                             new_app_label=app_label)

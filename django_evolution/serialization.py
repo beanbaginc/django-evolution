@@ -42,7 +42,6 @@ except ImportError:
     # Django <= 1.7
     CombinedExpression = None
 
-from django_evolution.compat import six
 from django_evolution.placeholders import BasePlaceholder
 
 
@@ -263,8 +262,8 @@ class DictSerialization(BaseSerialization):
             The resulting dictionary.
         """
         return {
-            _key: serialize_to_signature(_value)
-            for _key, _value in six.iteritems(value)
+            key: serialize_to_signature(value)
+            for key, value in value.items()
         }
 
     @classmethod
@@ -280,15 +279,15 @@ class DictSerialization(BaseSerialization):
             The resulting Python code.
         """
         if isinstance(value, OrderedDict):
-            items = six.iteritems(value)
+            items = value.items()
         else:
-            items = sorted(six.iteritems(value),
+            items = sorted(value.items(),
                            key=lambda pair: pair[0])
 
         return '{%s}' % ', '.join(
-            '%s: %s' % (serialize_to_python(_key),
-                        serialize_to_python(_value))
-            for _key, _value in items
+            '%s: %s' % (serialize_to_python(key),
+                        serialize_to_python(value))
+            for key, value in items
         )
 
     @classmethod
@@ -304,8 +303,8 @@ class DictSerialization(BaseSerialization):
             The resulting value.
         """
         return {
-            _key: deserialize_from_signature(_value)
-            for _key, _value in six.iteritems(payload)
+            key: deserialize_from_signature(value)
+            for key, value in payload.items()
         }
 
 
@@ -518,18 +517,7 @@ class StringSerialization(PrimitiveSerialization):
         if isinstance(value, bytes):
             value = value.decode('utf-8')
 
-        result = repr(value)
-
-        if six.PY2 and result.startswith('u'):
-            # Make sure we're getting the real Unicode values out, and not
-            # string escapes.
-            #
-            # Users will need to add a "coding: utf-8" to the file, if
-            # Unicode characters are present and they care about support
-            # for Python 2.7.
-            result = result[1:].decode('unicode-escape')
-
-        return result
+        return repr(value)
 
 
 class DeconstructedSerialization(BaseSerialization):
@@ -598,9 +586,9 @@ class DeconstructedSerialization(BaseSerialization):
 
         if kwargs:
             all_args += [
-                '%s=%s' % (_key, serialize_to_python(_value))
-                for _key, _value in sorted(six.iteritems(kwargs),
-                                           key=lambda pair: pair[0])
+                '%s=%s' % (key, serialize_to_python(value))
+                for key, value in sorted(kwargs.items(),
+                                         key=lambda pair: pair[0])
             ]
 
         return '%s(%s)' % (cls_name, ', '.join(all_args))
@@ -689,13 +677,13 @@ class DeconstructedSerialization(BaseSerialization):
             raise ImportError('Unable to locate value type %s' % cls_path)
 
         args = tuple(
-            deserialize_from_signature(_arg_value)
-            for _arg_value in payload['args']
+            deserialize_from_signature(arg_value)
+            for arg_value in payload['args']
         )
 
         kwargs = {
-            _key: deserialize_from_signature(_arg_value)
-            for _key, _arg_value in six.iteritems(payload['kwargs'])
+            key: deserialize_from_signature(arg_value)
+            for key, arg_value in payload['kwargs'].items()
         }
 
         return cls_type, args, kwargs
@@ -913,8 +901,6 @@ class QSerialization(DeconstructedSerialization):
             object:
             The resulting object.
         """
-        norm_keywords = six.PY2
-
         negated = kwargs.pop('_negated', False)
         connector = kwargs.pop('_connector', Q.default)
 
@@ -922,23 +908,9 @@ class QSerialization(DeconstructedSerialization):
 
         for arg in args:
             if isinstance(arg, (list, tuple)):
-                if norm_keywords:
-                    # On Python 2, keyword arguments should be native strings.
-                    # This isn't a problem for general usage, but it does
-                    # affect the string representation, which assertQEqual()
-                    # uses to determine equality.
-                    arg = (arg[0].encode('utf-8'), arg[1])
-
                 new_args.append(tuple(arg))
             else:
                 new_args.append(arg)
-
-        if norm_keywords:
-            # We also need to normalize anything found in kwargs.
-            kwargs = {
-                str(_key): _value
-                for _key, _value in six.iteritems(kwargs)
-            }
 
         q = type_cls(*new_args, **kwargs)
         q.connector = connector
@@ -967,7 +939,7 @@ def _init_serialization():
     _serialization_map = {
         # String-based
         bytes: StringSerialization,
-        six.text_type: StringSerialization,
+        str: StringSerialization,
 
         # Dictionary-based
         OrderedDict: DictSerialization,
@@ -987,11 +959,6 @@ def _init_serialization():
         # Class references
         type: ClassSerialization,
     }
-
-    if six.PY2:
-        _serialization_map.update({
-            long: PrimitiveSerialization,
-        })
 
 
 def _get_serializer_for_value(value, serializing):

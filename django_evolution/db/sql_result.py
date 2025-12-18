@@ -9,8 +9,6 @@ except ImportError:
     # Django <= 1.11
     Statement = None
 
-from django_evolution.compat import six
-
 
 class SQLResult(object):
     """Represents one or more SQL statements.
@@ -60,7 +58,7 @@ class SQLResult(object):
             self.post_sql += sql_or_result.post_sql
         elif isinstance(sql_or_result, list):
             self.sql += sql_or_result
-        elif isinstance(sql_or_result, six.string_types + (tuple,)):
+        elif isinstance(sql_or_result, (str, tuple)):
             self.sql.append(sql_or_result)
         elif Statement is not None and isinstance(sql_or_result, Statement):
             self.sql.append('%s;' % sql_or_result)

@@ -10,7 +10,6 @@ from functools import partial
 
 from django.db import models
 
-from django_evolution.compat import six
 from django_evolution.mock_models import MockModel, MockRelated, create_field
 from django_evolution.mutations.base import BaseModelFieldMutation
 from django_evolution.signature import FieldSignature
@@ -66,7 +65,7 @@ class AddField(BaseModelFieldMutation):
         """
         params = [
             self.serialize_attr(key, value)
-            for key, value in six.iteritems(self.field_attrs)
+            for key, value in self.field_attrs.items()
         ]
 
         if self.initial is not None:

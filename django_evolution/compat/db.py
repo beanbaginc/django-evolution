@@ -44,7 +44,6 @@ except ImportError:
     # Django < 2.2
     names_digest = None
 
-from django_evolution.compat import six
 from django_evolution.compat.models import get_models, get_remote_field
 from django_evolution.support import supports_index_together
 from django_evolution.utils.apps import get_app_label
@@ -271,7 +270,7 @@ def sql_create_models(models, tables=None, db_name=None,
 
             sql += model_sql
 
-            for ref_to, refs in six.iteritems(references):
+            for ref_to, refs in references.items():
                 pending_references.setdefault(ref_to, []).extend(refs)
 
                 if ref_to in seen_models:
@@ -402,7 +401,7 @@ def sql_create_for_many_to_many_field(connection, model, field):
 
             # Sort the list, in order to create consistency in the order of
             # ALTER TABLEs. This is primarily needed for unit tests.
-            for refto, refs in sorted(six.iteritems(references),
+            for refto, refs in sorted(references.items(),
                                       key=lambda i: repr(i)):
                 pending_references.setdefault(refto, []).extend(refs)
                 sql.extend(sql_add_constraints(connection, refto,

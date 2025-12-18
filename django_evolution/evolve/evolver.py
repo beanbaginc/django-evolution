@@ -13,7 +13,6 @@ from contextlib import contextmanager
 from django.db import connections
 from django.db.utils import DEFAULT_DB_ALIAS
 
-from django_evolution.compat import six
 from django_evolution.compat.apps import get_app, get_apps
 from django_evolution.compat.db import atomic
 from django_evolution.compat.translation import gettext as _
@@ -211,7 +210,7 @@ class Evolver(object):
         # all the tasks before we can return any of them.
         self._prepare_tasks()
 
-        return six.itervalues(self._tasks_by_id)
+        return self._tasks_by_id.values()
 
     def can_simulate(self):
         """Return whether all queued tasks can be simulated.
@@ -425,7 +424,7 @@ class Evolver(object):
         try:
             new_evolutions = []
 
-            for task_cls, tasks in six.iteritems(self._tasks_by_class):
+            for task_cls, tasks in self._tasks_by_class.items():
                 # Perform the evolution for the app. This is responsible
                 # for raising any exceptions.
                 task_cls.execute_tasks(evolver=self,
@@ -455,7 +454,7 @@ class Evolver(object):
         if not self._tasks_prepared:
             self._tasks_prepared = True
 
-            for task_cls, tasks in six.iteritems(self._tasks_by_class):
+            for task_cls, tasks in self._tasks_by_class.items():
                 task_cls.prepare_tasks(evolver=self,
                                        tasks=tasks,
                                        hinted=self.hinted)
@@ -541,4 +540,4 @@ class Evolver(object):
             raise EvolutionExecutionError(
                 _('Error saving new evolution version information: %s')
                 % e,
-                detailed_error=six.text_type(e))
+                detailed_error=str(e))

@@ -10,7 +10,6 @@ import django
 from django.db import connection as default_connection, models
 
 from django_evolution import support
-from django_evolution.compat import six
 from django_evolution.compat.db import (collect_sql_schema_editor,
                                         create_index_name,
                                         create_index_together_name,
@@ -387,8 +386,8 @@ class BaseEvolutionOperations(object):
 
     def quote_sql_param(self, param):
         "Add protective quoting around an SQL string parameter"
-        if isinstance(param, six.string_types):
-            return "'%s'" % six.text_type(param).replace("'", r"\'")
+        if isinstance(param, str):
+            return "'%s'" % str(param).replace("'", r"\'")
         else:
             return param
 
@@ -880,7 +879,7 @@ class BaseEvolutionOperations(object):
                     'new_value': attr_info['new_value'],
                 },
             }
-            for attr_name, attr_info in sorted(six.iteritems(new_attrs),
+            for attr_name, attr_info in sorted(new_attrs.items(),
                                                key=lambda pair: pair[0])
             if attr_name not in ignored_m2m_attrs
         ]
@@ -1621,13 +1620,13 @@ class BaseEvolutionOperations(object):
 
         to_remove = [
             index_info
-            for index_key, index_info in six.iteritems(old_indexes_map)
+            for index_key, index_info in old_indexes_map.items()
             if index_key not in new_indexes_map
         ]
 
         to_add = [
             index_info
-            for index_key, index_info in six.iteritems(new_indexes_map)
+            for index_key, index_info in new_indexes_map.items()
             if index_key not in old_indexes_map
         ]
 
@@ -1795,7 +1794,7 @@ class BaseEvolutionOperations(object):
             finally:
                 cursor.close()
 
-            for index_name, info in six.iteritems(constraints):
+            for index_name, info in constraints.items():
                 results[index_name] = {
                     'unique': info.get('unique', False),
                     'columns': info.get('columns', []),
@@ -1804,7 +1803,7 @@ class BaseEvolutionOperations(object):
             # Django == 1.6
             indexes = self.get_indexes_for_table(table_name)
 
-            for index_name, info in six.iteritems(indexes):
+            for index_name, info in indexes.items():
                 results[index_name] = {
                     'columns': info['columns'],
                     'unique': info['unique'],
@@ -1882,7 +1881,7 @@ class BaseEvolutionOperations(object):
         replaced_fields_by_name = {}
         replaced_field_types = {}
 
-        for old_field, new_field in list(six.iteritems(replaced_fields)):
+        for old_field, new_field in list(replaced_fields.items()):
             assert old_field.primary_key == new_field.primary_key
 
             # Only work with replaced fields that are a primary key. We won't
@@ -1970,7 +1969,7 @@ class BaseEvolutionOperations(object):
                     models_to_refs[model].append((through, through_field))
                     seen_m2m_models.add(through._meta.db_table)
 
-        for field_info in six.itervalues(replaced_field_types):
+        for field_info in replaced_field_types.values():
             old_rels = iter_non_m2m_reverse_relations(field_info['old_field'])
             new_rels = iter_non_m2m_reverse_relations(field_info['new_field'])
 
@@ -1996,7 +1995,7 @@ class BaseEvolutionOperations(object):
         if models_to_refs:
             remove_refs = models_to_refs.copy()
 
-            for ref_to_model in six.iterkeys(models_to_refs):
+            for ref_to_model in models_to_refs.keys():
                 sql_result.add_sql(sql_delete_constraints(
                     connection=connection,
                     model=ref_to_model,
@@ -2082,14 +2081,14 @@ class BaseEvolutionOperations(object):
         # Replace any fields on the model with the new instances.
         model_fields = meta._fields
 
-        for old_field_name, new_field in six.iteritems(replaced_fields):
+        for old_field_name, new_field in replaced_fields.items():
             del model_fields[old_field_name]
             model_fields[new_field.name] = new_field
 
         if models_to_refs:
             add_refs = models_to_refs.copy()
 
-            for ref_model in six.iterkeys(models_to_refs):
+            for ref_model in models_to_refs:
                 sql_result.add_sql(sql_add_constraints(
                     connection=connection,
                     model=ref_model,
@@ -2124,7 +2123,7 @@ class BaseEvolutionOperations(object):
         if callable(initial):
             initial = initial()
 
-            if isinstance(initial, six.text_type):
+            if isinstance(initial, str):
                 return initial, True
 
         return initial, False

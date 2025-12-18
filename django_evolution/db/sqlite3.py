@@ -8,7 +8,6 @@ import django
 from django.db import models
 from django.db.backends.sqlite3.base import Database
 
-from django_evolution.compat import six
 from django_evolution.compat.db import (create_index_name,
                                         sql_indexes_for_model)
 from django_evolution.compat.models import (get_remote_field,
@@ -170,7 +169,7 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
 
         # If we have any new fields, add their defaults.
         if new_initial:
-            for column, initial in six.iteritems(new_initial):
+            for column, initial in new_initial.items():
                 # Note that initial will only be None if null=True. Otherwise,
                 # it will be set to a user-defined callable or the default
                 # AddFieldInitialCallback, which will raise an exception in
@@ -240,11 +239,11 @@ class SQLiteAlterTableSQLResult(AlterTableSQLResult):
                 qn(TEMP_TABLE_NAME),
                 ', '.join(
                     qn(column)
-                    for column in six.iterkeys(field_values)
+                    for column in field_values.keys()
                 ),
                 ', '.join(
-                    six.text_type(_value)
-                    for _value in six.itervalues(field_values)
+                    str(_value)
+                    for _value in field_values.values()
                 ),
                 qn(table_name),
             ),
@@ -926,7 +925,7 @@ class EvolutionOperations(BaseEvolutionOperations):
 
         try:
             for table_info in introspection.get_table_list(cursor):
-                if isinstance(table_info, six.text_type):
+                if isinstance(table_info, str):
                     # Django <= 1.7
                     table_name = table_info
                 else:

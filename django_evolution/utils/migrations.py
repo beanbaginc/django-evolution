@@ -33,7 +33,6 @@ except ImportError:
     emit_post_migrate_signal = None
     emit_pre_migrate_signal = None
 
-from django_evolution.compat import six
 from django_evolution.compat.models import get_model
 from django_evolution.errors import (DjangoEvolutionSupportError,
                                      MigrationConflictsError,
@@ -283,7 +282,7 @@ class MigrationList(object):
             list of unicode:
             The sorted list of app labels with associated migrations.
         """
-        return list(sorted(six.iterkeys(self._by_app_label)))
+        return list(sorted(self._by_app_label.keys()))
 
     def clone(self):
         """Clone the list.
@@ -361,7 +360,7 @@ class MigrationList(object):
             ``recorded_migration`` (:py:class:`django.db.migrations.recorder.MigrationRecorder.Migration`):
                 The optional recorded migration.
         """
-        for app_label, info_list in sorted(six.iteritems(self._by_app_label),
+        for app_label, info_list in sorted(self._by_app_label.items(),
                                            key=lambda pair: pair[0]):
             for info in info_list:
                 yield info
@@ -617,7 +616,7 @@ class MigrationExecutor(DjangoMigrationExecutor):
             try:
                 self.loader.check_consistent_history(self.connection)
             except InconsistentMigrationHistory as e:
-                raise MigrationHistoryError(six.text_type(e))
+                raise MigrationHistoryError(str(e))
 
         # Now check that there aren't any conflicts between any migrations that
         # we may end up working with.
