@@ -2,6 +2,8 @@
 
 from __future__ import unicode_literals
 
+from unittest import skipUnless
+
 from django.db import models
 from django.db.models import F, Q
 
@@ -21,10 +23,13 @@ except ImportError:
     Index = None
 
 from django_evolution.mutations import ChangeMeta
-from django_evolution.support import (supports_constraints,
-                                      supports_db_table_comments,
-                                      supports_indexes,
-                                      supports_index_together)
+from django_evolution.support import (
+    check_constraint_uses_condition,
+    supports_constraints,
+    supports_db_table_comments,
+    supports_indexes,
+    supports_index_together,
+)
 from django_evolution.tests.base_test_case import EvolutionTestCase
 from django_evolution.tests.decorators import (requires_change_meta_field,
                                                requires_index_feature,
@@ -33,6 +38,12 @@ from django_evolution.tests.decorators import (requires_change_meta_field,
                                                requires_meta_indexes)
 from django_evolution.tests.models import BaseTestModel
 from django_evolution.tests.utils import get_default_tablespace
+
+
+if check_constraint_uses_condition:
+    CHECK_CONSTRAINT_KEY = 'condition'
+else:
+    CHECK_CONSTRAINT_KEY = 'check'
 
 
 class ChangeMetaPlainBaseModel(BaseTestModel):
@@ -51,23 +62,43 @@ class ChangeMetaConstraintsBaseModel(BaseTestModel):
     class Meta(BaseTestModel.Meta):
         if supports_constraints:
             # Django >= 2.2
-            constraints = [
-                # We have three types we want to test in our baseline here:
-                #
-                # 1. A Check constraint
-                # 2. A Unique constraint *with* a condition
-                # 3. A Unique constraint *without* a condition
-                #
-                # Not all databases will support all three, or even two of
-                # these. Some will be ignored.
-                CheckConstraint(name='base_check_constraint',
-                                check=Q(char_field1__startswith='test')),
-                UniqueConstraint(name='base_unique_constraint_condition',
-                                 fields=['int_field1', 'char_field1'],
-                                 condition=Q(int_field1__gte=10)),
-                UniqueConstraint(name='base_unique_constraint_plain',
-                                 fields=['int_field1', 'char_field1']),
-            ]
+
+            # We have three types we want to test in our baseline here:
+            #
+            # 1. A Check constraint
+            # 2. A Unique constraint *with* a condition
+            # 3. A Unique constraint *without* a condition
+            #
+            # Not all databases will support all three, or even two of
+            # these. Some will be ignored.
+            if check_constraint_uses_condition:
+                # Django >= 5.1
+                constraints = [
+                    CheckConstraint(
+                        name='base_check_constraint',
+                        condition=Q(char_field1__startswith='test')),
+                    UniqueConstraint(
+                        name='base_unique_constraint_condition',
+                        fields=['int_field1', 'char_field1'],
+                        condition=Q(int_field1__gte=10)),
+                    UniqueConstraint(
+                        name='base_unique_constraint_plain',
+                        fields=['int_field1', 'char_field1']),
+                ]
+            else:
+                # Django <= 5.0
+                constraints = [
+                    CheckConstraint(
+                        name='base_check_constraint',
+                        check=Q(char_field1__startswith='test')),
+                    UniqueConstraint(
+                        name='base_unique_constraint_condition',
+                        fields=['int_field1', 'char_field1'],
+                        condition=Q(int_field1__gte=10)),
+                    UniqueConstraint(
+                        name='base_unique_constraint_plain',
+                        fields=['int_field1', 'char_field1']),
+                ]
 
 
 class ChangeMetaDbTableCommentBaseModel(BaseTestModel):
@@ -171,6 +202,10 @@ class ChangeMetaConstraintsTests(BaseChangeMetaTestCase):
 
     def test_setting_valid_list(self):
         """Testing ChangeMeta(constraints) and setting to valid list"""
+        check_constraint_kwargs = {
+            CHECK_CONSTRAINT_KEY: Q(char_field1__startswith='test'),
+        }
+
         class DestModel(BaseTestModel):
             int_field1 = models.IntegerField()
             int_field2 = models.IntegerField()
@@ -180,12 +215,258 @@ class ChangeMetaConstraintsTests(BaseChangeMetaTestCase):
             class Meta(BaseTestModel.Meta):
                 constraints = [
                     CheckConstraint(name='new_check_constraint',
-                                    check=Q(char_field1__startswith='test')),
+                                    **check_constraint_kwargs),
                     UniqueConstraint(name='new_unique_constraint_condition',
                                      fields=['int_field2'],
                                      condition=Q(int_field2=100)),
                     UniqueConstraint(name='new_unique_constraint_plain',
                                      fields=['int_field1', 'int_field2']),
+                ]
+
+        self.set_base_model(ChangeMetaPlainBaseModel)
+        self.perform_evolution_tests(
+            dest_model=DestModel,
+            evolutions=[
+                ChangeMeta(
+                    'TestModel',
+                    'constraints',
+                    [
+                        {
+                            'type': CheckConstraint,
+                            'name': 'new_check_constraint',
+                            **check_constraint_kwargs,
+                        },
+                        {
+                            'type': UniqueConstraint,
+                            'name': 'new_unique_constraint_condition',
+                            'condition': Q(int_field2=100),
+                            'fields': ['int_field2'],
+                        },
+                        {
+                            'type': UniqueConstraint,
+                            'name': 'new_unique_constraint_plain',
+                            'fields': ['int_field1', 'int_field2'],
+                        },
+                    ])
+            ],
+            diff_text=self.DIFF_TEXT,
+            expected_hint=[
+                f"ChangeMeta('TestModel', 'constraints',"
+                f" [{{'{CHECK_CONSTRAINT_KEY}': "
+                f"models.Q(char_field1__startswith='test'),"
+                f" 'name': 'new_check_constraint',"
+                f" 'type': models.CheckConstraint}},"
+                f" {{'condition': models.Q(int_field2=100),"
+                f" 'fields': ['int_field2'],"
+                f" 'name': 'new_unique_constraint_condition',"
+                f" 'type': models.UniqueConstraint}},"
+                f" {{'fields': ['int_field1', 'int_field2'],"
+                f" 'name': 'new_unique_constraint_plain',"
+                f" 'type': models.UniqueConstraint}}])"
+            ],
+            sql_name='setting_from_empty')
+
+    def test_replace_list(self):
+        """Testing ChangeMeta(indexes) and replacing list"""
+        check_constraint_kwargs = {
+            CHECK_CONSTRAINT_KEY: Q(char_field1__startswith='test')
+        }
+
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                constraints = [
+                    CheckConstraint(name='new_check_constraint',
+                                    **check_constraint_kwargs),
+                    UniqueConstraint(name='new_unique_constraint_condition',
+                                     condition=Q(char_field2='bar'),
+                                     fields=['int_field2']),
+                    UniqueConstraint(name='new_unique_constraint_plain',
+                                     fields=['int_field1', 'char_field1']),
+                ]
+
+        self.set_base_model(ChangeMetaConstraintsBaseModel)
+        self.perform_evolution_tests(
+            dest_model=DestModel,
+            evolutions=[
+                ChangeMeta(
+                    'TestModel',
+                    'constraints',
+                    [
+                        {
+                            'type': CheckConstraint,
+                            'name': 'new_check_constraint',
+                            **check_constraint_kwargs,
+                        },
+                        {
+                            'type': UniqueConstraint,
+                            'name': 'new_unique_constraint_condition',
+                            'condition': Q(char_field2='bar'),
+                            'fields': ['int_field2'],
+                        },
+                        {
+                            'type': UniqueConstraint,
+                            'name': 'new_unique_constraint_plain',
+                            'fields': ['int_field1', 'char_field1'],
+                        },
+                    ])
+            ],
+            diff_text=self.DIFF_TEXT,
+            expected_hint=[
+                f"ChangeMeta('TestModel', 'constraints',"
+                f" [{{'{CHECK_CONSTRAINT_KEY}': "
+                f"models.Q(char_field1__startswith='test'),"
+                f" 'name': 'new_check_constraint',"
+                f" 'type': models.CheckConstraint}},"
+                f" {{'condition': models.Q(char_field2='bar'),"
+                f" 'fields': ['int_field2'],"
+                f" 'name': 'new_unique_constraint_condition',"
+                f" 'type': models.UniqueConstraint}},"
+                f" {{'fields': ['int_field1', 'char_field1'],"
+                f" 'name': 'new_unique_constraint_plain',"
+                f" 'type': models.UniqueConstraint}}])"
+            ],
+            sql_name='replace_list')
+
+    def test_append_list(self):
+        """Testing ChangeMeta(constraints) and appending list"""
+        check_kwargs_1 = {
+            CHECK_CONSTRAINT_KEY: Q(char_field1__startswith='test'),
+        }
+
+        check_kwargs_2 = {
+            CHECK_CONSTRAINT_KEY: Q(int_field1__gte=100),
+        }
+
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                constraints = [
+                    CheckConstraint(name='base_check_constraint',
+                                    **check_kwargs_1),
+                    UniqueConstraint(name='base_unique_constraint_condition',
+                                     fields=['int_field1', 'char_field1'],
+                                     condition=Q(int_field1__gte=10)),
+                    UniqueConstraint(name='base_unique_constraint_plain',
+                                     fields=['int_field1', 'char_field1']),
+                    UniqueConstraint(name='new_unique_constraint',
+                                     fields=['int_field2', 'int_field1']),
+                    CheckConstraint(name='new_check_constraint',
+                                    **check_kwargs_2),
+                ]
+
+        self.set_base_model(ChangeMetaConstraintsBaseModel)
+        self.perform_evolution_tests(
+            dest_model=DestModel,
+            evolutions=[
+                ChangeMeta(
+                    'TestModel',
+                    'constraints',
+                    [
+                        {
+                            'type': CheckConstraint,
+                            'name': 'base_check_constraint',
+                            **check_kwargs_1,
+                        },
+                        {
+                            'type': UniqueConstraint,
+                            'name': 'base_unique_constraint_condition',
+                            'fields': ['int_field1', 'char_field1'],
+                            'condition': Q(int_field1__gte=10),
+                        },
+                        {
+                            'type': UniqueConstraint,
+                            'name': 'base_unique_constraint_plain',
+                            'fields': ['int_field1', 'char_field1'],
+                        },
+                        {
+                            'type': UniqueConstraint,
+                            'name': 'new_unique_constraint',
+                            'fields': ['int_field2', 'int_field1'],
+                        },
+                        {
+                            'type': CheckConstraint,
+                            'name': 'new_check_constraint',
+                            **check_kwargs_2,
+                        },
+                    ])
+            ],
+            diff_text=self.DIFF_TEXT,
+            expected_hint=[
+                f"ChangeMeta('TestModel', 'constraints',"
+                f" [{{'{CHECK_CONSTRAINT_KEY}': "
+                f"models.Q(char_field1__startswith='test'),"
+                f" 'name': 'base_check_constraint',"
+                f" 'type': models.CheckConstraint}},"
+                f" {{'condition': models.Q(int_field1__gte=10),"
+                f" 'fields': ['int_field1', 'char_field1'],"
+                f" 'name': 'base_unique_constraint_condition',"
+                f" 'type': models.UniqueConstraint}},"
+                f" {{'fields': ['int_field1', 'char_field1'],"
+                f" 'name': 'base_unique_constraint_plain',"
+                f" 'type': models.UniqueConstraint}},"
+                f" {{'fields': ['int_field2', 'int_field1'],"
+                f" 'name': 'new_unique_constraint',"
+                f" 'type': models.UniqueConstraint}},"
+                f" {{'{CHECK_CONSTRAINT_KEY}': models.Q(int_field1__gte=100),"
+                f" 'name': 'new_check_constraint',"
+                f" 'type': models.CheckConstraint}}])"
+            ],
+            sql_name='append_list')
+
+    def test_removing(self):
+        """Testing ChangeMeta(constraints) and removing property"""
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+        self.set_base_model(ChangeMetaConstraintsBaseModel)
+        self.perform_evolution_tests(
+            dest_model=DestModel,
+            evolutions=[
+                ChangeMeta('TestModel', 'constraints', [])
+            ],
+            diff_text=self.DIFF_TEXT,
+            expected_hint=[
+                "ChangeMeta('TestModel', 'constraints', [])"
+            ],
+            sql_name='removing')
+
+    @skipUnless(check_constraint_uses_condition,
+                'CheckConstraint key normalization is only required on '
+                'Django >= 5.1')
+    def test_check_constraint_key_normalization(self):
+        """Testing ChangeMeta(constraints) and normalization of "check" to
+        "condition"
+        """
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                constraints = [
+                    CheckConstraint(
+                        name='new_check_constraint',
+                        condition=Q(char_field1__startswith='test')),
+                    UniqueConstraint(
+                        name='new_unique_constraint_condition',
+                        fields=['int_field2'],
+                        condition=Q(int_field2=100)),
+                    UniqueConstraint(
+                        name='new_unique_constraint_plain',
+                        fields=['int_field1', 'int_field2']),
                 ]
 
         self.set_base_model(ChangeMetaPlainBaseModel)
@@ -217,7 +498,7 @@ class ChangeMetaConstraintsTests(BaseChangeMetaTestCase):
             diff_text=self.DIFF_TEXT,
             expected_hint=[
                 "ChangeMeta('TestModel', 'constraints',"
-                " [{'check': models.Q(char_field1__startswith='test'),"
+                " [{'condition': models.Q(char_field1__startswith='test'),"
                 " 'name': 'new_check_constraint',"
                 " 'type': models.CheckConstraint},"
                 " {'condition': models.Q(int_field2=100),"
@@ -230,167 +511,6 @@ class ChangeMetaConstraintsTests(BaseChangeMetaTestCase):
             ],
             sql_name='setting_from_empty')
 
-    def test_replace_list(self):
-        """Testing ChangeMeta(indexes) and replacing list"""
-        class DestModel(BaseTestModel):
-            int_field1 = models.IntegerField()
-            int_field2 = models.IntegerField()
-            char_field1 = models.CharField(max_length=20)
-            char_field2 = models.CharField(max_length=40)
-
-            class Meta(BaseTestModel.Meta):
-                constraints = [
-                    CheckConstraint(name='new_check_constraint',
-                                    check=Q(char_field1__startswith='test')),
-                    UniqueConstraint(name='new_unique_constraint_condition',
-                                     condition=Q(char_field2='bar'),
-                                     fields=['int_field2']),
-                    UniqueConstraint(name='new_unique_constraint_plain',
-                                     fields=['int_field1', 'char_field1']),
-                ]
-
-        self.set_base_model(ChangeMetaConstraintsBaseModel)
-        self.perform_evolution_tests(
-            dest_model=DestModel,
-            evolutions=[
-                ChangeMeta(
-                    'TestModel',
-                    'constraints',
-                    [
-                        {
-                            'type': CheckConstraint,
-                            'name': 'new_check_constraint',
-                            'check': Q(char_field1__startswith='test'),
-                        },
-                        {
-                            'type': UniqueConstraint,
-                            'name': 'new_unique_constraint_condition',
-                            'condition': Q(char_field2='bar'),
-                            'fields': ['int_field2'],
-                        },
-                        {
-                            'type': UniqueConstraint,
-                            'name': 'new_unique_constraint_plain',
-                            'fields': ['int_field1', 'char_field1'],
-                        },
-                    ])
-            ],
-            diff_text=self.DIFF_TEXT,
-            expected_hint=[
-                "ChangeMeta('TestModel', 'constraints',"
-                " [{'check': models.Q(char_field1__startswith='test'),"
-                " 'name': 'new_check_constraint',"
-                " 'type': models.CheckConstraint},"
-                " {'condition': models.Q(char_field2='bar'),"
-                " 'fields': ['int_field2'],"
-                " 'name': 'new_unique_constraint_condition',"
-                " 'type': models.UniqueConstraint},"
-                " {'fields': ['int_field1', 'char_field1'],"
-                " 'name': 'new_unique_constraint_plain',"
-                " 'type': models.UniqueConstraint}])"
-            ],
-            sql_name='replace_list')
-
-    def test_append_list(self):
-        """Testing ChangeMeta(constraints) and appending list"""
-        class DestModel(BaseTestModel):
-            int_field1 = models.IntegerField()
-            int_field2 = models.IntegerField()
-            char_field1 = models.CharField(max_length=20)
-            char_field2 = models.CharField(max_length=40)
-
-            class Meta(BaseTestModel.Meta):
-                constraints = [
-                    CheckConstraint(name='base_check_constraint',
-                                    check=Q(char_field1__startswith='test')),
-                    UniqueConstraint(name='base_unique_constraint_condition',
-                                     fields=['int_field1', 'char_field1'],
-                                     condition=Q(int_field1__gte=10)),
-                    UniqueConstraint(name='base_unique_constraint_plain',
-                                     fields=['int_field1', 'char_field1']),
-                    UniqueConstraint(name='new_unique_constraint',
-                                     fields=['int_field2', 'int_field1']),
-                    CheckConstraint(name='new_check_constraint',
-                                    check=Q(int_field1__gte=100)),
-                ]
-
-        self.set_base_model(ChangeMetaConstraintsBaseModel)
-        self.perform_evolution_tests(
-            dest_model=DestModel,
-            evolutions=[
-                ChangeMeta(
-                    'TestModel',
-                    'constraints',
-                    [
-                        {
-                            'type': CheckConstraint,
-                            'name': 'base_check_constraint',
-                            'check': Q(char_field1__startswith='test'),
-                        },
-                        {
-                            'type': UniqueConstraint,
-                            'name': 'base_unique_constraint_condition',
-                            'fields': ['int_field1', 'char_field1'],
-                            'condition': Q(int_field1__gte=10),
-                        },
-                        {
-                            'type': UniqueConstraint,
-                            'name': 'base_unique_constraint_plain',
-                            'fields': ['int_field1', 'char_field1'],
-                        },
-                        {
-                            'type': UniqueConstraint,
-                            'name': 'new_unique_constraint',
-                            'fields': ['int_field2', 'int_field1'],
-                        },
-                        {
-                            'type': CheckConstraint,
-                            'name': 'new_check_constraint',
-                            'check': Q(int_field1__gte=100),
-                        },
-                    ])
-            ],
-            diff_text=self.DIFF_TEXT,
-            expected_hint=[
-                "ChangeMeta('TestModel', 'constraints',"
-                " [{'check': models.Q(char_field1__startswith='test'),"
-                " 'name': 'base_check_constraint',"
-                " 'type': models.CheckConstraint},"
-                " {'condition': models.Q(int_field1__gte=10),"
-                " 'fields': ['int_field1', 'char_field1'],"
-                " 'name': 'base_unique_constraint_condition',"
-                " 'type': models.UniqueConstraint},"
-                " {'fields': ['int_field1', 'char_field1'],"
-                " 'name': 'base_unique_constraint_plain',"
-                " 'type': models.UniqueConstraint},"
-                " {'fields': ['int_field2', 'int_field1'],"
-                " 'name': 'new_unique_constraint',"
-                " 'type': models.UniqueConstraint},"
-                " {'check': models.Q(int_field1__gte=100),"
-                " 'name': 'new_check_constraint',"
-                " 'type': models.CheckConstraint}])"
-            ],
-            sql_name='append_list')
-
-    def test_removing(self):
-        """Testing ChangeMeta(constraints) and removing property"""
-        class DestModel(BaseTestModel):
-            int_field1 = models.IntegerField()
-            int_field2 = models.IntegerField()
-            char_field1 = models.CharField(max_length=20)
-            char_field2 = models.CharField(max_length=40)
-
-        self.set_base_model(ChangeMetaConstraintsBaseModel)
-        self.perform_evolution_tests(
-            dest_model=DestModel,
-            evolutions=[
-                ChangeMeta('TestModel', 'constraints', [])
-            ],
-            diff_text=self.DIFF_TEXT,
-            expected_hint=[
-                "ChangeMeta('TestModel', 'constraints', [])"
-            ],
-            sql_name='removing')
 
 
 class ChangeMetaDbTableCommentTests(BaseChangeMetaTestCase):

@@ -2,6 +2,8 @@
 
 from __future__ import unicode_literals
 
+from unittest import skipUnless
+
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import F, Q
@@ -42,10 +44,13 @@ from django_evolution.signature import (AppSignature,
                                         IndexSignature,
                                         ModelSignature,
                                         ProjectSignature)
-from django_evolution.support import (supports_constraints,
-                                      supports_index_feature,
-                                      supports_indexes,
-                                      supports_index_together)
+from django_evolution.support import (
+    check_constraint_uses_condition,
+    supports_constraints,
+    supports_index_feature,
+    supports_indexes,
+    supports_index_together,
+)
 from django_evolution.tests.base_test_case import EvolutionTestCase
 from django_evolution.tests.decorators import (requires_index_feature,
                                                requires_meta_constraints,
@@ -171,17 +176,32 @@ class ConstraintSignatureTests(BaseSignatureTestCase):
             'condition': Q(field1__gte=100),
         })
 
-    def test_from_constraint_with_no_fields(self):
+    def test_from_constraint_with_no_fields_check(self):
         """Testing ConstraintSignature.from_constraint with no fields"""
+        if check_constraint_uses_condition:
+            constraint_kwargs = {
+                'condition': Q(field2__startswith='ABC'),
+            }
+        else:
+            constraint_kwargs = {
+                'check': Q(field2__startswith='ABC'),
+            }
+
         constraint_sig = ConstraintSignature.from_constraint(
             CheckConstraint(name='my_constraint',
-                            check=Q(field2__startswith='ABC')))
+                            **constraint_kwargs))
 
         self.assertIs(constraint_sig.type, CheckConstraint)
         self.assertEqual(constraint_sig.name, 'my_constraint')
-        self.assertEqual(constraint_sig.attrs, {
-            'check': Q(field2__startswith='ABC'),
-        })
+
+        if check_constraint_uses_condition:
+            self.assertEqual(constraint_sig.attrs, {
+                'condition': Q(field2__startswith='ABC'),
+            })
+        else:
+            self.assertEqual(constraint_sig.attrs, {
+                'check': Q(field2__startswith='ABC'),
+            })
 
     def test_deserialize_v2_with_fields_list(self):
         """Testing ConstraintSignature.deserialize (signature v2) with
@@ -344,6 +364,50 @@ class ConstraintSignatureTests(BaseSignatureTestCase):
                     'fields': ['field1', 'field2'],
                     'condition': Q(field1__gte=100),
                 }))
+
+    @skipUnless(check_constraint_uses_condition,
+                'CheckConstraint key normalization is only required on '
+                'Django >= 5.1')
+    def test_eq_with_check_constraint_key_normalization(self):
+        """Testing ConstraintSignature.__eq__ with CheckConstraint and
+        normalization of "check" attr
+        """
+        self.assertEqual(
+            ConstraintSignature(
+                name='constraint1',
+                constraint_type=CheckConstraint,
+                attrs={
+                    'check': Q(field1__gte=100),
+                }),
+            ConstraintSignature(
+                name='constraint1',
+                constraint_type=CheckConstraint,
+                attrs={
+                    'condition': Q(field1__gte=100),
+                }))
+
+        # Check that deserialized data also normalizes.
+        self.assertEqual(
+            ConstraintSignature(
+                name='constraint1',
+                constraint_type=CheckConstraint,
+                attrs={
+                    'condition': Q(field1__gte=100),
+                }),
+            ConstraintSignature.deserialize(
+                {
+                    'name': 'constraint1',
+                    'type': 'django.db.models.CheckConstraint',
+                    'attrs': {
+                        'check': {
+                            '_deconstructed': True,
+                            'args': [('field1__gte', 100)],
+                            'kwargs': {},
+                            'type': 'django.db.models.Q',
+                        },
+                    },
+                },
+                sig_version=2))
 
     def test_ne_with_different_names(self):
         """Testing ConstraintSignature.__ne__ with different names"""
@@ -1561,6 +1625,15 @@ class ModelSignatureTests(BaseSignatureTestCase):
 
     def test_from_model(self):
         """Testing ModelSignature.from_model"""
+        if check_constraint_uses_condition:
+            constraint_key = 'condition'
+        else:
+            constraint_key = 'check'
+
+        check_constraint_kwargs = {
+            constraint_key: Q(field2__gte=42),
+        }
+
         class ModelSignatureFromModelTestModel(BaseTestModel):
             field1 = models.CharField(max_length=100)
             field2 = models.IntegerField(null=True)
@@ -1580,7 +1653,7 @@ class ModelSignatureTests(BaseSignatureTestCase):
                                          name='my_unique_constraint',
                                          condition=Q(field3=True)),
                         CheckConstraint(name='my_check_constraint',
-                                        check=Q(field2__gte=42)),
+                                        **check_constraint_kwargs),
                     ]
 
                 if supports_indexes:
@@ -1620,9 +1693,15 @@ class ModelSignatureTests(BaseSignatureTestCase):
             constraint_sig = constraint_sigs[1]
             self.assertIs(constraint_sig.type, CheckConstraint)
             self.assertEqual(constraint_sig.name, 'my_check_constraint')
-            self.assertEqual(constraint_sig.attrs, {
-                'check': Q(field2__gte=42),
-            })
+
+            if check_constraint_uses_condition:
+                self.assertEqual(constraint_sig.attrs, {
+                    'condition': Q(field2__gte=42),
+                })
+            else:
+                self.assertEqual(constraint_sig.attrs, {
+                    'check': Q(field2__gte=42),
+                })
 
         if supports_indexes:
             index_sigs = list(model_sig.index_sigs)

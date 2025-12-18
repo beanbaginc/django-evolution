@@ -2,7 +2,9 @@
 
 from __future__ import unicode_literals
 
-from django.db.models import F, Q
+from inspect import signature
+
+from django.db.models import CheckConstraint, F, Q
 from django.db.models.options import Options
 
 try:
@@ -99,3 +101,14 @@ def supports_index_feature(attr_name):
         ``False`` if it is not.
     """
     return supports_indexes and hasattr(_test_index, attr_name)
+
+
+#: Whether CheckConstraint uses ``condition``.
+#:
+#: Django 5.1 introduced ``CheckConstraint.condition`` and deprecated
+#: ``CheckConstraint.check``.
+#:
+#: Version Added:
+#:     3.0
+check_constraint_uses_condition = (
+    'condition' in signature(CheckConstraint.__init__).parameters)

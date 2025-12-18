@@ -6,11 +6,16 @@ Version Added:
 
 from __future__ import unicode_literals
 
+from copy import deepcopy
+
+from django.db.models import CheckConstraint
+
 from django_evolution.compat import six
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.mutations.base import BaseModelMutation
 from django_evolution.signature import (ConstraintSignature,
                                         IndexSignature)
+from django_evolution.support import check_constraint_uses_condition
 
 
 class ChangeMeta(BaseModelMutation):
@@ -46,7 +51,14 @@ class ChangeMeta(BaseModelMutation):
         super(ChangeMeta, self).__init__(model_name)
 
         self.prop_name = prop_name
-        self.new_value = new_value
+        self.new_value = deepcopy(new_value)
+
+        if prop_name == 'constraints' and check_constraint_uses_condition:
+            # Django 5.1 changed CheckConstraint to take a ``condition``
+            # argument instead of ``check``.
+            for data in self.new_value:
+                if data['type'] is CheckConstraint and 'check' in data:
+                    data['condition'] = data.pop('check')
 
     def get_hint_params(self):
         """Return parameters for the mutation's hinted evolution.

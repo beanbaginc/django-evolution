@@ -135,6 +135,7 @@ from importlib import import_module
 from django.conf import global_settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db import DEFAULT_DB_ALIAS, models
+from django.db.models import CheckConstraint
 
 from django_evolution.compat import six
 from django_evolution.compat.apps import get_apps, get_app
@@ -151,6 +152,7 @@ from django_evolution.errors import (InvalidSignatureVersion,
                                      MissingSignatureError)
 from django_evolution.serialization import (deserialize_from_signature,
                                             serialize_to_signature)
+from django_evolution.support import check_constraint_uses_condition
 from django_evolution.utils.apps import get_app_label, get_legacy_app_label
 from django_evolution.utils.evolutions import get_app_upgrade_info
 from django_evolution.utils.migrations import MigrationList
@@ -1819,14 +1821,23 @@ class ConstraintSignature(BaseSignature):
         norm_attrs = {}
 
         if attrs:
-            # For comparison purposes, we need to ensure that we're consistent
-            # with tuples and lists. Django may cast to tuples for some
-            # attribute values while deserialization from JSON would result in
-            # lists. We can store any way we need in this class, so we're
-            # standardizing on lists.
             for key, value in six.iteritems(attrs):
+                # For comparison purposes, we need to ensure that we're
+                # consistent with tuples and lists. Django may cast to tuples
+                # for some attribute values while deserialization from JSON
+                # would result in lists. We can store any way we need in this
+                # class, so we're standardizing on lists.
                 if isinstance(value, tuple):
                     value = list(value)
+
+                # Django 5.1 renamed the 'check' argument to 'condition' for
+                # CheckConstraint. We normalize that here so that we'll get
+                # consistent results, whether we're creating the signature from
+                # a constraint object or deserializing old data.
+                if (check_constraint_uses_condition and
+                    constraint_type is CheckConstraint and
+                    key == 'check'):
+                    key = 'condition'
 
                 norm_attrs[key] = value
 
