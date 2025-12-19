@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 from collections import OrderedDict
 
+import django
 from django.db import models
 from django.db.backends.sqlite3.base import Database
 
@@ -16,6 +17,9 @@ from django_evolution.db.common import (AlterTableSQLResult,
                                         BaseEvolutionOperations,
                                         SQLResult)
 from django_evolution.utils.sql import NewTransactionSQL, NoTransactionSQL
+
+
+django_version = django.VERSION[:2]
 
 
 TEMP_TABLE_NAME = 'TEMP_TABLE'
@@ -700,9 +704,20 @@ class EvolutionOperations(BaseEvolutionOperations):
             django_evolution.db.sql_result.SQLResult:
             The resulting SQL for rebuilding the table.
         """
+        if django_version >= (5, 1):
+            # Prior to Django 5.1, we set the internal _unique attribute, which
+            # is then reflected by the unique property. Django 5.1 changed the
+            # unique to be a cached_property instead, so we need to overwrite
+            # that entirely.
+            attr_name = 'unique'
+        else:
+            # We still need to use _unique on older versions, because we'll get
+            # an AttributeError trying to write to the property version.
+            attr_name = '_unique'
+
         return self._change_attribute(model=model,
                                       field=field,
-                                      attr_name='_unique',
+                                      attr_name=attr_name,
                                       new_attr_value=new_unique_value)
 
     def get_update_table_constraints_sql(self, model, old_constraints,
