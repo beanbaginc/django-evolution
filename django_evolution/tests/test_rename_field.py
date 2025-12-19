@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.db import models
 
+from django_evolution.compat.models import get_default_auto_field_cls
 from django_evolution.errors import SimulationFailure
 from django_evolution.mutations import RenameField
 from django_evolution.signature import (AppSignature,
@@ -155,12 +156,14 @@ class RenameFieldTests(EvolutionTestCase):
             [
                 RenameField('TestModel', 'int_field', 'renamed_field'),
             ],
-            ("In model tests.TestModel:\n"
-             "    Field 'renamed_field' has been added\n"
-             "    Field 'int_field' has been deleted"),
+            (
+                "In model tests.TestModel:\n"
+                "    Field 'renamed_field' has been added\n"
+                "    Field 'int_field' has been deleted"
+            ),
             [
                 "AddField('TestModel', 'renamed_field', models.IntegerField,"
-                " initial=<<USER VALUE REQUIRED>>)",
+                    " initial=<<USER VALUE REQUIRED>>)",
 
                 "DeleteField('TestModel', 'int_field')",
             ],
@@ -189,9 +192,11 @@ class RenameFieldTests(EvolutionTestCase):
                 RenameField('TestModel', 'int_field', 'renamed_field',
                             db_table='ignored_db-table'),
             ],
-            ("In model tests.TestModel:\n"
-             "    Field 'renamed_field' has been added\n"
-             "    Field 'int_field' has been deleted"),
+            (
+                "In model tests.TestModel:\n"
+                "    Field 'renamed_field' has been added\n"
+                "    Field 'int_field' has been deleted"
+            ),
             [
                 "AddField('TestModel', 'renamed_field', models.IntegerField,"
                 " initial=<<USER VALUE REQUIRED>>)",
@@ -202,8 +207,11 @@ class RenameFieldTests(EvolutionTestCase):
 
     def test_rename_with_primary_key(self):
         """Testing RenameField with primary key"""
+        default_auto_field_cls = get_default_auto_field_cls()
+        auto_field_name = default_auto_field_cls.__name__
+
         class DestModel(BaseTestModel):
-            my_pk_id = models.AutoField(primary_key=True)
+            my_pk_id = default_auto_field_cls(primary_key=True)
             char_field = models.CharField(max_length=20)
             int_field = models.IntegerField()
             int_field_named = models.IntegerField(
@@ -221,12 +229,14 @@ class RenameFieldTests(EvolutionTestCase):
             [
                 RenameField('TestModel', 'id', 'my_pk_id'),
             ],
-            ("In model tests.TestModel:\n"
-             "    Field 'my_pk_id' has been added\n"
-             "    Field 'id' has been deleted"),
+            (
+                "In model tests.TestModel:\n"
+                 "    Field 'my_pk_id' has been added\n"
+                 "    Field 'id' has been deleted"
+            ),
             [
-                "AddField('TestModel', 'my_pk_id', models.AutoField,"
-                " initial=<<USER VALUE REQUIRED>>, primary_key=True)",
+                f"AddField('TestModel', 'my_pk_id', models.{auto_field_name},"
+                f" initial=<<USER VALUE REQUIRED>>, primary_key=True)",
 
                 "DeleteField('TestModel', 'id')",
             ],
@@ -252,9 +262,11 @@ class RenameFieldTests(EvolutionTestCase):
             [
                 RenameField('TestModel', 'fk_field', 'renamed_field'),
             ],
-            ("In model tests.TestModel:\n"
-             "    Field 'renamed_field' has been added\n"
-             "    Field 'fk_field' has been deleted"),
+            (
+                "In model tests.TestModel:\n"
+                 "    Field 'renamed_field' has been added\n"
+                 "    Field 'fk_field' has been deleted"
+            ),
             [
                 "AddField('TestModel', 'renamed_field', models.ForeignKey,"
                 " initial=<<USER VALUE REQUIRED>>,"
@@ -283,9 +295,11 @@ class RenameFieldTests(EvolutionTestCase):
             [
                 RenameField('TestModel', 'int_field_named', 'renamed_field'),
             ],
-            ("In model tests.TestModel:\n"
-             "    Field 'renamed_field' has been added\n"
-             "    Field 'int_field_named' has been deleted"),
+            (
+                "In model tests.TestModel:\n"
+                 "    Field 'renamed_field' has been added\n"
+                 "    Field 'int_field_named' has been deleted"
+            ),
             [
                 "AddField('TestModel', 'renamed_field', models.IntegerField,"
                 " initial=<<USER VALUE REQUIRED>>)",
@@ -317,9 +331,11 @@ class RenameFieldTests(EvolutionTestCase):
                 RenameField('TestModel', 'int_field_named', 'renamed_field',
                             db_column='non-default_column_name'),
             ],
-            ("In model tests.TestModel:\n"
-             "    Field 'renamed_field' has been added\n"
-             "    Field 'int_field_named' has been deleted"),
+            (
+                "In model tests.TestModel:\n"
+                 "    Field 'renamed_field' has been added\n"
+                 "    Field 'int_field_named' has been deleted"
+            ),
             [
                 "AddField('TestModel', 'renamed_field', models.IntegerField,"
                 " db_column='non-default_column_name',"
@@ -353,9 +369,11 @@ class RenameFieldTests(EvolutionTestCase):
                             db_column='non-default_column_name2',
                             db_table='custom_ignored_db-table'),
             ],
-            ("In model tests.TestModel:\n"
-             "    Field 'renamed_field' has been added\n"
-             "    Field 'int_field_named' has been deleted"),
+            (
+                "In model tests.TestModel:\n"
+                 "    Field 'renamed_field' has been added\n"
+                 "    Field 'int_field_named' has been deleted"
+            ),
             [
                 "AddField('TestModel', 'renamed_field', models.IntegerField,"
                 " db_column='non-default_column_name2',"
@@ -387,9 +405,11 @@ class RenameFieldTests(EvolutionTestCase):
                 RenameField('CustomRenameTableModel', 'value',
                             'renamed_field'),
             ],
-            ("In model tests.CustomRenameTableModel:\n"
-             "    Field 'renamed_field' has been added\n"
-             "    Field 'value' has been deleted"),
+            (
+                "In model tests.CustomRenameTableModel:\n"
+                 "    Field 'renamed_field' has been added\n"
+                 "    Field 'value' has been deleted"
+            ),
             [
                 "AddField('CustomRenameTableModel', 'renamed_field',"
                 " models.IntegerField, initial=<<USER VALUE REQUIRED>>)",
@@ -420,9 +440,11 @@ class RenameFieldTests(EvolutionTestCase):
             [
                 RenameField('TestModel', 'm2m_field', 'renamed_field'),
             ],
-            ("In model tests.TestModel:\n"
-             "    Field 'renamed_field' has been added\n"
-             "    Field 'm2m_field' has been deleted"),
+            (
+                "In model tests.TestModel:\n"
+                 "    Field 'renamed_field' has been added\n"
+                 "    Field 'm2m_field' has been deleted"
+            ),
             [
                 "AddField('TestModel', 'renamed_field',"
                 " models.ManyToManyField,"
@@ -455,9 +477,11 @@ class RenameFieldTests(EvolutionTestCase):
                 RenameField('TestModel', 'm2m_field', 'renamed_field',
                             db_column='ignored_db-column'),
             ],
-            ("In model tests.TestModel:\n"
-             "    Field 'renamed_field' has been added\n"
-             "    Field 'm2m_field' has been deleted"),
+            (
+                "In model tests.TestModel:\n"
+                 "    Field 'renamed_field' has been added\n"
+                 "    Field 'm2m_field' has been deleted"
+            ),
             [
                 "AddField('TestModel', 'renamed_field',"
                 " models.ManyToManyField,"
@@ -489,9 +513,11 @@ class RenameFieldTests(EvolutionTestCase):
             [
                 RenameField('TestModel', 'm2m_field_named', 'renamed_field'),
             ],
-            ("In model tests.TestModel:\n"
-             "    Field 'renamed_field' has been added\n"
-             "    Field 'm2m_field_named' has been deleted"),
+            (
+                "In model tests.TestModel:\n"
+                 "    Field 'renamed_field' has been added\n"
+                 "    Field 'm2m_field_named' has been deleted"
+            ),
             [
                 "AddField('TestModel', 'renamed_field',"
                 " models.ManyToManyField,"

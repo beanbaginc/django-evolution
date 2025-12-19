@@ -34,7 +34,12 @@ except ImportError:
 from django_evolution.compat import six
 from django_evolution.compat.apps import get_app
 from django_evolution.compat.datastructures import OrderedDict
-from django_evolution.compat.models import GenericForeignKey, GenericRelation
+from django_evolution.compat.models import (
+    GenericForeignKey,
+    GenericRelation,
+    get_default_auto_field,
+    get_default_auto_field_cls,
+)
 from django_evolution.consts import UpgradeMethod
 from django_evolution.errors import MissingSignatureError
 from django_evolution.models import Evolution
@@ -2088,7 +2093,7 @@ class ModelSignatureTests(BaseSignatureTestCase):
                         'max_digits': 10,
                     },
                     'id': {
-                        'field_type': models.AutoField,
+                        'field_type': get_default_auto_field_cls(),
                         'primary_key': True,
                     },
                     'id_card': {
@@ -2211,7 +2216,7 @@ class ModelSignatureTests(BaseSignatureTestCase):
                         },
                     },
                     'id': {
-                        'type': 'django.db.models.AutoField',
+                        'type': get_default_auto_field(),
                         'attrs': {
                             'primary_key': True,
                         },

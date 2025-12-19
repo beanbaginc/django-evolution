@@ -5,6 +5,7 @@ import re
 import django
 from django.db.backends.sqlite3.base import Database
 
+from django_evolution.compat.models import get_default_auto_field
 from django_evolution.tests.utils import (make_generate_index_name,
                                           make_generate_unique_constraint_name)
 
@@ -16,6 +17,16 @@ if django_version < (2, 0) or django_version >= (3, 1):
     DESC = ' DESC'
 else:
     DESC = 'DESC'
+
+
+if get_default_auto_field() == 'django.db.models.BigAutoField':
+    # BigAutoField.rel_db_type() explicitly returns
+    # BigIntegerField.db_type(), which results in "bigint" for Django >=
+    # 6.0, even when the type for id fields that actually use BigAutoField
+    # is "integer".
+    fk_type = 'bigint'
+else:
+    fk_type = 'integer'
 
 
 def add_field(connection):
@@ -49,6 +60,11 @@ def add_field(connection):
     generate_index_name = make_generate_index_name(connection)
     generate_unique_constraint_name = \
         make_generate_unique_constraint_name(connection)
+
+    if get_default_auto_field() == 'django.db.models.BigAutoField':
+        auto_field_suffix = get_field_suffix('BigAutoField')
+    else:
+        auto_field_suffix = get_field_suffix('AutoField')
 
     mappings = {
         'AddNonNullNonCallableColumnModel': [
@@ -357,13 +373,13 @@ def add_field(connection):
         ],
 
         'AddForeignKeyModel': [
-            'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL PRIMARY KEY,'
-            ' "char_field" varchar(20) NOT NULL,'
-            ' "int_field" integer NOT NULL,'
-            ' "added_field_id" integer NULL'
-            ' REFERENCES "tests_addanchor1" ("id")'
-            ' DEFERRABLE INITIALLY DEFERRED);',
+            f'CREATE TABLE "TEMP_TABLE" '
+            f'("id" integer NOT NULL PRIMARY KEY,'
+            f' "char_field" varchar(20) NOT NULL,'
+            f' "int_field" integer NOT NULL,'
+            f' "added_field_id" {fk_type} NULL'
+            f' REFERENCES "tests_addanchor1" ("id")'
+            f' DEFERRABLE INITIALLY DEFERRED);',
 
             'INSERT INTO "TEMP_TABLE" ("id", "char_field", "int_field")'
             ' SELECT "id", "char_field", "int_field"'
@@ -382,16 +398,16 @@ def add_field(connection):
     if django_version >= (2, 0):
         mappings.update({
             'AddManyToManyDatabaseTableModel': [
-                'CREATE TABLE "tests_testmodel_added_field" '
-                '("id" integer NOT NULL PRIMARY KEY%s,'
-                ' "testmodel_id" integer NOT NULL'
-                ' REFERENCES "tests_testmodel" ("id")'
-                ' DEFERRABLE INITIALLY DEFERRED,'
-                ' "addanchor1_id" integer NOT NULL'
-                ' REFERENCES "tests_addanchor1" ("id")'
-                ' DEFERRABLE INITIALLY DEFERRED'
-                ');'
-                % get_field_suffix('AutoField'),
+                f'CREATE TABLE "tests_testmodel_added_field" '
+                f'("id" integer NOT NULL PRIMARY '
+                f'KEY{auto_field_suffix},'
+                f' "testmodel_id" {fk_type} NOT NULL'
+                f' REFERENCES "tests_testmodel" ("id")'
+                f' DEFERRABLE INITIALLY DEFERRED,'
+                f' "addanchor1_id" {fk_type} NOT NULL'
+                f' REFERENCES "tests_addanchor1" ("id")'
+                f' DEFERRABLE INITIALLY DEFERRED'
+                f');',
 
                 'CREATE UNIQUE INDEX "%s" ON'
                 ' "tests_testmodel_added_field"'
@@ -412,16 +428,16 @@ def add_field(connection):
             ],
 
             'AddManyToManyNonDefaultDatabaseTableModel': [
-                'CREATE TABLE "tests_testmodel_added_field" '
-                '("id" integer NOT NULL PRIMARY KEY%s,'
-                ' "testmodel_id" integer NOT NULL'
-                ' REFERENCES "tests_testmodel" ("id")'
-                ' DEFERRABLE INITIALLY DEFERRED,'
-                ' "addanchor2_id" integer NOT NULL'
-                ' REFERENCES "custom_add_anchor_table" ("id")'
-                ' DEFERRABLE INITIALLY DEFERRED'
-                ');'
-                % get_field_suffix('AutoField'),
+                f'CREATE TABLE "tests_testmodel_added_field" '
+                f'("id" integer NOT NULL PRIMARY '
+                f'KEY{auto_field_suffix},'
+                f' "testmodel_id" {fk_type} NOT NULL'
+                f' REFERENCES "tests_testmodel" ("id")'
+                f' DEFERRABLE INITIALLY DEFERRED,'
+                f' "addanchor2_id" {fk_type} NOT NULL'
+                f' REFERENCES "custom_add_anchor_table" ("id")'
+                f' DEFERRABLE INITIALLY DEFERRED'
+                f');',
 
                 'CREATE UNIQUE INDEX "%s" ON'
                 ' "tests_testmodel_added_field"'
@@ -442,16 +458,16 @@ def add_field(connection):
             ],
 
             'AddManyToManySelf': [
-                'CREATE TABLE "tests_testmodel_added_field" '
-                '("id" integer NOT NULL PRIMARY KEY%s,'
-                ' "from_testmodel_id" integer NOT NULL'
-                ' REFERENCES "tests_testmodel" ("id")'
-                ' DEFERRABLE INITIALLY DEFERRED,'
-                ' "to_testmodel_id" integer NOT NULL'
-                ' REFERENCES "tests_testmodel" ("id")'
-                ' DEFERRABLE INITIALLY DEFERRED'
-                ');'
-                % get_field_suffix('AutoField'),
+                f'CREATE TABLE "tests_testmodel_added_field" '
+                f'("id" integer NOT NULL PRIMARY '
+                f'KEY{auto_field_suffix},'
+                f' "from_testmodel_id" {fk_type} NOT NULL'
+                f' REFERENCES "tests_testmodel" ("id")'
+                f' DEFERRABLE INITIALLY DEFERRED,'
+                f' "to_testmodel_id" {fk_type} NOT NULL'
+                f' REFERENCES "tests_testmodel" ("id")'
+                f' DEFERRABLE INITIALLY DEFERRED'
+                f');',
 
                 'CREATE UNIQUE INDEX "%s" ON "tests_testmodel_added_field"'
                 ' ("from_testmodel_id", "to_testmodel_id");'
@@ -709,14 +725,14 @@ def delete_field(connection):
 
     return {
         'DefaultNamedColumnModel': [
-            'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL PRIMARY KEY,'
-            ' "char_field" varchar(20) NOT NULL,'
-            ' "non-default_db_column" integer NOT NULL,'
-            ' "int_field3" integer NOT NULL UNIQUE,'
-            ' "fk_field1_id" integer NOT NULL'
-            ' REFERENCES "tests_deleteanchor1" ("id")'
-            ' DEFERRABLE INITIALLY DEFERRED);',
+            f'CREATE TABLE "TEMP_TABLE" '
+            f'("my_id" integer NOT NULL PRIMARY KEY,'
+            f' "char_field" varchar(20) NOT NULL,'
+            f' "non-default_db_column" integer NOT NULL,'
+            f' "int_field3" integer NOT NULL UNIQUE,'
+            f' "fk_field1_id" {fk_type} NOT NULL'
+            f' REFERENCES "tests_deleteanchor1" ("id")'
+            f' DEFERRABLE INITIALLY DEFERRED);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "char_field", "non-default_db_column", "int_field3",'
@@ -735,14 +751,14 @@ def delete_field(connection):
         ],
 
         'NonDefaultNamedColumnModel': [
-            'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL PRIMARY KEY,'
-            ' "char_field" varchar(20) NOT NULL,'
-            ' "int_field" integer NOT NULL,'
-            ' "int_field3" integer NOT NULL UNIQUE,'
-            ' "fk_field1_id" integer NOT NULL'
-            ' REFERENCES "tests_deleteanchor1" ("id")'
-            ' DEFERRABLE INITIALLY DEFERRED);',
+            f'CREATE TABLE "TEMP_TABLE" '
+            f'("my_id" integer NOT NULL PRIMARY KEY,'
+            f' "char_field" varchar(20) NOT NULL,'
+            f' "int_field" integer NOT NULL,'
+            f' "int_field3" integer NOT NULL UNIQUE,'
+            f' "fk_field1_id" {fk_type} NOT NULL'
+            f' REFERENCES "tests_deleteanchor1" ("id")'
+            f' DEFERRABLE INITIALLY DEFERRED);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "char_field", "int_field", "int_field3",'
@@ -761,14 +777,14 @@ def delete_field(connection):
         ],
 
         'ConstrainedColumnModel': [
-            'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL PRIMARY KEY,'
-            ' "char_field" varchar(20) NOT NULL,'
-            ' "int_field" integer NOT NULL,'
-            ' "non-default_db_column" integer NOT NULL,'
-            ' "fk_field1_id" integer NOT NULL'
-            ' REFERENCES "tests_deleteanchor1" ("id")'
-            ' DEFERRABLE INITIALLY DEFERRED);',
+            f'CREATE TABLE "TEMP_TABLE" '
+            f'("my_id" integer NOT NULL PRIMARY KEY,'
+            f' "char_field" varchar(20) NOT NULL,'
+            f' "int_field" integer NOT NULL,'
+            f' "non-default_db_column" integer NOT NULL,'
+            f' "fk_field1_id" {fk_type} NOT NULL'
+            f' REFERENCES "tests_deleteanchor1" ("id")'
+            f' DEFERRABLE INITIALLY DEFERRED);',
 
             'INSERT INTO "TEMP_TABLE"'
             ' ("my_id", "char_field", "int_field", "non-default_db_column",'
@@ -3044,12 +3060,12 @@ def preprocessing(connection):
         ],
 
         'add_field_rename_model': [
-            'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL PRIMARY KEY,'
-            ' "char_field" varchar(20) NOT NULL,'
-            ' "added_field_id" integer NULL'
-            ' REFERENCES "tests_reffedpreprocmodel" ("id")'
-            ' DEFERRABLE INITIALLY DEFERRED);',
+            f'CREATE TABLE "TEMP_TABLE" '
+            f'("my_id" integer NOT NULL PRIMARY KEY,'
+            f' "char_field" varchar(20) NOT NULL,'
+            f' "added_field_id" {fk_type} NULL'
+            f' REFERENCES "tests_reffedpreprocmodel" ("id")'
+            f' DEFERRABLE INITIALLY DEFERRED);',
 
             'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
             ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
@@ -3064,12 +3080,12 @@ def preprocessing(connection):
         ],
 
         'add_rename_field_rename_model': [
-            'CREATE TABLE "TEMP_TABLE" '
-            '("my_id" integer NOT NULL PRIMARY KEY,'
-            ' "char_field" varchar(20) NOT NULL,'
-            ' "renamed_field_id" integer NULL'
-            ' REFERENCES "tests_reffedpreprocmodel" ("id")'
-            ' DEFERRABLE INITIALLY DEFERRED);',
+            f'CREATE TABLE "TEMP_TABLE" '
+            f'("my_id" integer NOT NULL PRIMARY KEY,'
+            f' "char_field" varchar(20) NOT NULL,'
+            f' "renamed_field_id" {fk_type} NULL'
+            f' REFERENCES "tests_reffedpreprocmodel" ("id")'
+            f' DEFERRABLE INITIALLY DEFERRED);',
 
             'INSERT INTO "TEMP_TABLE" ("my_id", "char_field")'
             ' SELECT "my_id", "char_field" FROM "tests_testmodel";',
@@ -3343,12 +3359,12 @@ def evolver(connection):
 
     mappings = {
         'complex_deps_new_db_new_models': [
-            'CREATE TABLE "evolutions_app2_evolutionsapp2testmodel"'
-            ' ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,'
-            ' "char_field" varchar(10) NOT NULL,'
-            ' "fkey_id" integer NULL'
-            ' REFERENCES "evolutions_app_evolutionsapptestmodel" ("id")'
-            ' DEFERRABLE INITIALLY DEFERRED);',
+            f'CREATE TABLE "evolutions_app2_evolutionsapp2testmodel"'
+            f' ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,'
+            f' "char_field" varchar(10) NOT NULL,'
+            f' "fkey_id" {fk_type} NULL'
+            f' REFERENCES "evolutions_app_evolutionsapptestmodel" ("id")'
+            f' DEFERRABLE INITIALLY DEFERRED);',
 
             'CREATE TABLE "evolutions_app2_evolutionsapp2testmodel2"'
             ' ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,'
@@ -3390,12 +3406,12 @@ def evolver(connection):
         ],
 
         'complex_deps_upgrade_task_2': [
-            'CREATE TABLE "TEMP_TABLE" '
-            '("id" integer NOT NULL PRIMARY KEY,'
-            ' "char_field" varchar(10) NOT NULL,'
-            ' "fkey_id" integer NULL'
-            ' REFERENCES "evolutions_app_evolutionsapptestmodel" ("id")'
-            ' DEFERRABLE INITIALLY DEFERRED);',
+            f'CREATE TABLE "TEMP_TABLE" '
+            f'("id" integer NOT NULL PRIMARY KEY,'
+            f' "char_field" varchar(10) NOT NULL,'
+            f' "fkey_id" {fk_type} NULL'
+            f' REFERENCES "evolutions_app_evolutionsapptestmodel" ("id")'
+            f' DEFERRABLE INITIALLY DEFERRED);',
 
             'INSERT INTO "TEMP_TABLE" ("id", "char_field")'
             ' SELECT "id", "char_field"'
@@ -3453,19 +3469,19 @@ def evolver(connection):
     if django_version >= (2, 0):
         mappings.update({
             'complex_deps_new_db_new_models': [
-                'CREATE TABLE "evolutions_app2_evolutionsapp2testmodel"'
-                ' ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,'
-                ' "char_field" varchar(10) NOT NULL,'
-                ' "fkey_id" integer NULL'
-                ' REFERENCES "evolutions_app_evolutionsapptestmodel" ("id")'
-                ' DEFERRABLE INITIALLY DEFERRED);',
+                f'CREATE TABLE "evolutions_app2_evolutionsapp2testmodel"'
+                f' ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,'
+                f' "char_field" varchar(10) NOT NULL,'
+                f' "fkey_id" {fk_type} NULL'
+                f' REFERENCES "evolutions_app_evolutionsapptestmodel" ("id")'
+                f' DEFERRABLE INITIALLY DEFERRED);',
 
-                'CREATE TABLE "evolutions_app2_evolutionsapp2testmodel2"'
-                ' ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,'
-                ' "fkey_id" integer NULL'
-                ' REFERENCES "evolutions_app2_evolutionsapp2testmodel" ("id")'
-                ' DEFERRABLE INITIALLY DEFERRED,'
-                ' "int_field" integer NOT NULL);',
+                f'CREATE TABLE "evolutions_app2_evolutionsapp2testmodel2"'
+                f' ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,'
+                f' "fkey_id" {fk_type} NULL'
+                f' REFERENCES "evolutions_app2_evolutionsapp2testmodel" ("id")'
+                f' DEFERRABLE INITIALLY DEFERRED,'
+                f' "int_field" integer NOT NULL);',
 
                 'CREATE TABLE "evolutions_app_evolutionsapptestmodel"'
                 ' ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,'
@@ -3488,12 +3504,12 @@ def evolver(connection):
             ],
 
             'create_tables_with_deferred_refs': [
-                'CREATE TABLE "tests_testmodel" '
-                '("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,'
-                ' "value" varchar(100) NOT NULL,'
-                ' "ref_id" integer NOT NULL'
-                ' REFERENCES "evolutions_app_reffedevolvertestmodel" ("id")'
-                ' DEFERRABLE INITIALLY DEFERRED);',
+                f'CREATE TABLE "tests_testmodel" '
+                f'("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,'
+                f' "value" varchar(100) NOT NULL,'
+                f' "ref_id" {fk_type} NOT NULL'
+                f' REFERENCES "evolutions_app_reffedevolvertestmodel" ("id")'
+                f' DEFERRABLE INITIALLY DEFERRED);',
 
                 'CREATE TABLE "evolutions_app_reffedevolvertestmodel" '
                 '("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,'

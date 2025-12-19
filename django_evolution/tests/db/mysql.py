@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import django
 
+from django_evolution.compat.models import get_default_auto_field
 from django_evolution.tests.utils import (make_generate_constraint_name,
                                           make_generate_index_name,
                                           make_generate_unique_constraint_name)
@@ -14,6 +15,13 @@ if django_version < (2, 0) or django_version >= (3, 1):
     DESC = ' DESC'
 else:
     DESC = 'DESC'
+
+
+if get_default_auto_field() == 'django.db.models.BigAutoField':
+    # Django >= 6.0
+    pk_type = 'bigint'
+else:
+    pk_type = 'integer'
 
 
 def add_field(connection):
@@ -174,9 +182,9 @@ def add_field(connection):
         ],
 
         'AddForeignKeyModel': [
-            'ALTER TABLE `tests_testmodel`'
-            ' ADD COLUMN `added_field_id` integer NULL'
-            ' REFERENCES `tests_addanchor1` (`id`);',
+            f'ALTER TABLE `tests_testmodel`'
+            f' ADD COLUMN `added_field_id` {pk_type} NULL'
+            f' REFERENCES `tests_addanchor1` (`id`);',
 
             'CREATE INDEX `%s` ON `tests_testmodel` (`added_field_id`);'
             % generate_index_name('tests_testmodel',
@@ -189,11 +197,11 @@ def add_field(connection):
         # statements for ManyToManyField intermediary tables.
         mappings.update({
             'AddManyToManyDatabaseTableModel': [
-                'CREATE TABLE `tests_testmodel_added_field` '
-                '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
-                ' `testmodel_id` integer NOT NULL,'
-                ' `addanchor1_id` integer NOT NULL'
-                ');',
+                f'CREATE TABLE `tests_testmodel_added_field` '
+                f'(`id` {pk_type} AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                f' `testmodel_id` {pk_type} NOT NULL,'
+                f' `addanchor1_id` {pk_type} NOT NULL'
+                f');',
 
                 'ALTER TABLE `tests_testmodel_added_field`'
                 ' ADD CONSTRAINT `%s`'
@@ -218,11 +226,11 @@ def add_field(connection):
             ],
 
             'AddManyToManyNonDefaultDatabaseTableModel': [
-                'CREATE TABLE `tests_testmodel_added_field` '
-                '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
-                ' `testmodel_id` integer NOT NULL,'
-                ' `addanchor2_id` integer NOT NULL'
-                ');',
+                f'CREATE TABLE `tests_testmodel_added_field` '
+                f'(`id` {pk_type} AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                f' `testmodel_id` {pk_type} NOT NULL,'
+                f' `addanchor2_id` {pk_type} NOT NULL'
+                f');',
 
                 'ALTER TABLE `tests_testmodel_added_field`'
                 ' ADD CONSTRAINT `%s`'
@@ -247,11 +255,11 @@ def add_field(connection):
             ],
 
             'AddManyToManySelf': [
-                'CREATE TABLE `tests_testmodel_added_field` '
-                '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
-                ' `from_testmodel_id` integer NOT NULL,'
-                ' `to_testmodel_id` integer NOT NULL'
-                ');',
+                f'CREATE TABLE `tests_testmodel_added_field` '
+                f'(`id` {pk_type} AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                f' `from_testmodel_id` {pk_type} NOT NULL,'
+                f' `to_testmodel_id` {pk_type} NOT NULL'
+                f');',
 
                 'ALTER TABLE `tests_testmodel_added_field`'
                 ' ADD CONSTRAINT `%s` UNIQUE'
@@ -1082,9 +1090,9 @@ def rename_field(connection):
                                        'non-default_db_table',
                                        'tests_testmodel'),
 
-            'ALTER TABLE `tests_testmodel`'
-            ' DROP PRIMARY KEY, CHANGE COLUMN `id` `my_pk_id`'
-            ' integer AUTO_INCREMENT NOT NULL PRIMARY KEY;',
+            f'ALTER TABLE `tests_testmodel`'
+            f' DROP PRIMARY KEY, CHANGE COLUMN `id` `my_pk_id`'
+            f' {pk_type} AUTO_INCREMENT NOT NULL PRIMARY KEY;',
 
             'ALTER TABLE `tests_testmodel_m2m_field`'
             ' ADD CONSTRAINT `%s` FOREIGN KEY (`testmodel_id`)'
@@ -1752,9 +1760,9 @@ def preprocessing(connection):
         ],
 
         'add_field_rename_model': [
-            'ALTER TABLE `tests_testmodel`'
-            ' ADD COLUMN `added_field_id` integer NULL'
-            ' REFERENCES `tests_reffedpreprocmodel` (`id`);',
+            f'ALTER TABLE `tests_testmodel`'
+            f' ADD COLUMN `added_field_id` {pk_type} NULL'
+            f' REFERENCES `tests_reffedpreprocmodel` (`id`);',
 
             'CREATE INDEX `%s` ON `tests_testmodel` (`added_field_id`);'
             % generate_index_name('tests_testmodel', 'added_field_id',
@@ -1762,9 +1770,9 @@ def preprocessing(connection):
         ],
 
         'add_rename_field_rename_model': [
-            'ALTER TABLE `tests_testmodel`'
-            ' ADD COLUMN `renamed_field_id` integer NULL'
-            ' REFERENCES `tests_reffedpreprocmodel` (`id`);',
+            f'ALTER TABLE `tests_testmodel`'
+            f' ADD COLUMN `renamed_field_id` {pk_type} NULL'
+            f' REFERENCES `tests_reffedpreprocmodel` (`id`);',
 
             'CREATE INDEX `%s` ON `tests_testmodel` (`renamed_field_id`);'
             % generate_index_name('tests_testmodel', 'renamed_field_id',
@@ -1860,9 +1868,9 @@ def evolver(connection):
         ],
 
         'complex_deps_upgrade_task_2': [
-            'ALTER TABLE `evolutions_app2_evolutionsapp2testmodel`'
-            ' ADD COLUMN `fkey_id` integer NULL'
-            ' REFERENCES `evolutions_app_evolutionsapptestmodel` (`id`);',
+            f'ALTER TABLE `evolutions_app2_evolutionsapp2testmodel`'
+            f' ADD COLUMN `fkey_id` {pk_type} NULL'
+            f' REFERENCES `evolutions_app_evolutionsapptestmodel` (`id`);',
 
             'CREATE INDEX `%s` ON `evolutions_app2_evolutionsapp2testmodel`'
             ' (`fkey_id`);'
@@ -1885,9 +1893,9 @@ def evolver(connection):
     if django_version >= (1, 7):
         mappings.update({
             'create_table': [
-                'CREATE TABLE `tests_testmodel` '
-                '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
-                ' `value` varchar(100) NOT NULL);',
+                f'CREATE TABLE `tests_testmodel` '
+                f'(`id` {pk_type} AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                f' `value` varchar(100) NOT NULL);',
             ],
         })
     else:
@@ -1904,20 +1912,20 @@ def evolver(connection):
     if django_version >= (1, 8):
         mappings.update({
             'complex_deps_new_db_new_models': [
-                'CREATE TABLE `evolutions_app2_evolutionsapp2testmodel`'
-                ' (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
-                ' `char_field` varchar(10) NOT NULL,'
-                ' `fkey_id` integer NULL);',
+                f'CREATE TABLE `evolutions_app2_evolutionsapp2testmodel`'
+                f' (`id` {pk_type} AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                f' `char_field` varchar(10) NOT NULL,'
+                f' `fkey_id` {pk_type} NULL);',
 
-                'CREATE TABLE `evolutions_app2_evolutionsapp2testmodel2`'
-                ' (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
-                ' `fkey_id` integer NULL,'
-                ' `int_field` integer NOT NULL);',
+                f'CREATE TABLE `evolutions_app2_evolutionsapp2testmodel2`'
+                f' (`id` {pk_type} AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                f' `fkey_id` {pk_type} NULL,'
+                f' `int_field` integer NOT NULL);',
 
-                'CREATE TABLE `evolutions_app_evolutionsapptestmodel`'
-                ' (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
-                ' `char_field` varchar(10) NULL,'
-                ' `char_field2` varchar(20) NULL);',
+                f'CREATE TABLE `evolutions_app_evolutionsapptestmodel`'
+                f' (`id` {pk_type} AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                f' `char_field` varchar(10) NULL,'
+                f' `char_field2` varchar(20) NULL);',
 
                 'ALTER TABLE `evolutions_app2_evolutionsapp2testmodel`'
                 ' ADD CONSTRAINT `%s` FOREIGN KEY (`fkey_id`)'
@@ -1939,14 +1947,14 @@ def evolver(connection):
             ],
 
             'create_tables_with_deferred_refs': [
-                'CREATE TABLE `tests_testmodel` '
-                '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
-                ' `value` varchar(100) NOT NULL,'
-                ' `ref_id` integer NOT NULL);',
+                f'CREATE TABLE `tests_testmodel` '
+                f'(`id` {pk_type} AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                f' `value` varchar(100) NOT NULL,'
+                f' `ref_id` {pk_type} NOT NULL);',
 
-                'CREATE TABLE `evolutions_app_reffedevolvertestmodel` '
-                '(`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,'
-                ' `value` varchar(100) NOT NULL);',
+                f'CREATE TABLE `evolutions_app_reffedevolvertestmodel` '
+                f'(`id` {pk_type} AUTO_INCREMENT NOT NULL PRIMARY KEY,'
+                f' `value` varchar(100) NOT NULL);',
 
                 'ALTER TABLE `tests_testmodel`'
                 ' ADD CONSTRAINT `%s` FOREIGN KEY (`ref_id`)'

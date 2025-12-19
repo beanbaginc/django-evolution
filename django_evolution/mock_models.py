@@ -10,9 +10,12 @@ from django.db.models.fields.related import RECURSIVE_RELATIONSHIP_CONSTANT
 
 from django_evolution.compat import six
 from django_evolution.compat.datastructures import OrderedDict
-from django_evolution.compat.models import (FieldDoesNotExist,
-                                            get_remote_field,
-                                            get_remote_field_model)
+from django_evolution.compat.models import (
+    FieldDoesNotExist,
+    get_default_auto_field_cls,
+    get_remote_field,
+    get_remote_field_model,
+)
 from django_evolution.signature import FieldSignature, ModelSignature
 
 
@@ -124,10 +127,12 @@ def create_field(project_sig, field_name, field_type, field_attrs,
                 pk_column='id',
                 unique_together=[(from_field_name, to_field_name)])
 
+            auto_field_cls = get_default_auto_field_cls()
+
             # 'id' field
             through_model_sig.add_field_sig(FieldSignature(
                 field_name='id',
-                field_type=models.AutoField,
+                field_type=auto_field_cls,
                 field_attrs={
                     'primary_key': True,
                 }))
@@ -307,7 +312,7 @@ class MockMeta(object):
                                      parent_model=model,
                                      related_model=field_sig.related_model)
 
-                if isinstance(field, models.AutoField):
+                if isinstance(field, (models.AutoField, models.BigAutoField)):
                     self.meta['has_auto_field'] = True
                     self.meta['auto_field'] = field
 
