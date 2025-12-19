@@ -206,16 +206,21 @@ class EvolveAppTask(BaseEvolutionTask):
                 record_applied_migrations(connection=evolver.connection,
                                           migrations=applied_migrations)
 
-        # Let any listeners know that we're beginning the process.
-        emit_pre_migrate_or_sync(verbosity=evolver.verbosity,
-                                 interactive=evolver.interactive,
-                                 database_name=evolver.database_name,
-                                 create_models=new_models,
-                                 pre_migrate_state=migrate_state,
-                                 plan=full_migration_plan)
+            # Let any listeners know that we're beginning the process.
+            #
+            # This used to be called unconditionally, but we no longer support
+            # versions of Django that use pre_sync, and so we now only emit
+            # when we're actually migrating and therefore have a migration
+            # plan.
+            emit_pre_migrate_or_sync(verbosity=evolver.verbosity,
+                                     interactive=evolver.interactive,
+                                     database_name=evolver.database_name,
+                                     create_models=new_models,
+                                     pre_migrate_state=migrate_state,
+                                     plan=full_migration_plan)
 
-        if migrating and migrate_state:
-            migrate_state = migrate_state.clone()
+            if migrate_state:
+                migrate_state = migrate_state.clone()
 
         deferred_sql = []
 
@@ -278,13 +283,18 @@ class EvolveAppTask(BaseEvolutionTask):
                     # migrations that apply to it when we assign this.
                     app_sig.applied_migrations = applied_migrations
 
-        # Let any listeners know that we've finished the process.
-        emit_post_migrate_or_sync(verbosity=evolver.verbosity,
-                                  interactive=evolver.interactive,
-                                  database_name=evolver.database_name,
-                                  created_models=new_models,
-                                  post_migrate_state=migrate_state,
-                                  plan=full_migration_plan)
+            # Let any listeners know that we've finished the process.
+            #
+            # This used to be called unconditionally, but we no longer support
+            # versions of Django that use post_sync, and so we now only emit
+            # when we're actually migrating and therefore have a migration
+            # plan.
+            emit_post_migrate_or_sync(verbosity=evolver.verbosity,
+                                      interactive=evolver.interactive,
+                                      database_name=evolver.database_name,
+                                      created_models=new_models,
+                                      post_migrate_state=migrate_state,
+                                      plan=full_migration_plan)
 
         # Apply any deferred new model SQL.
         if deferred_sql:
@@ -418,6 +428,7 @@ class EvolveAppTask(BaseEvolutionTask):
 
         assert migration_executor is not None
 
+        full_migration_plan = None
         pre_migration_plan = None
         pre_migration_targets = None
         post_migration_plan = None
