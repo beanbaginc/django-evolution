@@ -17,6 +17,12 @@ else:
     DESC = 'DESC'
 
 
+if django_version < (5, 0):
+    PCT = '%%'
+else:
+    PCT = '%'
+
+
 if get_default_auto_field() == 'django.db.models.BigAutoField':
     # Django >= 6.0
     pk_type = 'bigint'
@@ -1440,13 +1446,13 @@ def constraints(connection):
             ],
 
             'setting_from_empty': [
-                "ALTER TABLE `tests_testmodel`"
-                " ADD CONSTRAINT `new_check_constraint`"
-                " CHECK (`char_field1` LIKE BINARY 'test%%');",
+                f"ALTER TABLE `tests_testmodel`"
+                f" ADD CONSTRAINT `new_check_constraint`"
+                f" CHECK (`char_field1` LIKE BINARY 'test{PCT}');",
 
-                "ALTER TABLE `tests_testmodel`"
-                " ADD CONSTRAINT `new_unique_constraint_plain`"
-                " UNIQUE (`int_field1`, `int_field2`);",
+                'ALTER TABLE `tests_testmodel`'
+                ' ADD CONSTRAINT `new_unique_constraint_plain`'
+                ' UNIQUE (`int_field1`, `int_field2`);',
             ],
         })
 
@@ -1461,19 +1467,19 @@ def constraints(connection):
                 ],
 
                 'replace_list': [
-                    "ALTER TABLE `tests_testmodel`"
-                    " DROP CONSTRAINT IF EXISTS `base_check_constraint`;",
+                    'ALTER TABLE `tests_testmodel`'
+                    ' DROP CONSTRAINT IF EXISTS `base_check_constraint`;',
 
-                    "ALTER TABLE `tests_testmodel`"
-                    " DROP INDEX `base_unique_constraint_plain`;",
+                    'ALTER TABLE `tests_testmodel`'
+                    ' DROP INDEX `base_unique_constraint_plain`;',
 
-                    "ALTER TABLE `tests_testmodel`"
-                    " ADD CONSTRAINT `new_check_constraint`"
-                    " CHECK (`char_field1` LIKE BINARY 'test%%');",
+                    f"ALTER TABLE `tests_testmodel`"
+                    f" ADD CONSTRAINT `new_check_constraint`"
+                    f" CHECK (`char_field1` LIKE BINARY 'test{PCT}');",
 
-                    "ALTER TABLE `tests_testmodel`"
-                    " ADD CONSTRAINT `new_unique_constraint_plain`"
-                    " UNIQUE (`int_field1`, `char_field1`);",
+                    'ALTER TABLE `tests_testmodel`'
+                    ' ADD CONSTRAINT `new_unique_constraint_plain`'
+                    ' UNIQUE (`int_field1`, `char_field1`);',
                 ],
             })
         else:
@@ -1487,19 +1493,19 @@ def constraints(connection):
                 ],
 
                 'replace_list': [
-                    "ALTER TABLE `tests_testmodel`"
-                    " DROP CHECK `base_check_constraint`;",
+                    'ALTER TABLE `tests_testmodel`'
+                    ' DROP CHECK `base_check_constraint`;',
 
-                    "ALTER TABLE `tests_testmodel`"
-                    " DROP INDEX `base_unique_constraint_plain`;",
+                    'ALTER TABLE `tests_testmodel`'
+                    ' DROP INDEX `base_unique_constraint_plain`;',
 
-                    "ALTER TABLE `tests_testmodel`"
-                    " ADD CONSTRAINT `new_check_constraint`"
-                    " CHECK (`char_field1` LIKE BINARY 'test%%');",
+                    f"ALTER TABLE `tests_testmodel`"
+                    f" ADD CONSTRAINT `new_check_constraint`"
+                    f" CHECK (`char_field1` LIKE BINARY 'test{PCT}');",
 
-                    "ALTER TABLE `tests_testmodel`"
-                    " ADD CONSTRAINT `new_unique_constraint_plain`"
-                    " UNIQUE (`int_field1`, `char_field1`);",
+                    'ALTER TABLE `tests_testmodel`'
+                    ' ADD CONSTRAINT `new_unique_constraint_plain`'
+                    ' UNIQUE (`int_field1`, `char_field1`);',
                 ],
             })
     else:

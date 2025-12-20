@@ -36,6 +36,12 @@ else:
     DESC = 'DESC'
 
 
+if django_version < (5, 0):
+    PCT = '%%'
+else:
+    PCT = '%'
+
+
 def add_field(connection):
     """SQL test statements for the AddFieldTests suite.
 
@@ -1923,9 +1929,9 @@ def constraints(connection):
             'ALTER TABLE "tests_testmodel"'
             ' DROP CONSTRAINT "base_unique_constraint_plain";',
 
-            'ALTER TABLE "tests_testmodel"'
-            ' ADD CONSTRAINT "new_check_constraint"'
-            ' CHECK ("char_field1"::text LIKE \'test%%\');',
+            f'ALTER TABLE "tests_testmodel"'
+            f' ADD CONSTRAINT "new_check_constraint"'
+            f' CHECK ("char_field1"::text LIKE \'test{PCT}\');',
 
             'CREATE UNIQUE INDEX "new_unique_constraint_condition"'
             ' ON "tests_testmodel" ("int_field2")'
@@ -1937,9 +1943,9 @@ def constraints(connection):
         ],
 
         'setting_from_empty': [
-            'ALTER TABLE "tests_testmodel"'
-            ' ADD CONSTRAINT "new_check_constraint"'
-            ' CHECK ("char_field1"::text LIKE \'test%%\');',
+            f'ALTER TABLE "tests_testmodel"'
+            f' ADD CONSTRAINT "new_check_constraint"'
+            f' CHECK ("char_field1"::text LIKE \'test{PCT}\');',
 
             'CREATE UNIQUE INDEX "new_unique_constraint_condition"'
             ' ON "tests_testmodel" ("int_field2")'
