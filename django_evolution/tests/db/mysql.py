@@ -1394,6 +1394,10 @@ def index_together(connection):
                                   ['char_field1', 'char_field2'],
                                   index_together=True),
         ],
+
+        'replace_with_indexes': [
+            # This is expected to be a no-op.
+        ],
     }
 
 

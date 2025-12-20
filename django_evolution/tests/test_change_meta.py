@@ -1343,6 +1343,63 @@ class ChangeMetaIndexTogetherTests(BaseChangeMetaTestCase):
             rescan_indexes=False)
 
 
+class ChangeMetaReplaceIndexTogetherTests(BaseChangeMetaTestCase):
+    """Unit tests for replacing index_together with indexes.
+
+    Version Added:
+        3.0
+    """
+
+    sql_mapping_key = 'index_together'
+
+    DIFF_TEXT = (
+        "In model tests.TestModel:\n"
+        "    Meta property 'index_together' has changed\n"
+        "    Meta property 'indexes' has changed"
+    )
+
+    def test_replace(self):
+        """Testing ChangeMeta(index_together) and ChangeMeta(indexes)
+        replacing index_together with indexes, including on versions
+        of Django which no longer support index_together
+        """
+        self.set_base_model(ChangeMetaIndexTogetherBaseModel)
+
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta:
+                indexes = [
+                    models.Index(fields=['int_field1', 'char_field1']),
+                ]
+
+        if not supports_index_together:
+            # Manually modify the start signature
+            app_sig = self.start_sig.get_app_sig('tests', True)
+            model_sig = app_sig.get_model_sig('TestModel', True)
+            model_sig.index_together = [('int_field1', 'char_field1')]
+
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta('TestModel', 'index_together', []),
+                ChangeMeta('TestModel', 'indexes', [
+                    {'fields': ['int_field1', 'char_field1']},
+                ]),
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'indexes', [{'fields': "
+                "['int_field1', 'char_field1']}])",
+
+                "ChangeMeta('TestModel', 'index_together', [])",
+            ],
+            'replace_with_indexes')
+
+
 class ChangeMetaUniqueTogetherTests(BaseChangeMetaTestCase):
     """Unit tests for ChangeMeta with unique_together."""
 

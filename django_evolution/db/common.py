@@ -57,7 +57,7 @@ class BaseEvolutionOperations(object):
         'constraints': support.supports_constraints,
         'db_table_comment': support.supports_db_table_comments,
         'indexes': support.supports_indexes,
-        'index_together': support.supports_index_together,
+        'index_together': True,
         'unique_together': True,
     }
 
