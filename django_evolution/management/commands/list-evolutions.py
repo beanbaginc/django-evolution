@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from django.utils.translation import gettext as _
 
-from django_evolution.compat.apps import get_apps
 from django_evolution.compat.commands import BaseCommand
 from django_evolution.models import Evolution
-from django_evolution.utils.apps import get_app_label
+from django_evolution.utils.apps import get_app_label, get_apps
 
 
 class Command(BaseCommand):

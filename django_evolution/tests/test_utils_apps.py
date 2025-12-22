@@ -1,16 +1,21 @@
-"""Unit tests for django_evolution.compat.apps."""
+"""Unit tests for django_evolution.utils.apps.
+
+Version Changed:
+    3.0:
+    Renamed from ``django_evolutions.tests.test_compat_apps``.
+"""
 
 from __future__ import annotations
 
 import django
 from django.core.exceptions import ImproperlyConfigured
 
-from django_evolution.compat.apps import get_app
 from django_evolution.tests.base_test_case import TestCase
+from django_evolution.utils.apps import get_app
 
 
-class CompatAppsTestCase(TestCase):
-    """Unit tests for django_evolution.compat.apps."""
+class UtilsAppsTestCase(TestCase):
+    """Unit tests for django_evolution.utils.apps."""
 
     def test_get_app_with_valid_and_has_model(self):
         """Testing get_apps with valid app containing models"""

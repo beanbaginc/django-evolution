@@ -10,7 +10,6 @@ from django.db.models import F, Q
 from django.test.testcases import TestCase as DjangoTestCase
 from django.test.utils import override_settings
 
-from django_evolution.compat.apps import get_app, unregister_app
 from django_evolution.compat.db import sql_delete
 from django_evolution.db.state import DatabaseState
 from django_evolution.diff import Diff
@@ -27,6 +26,7 @@ from django_evolution.tests.utils import (create_test_project_sig,
 from django_evolution.utils.migrations import (MigrationList,
                                                record_applied_migrations,
                                                unrecord_applied_migrations)
+from django_evolution.utils.apps import get_app, unregister_app
 from django_evolution.utils.models import clear_model_rel_tree
 
 

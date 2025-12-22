@@ -65,7 +65,6 @@ Private API
    django_evolution.mutators.sql_mutator
    django_evolution.placeholders
    django_evolution.support
-   django_evolution.compat.apps
    django_evolution.compat.commands
    django_evolution.compat.datastructures
    django_evolution.compat.db

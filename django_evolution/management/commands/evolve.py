@@ -5,14 +5,12 @@ from __future__ import annotations
 import textwrap
 import os
 
-from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import CommandError
 from django.db.utils import DEFAULT_DB_ALIAS
 from django.dispatch import receiver
 from django.utils.translation import ngettext, gettext as _
 
-from django_evolution.compat.apps import get_app
 from django_evolution.compat.commands import BaseCommand
 from django_evolution.conf import django_evolution_settings
 from django_evolution.errors import EvolutionException
@@ -23,7 +21,7 @@ from django_evolution.signals import (applied_evolution,
                                       applying_migration,
                                       created_models,
                                       creating_models)
-from django_evolution.utils.apps import import_management_modules
+from django_evolution.utils.apps import import_management_modules, get_app
 from django_evolution.utils.evolutions import get_evolutions_path
 from django_evolution.utils.sql import SQLExecutor
 

@@ -13,7 +13,6 @@ except ImportError:
     MigrationRecorder = None
     migrations = None
 
-from django_evolution.compat.apps import get_app
 from django_evolution.db.state import DatabaseState
 from django_evolution.errors import (MigrationConflictsError,
                                      MigrationHistoryError)
@@ -26,6 +25,7 @@ from django_evolution.tests.decorators import (
     requires_migration_history_checks)
 from django_evolution.tests.models import BaseTestModel
 from django_evolution.tests.utils import register_models
+from django_evolution.utils.apps import get_app
 from django_evolution.utils.migrations import (MigrationExecutor,
                                                MigrationList,
                                                MigrationLoader,

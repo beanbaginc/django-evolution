@@ -7,13 +7,13 @@ import os
 from django.db import models
 
 import django_evolution
-from django_evolution.compat.apps import get_app
 from django_evolution.consts import EvolutionsSource, UpgradeMethod
 from django_evolution.models import Version
 from django_evolution.mutations import AddField, ChangeField, RenameModel
 from django_evolution.support import supports_migrations
 from django_evolution.tests.base_test_case import (MigrationsTestsMixin,
                                                    TestCase)
+from django_evolution.utils.apps import get_app
 from django_evolution.utils.evolutions import (get_app_pending_mutations,
                                                get_app_upgrade_info,
                                                get_applied_evolutions,

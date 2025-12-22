@@ -13,9 +13,6 @@ except ImportError:
     # Django < 1.7
     migrations = None
 
-from django_evolution.compat.apps import (get_app,
-                                          get_apps,
-                                          register_app_models)
 from django_evolution.compat.db import sql_create_app, sql_delete
 from django_evolution.consts import UpgradeMethod
 from django_evolution.db.state import DatabaseState
@@ -53,7 +50,12 @@ from django_evolution.tests.utils import (ensure_test_db,
                                           execute_test_sql,
                                           register_models,
                                           replace_models)
-from django_evolution.utils.apps import get_app_label
+from django_evolution.utils.apps import (
+    get_app,
+    get_app_label,
+    get_apps,
+    register_app_models,
+)
 from django_evolution.utils.migrations import (MigrationList,
                                                record_applied_migrations)
 

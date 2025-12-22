@@ -31,7 +31,6 @@ except ImportError:
     # Django <= 1.10
     Index = None
 
-from django_evolution.compat.apps import get_app
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.models import (
     GenericForeignKey,
@@ -62,6 +61,7 @@ from django_evolution.tests.decorators import (requires_index_feature,
 from django_evolution.tests.models import BaseTestModel
 from django_evolution.tests.utils import (F_EXPRESSIONS_TYPE,
                                           VALUE_EXPRESSIONS_TYPE)
+from django_evolution.utils.apps import get_app
 
 
 class SignatureAnchor1(BaseTestModel):

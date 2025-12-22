@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from django.db import DEFAULT_DB_ALIAS, connections
 
-from django_evolution.compat.apps import get_app
 from django_evolution.models import Evolution, Version
 from django_evolution.support import supports_migrations
 from django_evolution.tests.base_test_case import (MigrationsTestsMixin,
@@ -13,6 +12,7 @@ from django_evolution.tests.decorators import requires_migrations
 from django_evolution.tests.evolutions_app.models import EvolutionsAppTestModel
 from django_evolution.tests.evolutions_app2.models import \
     EvolutionsApp2TestModel
+from django_evolution.utils.apps import get_app
 from django_evolution.utils.graph import EvolutionGraph
 from django_evolution.utils.migrations import (MigrationExecutor,
                                                MigrationList,

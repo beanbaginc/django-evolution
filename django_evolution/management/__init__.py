@@ -3,17 +3,15 @@ from __future__ import annotations
 import logging
 
 import django
-from django.conf import settings
 from django.db.models import signals
 from django.db.utils import DEFAULT_DB_ALIAS
 from django.dispatch import receiver
 
-from django_evolution.compat.apps import get_apps, get_app
 from django_evolution.conf import django_evolution_settings
 from django_evolution.evolve import Evolver
 from django_evolution.models import Evolution, Version
 from django_evolution.signals import evolved, evolving, evolving_failed
-from django_evolution.utils.apps import get_app_label
+from django_evolution.utils.apps import get_app, get_app_label, get_apps
 from django_evolution.utils.evolutions import get_evolution_sequence
 
 

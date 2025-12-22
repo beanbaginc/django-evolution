@@ -7,15 +7,11 @@ from functools import partial
 
 import django
 from django import VERSION as DJANGO_VERSION
+from django.apps.registry import apps
 from django.conf import settings
 from django.db import connections
 from django.db.utils import ConnectionHandler, DEFAULT_DB_ALIAS
 
-from django_evolution.compat.apps import (get_app,
-                                          is_app_registered,
-                                          register_app,
-                                          register_app_models,
-                                          unregister_app_model)
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.db import (create_index_name,
                                         create_index_together_name,
@@ -33,6 +29,12 @@ from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.signature import (AppSignature, ModelSignature,
                                         ProjectSignature)
 from django_evolution.tests import models as evo_test
+from django_evolution.utils.apps import (
+    get_app,
+    register_app,
+    register_app_models,
+    unregister_app_model,
+)
 from django_evolution.utils.sql import SQLExecutor
 
 
@@ -265,7 +267,7 @@ def register_models(database_state, models, register_indexes=False,
         _registered_test_models.append((new_app_label, new_model_name))
 
     # If the app hasn't yet been registered, do that now.
-    if not is_app_registered(app):
+    if not apps.is_installed(app.__name__):
         register_app(new_app_label, app)
 
     return app_cache

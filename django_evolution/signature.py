@@ -138,7 +138,6 @@ from django.db import DEFAULT_DB_ALIAS, models
 from django.db.models import CheckConstraint
 from django.utils.translation import gettext as _
 
-from django_evolution.compat.apps import get_apps, get_app
 from django_evolution.compat.datastructures import OrderedDict
 from django_evolution.compat.db import db_router_allows_schema_upgrade
 from django_evolution.compat.models import (GenericRelation,
@@ -152,7 +151,12 @@ from django_evolution.errors import (InvalidSignatureVersion,
 from django_evolution.serialization import (deserialize_from_signature,
                                             serialize_to_signature)
 from django_evolution.support import check_constraint_uses_condition
-from django_evolution.utils.apps import get_app_label, get_legacy_app_label
+from django_evolution.utils.apps import (
+    get_app,
+    get_app_label,
+    get_apps,
+    get_legacy_app_label,
+)
 from django_evolution.utils.evolutions import get_app_upgrade_info
 from django_evolution.utils.migrations import MigrationList
 

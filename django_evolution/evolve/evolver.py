@@ -14,7 +14,6 @@ from django.db import connections
 from django.db.utils import DEFAULT_DB_ALIAS
 from django.utils.translation import gettext as _
 
-from django_evolution.compat.apps import get_app, get_apps
 from django_evolution.compat.db import atomic
 from django_evolution.db.state import DatabaseState
 from django_evolution.diff import Diff
@@ -27,7 +26,7 @@ from django_evolution.evolve.purge_app_task import PurgeAppTask
 from django_evolution.models import Evolution, Version
 from django_evolution.signals import evolved, evolving, evolving_failed
 from django_evolution.signature import AppSignature, ProjectSignature
-from django_evolution.utils.apps import get_app_label
+from django_evolution.utils.apps import get_app, get_app_label, get_apps
 from django_evolution.utils.sql import SQLExecutor
 
 
