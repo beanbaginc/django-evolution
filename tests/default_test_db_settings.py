@@ -1,16 +1,15 @@
-# Each database in here corresponds to one set up in docker-compose.yaml.
-
 import os
 
 
-mysql_db_storage_engine = os.environ.get('DATABASE_MYSQL_STORAGE_ENGINE',
-                                         'INNODB')
+mysql_db_storage_engine = (
+    os.environ.get('DATABASE_MYSQL_STORAGE_ENGINE') or 'INNODB')
 mysql_init_command = 'SET default_storage_engine=%s' % mysql_db_storage_engine
 
 
+# Each database in here corresponds to one set up in docker-compose.yaml.
 TEST_DATABASES = {
     # MySQL
-    'mysql57': {
+    'mysql5_7': {
         'ENGINE': 'django.db.backends.mysql',
         'HOST': '127.0.0.1',
         'PORT': 8700,
@@ -80,7 +79,7 @@ TEST_DATABASES = {
     },
 
     # Postgres
-    'postgres11.8': {
+    'postgres11_8': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'HOST': '127.0.0.1',
         'PORT': 8730,

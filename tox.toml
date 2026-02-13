@@ -1,0 +1,321 @@
+# tox.toml - django-evolution test configuration
+#
+# Usage:
+#
+# 1) Test all supported Python/Django combinations:
+#    $ tox
+#    # Or with a specific database:
+#    $ tox -e <dbname>
+#
+# 2) Test a specific Python/Django combination:
+#    $ tox -e pyXY-djangoX_Y
+#    # Or with a specific database:
+#    $ tox -e pyXY-djangoX_Y-<dbname>
+#
+# 3) Test all Python versions (without Django matrix):
+#    $ tox -e pythons
+#
+# 4) Test all Django versions (without Python matrix):
+#    $ tox -e djangos
+#
+# 5) Test a specific database against all Django versions:
+#    $ tox -e dbtests-<dbname>
+#
+# 6) Test newest databases against all Django versions:
+#    $ tox -e dbtests-newest
+#
+# 7) Test oldest/newest databases against all Django versions:
+#    $ tox -e dbtests-minmax
+#
+# 8) Test all databases against all Django versions:
+#    $ tox -e dbtests-all
+#
+#
+# Built-in database names:
+#
+#    mariadb10, mariadb11, mariadb12
+#    mysql5_7, mysql8, mysql9
+#    postgres11_8, postgres12, postgres13, postgres14, postgres15,
+#      postgres16, postgres17, postgres18
+#    sqlite3
+#
+#
+# Compatibility notes:
+#    Django 4.0:  Python <=3.12   mariadb>=10.2   mysql>=5.7      postgres>=11
+#    Django 4.1:  Python <=3.12   mariadb>=10.3   mysql>=5.7      postgres>=11
+#    Django 4.2:  Python <=3.13   mariadb>=10.4   mysql>=8        postgres>=12
+#    Django 5.0:  Python <=3.14   mariadb>=10.4   mysql>=8.0.11   postgres>=12
+#    Django 5.1:  Python <=3.14   mariadb>=10.5   mysql>=8.0.11   postgres>=13
+#    Django 5.2:  Python <=3.14   mariadb>=10.5   mysql>=8.0.11   postgres>=14
+#    Django 6.0:  Python <=3.14   mariadb>=10.6   mysql>=8.0.11   postgres>=14
+
+
+requires = ["tox>=4.19"]
+
+# Python/Django version matrix.
+env_list = [
+    # Python 3.10-3.12 x Django 4.0-4.1
+    { product = [["py310", "py311", "py312"], ["django4_0", "django4_1"]] },
+
+    # Python 3.10-3.13 x Django 4.2
+    { product = [["py310", "py311", "py312", "py313"], ["django4_2"]] },
+
+    # Python 3.10-3.14 x Django 5.0-5.2
+    { product = [["py310", "py311", "py312", "py313", "py314"], ["django5_0", "django5_1", "django5_2"]] },
+
+    # Python 3.12-3.14 x Django 6.0
+    { product = [["py312", "py313", "py314"], ["django6_0"]] },
+]
+
+
+# Constants for wrapper environments.
+[extra]
+django_only_envs = """\
+    py310-django4_0,\
+    py310-django4_1,\
+    py310-django4_2,\
+    py310-django5_0,\
+    py310-django5_1,\
+    py310-django5_2,\
+    py312-django6_0"""
+
+python_only_envs = """\
+    py310-django5_2,\
+    py311-django5_2,\
+    py312-django6_0,\
+    py313-django6_0,\
+    py314-django6_0"""
+
+db_tests = """\
+    py310-django4_0,\
+    py310-django4_1,\
+    py310-django4_2,\
+    py310-django5_0,\
+    py310-django5_1,\
+    py310-django5_2,\
+    py312-django6_0"""
+
+
+###########################################################################
+# Base test environment
+###########################################################################
+
+[env_run_base]
+skip_dist = true
+use_develop = true
+allowlist_externals = ["tox"]
+
+pass_env = [
+    "DATABASE_MYSQL_STORAGE_ENGINE",
+    "DATABASE_NAME",
+]
+
+deps = [
+    "-r dev-requirements.txt",
+    "psycopg2-binary",
+    { replace = "if", condition = "factor.django4_0", then = ["Django~=4.0.0"], extend = true },
+    { replace = "if", condition = "factor.django4_1", then = ["Django~=4.1.0"], extend = true },
+    { replace = "if", condition = "factor.django4_2", then = ["Django~=4.2.0"], extend = true },
+    { replace = "if", condition = "factor.django5_0", then = ["Django~=5.0.0"], extend = true },
+    { replace = "if", condition = "factor.django5_1", then = ["Django~=5.1.0"], extend = true },
+    { replace = "if", condition = "factor.django5_2", then = ["Django~=5.2.0"], extend = true },
+    { replace = "if", condition = "factor.django6_0", then = ["Django~=6.0.0"], extend = true },
+]
+
+# This can end up with multiple --db arguments, from the meta- targets
+# (dbtests-*). The last one wins, so that's ok.
+commands = [
+    ["pytest", "--db", { replace = "env", name = "DATABASE_NAME", default = "sqlite3" }, { replace = "posargs", extend = true }],
+]
+
+
+# Database name: resolved from the "db" factor label (defined in
+# env_base.dbtests). Defaults to sqlite3 when no db factor is present.
+[env_run_base.set_env]
+DATABASE_NAME = "{factor:db:sqlite3}"
+
+# MySQL/MariaDB storage engine (only set when myisam/innodb factor present).
+DATABASE_MYSQL_STORAGE_ENGINE.replace = "if"
+DATABASE_MYSQL_STORAGE_ENGINE.condition = "factor.myisam"
+DATABASE_MYSQL_STORAGE_ENGINE.then = "MyISAM"
+DATABASE_MYSQL_STORAGE_ENGINE.else.replace = "if"
+DATABASE_MYSQL_STORAGE_ENGINE.else.condition = "factor.innodb"
+DATABASE_MYSQL_STORAGE_ENGINE.else.then = "INNODB"
+DATABASE_MYSQL_STORAGE_ENGINE.else.else = "{env:DATABASE_MYSQL_STORAGE_ENGINE:}"
+
+
+###########################################################################
+# Python/Django matrix wrapper environments
+###########################################################################
+
+[env.pythons]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [
+    ["tox", "-e", "{[extra]python_only_envs}", "--", { replace = "posargs", extend = true }],
+]
+
+
+[env.djangos]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [
+    ["tox", "-e", "{[extra]django_only_envs}", "--", { replace = "posargs", extend = true }],
+]
+
+
+###########################################################################
+# Database test wrapper environments
+#
+# Each runs all Django versions against a specific database.
+# These depend on the databases defined in tests/docker-compose.yaml.
+###########################################################################
+
+[env_base.dbtests]
+factors = [
+    { db = [
+        "sqlite3",
+        "mysql5_7", "mysql8", "mysql9",
+        "mariadb10", "mariadb11", "mariadb12",
+        "postgres11_8", "postgres12", "postgres13", "postgres14",
+        "postgres15", "postgres16", "postgres17", "postgres18",
+    ] },
+]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [
+    ["tox", "-e", "{[extra]db_tests}", "--", "--db", "{factor:db:sqlite3}", { replace = "posargs", extend = true }],
+]
+
+
+# MySQL/MariaDB database test wrappers with storage engine selection.
+#
+# These don't match the env_base.dbtests template (2 factors vs 1),
+# so they need explicit definitions. The DATABASE_MYSQL_STORAGE_ENGINE
+# env var is set via factor-conditional set_env in env_run_base.
+
+[env.dbtests-mysql5_7-myisam]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [["tox", "-e", "{[extra]db_tests}", "--", "--db", "mysql5_7", { replace = "posargs", extend = true }]]
+
+[env.dbtests-mysql5_7-innodb]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [["tox", "-e", "{[extra]db_tests}", "--", "--db", "mysql5_7", { replace = "posargs", extend = true }]]
+
+[env.dbtests-mysql8-myisam]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [["tox", "-e", "{[extra]db_tests}", "--", "--db", "mysql8", { replace = "posargs", extend = true }]]
+
+[env.dbtests-mysql8-innodb]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [["tox", "-e", "{[extra]db_tests}", "--", "--db", "mysql8", { replace = "posargs", extend = true }]]
+
+[env.dbtests-mysql9-myisam]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [["tox", "-e", "{[extra]db_tests}", "--", "--db", "mysql9", { replace = "posargs", extend = true }]]
+
+[env.dbtests-mysql9-innodb]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [["tox", "-e", "{[extra]db_tests}", "--", "--db", "mysql9", { replace = "posargs", extend = true }]]
+
+[env.dbtests-mariadb10-myisam]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [["tox", "-e", "{[extra]db_tests}", "--", "--db", "mariadb10", { replace = "posargs", extend = true }]]
+
+[env.dbtests-mariadb10-innodb]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [["tox", "-e", "{[extra]db_tests}", "--", "--db", "mariadb10", { replace = "posargs", extend = true }]]
+
+[env.dbtests-mariadb11-myisam]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [["tox", "-e", "{[extra]db_tests}", "--", "--db", "mariadb11", { replace = "posargs", extend = true }]]
+
+[env.dbtests-mariadb11-innodb]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [["tox", "-e", "{[extra]db_tests}", "--", "--db", "mariadb11", { replace = "posargs", extend = true }]]
+
+[env.dbtests-mariadb12-myisam]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [["tox", "-e", "{[extra]db_tests}", "--", "--db", "mariadb12", { replace = "posargs", extend = true }]]
+
+[env.dbtests-mariadb12-innodb]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [["tox", "-e", "{[extra]db_tests}", "--", "--db", "mariadb12", { replace = "posargs", extend = true }]]
+
+
+###########################################################################
+# Aggregate database test wrapper environments
+###########################################################################
+
+# Test the newest version of each database type.
+[env.dbtests-newest]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [
+    [
+        "tox", "-e", """\
+            dbtests-sqlite3,\
+            dbtests-mysql9,\
+            dbtests-mariadb12,\
+            dbtests-postgres18""",
+        "--", { replace = "posargs", extend = true },
+    ],
+]
+
+
+# Test the oldest and newest versions of each database type.
+[env.dbtests-minmax]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [
+    [
+        "tox", "-e", """\
+            dbtests-sqlite3,\
+            dbtests-mysql5_7,\
+            dbtests-mysql9,\
+            dbtests-mariadb10,\
+            dbtests-mariadb12,\
+            dbtests-postgres11_8,\
+            dbtests-postgres18""",
+        "--", { replace = "posargs", extend = true },
+    ],
+]
+
+
+# Test all database versions.
+[env.dbtests-all]
+env_dir = "{work_dir}/wrap-tox"
+deps = []
+commands = [
+    [
+        "tox", "-e", """\
+            dbtests-sqlite3,\
+            dbtests-mysql5_7,\
+            dbtests-mysql8,\
+            dbtests-mysql9,\
+            dbtests-mariadb10,\
+            dbtests-mariadb11,\
+            dbtests-mariadb12,\
+            dbtests-postgres11_8,\
+            dbtests-postgres12,\
+            dbtests-postgres13,\
+            dbtests-postgres14,\
+            dbtests-postgres15,\
+            dbtests-postgres16,\
+            dbtests-postgres17,\
+            dbtests-postgres18""",
+        "--", { replace = "posargs", extend = true },
+    ],
+]

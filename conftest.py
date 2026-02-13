@@ -76,6 +76,26 @@ class DjangoSetupPlugin(object):
         self.config = config
         self.old_db_names = None
 
+    # Maximum Django version (major, minor) supported by each database.
+    #
+    # Any database not listed here is assumed to be compatible with all
+    # Django versions.
+    #
+    # Based on:
+    #    Django 4.0:  mariadb>=10.2   mysql>=5.7      postgres>=11
+    #    Django 4.1:  mariadb>=10.3   mysql>=5.7      postgres>=11
+    #    Django 4.2:  mariadb>=10.4   mysql>=8         postgres>=12
+    #    Django 5.0:  mariadb>=10.4   mysql>=8.0.11    postgres>=12
+    #    Django 5.1:  mariadb>=10.5   mysql>=8.0.11    postgres>=13
+    #    Django 5.2:  mariadb>=10.5   mysql>=8.0.11    postgres>=14
+    #    Django 6.0:  mariadb>=10.6   mysql>=8.0.11    postgres>=14
+    DB_MAX_DJANGO_VERSION = {
+        'mysql5_7': (4, 1),
+        'postgres11_8': (4, 1),
+        'postgres12': (5, 0),
+        'postgres13': (5, 1),
+    }
+
     def pytest_sessionstart(self, session):
         """Start a pytest session.
 
@@ -87,6 +107,16 @@ class DjangoSetupPlugin(object):
                 The session that's starting.
         """
         config = session.config
+
+        db_name = config.option.db
+        max_django = self.DB_MAX_DJANGO_VERSION.get(db_name)
+
+        if max_django is not None and django.VERSION[:2] > max_django:
+            pytest.exit(
+                f'{db_name} is not supported on Django {django.get_version()} '
+                f'(max supported: {max_django[0]}.{max_django[1]})',
+                returncode=0,
+            )
 
         os.environ.update({
             'DJANGO_SETTINGS_MODULE': 'tests.settings',
