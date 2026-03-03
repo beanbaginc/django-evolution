@@ -1,5 +1,5 @@
 mysqlclient
 pytest
-pytest-env~=0.6.2
+pytest-env
 pytz
 tox
