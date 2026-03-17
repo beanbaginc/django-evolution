@@ -1584,6 +1584,460 @@ def change_field(connection):
             % generate_index_name('tests_testmodel', 'int_field1'),
         ],
 
+        'field_type_unique_false': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" text NOT NULL,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'field_type_db_index_false': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" text NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+        ],
+
+        'field_type_db_index_to_db_index': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" bigint NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'field_type_db_index_to_unique': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" bigint NOT NULL UNIQUE,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+        ],
+
+        'field_type_plain_to_db_index': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" bigint NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field4");'
+            % generate_index_name('tests_testmodel', 'int_field4'),
+        ],
+
+        'field_type_plain_to_unique': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" integer NOT NULL UNIQUE,'
+            ' "int_field4" bigint NOT NULL UNIQUE,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'field_type_unique_missing_index_to_db_index': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" bigint NOT NULL,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field3");'
+            % generate_index_name('tests_testmodel', 'int_field3'),
+        ],
+
+        'field_type_unique_missing_index_to_plain': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" bigint NOT NULL,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'field_type_unique_missing_index_to_unique': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" bigint NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'field_type_unique_to_db_index': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" bigint NOT NULL,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field3");'
+            % generate_index_name('tests_testmodel', 'int_field3'),
+        ],
+
+        'field_type_unique_to_unique': [
+            'CREATE TABLE "TEMP_TABLE" '
+            '("my_id" integer NOT NULL PRIMARY KEY,'
+            ' "alt_pk" integer NOT NULL,'
+            ' "custom_db_column" integer NOT NULL,'
+            ' "int_field1" integer NOT NULL,'
+            ' "int_field2" integer NOT NULL,'
+            ' "int_field3" bigint NOT NULL UNIQUE,'
+            ' "int_field4" integer NOT NULL,'
+            ' "char_field" varchar(20) NOT NULL,'
+            ' "char_field1" varchar(25) NULL,'
+            ' "char_field2" varchar(30) NOT NULL,'
+            ' "dec_field" decimal NOT NULL,'
+            ' "dec_field1" decimal NULL,'
+            ' "dec_field2" decimal NOT NULL,'
+            ' "datetime_field1" datetime NULL,'
+            ' "datetime_field2" datetime NOT NULL,'
+            ' "date_field1" date NULL,'
+            ' "date_field2" date NOT NULL);',
+
+            'INSERT INTO "TEMP_TABLE"'
+            ' ("my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2")'
+            ' SELECT "my_id", "alt_pk", "custom_db_column", "int_field1",'
+            ' "int_field2", "int_field3", "int_field4", "char_field",'
+            ' "char_field1", "char_field2", "dec_field", "dec_field1",'
+            ' "dec_field2", "datetime_field1", "datetime_field2",'
+            ' "date_field1", "date_field2"'
+            ' FROM "tests_testmodel";',
+
+            'DROP TABLE "tests_testmodel";',
+
+            'ALTER TABLE "TEMP_TABLE" RENAME TO "tests_testmodel";',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field1");'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
         'field_type': [
             'CREATE TABLE "TEMP_TABLE" '
             '("my_id" integer NOT NULL PRIMARY KEY,'

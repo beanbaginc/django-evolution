@@ -917,6 +917,88 @@ def change_field(connection):
             ' MODIFY COLUMN `dec_field1` numeric(10, 3);',
         ],
 
+        'field_type_unique_false': [
+            'DROP INDEX int_field3 ON `tests_testmodel`;',
+
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY `int_field3` longtext NOT NULL;',
+        ],
+
+        'field_type_db_index_false': [
+            'DROP INDEX `%s` ON `tests_testmodel`;'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY `int_field1` longtext NOT NULL;',
+        ],
+
+        'field_type_db_index_to_db_index': [
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY `int_field1` bigint NOT NULL;',
+        ],
+
+        'field_type_db_index_to_unique': [
+            'DROP INDEX `%s` ON `tests_testmodel`;'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY `int_field1` bigint NOT NULL UNIQUE;',
+
+            'CREATE UNIQUE INDEX %s ON `tests_testmodel`(`int_field1`);'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field1']),
+        ],
+
+        'field_type_plain_to_db_index': [
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY `int_field4` bigint NOT NULL;',
+
+            'CREATE INDEX `%s` ON `tests_testmodel` (`int_field4`);'
+            % generate_index_name('tests_testmodel', 'int_field4'),
+        ],
+
+        'field_type_plain_to_unique': [
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY `int_field4` bigint NOT NULL UNIQUE;',
+
+            'CREATE UNIQUE INDEX %s ON `tests_testmodel`(`int_field4`);'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field4']),
+        ],
+
+        'field_type_unique_missing_index_to_db_index': [
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY `int_field3` bigint NOT NULL;',
+
+            'CREATE INDEX `%s` ON `tests_testmodel` (`int_field3`);'
+            % generate_index_name('tests_testmodel', 'int_field3'),
+        ],
+
+        'field_type_unique_missing_index_to_plain': [
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY `int_field3` bigint NOT NULL;',
+        ],
+
+        'field_type_unique_missing_index_to_unique': [
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY `int_field3` bigint NOT NULL UNIQUE;',
+        ],
+
+        'field_type_unique_to_db_index': [
+            'DROP INDEX int_field3 ON `tests_testmodel`;',
+
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY `int_field3` bigint NOT NULL;',
+
+            'CREATE INDEX `%s` ON `tests_testmodel` (`int_field3`);'
+            % generate_index_name('tests_testmodel', 'int_field3'),
+        ],
+
+        'field_type_unique_to_unique': [
+            'ALTER TABLE `tests_testmodel`'
+            ' MODIFY `int_field3` bigint NOT NULL UNIQUE;',
+        ],
+
         'field_type': [
             'ALTER TABLE `tests_testmodel`'
             ' MODIFY `char_field` longtext NULL;',
