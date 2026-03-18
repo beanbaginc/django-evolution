@@ -1563,6 +1563,14 @@ def indexes(connection):
     # the event that this (very minor) issue is discovered and fixed.
     tablespace_spacer = ' '
 
+    # Django 4.1+ conditionally omits DESC based on whether the database
+    # supports index column ordering. Older Django always emits DESC.
+    if (django_version >= (4, 1) and
+        not connection.features.supports_index_column_ordering):
+        desc = ''
+    else:
+        desc = DESC
+
     mappings = {
         # NOTE: condition is ignored for MySQL.
         'replace_condition': [
@@ -1643,7 +1651,7 @@ def indexes(connection):
 
             'CREATE INDEX `my_custom_index`'
             ' ON `tests_testmodel` (`char_field1`, `char_field2`%s);'
-            % DESC,
+            % desc,
         },
 
         # NOTE: condition is ignored for MySQL.
