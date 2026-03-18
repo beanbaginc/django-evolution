@@ -3,6 +3,14 @@ from __future__ import annotations
 from datetime import datetime, date, timezone
 
 from django.db import connection, models
+from django.db.models import Q
+
+try:
+    # Django >= 2.2
+    from django.db.models import CheckConstraint
+except ImportError:
+    # Django <= 2.1
+    CheckConstraint = None
 
 from django_evolution.db import EvolutionOperationsMulti
 from django_evolution.diff import Diff
@@ -12,9 +20,18 @@ from django_evolution.mutators import AppMutator
 from django_evolution.signature import (AppSignature,
                                         ModelSignature,
                                         ProjectSignature)
+from django_evolution.support import (check_constraint_uses_condition,
+                                      supports_constraints)
 from django_evolution.tests.base_test_case import EvolutionTestCase
-from django_evolution.tests.decorators import requires_model_field
+from django_evolution.tests.decorators import (requires_meta_constraints,
+                                               requires_model_field)
 from django_evolution.tests.models import BaseTestModel
+
+
+if check_constraint_uses_condition:
+    CHECK_CONSTRAINT_KEY = 'condition'
+else:
+    CHECK_CONSTRAINT_KEY = 'check'
 
 
 class ChangeSequenceFieldInitial(object):
@@ -54,6 +71,19 @@ class ChangeBaseModel(BaseTestModel):
     datetime_field2 = models.DateTimeField(null=False)
     date_field1 = models.DateField(null=True)
     date_field2 = models.DateField(null=False)
+
+
+class ChangeFieldCheckConstraintBaseModel(BaseTestModel):
+    int_field1 = models.IntegerField()
+    int_field2 = models.IntegerField()
+
+    class Meta(BaseTestModel.Meta):
+        if supports_constraints:
+            constraints = [
+                CheckConstraint(
+                    name='change_field_check_constraint',
+                    **{CHECK_CONSTRAINT_KEY: Q(int_field2__gt=0)}),
+            ]
 
 
 class ChangeFieldTests(EvolutionTestCase):
@@ -2603,3 +2633,56 @@ class ChangeFieldTests(EvolutionTestCase):
              "        Property 'null' has changed\n"
              "In model tests.TestModel:\n"
              "    Field 'test_field' has been added"))
+
+
+class ChangeFieldCheckConstraintTests(EvolutionTestCase):
+    """Testing ChangeField with constraints reported by introspection.
+
+    Version Added:
+        3.0
+    """
+
+    sql_mapping_key = 'change_field'
+    default_base_model = ChangeFieldCheckConstraintBaseModel
+
+    @requires_meta_constraints
+    def test_set_db_index_true_with_check_constraint(self):
+        """Testing ChangeField with setting db_index=True and a check
+        constraint on the same column reported by introspection
+        """
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField(db_index=True)
+
+            class Meta(BaseTestModel.Meta):
+                if supports_constraints:
+                    constraints = [
+                        CheckConstraint(
+                            name='change_field_check_constraint',
+                            **{CHECK_CONSTRAINT_KEY: Q(int_field2__gt=0)}),
+                    ]
+
+        # The base model has a check constraint on int_field2. The database's
+        # introspection reports it with no index/unique/primary_key flags set
+        # (the same shape as the NOT NULL constraints PostgreSQL >= 18 reports
+        # in pg_constraint). It must not be tracked as an index, or the
+        # evolution would find an unexpected index in the database state for
+        # int_field2.
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeField('TestModel', 'int_field2', initial=None,
+                            db_index=True),
+            ],
+            ("In model tests.TestModel:\n"
+             "    In field 'int_field2':\n"
+             "        Property 'db_index' has changed"),
+            [
+                "ChangeField('TestModel', 'int_field2', db_index=True,"
+                " initial=None)",
+            ],
+            'AddDBIndexChangeModel')
+
+        self.assertIsNotNone(self.test_database_state.find_index(
+            table_name='tests_testmodel',
+            columns=['int_field2']))

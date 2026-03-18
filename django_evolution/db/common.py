@@ -1952,6 +1952,18 @@ class BaseEvolutionOperations(object):
         Django >= 1.7), falling back on in-house implementations on earlier
         releases.
 
+        The results are unfiltered. Every constraint reported by the database
+        is included, regardless of type. Callers are responsible for filtering
+        down to the kinds of constraints they care about (for example,
+        indexes). This is done so that lookups for other details (such as
+        check constraints or primary keys) can be performed off the same
+        results.
+
+        Version Changed:
+            3.0:
+            Added ``index`` and ``primary_key`` fields to the returned
+            dictionary.
+
         Version Added:
             2.2
 
@@ -1961,13 +1973,19 @@ class BaseEvolutionOperations(object):
 
         Returns:
             dict:
-            A dictionary mapping index names to a dictionary containing:
+            A dictionary mapping constraint names to a dictionary containing:
 
             ``columns`` (:py:class:`list`):
-                The list of columns that the index covers.
+                The list of columns that the constraint covers.
+
+            ``index`` (:py:class:`bool`):
+                Whether this is an index.
+
+            ``primary_key`` (:py:class:`bool`):
+                Whether this is a primary key constraint.
 
             ``unique`` (:py:class:`bool`):
-                Whether this is a unique index.
+                Whether this is a unique constraint or index.
         """
         introspection = self.connection.introspection
         results = {}
@@ -1982,10 +2000,12 @@ class BaseEvolutionOperations(object):
             finally:
                 cursor.close()
 
-            for index_name, info in constraints.items():
-                results[index_name] = {
-                    'unique': info.get('unique', False),
+            for constraint_name, info in constraints.items():
+                results[constraint_name] = {
                     'columns': info.get('columns', []),
+                    'index': info.get('index', False),
+                    'primary_key': info.get('primary_key', False),
+                    'unique': info.get('unique', False),
                 }
         else:
             # Django == 1.6
@@ -1994,6 +2014,8 @@ class BaseEvolutionOperations(object):
             for index_name, info in indexes.items():
                 results[index_name] = {
                     'columns': info['columns'],
+                    'index': True,
+                    'primary_key': False,
                     'unique': info['unique'],
                 }
 

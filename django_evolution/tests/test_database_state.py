@@ -1,12 +1,49 @@
 from __future__ import annotations
 
 from django.contrib.auth.models import User
+from django.db import models
+from django.db.models import Q
 from django.test.testcases import TestCase
+
+try:
+    # Django >= 2.2
+    from django.db.models import CheckConstraint
+except ImportError:
+    # Django <= 2.1
+    CheckConstraint = None
 
 from django_evolution.compat.models import get_remote_field
 from django_evolution.db.state import DatabaseState, IndexState
 from django_evolution.errors import DatabaseStateError
 from django_evolution.models import Evolution
+from django_evolution.support import check_constraint_uses_condition
+from django_evolution.tests.base_test_case import EvolutionTestCase
+from django_evolution.tests.decorators import requires_meta_constraints
+from django_evolution.tests.models import BaseTestModel
+from django_evolution.tests.utils import ensure_test_db
+
+
+if check_constraint_uses_condition:
+    CHECK_CONSTRAINT_KEY = 'condition'
+else:
+    CHECK_CONSTRAINT_KEY = 'check'
+
+
+class RescanConstraintsModel(BaseTestModel):
+    """A model with an index and a check constraint, for rescan tests."""
+
+    indexed_field = models.IntegerField(db_index=True)
+    plain_field = models.IntegerField()
+
+    class Meta(BaseTestModel.Meta):
+        db_table = 'tests_rescan_constraints'
+
+        if CheckConstraint is not None:
+            constraints = [
+                CheckConstraint(
+                    name='rescan_check_constraint',
+                    **{CHECK_CONSTRAINT_KEY: Q(plain_field__gt=0)}),
+            ]
 
 
 class DatabaseStateTests(TestCase):
@@ -410,3 +447,40 @@ class DatabaseStateTests(TestCase):
         ]
 
         self.assertIn((['version_id'], False), indexes)
+
+
+class RescanTableConstraintsTests(EvolutionTestCase):
+    """Tests for DatabaseState.rescan_tables constraint filtering.
+
+    Version Added:
+        3.0
+    """
+
+    default_base_model = RescanConstraintsModel
+
+    @requires_meta_constraints
+    def test_rescan_tables_filters_non_index_constraints(self):
+        """Testing DatabaseState.rescan_tables filters out constraints that
+        aren't indexes, unique constraints, or primary keys
+        """
+        # Create a real table with an index and a check constraint, and then
+        # scan it. The database's introspection reports the check constraint
+        # with no index/unique/primary_key flags set (the same shape as the
+        # NOT NULL constraints PostgreSQL >= 18 reports in pg_constraint), so
+        # it must not be tracked as an index.
+        table_name = RescanConstraintsModel._meta.db_table
+
+        with ensure_test_db(model_entries=self.start.items(),
+                            app_label='tests'):
+            database_state = DatabaseState(db_name='default')
+
+            # The real index on indexed_field should be tracked.
+            self.assertIsNotNone(database_state.find_index(
+                table_name=table_name,
+                columns=['indexed_field']))
+
+            # The check constraint on plain_field must not be tracked as an
+            # index.
+            self.assertIsNone(database_state.find_index(
+                table_name=table_name,
+                columns=['plain_field']))
