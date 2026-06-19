@@ -1170,8 +1170,18 @@ class BaseEvolutionOperations(object):
 
         The SQL needed to change the column will be returned.
 
+        If unique is being removed but the unique index is not tracked in
+        the database state, there is nothing to drop, so no SQL is returned.
+        This mirrors the handling in
+        :py:meth:`_get_index_change_sql_for_type_change` on MySQL/MariaDB.
+
         This is not intended to be overridden. Instead, subclasses should
         override `get_change_unique_sql`.
+
+        Version Changed:
+            3.0:
+            A missing unique index is now handled gracefully, returning no
+            SQL, instead of raising an assertion error.
         """
         table_name = model._meta.db_table
         constraint_name = None
@@ -1190,7 +1200,11 @@ class BaseEvolutionOperations(object):
                 columns=[field.column],
                 unique=True)
 
-            assert index_state
+            if index_state is None:
+                # The unique index isn't tracked in the database state, so
+                # there's nothing to drop.
+                return SQLResult()
+
             constraint_name = index_state.name
             self.database_state.remove_index(table_name=table_name,
                                              index_name=constraint_name,
@@ -1201,6 +1215,20 @@ class BaseEvolutionOperations(object):
 
     def change_column_type(self, model, old_field, new_field, new_attrs):
         """Return SQL to change the type of a column.
+
+        Version Changed:
+            3.0:
+            When :py:attr:`change_column_type_sets_attrs` is ``True``
+            (MySQL/MariaDB), any ``db_index`` or ``unique`` changes in
+            ``new_attrs`` are now handled here. Index drops are emitted
+            as pre-SQL (before the column type change) and index adds as
+            post-SQL (after the column type change).
+
+            This is necessary because on those backends,
+            :py:meth:`~django_evolution.mutations.ChangeField.mutate`
+            returns early and never calls
+            :py:meth:`change_column_attrs`, so index changes would
+            otherwise be silently dropped.
 
         Version Added:
             2.2
@@ -1234,14 +1262,174 @@ class BaseEvolutionOperations(object):
 
         sql_result.add_pre_sql(pre_sql)
 
+        # When change_column_type_sets_attrs is True (MySQL/MariaDB),
+        # ChangeField.mutate() returns early after this method without
+        # calling change_column_attrs(). Handle any db_index/unique
+        # changes here so they aren't silently lost.
+        #
+        # Index drops must happen before the column type change (as
+        # pre-SQL), and index adds after (as post-SQL). This is
+        # critical for MySQL, which rejects MODIFY COLUMN on a
+        # TEXT/BLOB column that has an existing index without a key
+        # length.
+        index_add_sql = None
+
+        if self.change_column_type_sets_attrs and new_attrs:
+            index_drop_sql, index_add_sql = \
+                self._get_index_change_sql_for_type_change(
+                    model=model,
+                    old_field=old_field,
+                    new_field=new_field,
+                    new_attrs=new_attrs)
+
+            sql_result.add_pre_sql(index_drop_sql)
+
         sql_result.add_sql(self.get_change_column_type_sql(
             model=model,
             old_field=old_field,
             new_field=new_field))
 
+        if index_add_sql is not None:
+            sql_result.add_post_sql(index_add_sql)
+
         sql_result.add_post_sql(self.restore_field_ref_constraints(stash))
 
         return sql_result
+
+    def _get_index_change_sql_for_type_change(
+        self,
+        model,
+        old_field,
+        new_field,
+        new_attrs,
+    ):
+        """Return SQL for index changes needed during a column type change.
+
+        This computes any index drops and adds required by ``db_index``
+        and ``unique`` attribute changes, returning them as separate
+        :py:class:`~django_evolution.db.sql_result.SQLResult` instances
+        so that the caller can order them around the column type change
+        SQL.
+
+        This function has the following possible states:
+
+        ======================  ==================  ========================
+        Old column              New column          Result
+        ======================  ==================  ========================
+        Unique                  Unique              No change
+        Unique                  Indexed             Remove unique, add index
+        Unique                  Non-indexed/unique  No change
+        Unique (missing index)  Unique              No change
+        Unique (missing index)  Indexed             Create index
+        Unique (missing index)  Non-indexed/unique  No change
+        Indexed                 Unique              Drop index, add unique
+        Indexed                 Indexed             No change
+        Indexed                 Non-indexed/unique  Drop index
+        Non-indexed/unique      Unique              Add unique
+        Non-indexed/unique      Indexed             Add index
+        Non-indexed/unique      Non-indexed/unique  No change
+        ======================  ==================  ========================
+
+        Version Added:
+            3.0
+
+        Args:
+            model (type):
+                The model owning the field.
+
+            old_field (django.db.models.Field):
+                The old field.
+
+            new_field (django.db.models.Field):
+                The new field.
+
+            new_attrs (dict):
+                The changed attributes from the
+                :py:class:`~django_evolution.mutations.change_field.
+                ChangeField`.
+
+        Returns:
+            tuple:
+            A 2-tuple of:
+
+            Tuple:
+                0 (django_evolution.db.sql_result.SQLResult):
+                    SQL to drop indexes (to run before the column type change).
+
+                1 (~django_evolution.db.sql_result.SQLResult):
+                    SQL to add indexes (to run after the column type change).
+        """
+        # The following tests exercise each of the states in the table above,
+        # in ChangeFieldTests:
+        # 1: test_change_field_type_unique_to_unique
+        # 2: test_change_field_type_unique_to_db_index
+        # 3: test_change_field_type_with_unique_false
+        # 4: test_change_field_type_unique_missing_index_to_unique
+        # 5: test_change_field_type_unique_missing_index_to_db_index
+        # 6: test_change_field_type_unique_missing_index_to_plain
+        # 7: test_change_field_type_db_index_to_unique
+        # 8: test_change_field_type_db_index_to_db_index
+        # 9: test_change_field_type_with_db_index_false
+        # 10: test_change_field_type_plain_to_unique
+        # 11: test_change_field_type_plain_to_db_index
+        # 12: test_change_field_type
+        drop_sql = SQLResult()
+        add_sql = SQLResult()
+
+        db_index_attr = new_attrs.get('db_index', {})
+        unique_attr = new_attrs.get('unique', {})
+
+        if not db_index_attr and not unique_attr:
+            return drop_sql, add_sql
+
+        old_db_index = db_index_attr.get('old_value', old_field.db_index)
+        new_db_index = db_index_attr.get('new_value', old_field.db_index)
+        old_unique = unique_attr.get('old_value', old_field.unique)
+        new_unique = unique_attr.get('new_value', old_field.unique)
+
+        table_name = model._meta.db_table
+        database_state = self.database_state
+
+        # Determine index drops.
+        if old_unique and not new_unique:
+            index_state = database_state.find_index(
+                table_name=table_name,
+                columns=[old_field.column],
+                unique=True)
+
+            if index_state:
+                drop_sql.add(self.get_change_unique_sql(
+                    model, old_field, False,
+                    index_state.name, None))
+                database_state.remove_index(
+                    table_name=table_name,
+                    index_name=index_state.name,
+                    unique=True)
+        elif (old_db_index and not old_unique and
+              (not new_db_index or new_unique)):
+            drop_sql.add(self.drop_index(model, old_field))
+
+        # Determine index adds.
+        if not old_unique and new_unique:
+            constraint_name = self.get_new_index_name(
+                model=model, fields=[new_field], unique=True)
+            database_state.add_index(
+                table_name=table_name,
+                index_name=constraint_name,
+                columns=[new_field.column],
+                unique=True)
+            add_sql.add(self.get_change_unique_sql(
+                model=model,
+                field=new_field,
+                new_unique_value=True,
+                constraint_name=constraint_name,
+                initial=None))
+        elif ((not old_db_index or old_unique) and
+              new_db_index and not new_unique):
+            new_field.db_index = True
+            add_sql.add(self.create_index(model, new_field))
+
+        return drop_sql, add_sql
 
     def get_change_unique_sql(self, model, field, new_unique_value,
                               constraint_name, initial):
@@ -1764,6 +1952,18 @@ class BaseEvolutionOperations(object):
         Django >= 1.7), falling back on in-house implementations on earlier
         releases.
 
+        The results are unfiltered. Every constraint reported by the database
+        is included, regardless of type. Callers are responsible for filtering
+        down to the kinds of constraints they care about (for example,
+        indexes). This is done so that lookups for other details (such as
+        check constraints or primary keys) can be performed off the same
+        results.
+
+        Version Changed:
+            3.0:
+            Added ``index`` and ``primary_key`` fields to the returned
+            dictionary.
+
         Version Added:
             2.2
 
@@ -1773,13 +1973,19 @@ class BaseEvolutionOperations(object):
 
         Returns:
             dict:
-            A dictionary mapping index names to a dictionary containing:
+            A dictionary mapping constraint names to a dictionary containing:
 
             ``columns`` (:py:class:`list`):
-                The list of columns that the index covers.
+                The list of columns that the constraint covers.
+
+            ``index`` (:py:class:`bool`):
+                Whether this is an index.
+
+            ``primary_key`` (:py:class:`bool`):
+                Whether this is a primary key constraint.
 
             ``unique`` (:py:class:`bool`):
-                Whether this is a unique index.
+                Whether this is a unique constraint or index.
         """
         introspection = self.connection.introspection
         results = {}
@@ -1794,10 +2000,12 @@ class BaseEvolutionOperations(object):
             finally:
                 cursor.close()
 
-            for index_name, info in constraints.items():
-                results[index_name] = {
-                    'unique': info.get('unique', False),
+            for constraint_name, info in constraints.items():
+                results[constraint_name] = {
                     'columns': info.get('columns', []),
+                    'index': info.get('index', False),
+                    'primary_key': info.get('primary_key', False),
+                    'unique': info.get('unique', False),
                 }
         else:
             # Django == 1.6
@@ -1806,6 +2014,8 @@ class BaseEvolutionOperations(object):
             for index_name, info in indexes.items():
                 results[index_name] = {
                     'columns': info['columns'],
+                    'index': True,
+                    'primary_key': False,
                     'unique': info['unique'],
                 }
 

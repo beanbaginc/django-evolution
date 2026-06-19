@@ -1002,6 +1002,101 @@ def change_field(connection):
             ' ALTER COLUMN "dec_field1" TYPE numeric(10, 3);',
         ],
 
+        'field_type_unique_false': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "int_field3" TYPE text'
+            ' USING int_field3::text;',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' DROP CONSTRAINT "tests_testmodel_int_field3_key";',
+        ],
+
+        'field_type_db_index_false': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "int_field1" TYPE text'
+            ' USING int_field1::text;',
+
+            'DROP INDEX IF EXISTS "%s";'
+            % generate_index_name('tests_testmodel', 'int_field1'),
+        ],
+
+        'field_type_db_index_to_db_index': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "int_field1" TYPE bigint'
+            ' USING int_field1::bigint;',
+        ],
+
+        'field_type_db_index_to_unique': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "int_field1" TYPE bigint'
+            ' USING int_field1::bigint;',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD CONSTRAINT "%s" UNIQUE("int_field1");'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field1']),
+
+            '%s "%s";'
+            % (drop_index_sql,
+               generate_index_name('tests_testmodel', 'int_field1')),
+        ],
+
+        'field_type_plain_to_db_index': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "int_field4" TYPE bigint'
+            ' USING int_field4::bigint;',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field4");'
+            % generate_index_name('tests_testmodel', 'int_field4'),
+        ],
+
+        'field_type_plain_to_unique': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "int_field4" TYPE bigint'
+            ' USING int_field4::bigint;',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' ADD CONSTRAINT "%s" UNIQUE("int_field4");'
+            % generate_unique_constraint_name('tests_testmodel',
+                                              ['int_field4']),
+        ],
+
+        'field_type_unique_missing_index_to_db_index': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "int_field3" TYPE bigint'
+            ' USING int_field3::bigint;',
+
+            'CREATE INDEX "%s" ON "tests_testmodel" ("int_field3");'
+            % generate_index_name('tests_testmodel', 'int_field3'),
+        ],
+
+        'field_type_unique_missing_index_to_plain': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "int_field3" TYPE bigint'
+            ' USING int_field3::bigint;',
+        ],
+
+        'field_type_unique_missing_index_to_unique': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "int_field3" TYPE bigint'
+            ' USING int_field3::bigint;',
+        ],
+
+        'field_type_unique_to_db_index': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "int_field3" TYPE bigint'
+            ' USING int_field3::bigint;',
+
+            'ALTER TABLE "tests_testmodel"'
+            ' DROP CONSTRAINT "tests_testmodel_int_field3_key";',
+        ],
+
+        'field_type_unique_to_unique': [
+            'ALTER TABLE "tests_testmodel"'
+            ' ALTER COLUMN "int_field3" TYPE bigint'
+            ' USING int_field3::bigint;',
+        ],
+
         'field_type': [
             'ALTER TABLE "tests_testmodel"'
             ' ALTER COLUMN "char_field" TYPE text USING char_field::text;',

@@ -383,6 +383,16 @@ class DatabaseState(object):
             constraints = evolver.get_constraints_for_table(table_name)
 
             for constraint_name, constraint_info in constraints.items():
+                if not (constraint_info['index'] or
+                        constraint_info['unique'] or
+                        constraint_info['primary_key']):
+                    # Skip constraints that aren't indexes, unique
+                    # constraints, or primary keys. This filters out check
+                    # constraints, foreign key constraints, and NOT NULL
+                    # constraints (which PostgreSQL >= 18 exposes in
+                    # pg_constraint).
+                    continue
+
                 self.add_index(table_name=table_name,
                                index_name=constraint_name,
                                columns=constraint_info['columns'],

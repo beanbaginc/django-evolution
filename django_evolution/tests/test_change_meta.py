@@ -53,6 +53,21 @@ class ChangeMetaPlainBaseModel(BaseTestModel):
     char_field2 = models.CharField(max_length=40)
 
 
+class ChangeMetaIndexesCheckConstraintBaseModel(BaseTestModel):
+    int_field1 = models.IntegerField()
+    int_field2 = models.IntegerField()
+    char_field1 = models.CharField(max_length=20)
+    char_field2 = models.CharField(max_length=40)
+
+    class Meta(BaseTestModel.Meta):
+        if supports_constraints:
+            constraints = [
+                CheckConstraint(
+                    name='change_meta_check_constraint',
+                    **{CHECK_CONSTRAINT_KEY: Q(int_field1__gt=0)}),
+            ]
+
+
 class ChangeMetaConstraintsBaseModel(BaseTestModel):
     int_field1 = models.IntegerField()
     int_field2 = models.IntegerField()
@@ -661,6 +676,64 @@ class ChangeMetaIndexesTests(BaseChangeMetaTestCase):
                 ]
 
         self.set_base_model(ChangeMetaPlainBaseModel)
+        self.perform_evolution_tests(
+            DestModel,
+            [
+                ChangeMeta(
+                    'TestModel',
+                    'indexes',
+                    [
+                        {
+                            'fields': ['int_field1'],
+                        },
+                        {
+                            'fields': ['char_field1', '-char_field2'],
+                            'name': 'my_custom_index',
+                        },
+                    ])
+            ],
+            self.DIFF_TEXT,
+            [
+                "ChangeMeta('TestModel', 'indexes',"
+                " [{'fields': ['int_field1']},"
+                " {'fields': ['char_field1', '-char_field2'],"
+                " 'name': 'my_custom_index'}])"
+            ],
+            'setting_from_empty')
+
+    @requires_meta_constraints
+    def test_setting_from_empty_with_check_constraint(self):
+        """Testing ChangeMeta(indexes) and setting to valid list with a check
+        constraint on the same column reported by introspection
+        """
+        class DestModel(BaseTestModel):
+            int_field1 = models.IntegerField()
+            int_field2 = models.IntegerField()
+            char_field1 = models.CharField(max_length=20)
+            char_field2 = models.CharField(max_length=40)
+
+            class Meta(BaseTestModel.Meta):
+                indexes = [
+                    Index(fields=['int_field1']),
+                    Index(fields=['char_field1', '-char_field2'],
+                          name='my_custom_index'),
+                ]
+
+                if supports_constraints:
+                    constraints = [
+                        CheckConstraint(
+                            name='change_meta_check_constraint',
+                            **{CHECK_CONSTRAINT_KEY: Q(int_field1__gt=0)}),
+                    ]
+
+        # The base model has a check constraint on int_field1. The database's
+        # introspection reports it with no index/unique/primary_key flags set
+        # (the same shape as the NOT NULL constraints PostgreSQL >= 18 reports
+        # in pg_constraint). It must not be tracked as an index, or the new
+        # index on int_field1 would be treated as already existing and its
+        # CREATE INDEX would be incorrectly skipped.
+        self.set_base_model(ChangeMetaIndexesCheckConstraintBaseModel)
+
         self.perform_evolution_tests(
             DestModel,
             [

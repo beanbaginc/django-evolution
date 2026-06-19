@@ -668,6 +668,16 @@ class EvolutionOperations(BaseEvolutionOperations):
             SQLiteAlterTableSQLResult:
             The SQL statements for changing the column type.
         """
+        # Update database state for any index changes that are being made
+        # along with the column type change. SQLite handles these implicitly
+        # via table recreation, but the in-memory state must be kept in sync.
+        if self.change_column_type_sets_attrs and new_attrs:
+            self._get_index_change_sql_for_type_change(
+                model=model,
+                old_field=old_field,
+                new_field=new_field,
+                new_attrs=new_attrs)
+
         return SQLiteAlterTableSQLResult(
             evolver=self,
             model=model,
